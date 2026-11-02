@@ -1,7 +1,7 @@
 ---
 paths:
-  - "src/shotpilot/ue/**"
-  - "src/shotpilot/engines.py"
+  - "crates/shotpilot/ue/**"
+  - "crates/shotpilot/src/engines.rs"
 ---
 
 # UE5 連携の規約
@@ -16,12 +16,13 @@ paths:
 
 ## `ue/sp_entry.py`
 
-- Unreal 同梱の Python で動く。**`shotpilot` パッケージを import しない**。標準ライブラリと `unreal` だけを使う。
-- 入力は環境変数 `SHOTPILOT_JOB` が指す job JSON。結果は `<job>.result.json` に書く。プロトコルを変えたら、`engines.py` の `MockEngine` も同じように直す。mock と ue5 の挙動がずれると、テストが嘘をつく。
+- Unreal 同梱の Python で動く。標準ライブラリと `unreal` だけを使う。プロジェクトで唯一の Python ファイル。
+- `engines.rs` が `include_str!` でバイナリに埋め込み、起動のたびに `.shotpilot/sp_entry.py` に書き出して渡す。直したら再ビルドする。
+- 入力は環境変数 `SHOTPILOT_JOB` が指す job JSON。結果は `<job>.result.json` に書く。プロトコルを変えたら、`engines.rs` の `MockEngine` も同じように直す。mock と ue5 の挙動がずれると、テストが嘘をつく。
 - Sequencer / MRQ の Python API はエンジンのバージョンで名前が違う。直接呼ばず、`_call_first(obj, [新名, 旧名])` のフォールバックを通す。
 - MRQ の非同期コールバックの間に UObject が GC されないよう、`_KEEP` に参照を置いておく。
 - 例外は握りつぶさない。result JSON にエラーとトレースバックを入れて返す。
-- 出力のピクセルが変わる修正をしたら、`fingerprint.RENDERER_VERSION` を上げる。
+- 出力のピクセルが変わる修正をしたら、`fingerprint::RENDERER_VERSION` を上げる。
 
 ## 実機で確かめたこと（UE 5.8、2026-11-03）
 
@@ -30,7 +31,7 @@ paths:
 - spawnable のテンプレートでは `get_cine_camera_component()` が None を返す。`get_editor_property("camera_component")` なら取れる。
 - Transform のチャネル名には `Location.X_0` のように `_0` が付く。名前は前方一致で照合する。
 - `add_spawnable_from_class` と `add_marked_frame` は 5.8 で非推奨の警告が出るが、動作はする。
-- Git Bash から `/Game/...` を引数で渡すと、Windows パスに書き換えられる（`MSYS_NO_PATHCONV=1` で防げる）。`model.py` で検出して止めている。
+- Git Bash から `/Game/...` を引数で渡すと、Windows パスに書き換えられる（`MSYS_NO_PATHCONV=1` で防げる）。`model.rs` で検出して止めている。
 
 ## 検証
 

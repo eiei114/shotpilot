@@ -9,17 +9,18 @@
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   },
   "enabledPlugins": {
-    "pyright-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": false,
     "rust-analyzer-lsp@claude-plugins-official": false,
     "lua-lsp@claude-plugins-official": false
   },
   "permissions": {
     "allow": [
-      "Bash(python -m pytest *)",
-      "Bash(pytest *)",
+      "Bash(cargo test *)",
+      "Bash(cargo build *)",
+      "Bash(cargo clippy *)",
+      "Bash(cargo run *)",
+      "Bash(cargo fmt *)",
       "Bash(shotpilot *)",
-      "Bash(python -m shotpilot *)",
-      "Bash(pip install -e *)",
       "Bash(ffprobe *)",
       "Bash(git status *)",
       "Bash(git diff *)",

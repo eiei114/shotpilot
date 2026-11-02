@@ -27,11 +27,23 @@ shots.yaml ──build──▶ UE: /Game/Shotpilot/Shots/SEQ_<shot>   (ショ�
 
 ## インストール
 
+Rust（1.80 以上）でビルドする。Python は要らない（UE の中で動く `sp_entry.py` だけは Unreal 同梱の Python が実行する）。
+
 ```bash
-pip install -e ".[ai,dev]"     # ai: plan / revise 用の anthropic SDK
+cargo install --path crates/shotpilot          # CLI: shotpilot
+cargo build --release -p shotpilot-app         # アプリ: target/release/shotpilot-app.exe
 ```
 
 `cut` で動画を書き出すには ffmpeg が必要（無ければ `index.html` / `spec.md` / `manifest.json` だけを出す）。
+
+## アプリ
+
+`shotpilot-app` を起動すると、ウィンドウが1枚開く（Tauri。ブラウザは使わない）。引数に `shots.yaml` かそのフォルダを渡すか、起動後にフォルダを選ぶ。`shots.yaml` が無いフォルダを選ぶと、サンプル（mock エンジン、6ショット）を作るか聞かれる。
+
+- カードをクリックしてショットを直し、「Render stale」を押すと、直したカードだけが RENDERED になり、残りは REUSED のまま残る。
+- 「Cut」で既存の take をつなぐ。storyboard と cut.mp4 は OS の既定アプリで開く。
+- アプリと CLI は同じ `shots.yaml` を読み書きする。どちらから直しても数秒で反映される。
+- 中ではコアのライブラリが 127.0.0.1 の空きポートでだけ待ち受け、ウィンドウがそこを表示する。別プロセスは立てない。
 
 ## まず試す（UE なし）
 
@@ -46,7 +58,7 @@ shotpilot order --move s06_title --to 1        # 並べ替えは再レンダな�
 shotpilot status
 ```
 
-同じことはブラウザからもできる。`shotpilot serve --open` で確認用 UI が開く。カードをクリックしてショットを直し、「Render stale」を押すと、直したカードだけが RENDERED になり、残りは REUSED のまま残る。UI は CLI と同じ `shots.yaml` を読み書きするので、どちらから直しても数秒で反映される。サーバーは 127.0.0.1 でだけ待ち受ける。
+同じことはアプリ（`shotpilot-app`）からもできる。
 
 `engine: mock` は UE の代役。シーケンスは JSON、レンダは色付きの previz で済ませる。ループ全体を UE なしで動かすためのもの。
 
@@ -118,7 +130,7 @@ shotpilot revise "タイトルカットを最初に持ってきて"
 
 - `plan`: pitch と anchors から、hook → establish → escalate → title の型でショットリストを作る。
 - `revise`: 指示に関係するショットだけを書き換える（並べ替えも含む）。返ってきた編集は、適用する前に resolve して検証する。`--shot` を付けると、編集できる範囲をコードで制限する。
-- モデルの既定は `claude-opus-5-5`。`SHOTPILOT_MODEL` で上書きできる。
+- モデルの既定は `claude-opus-5-5`。`SHOTPILOT_MODEL` で上書きできる。Messages API を直接呼ぶ（ストリーミング、構造化出力、拒否されたときはサーバー側で既定のモデルに切り替える `fallbacks: "default"`）。
 
 ## コマンド一覧
 
@@ -135,12 +147,14 @@ shotpilot revise "タイトルカットを最初に持ってきて"
 | `plan` / `revise` | Claude で組む・直す |
 | `cut [best\|quality]` | take を連結し、storyboard・spec・mp4 を出す |
 | `takes <shot>` / `log` / `gc` | take の一覧、履歴、古い take の削除 |
-| `serve [--port N] [--open]` | ブラウザの確認用 UI（直す → 古くなったショットだけ撮る → つなぐ） |
 
 ## 開発
 
 ```bash
-python -m pytest -q        # UE も API キーも要らない（mock エンジンと差し替えクライアントで回す）
+cargo test                 # UE も API キーも要らない（mock エンジンと差し替えクライアントで回す）
+cargo clippy --all-targets
 ```
+
+fingerprint は Python 版（〜0.1）と同じ正規化 JSON を hash するので、Python 版で撮った UE の take はそのまま再利用される。previz だけは描画が変わったので撮り直しになる（数秒で終わる）。
 
 規約は `AGENTS.md` にある。
