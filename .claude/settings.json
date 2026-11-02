@@ -3,8 +3,15 @@
   "autoMemoryEnabled": false,
   "bashOutputMaxChars": 12000,
   "disableAgentView": true,
+  "disableClaudeAiConnectors": true,
   "env": {
-    "CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS": "1"
+    "CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS": "1",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  },
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
+    "lua-lsp@claude-plugins-official": false
   },
   "permissions": {
     "allow": [
