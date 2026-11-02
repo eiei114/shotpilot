@@ -1,0 +1,23 @@
+//! Shotpilot: shot design and capture lane for UE5 teasers.
+//!
+//! Define shots in `shots.yaml`; only the shots whose pixels changed are re-rendered.
+
+pub mod ai;
+pub mod cut;
+pub mod engines;
+pub mod error;
+pub mod fingerprint;
+pub mod geometry;
+pub mod model;
+pub mod previz;
+pub mod server;
+pub mod state;
+pub mod sync;
+pub mod templates;
+pub mod workspace;
+pub mod yamlio;
+
+pub use error::{Error, Result};
+pub use workspace::Workspace;
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

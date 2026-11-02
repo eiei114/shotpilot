@@ -1,0 +1,210 @@
+//! State: what was pushed to the engine, which takes exist, and what changed when.
+//!
+//! Layout (relative to the folder holding shots.yaml):
+//!
+//!   .shotpilot/state.json            pushed snapshots (base for pull), current takes, history
+//!   .shotpilot/jobs/                 job/result JSON exchanged with the engine
+//!   render/<shot>/<quality>/<fp12>/  one immutable take per fingerprint, with take.json
+//!
+//! Takes are content-addressed by fingerprint and never overwritten. Reverting a shot's
+//! definition therefore reuses the old take instead of rendering again.
+
+use std::path::{Path, PathBuf};
+
+use serde_json::{json, Map, Value};
+
+use crate::error::Result;
+
+pub const STATE_VERSION: i64 = 1;
+const HISTORY_KEEP: usize = 500;
+
+pub fn now_iso() -> String {
+    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%z").to_string()
+}
+
+/// One take on disk: its take.json plus where it lives.
+#[derive(Debug, Clone)]
+pub struct Take {
+    pub info: Map<String, Value>,
+    pub dir: PathBuf,
+}
+
+impl Take {
+    pub fn fingerprint(&self) -> &str {
+        self.info.get("fingerprint").and_then(Value::as_str).unwrap_or("")
+    }
+
+    pub fn files(&self) -> Vec<String> {
+        self.info
+            .get("files")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn frames(&self) -> Vec<i64> {
+        self.info
+            .get("frames")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_i64).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn created(&self) -> &str {
+        self.info.get("created").and_then(Value::as_str).unwrap_or("")
+    }
+
+    /// Middle frame, the one the storyboard and the app show.
+    pub fn thumb(&self) -> Option<PathBuf> {
+        let files = self.files();
+        files.get(files.len() / 2).map(|f| self.dir.join(f))
+    }
+}
+
+pub struct State {
+    pub dir: PathBuf,
+    pub path: PathBuf,
+    pub render_dir: PathBuf,
+    pub data: Value,
+}
+
+impl State {
+    pub fn open(root: &Path) -> Result<State> {
+        let dir = root.join(".shotpilot");
+        let path = dir.join("state.json");
+        let data = if path.exists() {
+            serde_json::from_str(&std::fs::read_to_string(&path)?)?
+        } else {
+            json!({"version": STATE_VERSION, "shots": {}, "history": []})
+        };
+        Ok(State { dir, path, render_dir: root.join("render"), data })
+    }
+
+    pub fn save(&self) -> Result<()> {
+        std::fs::create_dir_all(&self.dir)?;
+        let tmp = self.path.with_extension("tmp");
+        std::fs::write(&tmp, serde_json::to_string_pretty(&self.data)?)?;
+        std::fs::rename(&tmp, &self.path)?;
+        Ok(())
+    }
+
+    fn shots(&mut self) -> &mut Map<String, Value> {
+        if !self.data["shots"].is_object() {
+            self.data["shots"] = json!({});
+        }
+        self.data["shots"].as_object_mut().expect("object")
+    }
+
+    fn shot(&mut self, shot_id: &str) -> &mut Map<String, Value> {
+        let s = self.shots().entry(shot_id).or_insert_with(|| json!({"current": {}}));
+        if !s["current"].is_object() {
+            s["current"] = json!({});
+        }
+        s.as_object_mut().expect("object")
+    }
+
+    // ----------------------------------------------------------------- takes
+
+    pub fn take_dir(&self, shot_id: &str, quality: &str, fp: &str) -> PathBuf {
+        self.render_dir.join(shot_id).join(quality).join(&fp[..fp.len().min(12)])
+    }
+
+    pub fn find_take(&self, shot_id: &str, quality: &str, fp: &str) -> Option<Take> {
+        let dir = self.take_dir(shot_id, quality, fp);
+        let text = std::fs::read_to_string(dir.join("take.json")).ok()?;
+        let info: Map<String, Value> = serde_json::from_str(&text).ok()?;
+        let complete = info.get("complete").and_then(Value::as_bool).unwrap_or(false);
+        if info.get("fingerprint").and_then(Value::as_str) != Some(fp) || !complete {
+            return None;
+        }
+        Some(Take { info, dir })
+    }
+
+    pub fn write_take(&mut self, shot_id: &str, quality: &str, fp: &str, extra: Map<String, Value>) -> Result<PathBuf> {
+        let dir = self.take_dir(shot_id, quality, fp);
+        std::fs::create_dir_all(&dir)?;
+        let mut meta = Map::new();
+        meta.insert("shot".into(), json!(shot_id));
+        meta.insert("quality".into(), json!(quality));
+        meta.insert("fingerprint".into(), json!(fp));
+        meta.insert("created".into(), json!(now_iso()));
+        meta.extend(extra);
+        std::fs::write(dir.join("take.json"), serde_json::to_string_pretty(&meta)?)?;
+        self.mark_current(shot_id, quality, fp);
+        Ok(dir)
+    }
+
+    pub fn mark_current(&mut self, shot_id: &str, quality: &str, fp: &str) {
+        self.shot(shot_id)["current"][quality] = json!(fp);
+    }
+
+    pub fn current(&self, shot_id: &str, quality: &str) -> Option<String> {
+        self.data["shots"][shot_id]["current"][quality].as_str().map(str::to_string)
+    }
+
+    pub fn list_takes(&self, shot_id: &str, quality: &str) -> Vec<Take> {
+        let base = self.render_dir.join(shot_id).join(quality);
+        let mut out = Vec::new();
+        if let Ok(rd) = std::fs::read_dir(&base) {
+            for entry in rd.flatten() {
+                let dir = entry.path();
+                if let Ok(text) = std::fs::read_to_string(dir.join("take.json")) {
+                    if let Ok(info) = serde_json::from_str::<Map<String, Value>>(&text) {
+                        out.push(Take { info, dir });
+                    }
+                }
+            }
+        }
+        // `created` has one-second resolution; the file time breaks ties
+        let mtime = |t: &Take| std::fs::metadata(t.dir.join("take.json")).and_then(|m| m.modified()).ok();
+        out.sort_by(|a, b| a.created().cmp(b.created()).then_with(|| mtime(a).cmp(&mtime(b))));
+        out
+    }
+
+    // ----------------------------------------------------------------- engine sync
+
+    pub fn pushed(&self, shot_id: &str) -> Option<&Value> {
+        self.data["shots"].get(shot_id)?.get("pushed").filter(|v| !v.is_null())
+    }
+
+    pub fn pushed_fp(&self, shot_id: &str) -> Option<String> {
+        self.pushed(shot_id)?.get("fingerprint")?.as_str().map(str::to_string)
+    }
+
+    pub fn pushed_payload(&self, shot_id: &str) -> Option<Value> {
+        self.pushed(shot_id)?.get("payload").cloned()
+    }
+
+    pub fn set_pushed(&mut self, shot_id: &str, fp: &str, payload: Value) {
+        self.shot(shot_id).insert("pushed".into(), json!({"fingerprint": fp, "payload": payload, "at": now_iso()}));
+    }
+
+    pub fn forget(&mut self, shot_id: &str) {
+        self.shots().remove(shot_id);
+    }
+
+    // ----------------------------------------------------------------- history
+
+    pub fn log(&mut self, action: &str, detail: Value) {
+        let mut entry = Map::new();
+        entry.insert("at".into(), json!(now_iso()));
+        entry.insert("action".into(), json!(action));
+        if let Value::Object(d) = detail {
+            entry.extend(d);
+        }
+        if !self.data["history"].is_array() {
+            self.data["history"] = json!([]);
+        }
+        let h = self.data["history"].as_array_mut().expect("array");
+        h.push(Value::Object(entry));
+        // keep the file small; the take.json files keep the long-term record
+        if h.len() > HISTORY_KEEP {
+            let drop = h.len() - HISTORY_KEEP;
+            h.drain(..drop);
+        }
+    }
+
+    pub fn history(&self) -> Vec<Value> {
+        self.data["history"].as_array().cloned().unwrap_or_default()
+    }
+}
