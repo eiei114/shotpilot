@@ -446,7 +446,17 @@ def configure_job(job, item, map_path, game_mode=None):
         if cls is None:
             raise RuntimeError("project.game_mode not found: " + game_mode)
         go = cfg.find_or_add_setting_by_class(unreal.MoviePipelineGameOverrideSetting)
-        go.set_editor_property("game_mode_override", cls)
+        # 5.8 reads SoftGameModeOverride; the hard-class property is deprecated and ignored there
+        for prop, value in (("soft_game_mode_override", unreal.SoftClassPath(game_mode)),
+                            ("soft_game_mode_override", cls), ("game_mode_override", cls)):
+            try:
+                go.set_editor_property(prop, value)
+                log("game mode override %s = %s" % (prop, game_mode))
+                break
+            except Exception:
+                continue
+        else:
+            raise RuntimeError("could not set the MRQ game mode override on this engine version")
     cfg.find_or_add_setting_by_class(_output_class(q.get("format", "png")))
     aa = cfg.find_or_add_setting_by_class(unreal.MoviePipelineAntiAliasingSetting)
     aa.spatial_sample_count = int(q.get("spatial_samples", 1))
