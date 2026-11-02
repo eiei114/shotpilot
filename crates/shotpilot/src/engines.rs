@@ -73,7 +73,8 @@ fn jobs_dir(defn: &Definition) -> Result<PathBuf> {
 
 fn project_dict(defn: &Definition) -> Value {
     let p = &defn.project;
-    json!({"name": p.name, "map": p.map, "content_root": p.content_root, "sun_actor": p.sun_actor})
+    json!({"name": p.name, "map": p.map, "content_root": p.content_root, "sun_actor": p.sun_actor,
+           "game_mode": p.game_mode})
 }
 
 fn read_json(path: &Path) -> Result<Value> {

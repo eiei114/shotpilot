@@ -85,6 +85,8 @@ pub struct ProjectCfg {
     pub isolate_userdir: bool,
     /// Extra UnrealEditor arguments for this project (e.g. a game's own flags).
     pub ue_args: Vec<String>,
+    /// GameMode class MRQ should run (e.g. /Script/MyGame.MyMode); None = MRQ's own empty mode.
+    pub game_mode: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -270,6 +272,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
             .to_string(),
         sun_actor: opt_str(p.get("sun_actor")),
         isolate_userdir: p.get("isolate_userdir").and_then(Value::as_bool).unwrap_or(true),
+        game_mode: opt_str(p.get("game_mode")).filter(|s| !s.is_empty()),
         ue_args: match p.get("ue_args") {
             None | Some(Value::Null) => Vec::new(),
             Some(Value::String(s)) => s.split_whitespace().map(str::to_string).collect(),
@@ -291,6 +294,11 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         }
         if project.map.is_none() {
             errs.push("project.map: required when engine is ue5 (e.g. /Game/Maps/Courtyard)".into());
+        }
+    }
+    if let Some(g) = &project.game_mode {
+        if !g.starts_with('/') || !g.contains('.') {
+            errs.push(format!("project.game_mode: a class path like /Script/MyGame.MyGameMode (got '{g}')"));
         }
     }
     if let Some(m) = &project.map {

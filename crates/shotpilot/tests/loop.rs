@@ -280,15 +280,18 @@ fn scan_adds_anchors_and_keeps_comments() {
 }
 
 #[test]
-fn ue_args_invalidate_engine_takes_only() {
+fn launch_flags_and_game_mode_invalidate_engine_takes_only() {
     let mut f = ws();
     let s = f.ws.select_one("s02_well").unwrap();
     let (still, previz) = (fp::render_fingerprint(&f.ws.defn, &s, "still").unwrap(),
                            fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap());
-    f.write(&f.text().replace("  isolate_userdir: true", "  ue_args: [-R7StageOnly]
+    f.write(&f.text().replace("  isolate_userdir: true",
+                              "  ue_args: [-R7StageOnly]
+  game_mode: /Script/RoomSeven.R7CourtyardMode
   isolate_userdir: true"));
     f.ws.reload().unwrap();
     assert_eq!(f.ws.defn.project.ue_args, vec!["-R7StageOnly".to_string()]);
+    assert_eq!(f.ws.defn.project.game_mode.as_deref(), Some("/Script/RoomSeven.R7CourtyardMode"));
     let s = f.ws.select_one("s02_well").unwrap();
     assert_ne!(fp::render_fingerprint(&f.ws.defn, &s, "still").unwrap(), still);
     assert_eq!(fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap(), previz);

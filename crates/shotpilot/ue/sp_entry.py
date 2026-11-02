@@ -421,7 +421,7 @@ def _ranges(frames):
     return out
 
 
-def configure_job(job, item, map_path):
+def configure_job(job, item, map_path, game_mode=None):
     q = item["quality"]
     job.set_editor_property("job_name", "%s_%s" % (item["id"], item["quality_name"]))
     job.sequence = unreal.SoftObjectPath(object_path(item["asset"]))
@@ -439,6 +439,14 @@ def configure_job(job, item, map_path):
     out.custom_start_frame = int(s)
     out.custom_end_frame = int(e)
     cfg.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase)
+    if game_mode:
+        # MRQ swaps in its own empty MoviePipelineGameMode by default. Games that build
+        # their level at runtime (project.game_mode) need their own mode to run in PIE.
+        cls = unreal.load_class(None, game_mode)
+        if cls is None:
+            raise RuntimeError("project.game_mode not found: " + game_mode)
+        go = cfg.find_or_add_setting_by_class(unreal.MoviePipelineGameOverrideSetting)
+        go.set_editor_property("game_mode_override", cls)
     cfg.find_or_add_setting_by_class(_output_class(q.get("format", "png")))
     aa = cfg.find_or_add_setting_by_class(unreal.MoviePipelineAntiAliasingSetting)
     aa.spatial_sample_count = int(q.get("spatial_samples", 1))
@@ -488,7 +496,7 @@ def run_render(job):
             j = queue.allocate_new_job(unreal.MoviePipelineExecutorJob)
             it = dict(item)
             it["range"] = rng
-            configure_job(j, it, job["project"]["map"])
+            configure_job(j, it, job["project"]["map"], job["project"].get("game_mode"))
             index[j.get_editor_property("job_name")] = item["key"]
         result["renders"][item["key"]] = {"status": "pending"}
 

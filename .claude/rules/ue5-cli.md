@@ -32,6 +32,7 @@ paths:
 - Transform のチャネル名には `Location.X_0` のように `_0` が付く。名前は前方一致で照合する。
 - `add_spawnable_from_class` と `add_marked_frame` は 5.8 で非推奨の警告が出るが、動作はする。
 - Git Bash から `/Game/...` を引数で渡すと、Windows パスに書き換えられる（`MSYS_NO_PATHCONV=1` で防げる）。`model.rs` で検出して止めている。
+- MRQ の PIE は、Game Override の設定が無いと `MoviePipelineGameMode`（空の GameMode）で回る。レベルを実行時に組むゲーム（七号室）はそのままだと真っ黒になる。`project.game_mode` を書くと `MoviePipelineGameOverrideSetting` で差し替える。
 - Rust 版でも実機で通った（2026-11-03、SPTest / Template_Default、2 ショット）。Python 版で push した状態と撮った take はそのまま有効だった（status が synced / fresh、build は何もしない）。1 ショットだけ直して render preview すると、そのショットだけ build・撮影された（約 25 秒）。pull は約 15 秒、render final（1920x1080、2 ショット × 30 フレーム）は約 37 秒、cut final は約 2 秒。
 
 ## 検証

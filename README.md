@@ -75,6 +75,7 @@ Git Bash では、`/Game/...` という引数が Windows パスに書き換え�
 - `build` / `pull` / `scan` は commandlet（`-run=pythonscript`、`-NullRHI`）で動く。`render` はエディタを起動し、MRQ の PIE executor で撮り終えたら終了する。
 - 既定では、隔離した `-UserDir`（`.shotpilot/ue_userdir`）で起動する。普段のエディタ設定には触れない。
 - `project.ue_args` に書いた引数は、UE の起動のたびに付ける（例: ゲームが実行時にレベルを組むプロジェクトで、そのモードを選ぶフラグ）。撮れる画が変わるので、エンジン品質の fingerprint に入る（空なら入らない）。
+- `project.game_mode`（例 `/Script/MyGame.MyGameMode`）を書くと、MRQ はその GameMode で PIE を回す。書かなければ MRQ 既定の空の GameMode。レベルを実行時に組むゲームでは必須（既定のままだと何もない空間を撮る）。
 
 ```bash
 shotpilot scan                 # タグ shotpilot が付いたアクター、またはラベルが SP_* のアクターを anchors に取り込む
