@@ -1,0 +1,9 @@
+@AGENTS.md
+
+## Claude Code 向けの補足
+
+- 規約の正本は `AGENTS.md`。ここに同じことを二重に書かない。規約を変えるときは `AGENTS.md` を直す。
+- 自動メモリは切っている（`.claude/settings.json`）。残したい判断や知見は `.claude/rules/product-decisions.md` に追記してコミットする。
+- UE 側の規約は `.claude/rules/ue5-cli.md` にある。`ue/` と `engines.py` を触るときだけ読み込まれる。
+- テストやビルドのログは長くなりやすい。`pytest -q` や `| tail` で絞ってから読む。
+- サブエージェントへの委譲は、明示的に頼まれたときと、並列化しないと終わらない調査のときだけ使う。
