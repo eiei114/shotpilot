@@ -23,6 +23,15 @@ paths:
 - 例外は握りつぶさない。result JSON にエラーとトレースバックを入れて返す。
 - 出力のピクセルが変わる修正をしたら、`fingerprint.RENDERER_VERSION` を上げる。
 
+## 実機で確かめたこと（UE 5.8、2026-11-03）
+
+- build / pull / render still は実機で通った。build は 2 ショットで約 14 秒、render still は 2 ショット×3 フレームで約 26 秒。
+- `-ExecutePythonScript` で起動すると、スクリプトが戻った時点でエディタが `QUIT_EDITOR` を出す（`EditorPythonExecuter.cpp`）。MRQ は非同期なので、`unreal.EditorPythonScripting.set_keep_python_script_alive(True)` でプロセスを保持し、終わったら False に戻す。
+- spawnable のテンプレートでは `get_cine_camera_component()` が None を返す。`get_editor_property("camera_component")` なら取れる。
+- Transform のチャネル名には `Location.X_0` のように `_0` が付く。名前は前方一致で照合する。
+- `add_spawnable_from_class` と `add_marked_frame` は 5.8 で非推奨の警告が出るが、動作はする。
+- Git Bash から `/Game/...` を引数で渡すと、Windows パスに書き換えられる（`MSYS_NO_PATHCONV=1` で防げる）。`model.py` で検出して止めている。
+
 ## 検証
 
 - `sp_entry.py` はユニットテストできない。プロトコル側の挙動は、mock エンジンのテストで担保する。

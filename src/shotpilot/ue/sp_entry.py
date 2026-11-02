@@ -131,7 +131,8 @@ def transform_channels(section):
     by_name = {}
     for i, c in enumerate(chans):
         name = str(c.get_name())
-        key = next((n for n in TRANSFORM_NAMES if name.endswith(n)), None)
+        # UE 5.x names channels like "Location.X_0"
+        key = next((n for n in TRANSFORM_NAMES if name == n or name.startswith(n + "_")), None)
         if key is None:
             key = TRANSFORM_NAMES[i] if i < len(TRANSFORM_NAMES) else name
         by_name[key] = c
@@ -153,6 +154,16 @@ def set_default(channel, value):
         channel.set_default(float(value))
     except Exception:
         pass
+
+
+def camera_component(actor):
+    """Spawnable templates return None from get_cine_camera_component(); the property works."""
+    comp = None
+    try:
+        comp = actor.get_cine_camera_component()
+    except Exception:
+        pass
+    return comp or actor.get_editor_property("camera_component")
 
 
 def camera_binding(seq):
@@ -197,7 +208,7 @@ def readback(seq):
         out["start"], out["end"] = xf(first), xf(last)
     t = cam.get_object_template()
     if t is not None:
-        comp = t.get_cine_camera_component()
+        comp = camera_component(t)
         lens = {"focal_length": comp.get_editor_property("current_focal_length"),
                 "aperture": comp.get_editor_property("current_aperture")}
         fs = comp.get_editor_property("focus_settings")
@@ -231,7 +242,7 @@ def build_shot(item, project, force):
     cam = seq.add_spawnable_from_class(unreal.CineCameraActor)
     cam.set_display_name("SP_Camera")
     template = cam.get_object_template()
-    comp = template.get_cine_camera_component()
+    comp = camera_component(template)
     lens = payload["lens"]
     sw = float(lens.get("sensor_width", 36.0))
     fb = comp.get_editor_property("filmback")
@@ -446,6 +457,18 @@ def configure_job(job, item, map_path):
     cfg.initialize_transient_settings()
 
 
+def keep_alive(flag):
+    try:
+        unreal.EditorPythonScripting.set_keep_python_script_alive(bool(flag))
+    except Exception:
+        warn("EditorPythonScripting.set_keep_python_script_alive unavailable: " + traceback.format_exc())
+
+
+def finish_render_process():
+    keep_alive(False)  # lets the -ExecutePythonScript runner close the editor
+    unreal.SystemLibrary.quit_editor()
+
+
 def run_render(job):
     result = {"build": None, "renders": {}}
     if job.get("build") or job.get("master"):
@@ -471,7 +494,7 @@ def run_render(job):
 
     if not queue.get_jobs():
         write_result(result)
-        unreal.SystemLibrary.quit_editor()
+        finish_render_process()
         return
 
     def on_job(params):
@@ -489,8 +512,11 @@ def run_render(job):
                 r["status"] = "ok" if success else "error"
         result["seconds"] = round(time.time() - started, 1)
         write_result(result)
-        unreal.SystemLibrary.quit_editor()
+        finish_render_process()
 
+    # -ExecutePythonScript quits the editor as soon as this script returns unless told
+    # to keep it alive; MRQ renders asynchronously after we return.
+    keep_alive(True)
     executor = unreal.MoviePipelinePIEExecutor(subsystem)
     executor.on_individual_job_work_finished_delegate.add_callable_unique(on_job)
     executor.on_executor_finished_delegate.add_callable_unique(on_done)
@@ -515,7 +541,7 @@ def main():
     except Exception:
         write_result({"fatal": traceback.format_exc()})
         if kind == "render":
-            unreal.SystemLibrary.quit_editor()
+            finish_render_process()
 
 
 main()

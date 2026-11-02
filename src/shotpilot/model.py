@@ -16,6 +16,7 @@ from .yamlio import load_yaml
 
 SCHEMA_VERSION = 1
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,47}$")
+PACKAGE_RE = re.compile(r"^/[A-Za-z0-9_]+(/[A-Za-z0-9_\-. ]+)+$")
 
 # Sun elevation in degrees above the horizon. UE DirectionalLight pitch = -elevation.
 TIME_OF_DAY = {
@@ -26,6 +27,15 @@ TIME_OF_DAY = {
     "golden_hour": 10.0,
     "dusk": 3.0,
     "night": -18.0,
+}
+
+# The teaser shape Shotpilot ships with. Beats are editorial: they never affect pixels.
+BEATS = ("hook", "establish", "escalate", "title")
+BEAT_GUIDE = {
+    "hook": "first 2-5 s: one striking image or question that stops the scroll",
+    "establish": "where we are and what kind of game this is",
+    "escalate": "tension, stakes or spectacle rising shot by shot",
+    "title": "a calm final image with room for the title card",
 }
 
 MOVES = {
@@ -100,6 +110,7 @@ class ResolvedShot:
     markers: list[dict[str, Any]] = field(default_factory=list)
     target: g.Vec3 | None = None
     notes: str = ""
+    beat: str | None = None
 
     def camera_at(self, frame: int) -> g.Xform:
         if self.frames <= 1:
@@ -158,6 +169,10 @@ def parse(data: Any, path: Path) -> Definition:
             errs.append("project.uproject: required when engine is ue5")
         if not project.map:
             errs.append("project.map: required when engine is ue5 (e.g. /Game/Maps/Courtyard)")
+    if project.map and not PACKAGE_RE.match(str(project.map)):
+        errs.append(
+            f"project.map: must be a UE package path like /Game/Maps/Courtyard (got '{project.map}'). "
+            "Git Bash rewrites /Game/... arguments into Windows paths; set MSYS_NO_PATHCONV=1 or edit shots.yaml")
 
     t = dict(data.get("teaser") or {})
     res = t.get("resolution", [1920, 1080])
@@ -203,6 +218,8 @@ def parse(data: Any, path: Path) -> Definition:
         dur = s.get("duration")
         if not isinstance(dur, (int, float)) or dur <= 0:
             errs.append(f"{where}.duration: positive seconds required")
+        if s.get("beat") is not None and s.get("beat") not in BEATS:
+            errs.append(f"{where}.beat: one of {', '.join(BEATS)} (got {s.get('beat')!r})")
 
     defn = Definition(path, project, teaser, anchors, defaults, qualities, shots)
     if not errs:
@@ -327,7 +344,7 @@ def resolve_shot(defn: Definition, shot: dict[str, Any], index: int | None = Non
         duration=duration, fps=fps, frames=frames,
         start=_round_xf(start), end=_round_xf(end), curve=curve,
         lens=lens, environment=env, markers=markers, target=target,
-        notes=str(shot.get("notes", "")),
+        notes=str(shot.get("notes", "")), beat=shot.get("beat"),
     )
 
 
@@ -387,3 +404,33 @@ def _resolve_env(defn: Definition, shot: dict[str, Any], where: str) -> dict[str
         env["sun_elevation"] = TIME_OF_DAY[tod]
     out = {k: v for k, v in env.items() if v is not None}
     return dict(sorted(out.items()))
+
+
+def structure_warnings(shots: list[ResolvedShot], target_duration: float) -> list[str]:
+    """Advisory checks against the hook -> establish -> escalate -> title shape."""
+    if not shots:
+        return []
+    out = []
+    beats = [s.beat for s in shots]
+    if not any(beats):
+        return ["no shot has a `beat`; tag shots with hook / establish / escalate / title to check the teaser shape"]
+    untagged = [s.id for s in shots if not s.beat]
+    if untagged:
+        out.append(f"no beat on: {', '.join(untagged)}")
+    for b in BEATS:
+        if b not in beats:
+            out.append(f"no `{b}` shot ({BEAT_GUIDE[b]})")
+    if beats[0] and beats[0] != "hook":
+        out.append(f"the cut opens on `{beats[0]}`; teasers usually open on the hook")
+    if beats[-1] and beats[-1] != "title":
+        out.append(f"the cut ends on `{beats[-1]}`; end on the title beat")
+    ranks = [BEATS.index(b) for b in beats if b]
+    if any(b < a for a, b in zip(ranks, ranks[1:])):
+        out.append("beats go backwards (e.g. establish after escalate); intentional?")
+    total = sum(s.duration for s in shots)
+    hook = sum(s.duration for s in shots if s.beat == "hook")
+    if hook > 6:
+        out.append(f"hook runs {hook:g}s; keep it under ~5s")
+    if target_duration and abs(total - target_duration) > 0.1 * target_duration:
+        out.append(f"runtime {total:g}s is more than 10% off the {target_duration:g}s target")
+    return out

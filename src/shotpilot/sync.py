@@ -125,8 +125,6 @@ def apply_engine_to_shot(node: Any, engine: dict[str, Any], ours: ResolvedShot) 
         lens["focus_distance"] = round(float(elens["focus_distance"]), 1)
     if lens:
         new_cam["lens"] = lens
-    if "roll" in cam:
-        pass  # roll now lives in rotation[2]
     node["camera"] = to_rt(new_cam)
     if was:
         summary = ", ".join(f"{k}={v}" for k, v in was.items())

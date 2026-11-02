@@ -69,13 +69,34 @@ class Canvas:
             self.px[i:i + (x1 - x0) * 3] = bytes(c) * (x1 - x0)
 
     def line(self, x0: float, y0: float, x1: float, y1: float, c: RGB) -> None:
-        # clip absurdly long lines from near-plane projections
-        if max(abs(x0), abs(y0), abs(x1), abs(y1)) > 20000:
+        # Liang-Barsky clip to the canvas so off-screen spans cost nothing
+        t0, t1 = 0.0, 1.0
+        ddx, ddy = x1 - x0, y1 - y0
+        for p, q in ((-ddx, x0), (ddx, self.w - 1 - x0), (-ddy, y0), (ddy, self.h - 1 - y0)):
+            if p == 0:
+                if q < 0:
+                    return
+            else:
+                r = q / p
+                if p < 0:
+                    t0 = max(t0, r)
+                else:
+                    t1 = min(t1, r)
+        if t0 > t1:
             return
+        x0, y0, x1, y1 = x0 + ddx * t0, y0 + ddy * t0, x0 + ddx * t1, y0 + ddy * t1
+        cb = bytes(c)
+        w, h, px = self.w, self.h, self.px
         n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
-        for k in range(n + 1):
-            t = k / n
-            self.set(int(x0 + (x1 - x0) * t), int(y0 + (y1 - y0) * t), c)
+        dx, dy = (x1 - x0) / n, (y1 - y0) / n
+        x, y = x0, y0
+        for _ in range(n + 1):
+            xi, yi = int(x), int(y)
+            if 0 <= xi < w and 0 <= yi < h:
+                i = (yi * w + xi) * 3
+                px[i:i + 3] = cb
+            x += dx
+            y += dy
 
     def text(self, x: int, y: int, s: str, c: RGB, size: int = 1) -> None:
         for ch in s.upper():
@@ -157,24 +178,26 @@ def render_frame(shot: ResolvedShot, frame: int, anchors: dict[str, g.Vec3], w: 
                     cv.line(prev[0], prev[1], q[0], q[1], grid_c)
                 prev = q
 
-    # anchors as 180cm pillars, far to near
+    # anchors as human-scale wireframe boxes (120 x 120 x 180 cm), far to near
     size = 2 if w >= 640 else 1
     drawn = []
     for name, pos in anchors.items():
-        base = g.project((pos[0], pos[1], pos[2] - 90), cam, fl, w, h, sensor)
-        tip = g.project((pos[0], pos[1], pos[2] + 90), cam, fl, w, h, sensor)
-        if base and tip:
-            drawn.append((base[2], name, base, tip))
-    for _, name, base, tip in sorted(drawn, reverse=True):
-        ph = max(2.0, abs(base[1] - tip[1]))
-        pw = max(2.0, ph * 0.35)
-        x0, x1 = int(base[0] - pw / 2), int(base[0] + pw / 2)
-        y0, y1 = int(tip[1]), int(base[1])
+        c = g.project(pos, cam, fl, w, h, sensor)
+        if c:
+            drawn.append((c[2], name, pos))
+    edges = [(0, 1), (1, 3), (3, 2), (2, 0), (4, 5), (5, 7), (7, 6), (6, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
+    for _, name, pos in sorted(drawn, reverse=True):
         col = _anchor_color(name)
-        cv.rect(x0, y0, x1, y1, col)
-        cv.line(x0, y0, x1, y0, (20, 20, 20))
-        cv.line(x0, y1, x1, y1, (20, 20, 20))
-        cv.text(x0, y0 - 9 * size, name[:16], (250, 250, 250), size)
+        corners = [g.project((pos[0] + sx * 60, pos[1] + sy * 60, pos[2] + sz * 90), cam, fl, w, h, sensor)
+                   for sz in (-1, 1) for sy in (-1, 1) for sx in (-1, 1)]
+        for a, b in edges:
+            if corners[a] and corners[b]:
+                cv.line(corners[a][0], corners[a][1], corners[b][0], corners[b][1], col)
+        top = [p for p in corners[4:] if p]
+        if top:
+            lx = int(min(p[0] for p in top))
+            ly = int(min(p[1] for p in top)) - 9 * size
+            cv.text(max(0, min(w - 6 * size * len(name), lx)), max(10 * size, ly), name[:16], col, size)
 
     if shot.target is not None:
         t = g.project(shot.target, cam, fl, w, h, sensor)

@@ -16,6 +16,7 @@
 - D-12: 成果物はティザー1本（30〜60秒）。短尺は次回以降。
 - D-13: 部分修正ループを設計の芯に置く（ショット単位の再レンダ、定義と出力の分離、状態の保持、安いプレビュー）。
 - D-14: 差別化は3層で置く。①修正ループを製品の中心に置く ②ティザーの型 `hook → establish → escalate → title` を同梱する ③1ビートに3バリアントを出す。汎用の Unreal エージェントとは正面から戦わない。
+- D-15: open-design（nexu-io/open-design）型のローカル daemon と Web UI（`shotpilot serve`）を、標準ライブラリだけで薄く載せる。正本は shots.yaml のまま、リクエストごとに Workspace を開き直す。Next.js / Electron / SQLite は持ち込まない。狙いはデモの「1枚だけ rendered、残りは reused」を画面で見せること。
 
 ## デモ（20秒）で見せる主張
 

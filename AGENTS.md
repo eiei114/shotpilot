@@ -27,9 +27,10 @@ shotpilot status                  # fresh / stale / out-of-sync の一覧
 shotpilot render previz           # 古くなったショットだけをエンジンなしで描く
 shotpilot set s03 camera.lens.focal_length=50
 shotpilot cut                     # 既存 take を連結する（レンダはしない）
+shotpilot serve --open            # 確認用 UI（http://127.0.0.1:7460/）
 ```
 
-`cut` と `order` は ffmpeg を使う。`plan` と `revise` は `ANTHROPIC_API_KEY` を使う（モデルは `SHOTPILOT_MODEL` で上書きできる）。
+`cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は `ANTHROPIC_API_KEY` を使う（モデルは `SHOTPILOT_MODEL` で上書きできる）。
 
 ## 構成
 
@@ -48,6 +49,8 @@ src/shotpilot/
   yamlio.py       コメントを保持する YAML 入出力（ruamel round-trip）
   templates.py    shots.yaml の雛形
   cli.py          argparse の CLI
+  server.py       `shotpilot serve`。Workspace の上に載る薄い HTTP + SSE 層（loopback 限定）
+  web/index.html  確認用 UI（ビルドなし、依存なし）
   ue/sp_entry.py  Unreal の中で動くスクリプト（別ルールあり）
 tests/            mock エンジンでループ全体を検証する
 ```
@@ -72,7 +75,8 @@ tests/            mock エンジンでループ全体を検証する
 ## スコープ（7日間）
 
 - やる: UE5 のティザー映像1本。ティザーの型（`hook → establish → escalate → title`）を同梱する。1ビートに3バリアントを出すのは余力があればやる。
-- やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺、複数尺への展開、GUI 統合。
+- やる: ローカルの確認用 UI（`shotpilot serve`）。標準ライブラリの HTTP サーバーと、ビルド不要の HTML 1枚で作る。
+- やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺、複数尺への展開、Electron やデスクトップ統合、GUI での録画後編集。
 - mock エンジンはテストとデモ用で、別エンジン対応の足場ではない。抽象化を先回りして作らない。
 - 録画後の編集機能は作らない（差別化にならない）。差別化できるのは録画の前だけ。
 
