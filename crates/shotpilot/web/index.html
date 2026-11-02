@@ -36,6 +36,7 @@ select, input, textarea { border: 1px solid var(--line); background: var(--bg); 
 #msg { width: 100%; font-size: 13px; color: var(--muted); min-height: 0; }
 #msg.err { color: var(--err); }
 #msg:empty { display: none; }
+button.link { border: none; background: none; padding: 0 4px; color: var(--accent); text-decoration: underline; font-weight: 600; }
 main { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .card { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; overflow: hidden;
   box-shadow: var(--shadow); cursor: pointer; transition: border-color .2s, opacity .2s; position: relative; }
@@ -153,6 +154,7 @@ async function refresh() {
 function drawHeader() {
   const s = status;
   $("title").textContent = s.title || s.project;
+  $("title").title = s.path || "";
   const diff = s.total_duration - s.target_duration;
   $("subtitle").textContent =
     `${s.project} · engine ${s.engine} · ${s.shots.length} shots · ${s.total_duration}s / 目標 ${s.target_duration}s (${diff >= 0 ? "+" : ""}${Math.round(diff * 10) / 10}s)`
@@ -259,10 +261,11 @@ async function cut() {
   busy = true; setButtons(); say("take をつないでいます…");
   try {
     const info = await api("POST", "/api/cut", { quality: "best" });
-    const links = [`<a href="${esc(info.storyboard)}" target="_blank" rel="noopener">storyboard</a>`];
-    if (info.video_url) links.push(`<a href="${esc(info.video_url)}" target="_blank" rel="noopener">cut.mp4</a>`);
+    // opened with the OS default app (player / browser), not inside this window
+    const links = [`<button class="link" data-open="${esc(info.storyboard)}">storyboard を開く</button>`];
+    if (info.video_url) links.push(`<button class="link" data-open="${esc(info.video_url)}">cut.mp4 を再生</button>`);
     $("msg").className = "";
-    $("msg").innerHTML = `${info.shots} shots / ${info.seconds}s をつなぎました（レンダはしていません）: ${links.join(" · ")}`;
+    $("msg").innerHTML = `${info.shots} shots / ${info.seconds}s をつなぎました（レンダはしていません）: ${links.join(" ")}`;
   } catch (e) {
     say(e.message, true);
   } finally {
@@ -343,6 +346,11 @@ function setButtons() {
 $("grid").addEventListener("click", (e) => {
   const card = e.target.closest(".card");
   if (card) openPanel(card.dataset.id);
+});
+$("msg").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-open]");
+  if (!b) return;
+  try { await api("POST", "/api/open", { url: b.dataset.open }); } catch (err) { say(err.message, true); }
 });
 $("p-close").addEventListener("click", closePanel);
 $("p-save").addEventListener("click", save);

@@ -18,3 +18,4 @@ render/
 
 # Rust
 target/
+crates/shotpilot-app/gen/

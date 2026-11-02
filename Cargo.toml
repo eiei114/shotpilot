@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["crates/shotpilot"]
+members = ["crates/shotpilot", "crates/shotpilot-app"]
 # `cargo test` / `cargo build` default to the core crate; the Tauri app builds with `-p shotpilot-app`.
-default-members = ["crates/shotpilot"]
+default-members = ["crates/shotpilot", "crates/shotpilot-app"]
 
 [workspace.package]
 version = "0.2.0"

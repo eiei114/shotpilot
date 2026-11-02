@@ -1,0 +1,19 @@
+[package]
+name = "shotpilot-app"
+description = "Shotpilot desktop app: the partial re-render loop in one window."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "shotpilot-app"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = "2"
+
+[dependencies]
+rfd = "0.17.2"
+shotpilot = { path = "../shotpilot" }
+tauri = "2"
