@@ -286,6 +286,7 @@ impl Ue5Engine {
             .iter()
             .map(|s| s.to_string())
             .collect();
+        args.extend(self.defn.project.ue_args.iter().cloned());
         if self.defn.project.isolate_userdir {
             args.push(format!("-UserDir={}", self.defn.root().join(".shotpilot").join("ue_userdir").display()));
         }

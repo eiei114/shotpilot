@@ -83,6 +83,8 @@ pub struct ProjectCfg {
     pub content_root: String,
     pub sun_actor: Option<String>,
     pub isolate_userdir: bool,
+    /// Extra UnrealEditor arguments for this project (e.g. a game's own flags).
+    pub ue_args: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -268,6 +270,17 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
             .to_string(),
         sun_actor: opt_str(p.get("sun_actor")),
         isolate_userdir: p.get("isolate_userdir").and_then(Value::as_bool).unwrap_or(true),
+        ue_args: match p.get("ue_args") {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::String(s)) => s.split_whitespace().map(str::to_string).collect(),
+            Some(Value::Array(a)) if a.iter().all(Value::is_string) => {
+                a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()
+            }
+            Some(_) => {
+                errs.push("project.ue_args: a list of strings, e.g. [-MyGameFlag]".into());
+                Vec::new()
+            }
+        },
     };
     if project.engine != "mock" && project.engine != "ue5" {
         errs.push(format!("project.engine: must be 'mock' or 'ue5', got '{}'", project.engine));

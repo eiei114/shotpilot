@@ -185,6 +185,11 @@ pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: 
         body["map"] = json!(defn.project.map);
         body["sun_actor"] = json!(defn.project.sun_actor);
         body["engine"] = json!(defn.project.engine);
+        // project launch flags can change what the game builds; omitted when empty so
+        // fingerprints of projects without them stay as they were
+        if !defn.project.ue_args.is_empty() {
+            body["ue_args"] = json!(defn.project.ue_args);
+        }
     }
     Ok(digest(&body))
 }
