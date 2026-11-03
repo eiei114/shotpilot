@@ -381,3 +381,58 @@ fn settings_save_the_key_but_never_send_it_back() {
     assert_eq!(out["ready"], false);
     assert!(out["api_key"].is_null());
 }
+
+// ------------------------------------------------------------------ sound
+
+#[test]
+fn sound_lanes_and_edits_over_http() {
+    let s = srv();
+    shotpilot::sound::write_demo_audio(&s.f.ws.root).unwrap();
+    let (code, snd) = jcall(&s, "GET", "/api/sound", None);
+    assert_eq!(code, 200, "{snd}");
+    assert_eq!(snd["placements"].as_array().unwrap().len(), 4);
+    assert_eq!(snd["mix"]["lanes"].as_array().unwrap().len(), 4);
+    assert!(snd["mix"]["url"].as_str().unwrap().starts_with("/files/cut/sound/mix.wav"));
+    assert!(snd["mix"]["check"]["verdict"].is_string());
+    assert_eq!(snd["cuts"].as_array().unwrap().len(), 5);
+    // source files are served for previewing
+    let r = call(&s, "GET", "/files/audio/hit.wav", None, &[]);
+    assert_eq!((r.code, r.header("content-type")), (200, "audio/wav"));
+
+    // move the silhouette hit from s03 to s04, as the lanes do after a drag
+    let before = launches(&s.f.ws).len();
+    let (code, out) = jcall(&s, "POST", "/api/sound", Some(json!({
+        "sfx": {"s03_window": [], "s04_lantern": [{"file": "audio/hit.wav", "at": 0.5, "label": "silhouette"}]},
+        "note": "drag"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!([]));
+    assert_eq!(out["edited"], json!(["s03_window", "s04_lantern"]));
+    let p = out["sound"]["placements"].as_array().unwrap().iter().find(|p| p["label"] == "silhouette").unwrap().clone();
+    assert_eq!(p["shot"], "s04_lantern");
+    assert_eq!(launches(&s.f.ws).len(), before);
+    let text = s.f.text();
+    assert!(text.contains("- {file: audio/hit.wav, at: 0.5, label: silhouette}"), "{text}");
+
+    // BGM off and back on
+    let (code, out) = jcall(&s, "POST", "/api/sound", Some(json!({"audio": {"gain": 0}})));
+    assert_eq!(code, 200, "{out}");
+    assert!(out["audio"].as_bool().unwrap());
+    assert!(out["sound"]["placements"].as_array().unwrap().iter().all(|p| p["role"] == "sfx"));
+    let (code, out) = jcall(&s, "POST", "/api/sound", Some(json!({"audio": {"gain": 0, "bgm": {"file": "../x.wav"}}})));
+    assert_eq!(code, 400, "{out}");
+}
+
+#[test]
+fn a_sound_note_over_http_changes_only_sound() {
+    let (s, calls) = srv_with_claude(json!({
+        "summary": "hit", "edits": [{"id": "s03_window", "yaml": format!("{S03_CLOSER}sfx:\n  - {{file: audio/hit.wav, at: 0}}\n"), "reason": "r"}],
+        "order": [], "audio": ""}));
+    shotpilot::sound::write_demo_audio(&s.f.ws.root).unwrap();
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "頭にヒット", "shot": "s03_window", "sound": true, "sfx_index": 0})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!([]), "the camera change must not come through a sound note");
+    let changes = out["changes"]["s03_window"].as_array().unwrap();
+    assert!(changes.iter().all(|c| c["path"].as_str().unwrap().starts_with("sfx")), "{changes:?}");
+    let req = calls.lock().unwrap()[0].to_string();
+    assert!(req.contains("working on the sound") && req.contains("sound check against 7 launch films"), "{req}");
+}

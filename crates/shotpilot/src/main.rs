@@ -13,6 +13,7 @@ use shotpilot::error::Result;
 use shotpilot::fingerprint as fp;
 use shotpilot::model::{self, fmt_g};
 use shotpilot::workspace::EditReport;
+use shotpilot::{sound, soundcheck};
 use shotpilot::{bail, templates, yamlio, Workspace};
 
 #[derive(Parser)]
@@ -125,6 +126,13 @@ enum Cmd {
         #[arg(long)]
         yes: bool,
     },
+    /// mix the BGM and sound effects and check the mix against launch films (never re-renders).
+    /// with assignments, edit `audio:` first: sound bgm.file=audio/bgm.wav bgm.gain=-6 gain=0
+    Sound {
+        assignments: Vec<String>,
+        #[arg(long)]
+        json: bool,
+    },
     /// list takes of one shot
     Takes { shot: String },
     /// history of builds, renders, pulls and edits
@@ -161,7 +169,21 @@ fn print_edit_report(rep: &EditReport) {
         println!("new order: {}", rep.order.join(" > "));
     }
     println!("edited: {}", if rep.edited.is_empty() { "-".into() } else { rep.edited.join(", ") });
+    if rep.audio {
+        println!("audio: changed (re-mixed at the next cut; nothing re-renders)");
+    }
     println!("now stale (need re-render): {}", if rep.stale.is_empty() { "nothing".into() } else { rep.stale.join(", ") });
+}
+
+/// key=value pairs; an empty value means null (remove).
+fn parse_assignments(raw: &[String]) -> Result<Vec<(String, Value)>> {
+    let mut parsed = Vec::new();
+    for a in raw {
+        let Some((k, v)) = a.split_once('=') else { bail!("expected key=value, got '{a}'") };
+        let value = if v.trim().is_empty() { Value::Null } else { yamlio::parse_str(v, &format!("value of {k}"))? };
+        parsed.push((k.trim().to_string(), value));
+    }
+    Ok(parsed)
 }
 
 fn dash(v: &[String]) -> String {
@@ -183,6 +205,11 @@ fn run(cli: Cli) -> Result<u8> {
             let map = map.map(|m| yamlio::emit_str(&m)).unwrap_or("null".into());
             let tpl = if empty { templates::EMPTY } else { templates::DEMO };
             std::fs::write(file, templates::render(tpl, &name, &engine, &uproject, &map))?;
+            if !empty {
+                if let Some(dir) = abs.parent() {
+                    sound::write_demo_audio(dir)?; // placeholder BGM and effects the demo refers to
+                }
+            }
             let gi = abs.parent().map(|p| p.join(".gitignore")).unwrap_or_else(|| ".gitignore".into());
             if !gi.exists() {
                 std::fs::write(gi, templates::GITIGNORE)?;
@@ -324,18 +351,15 @@ fn run(cli: Cli) -> Result<u8> {
                 None if !no_video => println!("  video:      skipped (ffmpeg not found)"),
                 None => {}
             }
+            if let (Some(a), Some(c)) = (&info.audio, &info.check) {
+                println!("  sound:      {} ({})", a.display(), c["verdict_ja"].as_str().unwrap_or(""));
+            }
+            for n in &info.notes {
+                println!("  note:       {n}");
+            }
         }
         Cmd::Set { shot, assignments } => {
-            let mut parsed = Vec::new();
-            for a in &assignments {
-                let Some((k, v)) = a.split_once('=') else { bail!("expected key=value, got '{a}'") };
-                let value = if v.trim().is_empty() {
-                    Value::Null
-                } else {
-                    yamlio::parse_str(v, &format!("value of {k}"))?
-                };
-                parsed.push((k.trim().to_string(), value));
-            }
+            let parsed = parse_assignments(&assignments)?;
             let mut ws = ws(file)?;
             let sid = ws.select_one(&shot)?.id;
             print_edit_report(&ws.set_fields(&sid, &parsed)?);
@@ -387,7 +411,7 @@ fn run(cli: Cli) -> Result<u8> {
             };
             let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
             let rev = ai::revise(&ws.defn, &note, scope.as_deref(), claude.as_ref())?;
-            if rev.edits.is_empty() && rev.order.is_none() {
+            if rev.edits.is_empty() && rev.order.is_none() && rev.audio.is_none() {
                 println!("no change: {}", rev.summary);
                 return Ok(0);
             }
@@ -397,6 +421,10 @@ fn run(cli: Cli) -> Result<u8> {
             }
             if let Some(o) = &rev.order {
                 println!("order: {}", o.join(" > "));
+            }
+            if let Some(a) = &rev.audio {
+                println!("\n## audio\n- before:\n{}- after:\n{}", yamlio::dumps(&Value::Object(ws.defn.audio.clone())),
+                         yamlio::dumps(&Value::Object(a.clone())));
             }
             if !yes {
                 if !std::io::stdin().is_terminal() {
@@ -412,7 +440,38 @@ fn run(cli: Cli) -> Result<u8> {
                     return Ok(0);
                 }
             }
-            print_edit_report(&ws.edit_definition(&rev.edits, rev.order.as_deref(), "revise", &note)?);
+            print_edit_report(&ws.edit_definition_with(&rev.edits, rev.order.as_deref(), rev.audio.as_ref(), "revise", &note)?);
+        }
+        Cmd::Sound { assignments, json } => {
+            let mut ws = ws(file)?;
+            if !assignments.is_empty() {
+                let rep = ws.set_audio(&parse_assignments(&assignments)?)?;
+                if !json {
+                    print_edit_report(&rep);
+                }
+            }
+            let Some(m) = ws.mix()? else {
+                if json {
+                    println!("null");
+                } else {
+                    println!("no sound yet. put files in {}/ and set audio.bgm or a shot's sfx, e.g.", ws.root.join("audio").display());
+                    println!("  shotpilot sound bgm.file=audio/bgm.wav bgm.gain=-6");
+                    println!("  shotpilot set s03 'sfx=[{{file: audio/hit.wav, at: 0}}]'");
+                }
+                return Ok(0);
+            };
+            if json {
+                println!("{}", serde_json::to_string_pretty(&m.to_json())?);
+                return Ok(0);
+            }
+            println!("mix: {} ({}s{})", m.wav.display(), fmt_g(m.total), if m.reused { ", cached" } else { "" });
+            for l in &m.lanes {
+                let owner = l["shot"].as_str().map(|s| format!(" @ {s}")).unwrap_or_default();
+                println!("  {:<4} {:<14} {:>7}s  {:>+5} dB  {}{owner}", l["role"].as_str().unwrap_or(""),
+                         l["label"].as_str().unwrap_or(""), soundcheck::fmt_t(l["from"].as_f64().unwrap_or(0.0)),
+                         l["gain"].as_f64().unwrap_or(0.0), l["file"].as_str().unwrap_or(""));
+            }
+            println!("{}", soundcheck::text(&m.check));
         }
         Cmd::Takes { shot } => {
             let ws = ws(file)?;

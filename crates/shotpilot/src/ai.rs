@@ -2,8 +2,9 @@
 //!
 //! `plan`   : pitch + anchors -> a first shot list (high-level camera intent only).
 //! `revise` : natural-language note -> edits to the named shots only, plus an optional
-//!            reorder. Everything Claude returns is validated by resolving it before it
-//!            touches shots.yaml, and the edit scope is enforced in code, not by prompt.
+//!            reorder and sound (a shot's `sfx`, the teaser's `audio`). Everything Claude
+//!            returns is validated by resolving it before it touches shots.yaml, and the
+//!            edit scope is enforced in code, not by prompt.
 //!
 //! There is no official Anthropic SDK for Rust, so this speaks the Messages API over
 //! HTTPS directly (streaming, structured outputs, server-side refusal fallback).
@@ -11,11 +12,12 @@
 use std::io::{BufRead, BufReader};
 use std::time::Duration;
 
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 use crate::bail;
 use crate::error::{Error, Result};
 use crate::model::{self, beat_guide, num, tod_names_sorted, Definition, BEATS, MOVES};
+use crate::sound;
 use crate::yamlio;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5-5";
@@ -88,8 +90,10 @@ pub fn revise_schema() -> Value {
             }},
             "order": {"type": "array", "items": {"type": "string"},
                       "description": "full list of shot ids in the new order, or empty to keep the order"},
+            "audio": {"type": "string",
+                      "description": "the complete replacement YAML mapping for the top-level `audio` (bgm, gain), or empty to keep it"},
         },
-        "required": ["summary", "edits", "order"],
+        "required": ["summary", "edits", "order", "audio"],
         "additionalProperties": false,
     })
 }
@@ -385,6 +389,9 @@ pub struct Pointer {
     pub context: Option<String>,
     /// (media type, file bytes) of the frame on screen.
     pub image: Option<(String, Vec<u8>)>,
+    /// The director is working on the sound: only `sfx` of the shots in scope and the
+    /// teaser's `audio` may change. Anything else Claude returns is dropped.
+    pub sound: bool,
 }
 
 /// Images above this are sent as text only (the API caps one image at 5 MB after base64).
@@ -406,11 +413,41 @@ pub fn base64(bytes: &[u8]) -> String {
     out
 }
 
+#[derive(Debug)]
 pub struct Revision {
     /// Replacement shots by id, in the order Claude returned them.
     pub edits: Vec<(String, Value)>,
     pub order: Option<Vec<String>>,
+    /// Replacement for the top-level `audio:` mapping, when it changed.
+    pub audio: Option<Map<String, Value>>,
     pub summary: String,
+}
+
+const SOUND_GUIDE: &str = "\
+Sound never re-renders a shot: it is mixed when the cut is assembled.
+- The teaser's background music lives in the top-level `audio` mapping:
+  {gain: master dB, bgm: {file, gain dB, start: teaser seconds, offset: seconds into the file,
+  fade_in, fade_out}}.
+- A sound effect belongs to a shot, in that shot's `sfx` list:
+  {file, at: seconds from the shot's start (negative up to -3 leads into the cut, e.g. a whoosh),
+  gain dB, label}. It moves with its shot when the cut is reordered.
+- Hits, whooshes and risers usually land on a cut (at: 0) or on a marker inside the shot.
+  Typical gains: BGM -12..-4 dB, effects -6..0 dB.";
+
+/// Every audio file the definition refers to (sfx and BGM).
+fn audio_files(audio: &Map<String, Value>, shots: &[Value]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    if let Some(f) = audio.get("bgm").and_then(|b| b.get("file")).and_then(Value::as_str) {
+        out.push(f.replace('\\', "/"));
+    }
+    for s in shots {
+        for it in s.get("sfx").and_then(Value::as_array).into_iter().flatten() {
+            if let Some(f) = it.get("file").and_then(Value::as_str) {
+                out.push(f.replace('\\', "/"));
+            }
+        }
+    }
+    out
 }
 
 /// Nothing is written here; the caller applies the revision through the workspace.
@@ -438,6 +475,13 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
         lines.push(yamlio::dumps(&json!([s])).trim_end().to_string());
     }
     let anchors = if defn.anchors.is_empty() { "(none)".to_string() } else { anchors_list(defn) };
+    let files = sound::list_files(&defn.root());
+    let audio_now = if defn.audio.is_empty() {
+        "(none)".to_string()
+    } else {
+        yamlio::dumps(&Value::Object(defn.audio.clone())).trim_end().to_string()
+    };
+    let audio_allowed = scope.is_none() || pointer.sound;
     let system = format!(
         "You revise a game teaser shot list defined in YAML. You change as little as possible: \
          only the shots the note is about, only the fields that need to change. You never rename ids. \
@@ -447,16 +491,30 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
          {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}.
 
-         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Judge the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.",
+         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Judge the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );
-    let scope_line = match scope {
+    let mut scope_line = match scope {
         Some(s) => format!("You may only edit these shots: {}. Leave `order` empty.\n", s.join(", ")),
         None => "Only reorder if the note asks for it.\n".to_string(),
     };
+    if pointer.sound {
+        scope_line.push_str("This note is about the sound: change only `sfx` of shots and the top-level `audio`; \
+                             leave cameras, durations and everything else as they are.\n");
+    }
+    if !audio_allowed {
+        scope_line.push_str("Leave `audio` empty (the background music is out of scope for this note).\n");
+    }
+    let files_line = if files.is_empty() {
+        "(none yet: sound files go in the audio/ folder next to shots.yaml)".to_string()
+    } else {
+        files.join(", ")
+    };
     let user = format!(
-        "Anchors:\n{anchors}\n\nCurrent shots:\n{}\n\nNote from the director: {instruction}\n{scope_line}\
+        "Anchors:\n{anchors}\n\nCurrent shots:\n{}\n\nCurrent audio:\n{audio_now}\n\n\
+         Audio files you may use (only these paths): {files_line}\n\n\
+         Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
         lines.join("\n")
     );
@@ -491,8 +549,34 @@ Where the director is pointing: {c}")).unwrap_or_default();
             bail!("edit for '{sid}' is not a mapping");
         };
         m.insert("id".into(), json!(sid));
+        if pointer.sound {
+            // a sound note keeps the shot as it is and takes only Claude's `sfx`
+            let mut kept = defn.find(&sid)?.clone();
+            if let Some(k) = kept.as_object_mut() {
+                match m.get("sfx").filter(|v| !v.is_null()) {
+                    Some(v) => k.insert("sfx".into(), v.clone()),
+                    None => k.remove("sfx"),
+                };
+            }
+            new = kept;
+        }
         edits.retain(|(k, _)| k != &sid);
         edits.push((sid, new));
+    }
+    let audio_yaml = out["audio"].as_str().unwrap_or("").trim();
+    let mut audio: Option<Map<String, Value>> = None;
+    if !audio_yaml.is_empty() {
+        let parsed = match yamlio::parse_str(audio_yaml, "Claude's audio")? {
+            Value::Null => Map::new(),
+            Value::Object(m) => m,
+            _ => bail!("Claude's audio is not a mapping"),
+        };
+        if parsed != defn.audio {
+            if !audio_allowed {
+                bail!("Claude tried to change the background music while scoped to {scope:?}; nothing applied");
+            }
+            audio = Some(parsed);
+        }
     }
     let mut order: Option<Vec<String>> = out["order"]
         .as_array()
@@ -501,6 +585,9 @@ Where the director is pointing: {c}")).unwrap_or_default();
     if let Some(o) = &order {
         if scope.is_some() {
             bail!("Claude tried to reorder while scoped to specific shots; nothing applied");
+        }
+        if pointer.sound && *o != ids {
+            bail!("Claude tried to reorder shots in a note about the sound; nothing applied");
         }
         let (mut a, mut b) = (o.clone(), ids.clone());
         a.sort();
@@ -521,7 +608,25 @@ Where the director is pointing: {c}")).unwrap_or_default();
         })
         .collect();
     validate_shots(defn, &trial)?;
-    Ok(Revision { edits, order, summary: out["summary"].as_str().unwrap_or("").to_string() })
+    let new_audio = audio.clone().unwrap_or_else(|| defn.audio.clone());
+    let mut top = Map::new();
+    top.insert("audio".into(), Value::Object(new_audio.clone()));
+    let mut errs = Vec::new();
+    sound::validate(&top, &trial, &mut errs);
+    if !errs.is_empty() {
+        bail!("Claude's sound edit is invalid: {}", errs.join("; "));
+    }
+    // a file Claude brings in must exist; files already in the definition are the director's business
+    let known = audio_files(&defn.audio, &defn.shots);
+    let root = defn.root();
+    let missing: Vec<String> = audio_files(&new_audio, &trial)
+        .into_iter()
+        .filter(|f| !known.contains(f) && !root.join(f).is_file())
+        .collect();
+    if !missing.is_empty() {
+        bail!("Claude used audio file(s) that do not exist: {}; nothing applied", missing.join(", "));
+    }
+    Ok(Revision { edits, order, audio, summary: out["summary"].as_str().unwrap_or("").to_string() })
 }
 
 #[cfg(test)]

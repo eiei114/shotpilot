@@ -2,7 +2,7 @@
 //!
 //! The desktop app (crates/shotpilot-app) opens one window on this server. It binds to
 //! loopback, answers only loopback Host/Origin headers, and serves files only from the
-//! project's render/ and cut/ folders.
+//! project's render/, cut/ and audio/ folders.
 //!
 //! shots.yaml and .shotpilot/state.json stay the source of truth: every request opens a
 //! fresh Workspace, so edits made from the CLI or a text editor show up immediately.
@@ -23,11 +23,13 @@ use crate::connect::{self, Provider, Settings};
 use crate::bail;
 use crate::error::{Error, Kind, Result};
 use crate::fingerprint as fp;
+use crate::sound;
+pub use crate::workspace::field_changes;
 use crate::workspace::Workspace;
 
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio"];
 const MAX_BODY: usize = 1 << 20;
 
 /// Makes the Claude client for one request from the current settings. Tests pass a
@@ -89,7 +91,7 @@ impl App {
         self.path.parent().map(Path::to_path_buf).unwrap_or_default()
     }
 
-    /// A served file under render/ or cut/, from a `/files/...` remainder.
+    /// A served file under render/, cut/ or audio/, from a `/files/...` remainder.
     fn served_file(&self, rel: &str) -> Option<PathBuf> {
         let rel = percent_decode(rel);
         let segs: Vec<&str> = rel.split('/').collect();
@@ -289,6 +291,11 @@ fn mime(path: &Path) -> &'static str {
         Some("jpg" | "jpeg") => "image/jpeg",
         Some("bmp") => "image/bmp",
         Some("mp4") => "video/mp4",
+        Some("wav") => "audio/wav",
+        Some("mp3") => "audio/mpeg",
+        Some("ogg" | "opus") => "audio/ogg",
+        Some("flac") => "audio/flac",
+        Some("m4a" | "aac") => "audio/mp4",
         Some("html") => "text/html; charset=utf-8",
         Some("md" | "txt") => "text/plain; charset=utf-8",
         Some("json") => "application/json",
@@ -344,8 +351,55 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "warnings": ws.structure_warnings()?,
         "fps": ws.defn.teaser.fps,
         "shots": shots,
+        "audio": ws.defn.audio,
         "cut": latest_cut(&ws.root),
     }))
+}
+
+/// What the app's sound lanes and sound tab draw: every placement on the teaser's
+/// timeline, the files that can be placed, and the cached mix with its sound check.
+pub fn sound_payload(ws: &Workspace) -> Result<Value> {
+    let shots = ws.resolved()?;
+    let (starts, total) = sound::timing(&ws.defn, &shots);
+    let fps = ws.defn.teaser.fps.max(1) as f64;
+    let placements: Vec<Value> = sound::plan(&ws.defn, &shots)
+        .iter()
+        .map(|p| {
+            let mut v = p.to_json();
+            v["missing"] = json!(!ws.root.join(&p.file).is_file());
+            v["url"] = json!(file_url(&ws.root, &ws.root.join(&p.file)));
+            v
+        })
+        .collect();
+    let mut out = json!({
+        "files": sound::list_files(&ws.root)
+            .iter()
+            .map(|f| json!({"file": f, "url": file_url(&ws.root, &ws.root.join(f))}))
+            .collect::<Vec<_>>(),
+        "audio": ws.defn.audio,
+        "total": crate::geometry::round_to(total, 3),
+        "shots": shots.iter().zip(&starts).map(|(s, t)| json!({
+            "id": s.id, "start": crate::geometry::round_to(*t, 3),
+            "duration": crate::geometry::round_to(s.frames as f64 / fps, 3), "beat": s.beat,
+        })).collect::<Vec<_>>(),
+        "cuts": sound::cuts(&shots, &starts).iter().map(|c| json!({"t": crate::geometry::round_to(c.t, 3), "from": c.from, "to": c.to}))
+            .collect::<Vec<_>>(),
+        "placements": placements,
+        "lead_max": sound::LEAD_MAX,
+        "ffmpeg": crate::cut::ffmpeg().is_some(),
+        "mix": Value::Null,
+        "error": Value::Null,
+    });
+    match ws.mix() {
+        Ok(Some(m)) => {
+            let mut v = m.to_json();
+            v["url"] = json!(file_url(&ws.root, &m.wav).map(|u| format!("{u}?v={}", &m.key[..12])));
+            out["mix"] = v;
+        }
+        Ok(None) => {}
+        Err(e) => out["error"] = json!(e.msg),
+    }
+    Ok(out)
 }
 
 /// The most recently written cut/<quality>/ folder that has a video or a storyboard.
@@ -370,27 +424,6 @@ fn latest_cut(root: &Path) -> Value {
         "storyboard": file_url(root, &dir.join("index.html")),
         "stamp": stamp.to_string(),
     })
-}
-
-/// Leaf-level differences between two shot nodes, as dotted paths (lists count as leaves).
-pub fn field_changes(before: &Value, after: &Value) -> Vec<Value> {
-    fn walk(path: &str, a: Option<&Value>, b: Option<&Value>, out: &mut Vec<Value>) {
-        match (a, b) {
-            (Some(Value::Object(x)), Some(Value::Object(y))) => {
-                let mut keys: Vec<&String> = x.keys().collect();
-                keys.extend(y.keys().filter(|k| !x.contains_key(*k)));
-                for k in keys {
-                    let p = if path.is_empty() { k.clone() } else { format!("{path}.{k}") };
-                    walk(&p, x.get(k), y.get(k), out);
-                }
-            }
-            _ if a == b => {}
-            _ => out.push(json!({"path": path, "before": a, "after": b})),
-        }
-    }
-    let mut out = Vec::new();
-    walk("", Some(before), Some(after), &mut out);
-    out
 }
 
 fn etag(app: &App) -> String {
@@ -503,6 +536,9 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 "video": info.video.as_ref().map(|p| p.display().to_string()),
                 "storyboard": file_url(&ws.root, &info.dir.join("index.html")),
                 "video_url": info.video.as_ref().and_then(|p| file_url(&ws.root, p)),
+                "audio_url": info.audio.as_ref().and_then(|p| file_url(&ws.root, p)),
+                "sound": info.check.as_ref().map(|c| json!({"verdict": c["verdict"], "verdict_ja": c["verdict_ja"]})),
+                "notes": info.notes,
             });
             send_json(stream, false, 200, &out).map_err(io)
         }
@@ -510,12 +546,44 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let body = req.json()?;
             let url = body.get("url").and_then(Value::as_str).unwrap_or("");
             let Some(file) = url.strip_prefix("/files/").and_then(|r| app.served_file(r)) else {
-                bail!("can only open files under render/ or cut/");
+                bail!("can only open files under render/, cut/ or audio/");
             };
             open_with_os(&file)?;
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
         }
         ("POST", "/api/render") => render_stream(stream, app, req),
+        ("GET" | "HEAD", "/api/sound") => send_json(stream, head, 200, &sound_payload(&app.ws()?)?).map_err(io),
+        ("POST", "/api/sound") => {
+            let body = req.json()?;
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let mut sfx = Vec::new();
+            if let Some(m) = body.get("sfx") {
+                let Some(m) = m.as_object() else { bail!("sfx: {{\"<shot id>\": [ ... ] | null}}") };
+                for (id, list) in m {
+                    let sid = ws.select_one(id)?.id;
+                    sfx.push((sid, Some(list.clone())));
+                }
+            }
+            let audio = match body.get("audio") {
+                None => None,
+                Some(Value::Object(a)) => Some(a.clone()),
+                Some(Value::Null) => Some(Map::new()),
+                Some(_) => bail!("audio: a mapping like {{\"bgm\": {{\"file\": \"audio/bgm.wav\"}}}}"),
+            };
+            let note = body.get("note").and_then(Value::as_str).unwrap_or("");
+            let rep = ws.edit_sound(&sfx, audio.as_ref(), note)?;
+            let mut out = rep.to_json();
+            out["sound"] = sound_payload(&ws)?;
+            send_json(stream, false, 200, &out).map_err(io)
+        }
+        ("POST", "/api/audio-folder") => {
+            let _guard = app.mutate()?;
+            let dir = app.root().join("audio");
+            std::fs::create_dir_all(&dir)?;
+            open_with_os(&dir)?;
+            send_json(stream, false, 200, &json!({"opened": dir.display().to_string()})).map_err(io)
+        }
         ("GET" | "HEAD", "/api/settings") => send_json(stream, head, 200, &app.ai_status()).map_err(io),
         ("POST", "/api/settings") => {
             let body = req.json()?;
@@ -560,9 +628,31 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
         None => None,
     };
     let mut context = Vec::new();
-    let mut pointer = ai::Pointer::default();
+    let mut pointer = ai::Pointer { sound: body.get("sound").and_then(Value::as_bool).unwrap_or(false), ..Default::default() };
     if let Some(s) = &scope {
         context.push(format!("shot {}", s[0]));
+    }
+    if pointer.sound {
+        context.push("working on the sound (background music and sound effects)".into());
+        if let Some(i) = body.get("sfx_index").and_then(Value::as_u64) {
+            context.push(format!("sound effect #{} of that shot's sfx list", i + 1));
+        }
+        if let Some(t) = body.get("time").and_then(Value::as_f64) {
+            context.push(format!("{t:.2} s into the teaser"));
+        }
+        // what the sound check says, so "fix what the check found" works
+        if let Ok(Some(m)) = ws.mix() {
+            let c = &m.check;
+            let acts: Vec<String> = c["actions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .take(5)
+                .map(|a| format!("[{}] {}", a["weight"].as_str().unwrap_or(""), a["action"].as_str().unwrap_or("")))
+                .collect();
+            context.push(format!("sound check against 7 launch films: {}; to fix: {}",
+                c["summary"].as_str().unwrap_or(""), if acts.is_empty() { "nothing".into() } else { acts.join(" / ") }));
+        }
     }
     if let Some(f) = body.get("frame").and_then(Value::as_object) {
         if let (Some(i), Some(n)) = (f.get("index").and_then(Value::as_u64), f.get("count").and_then(Value::as_u64)) {
@@ -593,7 +683,10 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
         let old = ws.defn.find(id).cloned().unwrap_or(Value::Null);
         changes.insert(id.clone(), Value::Array(field_changes(&old, new)));
     }
-    let rep = ws.edit_definition(&rev.edits, rev.order.as_deref(), "revise", note)?;
+    if let Some(a) = &rev.audio {
+        changes.insert("audio".into(), Value::Array(field_changes(&Value::Object(ws.defn.audio.clone()), &Value::Object(a.clone()))));
+    }
+    let rep = ws.edit_definition_with(&rev.edits, rev.order.as_deref(), rev.audio.as_ref(), "revise", note)?;
     let mut extra = Map::new();
     extra.insert("summary".into(), json!(rev.summary));
     extra.insert("changes".into(), Value::Object(changes.clone()));
