@@ -760,7 +760,7 @@ function drawBrief() {
 
 function drawStructure() {
   const st = ui.status;
-  const key = JSON.stringify([st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.lens, moveOf(s)]), st.checks]);
+  const key = JSON.stringify([st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.lens, moveOf(s), s.approval]), st.checks, st.ai?.ready, ui.busy]);
   if (drawStructure.key === key && $("structpanel").childElementCount) return;
   drawStructure.key = key;
   const beats = ["hook", "establish", "escalate", "title"];
@@ -779,8 +779,11 @@ function drawStructure() {
   const loose = st.shots.filter((s) => !s.beat);
   const f = findings();
   const counts = ["P0", "P1", "P2"].map((v) => [v, f.filter((x) => x.severity === v).length]).filter(([, c]) => c);
+  const ai = st.ai?.ready;
   $("structpanel").innerHTML = `<h3>構成</h3>
     <div class="lead">ティザーの型 hook → establish → escalate → title に沿って並んでいるかを見ます。カードを押すとそのショットの構図に移ります。並べ替えやビートの付け替えでは撮り直しは起きません。</div>
+    <div class="capbar"><button class="btn dark" data-plan${ai && !ui.busy ? "" : " disabled"}>📐 ブリーフから Claude に組ませる</button>
+      <span class="sp-hint">ブリーフ・骨格（${st.shots.length ? "いまの尺" : "目標の尺"}から自動）・トレーラーのセオリーを渡して、1回で組ませます。左の欄に方向を書いて送っても組めます。${st.shots.length ? "いまのショットは置き換わります。" : ""}</span></div>
     <div class="beats">${cols}</div>
     ${loose.length ? `<div class="sp-hint">ビートのないショット: ${loose.map((s) => `<button class="mini" data-open="${esc(s.id)}">${esc(s.id)}</button>`).join(" ")}</div>` : ""}
     <h4 class="sec">ショット検査 ${counts.map(([v, c]) => `<span class="sev ${v}">${v} ${c}</span>`).join(" ") || `<span class="sev P2">問題なし</span>`}</h4>
@@ -1299,9 +1302,20 @@ function seek(t) {
   placePlayhead();
 }
 
+const planning = () => ui.tab === "brief" || ui.tab === "structure";
+
 function drawChips() {
   const s = shot();
   const chips = [];
+  if (planning()) {
+    const b = ui.status?.brief || {};
+    chips.push(`<span class="chip">📐 構成を組む</span>`);
+    chips.push(`<span class="chip">${b.written ? `ブリーフ: ${esc(b.genre || (b.kind === "gameplay" ? "ゲームプレイ" : "ティザー"))}` : "ブリーフ未記入"}</span>`);
+    $("chips").innerHTML = chips.join("");
+    $("scope").textContent = "📐 ブリーフ・骨格・セオリーから組む";
+    $("note").placeholder = "どんなティザーにする？ 例: 静かに始めて最後に一気に崩す。ジャンプスケアは使わない（空欄でもブリーフから組みます）";
+    return;
+  }
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
     chips.push(`<span class="chip">🔊 音だけ（映像は変えない）</span>`);
@@ -1380,12 +1394,23 @@ function entryHtml(e, isLast) {
       ${changesHtml(e.changes)}
       <div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span>${e.stale?.length ? `撮り直しが必要: <b>${esc(e.stale.join(", "))}</b>` : "映像はそのまま。撮り直しなし（Cut で音が載ります）"} <span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   }
+  if (e.action === "plan") {
+    const c = e.checks || {};
+    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
+    const adj = (e.adjustments || []).length ? `<div class="changes">${e.adjustments.map((a) => `<div><span class="k">コードが整えた:</span> ${esc(a)}</div>`).join("")}</div>` : "";
+    return `<div class="msg-user"><div class="bubble">${esc(e.note || "ブリーフから組む")}</div><div class="ctx">📐 構成を組む</div></div>
+      <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
+        ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}${adj}
+        <div class="done-row"><span class="ok"><span class="dot"></span>${(e.shots || []).length} ショットを shots.yaml に書いた</span>
+          <span>ショット検査: ${sev || "指摘なし"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
+        ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ 構成で並びと検査を見る</button><button data-render="previz">↗ previz で全部撮る（エンジンなし、数秒）</button></div>` : ""}</div>`;
+  }
   if (e.action === "order") return `<div class="event"><span class="dot"></span><span>並べ替え（撮り直しなし）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   return "";
 }
 
 function drawChat() {
-  const keep = new Set(["revise", "set", "render", "cut", "order", "sound"]);
+  const keep = new Set(["plan", "revise", "set", "render", "cut", "order", "sound"]);
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
     ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
@@ -1411,7 +1436,28 @@ function drawChat() {
 
 // ------------------------------------------------------------------ actions
 
+async function planShots() {
+  const note = $("note").value.trim();
+  if (ui.busy || !ui.status?.ai?.ready) return;
+  const n = ui.status.shots.length;
+  if (n && !confirm(`いまの ${n} ショットを、Claude が組んだショットリストに置き換えます。\n撮った take は消えません（同じ画に戻せば再利用されます）。`)) return;
+  ui.busy = "plan"; ui.pending = { note: note || "ブリーフから組む", ctx: "📐 構成を組む" }; ui.started = Date.now();
+  $("note").value = ""; draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `組んでいます ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
+  try {
+    const out = await api("POST", "/api/plan", { note, replace: n > 0 });
+    ui.outcome = {}; ui.summary = ""; ui.sel = out.shots[0] ?? null; ui.tab = "structure";
+    toast(`${out.shots.length} ショットを組みました。構図の段で previz を撮って確かめてください`);
+  } catch (e) {
+    $("note").value = note; toast(e.message, true);
+  } finally {
+    clearInterval(tick); ui.busy = null; ui.pending = null; ui.logKey = "";
+    await refresh();
+  }
+}
+
 async function sendNote() {
+  if (planning()) return planShots();
   const note = $("note").value.trim();
   const s = shot();
   if (!note || ui.busy || !ui.status?.ai?.ready) return;
@@ -1662,7 +1708,10 @@ $("chips").addEventListener("click", (e) => {
   if (c.dataset.clear === "snd") ui.snd = null; else ui.region = null;
   draw();
 });
-$("log").addEventListener("click", (e) => { const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render); });
+$("log").addEventListener("click", (e) => {
+  const g = e.target.closest("[data-goto-stage]"); if (g) { goStage(g.dataset.gotoStage); return; }
+  const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render);
+});
 function openConn() {
   const ai = ui.status?.ai || {};
   const pick = ai.provider || "auto";
@@ -1709,10 +1758,11 @@ for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListe
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
 for (const id of ["briefpanel", "structpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
-  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],#brief-save,.kinds label");
+  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],#brief-save,.kinds label");
   if (!t) return;
   if (t.matches(".kinds label")) { for (const l of t.parentElement.children) l.classList.toggle("on", l === t); return; }
   if (t.id === "brief-save") saveBrief();
+  else if (t.matches("[data-plan]")) planShots();
   else if (t.dataset.open) selectShot(t.dataset.open);
   else if (t.dataset.fix) { const [r, sid] = JSON.parse(t.dataset.fix); askFix(r, sid); }
   else if (t.dataset.goto) goStage(t.dataset.goto);
