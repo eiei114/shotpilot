@@ -17,6 +17,7 @@ use crate::fingerprint as fp;
 use crate::geometry::round_to;
 use crate::model::{self, num, Definition, ResolvedShot};
 use crate::previz;
+use crate::sound::{self, Mixed};
 use crate::state::{State, Take};
 use crate::sync::{self, PullDecision, PullKind};
 use crate::yamlio::Doc;
@@ -90,11 +91,13 @@ pub struct EditReport {
     pub edited: Vec<String>,
     pub stale: Vec<String>,
     pub order: Vec<String>,
+    /// The top-level `audio:` (BGM, master gain) changed.
+    pub audio: bool,
 }
 
 impl EditReport {
     pub fn to_json(&self) -> Value {
-        json!({"edited": self.edited, "stale": self.stale, "order": self.order})
+        json!({"edited": self.edited, "stale": self.stale, "order": self.order, "audio": self.audio})
     }
 }
 
@@ -592,13 +595,24 @@ impl Workspace {
             .map(|(shot, take, q)| Pick { shot, take: take.expect("checked"), quality: q.expect("checked") })
             .collect();
         let out_dir = self.root.join("cut").join(quality);
-        let info = cut::write_cut(&self.defn, &picks, &out_dir, video)?;
+        // sound never blocks the cut: a missing file or decoder is reported and the cut goes on silent
+        let mut notes = Vec::new();
+        let mixed = match self.mix() {
+            Ok(m) => m,
+            Err(e) => {
+                notes.push(format!("sound skipped: {}", e.msg));
+                None
+            }
+        };
+        let mut info = cut::write_cut(&self.defn, &picks, &out_dir, video, mixed.as_ref())?;
+        info.notes.extend(notes);
         let takes: Map<String, Value> = picks
             .iter()
             .map(|p| (p.shot.id.clone(), json!(format!("{}:{}", p.quality, &p.take.fingerprint()[..12.min(p.take.fingerprint().len())]))))
             .collect();
         self.state.log("cut", json!({
             "quality": quality, "order": picks.iter().map(|p| &p.shot.id).collect::<Vec<_>>(), "takes": takes,
+            "sound": mixed.as_ref().map(|m| m.check["verdict"].clone()),
         }));
         self.state.save()?;
         Ok(info)
@@ -623,7 +637,14 @@ impl Workspace {
     /// Untouched shots keep their lines (and comments) exactly as they are in the file.
     pub fn edit_definition(&mut self, edits: &[(String, Value)], order: Option<&[String]>, action: &str, note: &str)
         -> Result<EditReport> {
+        self.edit_definition_with(edits, order, None, action, note)
+    }
+
+    /// [`Self::edit_definition`], optionally replacing the top-level `audio:` mapping too.
+    pub fn edit_definition_with(&mut self, edits: &[(String, Value)], order: Option<&[String]>,
+                                audio: Option<&Map<String, Value>>, action: &str, note: &str) -> Result<EditReport> {
         let before = self.render_fps()?;
+        let audio_before = self.defn.audio.clone();
         let mut doc = Doc::load(&self.path)?;
         let current = doc.value()?;
         let ids: Vec<String> = current["shots"]
@@ -655,6 +676,14 @@ impl Workspace {
             let perm: Vec<usize> = order.iter().map(|id| ids.iter().position(|x| x == id).expect("checked")).collect();
             doc.reorder_items("shots", &perm)?;
         }
+        let mut audio_changed = false;
+        if let Some(new) = audio.filter(|a| **a != audio_before) {
+            // keys that went away are written as null: the line stays, the value is gone
+            let mut entries: Vec<(String, Value)> = new.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            entries.extend(audio_before.keys().filter(|k| !new.contains_key(*k)).map(|k| (k.clone(), Value::Null)));
+            doc.upsert_entries("audio", &entries)?;
+            audio_changed = true;
+        }
         // validate before writing anything
         model::parse(&doc.value()?, &self.path)?;
         doc.save(&self.path)?;
@@ -674,11 +703,13 @@ impl Workspace {
         let mut edited: Vec<String> = edits.iter().map(|(id, _)| id.clone()).collect();
         edited.sort();
         let order_v: Vec<String> = order.map(<[String]>::to_vec).unwrap_or_default();
-        self.state.log(action, json!({
-            "edited": edited, "reordered": order.is_some(), "stale": stale, "note": note,
-        }));
+        let mut entry = json!({"edited": edited, "reordered": order.is_some(), "stale": stale, "note": note});
+        if audio_changed {
+            entry["audio"] = json!(true);
+        }
+        self.state.log(action, entry);
         self.state.save()?;
-        Ok(EditReport { edited, stale, order: order_v })
+        Ok(EditReport { edited, stale, order: order_v, audio: audio_changed })
     }
 
     pub fn set_fields(&mut self, shot_id: &str, assignments: &[(String, Value)]) -> Result<EditReport> {
@@ -712,6 +743,83 @@ impl Workspace {
         }
         let note: Vec<&str> = assignments.iter().map(|(k, _)| k.as_str()).collect();
         self.edit_definition(&[(shot_id.to_string(), node)], None, "set", &note.join(", "))
+    }
+
+    // ------------------------------------------------------------------ sound
+
+    /// The teaser's mix (cached under cut/sound/), or None when nothing is set to play.
+    /// Mixing never touches a take: sound is not part of any fingerprint.
+    pub fn mix(&self) -> Result<Option<Mixed>> {
+        sound::mix_cached(&self.defn, &self.root, &self.resolved()?)
+    }
+
+    /// Edit sound only: replace the `sfx:` list of some shots (None or an empty list
+    /// removes it) and/or the whole `audio:` mapping. Logged as "sound"; shots only change
+    /// in their `sfx`, so nothing goes stale.
+    pub fn edit_sound(&mut self, sfx: &[(String, Option<Value>)], audio: Option<&Map<String, Value>>, note: &str)
+        -> Result<EditReport> {
+        let mut edits = Vec::new();
+        let mut changes = Map::new();
+        for (id, list) in sfx {
+            let old = self.defn.find(id)?.clone();
+            let mut node = old.clone();
+            let m = node.as_object_mut().ok_or_else(|| Error::user(format!("shot '{id}' is not a mapping")))?;
+            match list {
+                Some(Value::Array(a)) if !a.is_empty() => {
+                    m.insert("sfx".into(), Value::Array(a.clone()));
+                }
+                None | Some(Value::Null) | Some(Value::Array(_)) => {
+                    m.remove("sfx");
+                }
+                Some(_) => bail!("sfx for '{id}' must be a list"),
+            }
+            if node != old {
+                changes.insert(id.clone(), json!(field_changes(&old, &node)));
+                edits.push((id.clone(), node));
+            }
+        }
+        if let Some(a) = audio {
+            let c = field_changes(&Value::Object(self.defn.audio.clone()), &Value::Object(a.clone()));
+            if !c.is_empty() {
+                changes.insert("audio".into(), json!(c));
+            }
+        }
+        if edits.is_empty() && !changes.contains_key("audio") {
+            return Ok(EditReport::default()); // nothing to write, nothing to log
+        }
+        let rep = self.edit_definition_with(&edits, None, audio, "sound", note)?;
+        let mut extra = Map::new();
+        extra.insert("changes".into(), Value::Object(changes));
+        self.state.annotate_last(extra);
+        self.state.save()?;
+        Ok(rep)
+    }
+
+    /// Set fields under `audio:` by dotted path (`gain`, `bgm.file`, `bgm` = a mapping;
+    /// null removes).
+    pub fn set_audio(&mut self, assignments: &[(String, Value)]) -> Result<EditReport> {
+        let mut node = Value::Object(self.defn.audio.clone());
+        for (path, value) in assignments {
+            let path = path.strip_prefix("audio.").unwrap_or(path);
+            let parts: Vec<&str> = path.split('.').filter(|p| !p.is_empty()).collect();
+            let Some((last, head)) = parts.split_last() else { bail!("empty audio field") };
+            let mut cur = &mut node;
+            for p in head {
+                if !cur.get(*p).is_some_and(Value::is_object) {
+                    cur[*p] = json!({});
+                }
+                cur = cur.get_mut(*p).expect("just inserted");
+            }
+            let m = cur.as_object_mut().ok_or_else(|| Error::user(format!("cannot set audio.{path}")))?;
+            if value.is_null() {
+                m.remove(*last);
+            } else {
+                m.insert(last.to_string(), value.clone());
+            }
+        }
+        let note: Vec<&str> = assignments.iter().map(|(k, _)| k.as_str()).collect();
+        let audio = node.as_object().cloned().unwrap_or_default();
+        self.edit_sound(&[], Some(&audio), &note.join(", "))
     }
 
     // ------------------------------------------------------------------ gc
@@ -758,6 +866,35 @@ impl Workspace {
         self.state.log("plan", json!({"shots": shots.iter().map(|s| &s["id"]).collect::<Vec<_>>()}));
         self.state.save()
     }
+}
+
+/// Leaf-level differences between two nodes, as dotted paths. Lists are leaves, except
+/// lists of mappings of the same length (`sfx`, `markers`), which diff per item: `sfx[0].at`.
+pub fn field_changes(before: &Value, after: &Value) -> Vec<Value> {
+    fn walk(path: &str, a: Option<&Value>, b: Option<&Value>, out: &mut Vec<Value>) {
+        match (a, b) {
+            (Some(Value::Object(x)), Some(Value::Object(y))) => {
+                let mut keys: Vec<&String> = x.keys().collect();
+                keys.extend(y.keys().filter(|k| !x.contains_key(*k)));
+                for k in keys {
+                    let p = if path.is_empty() { k.clone() } else { format!("{path}.{k}") };
+                    walk(&p, x.get(k), y.get(k), out);
+                }
+            }
+            (Some(Value::Array(x)), Some(Value::Array(y)))
+                if x.len() == y.len() && x.iter().chain(y).all(Value::is_object) =>
+            {
+                for (i, (u, v)) in x.iter().zip(y).enumerate() {
+                    walk(&format!("{path}[{i}]"), Some(u), Some(v), out);
+                }
+            }
+            _ if a == b => {}
+            _ => out.push(json!({"path": path, "before": a, "after": b})),
+        }
+    }
+    let mut out = Vec::new();
+    walk("", Some(before), Some(after), &mut out);
+    out
 }
 
 fn outcome_event(o: &RenderOutcome) -> Value {

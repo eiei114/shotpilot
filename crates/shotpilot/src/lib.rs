@@ -12,6 +12,8 @@ pub mod geometry;
 pub mod model;
 pub mod previz;
 pub mod server;
+pub mod sound;
+pub mod soundcheck;
 pub mod state;
 pub mod sync;
 pub mod templates;

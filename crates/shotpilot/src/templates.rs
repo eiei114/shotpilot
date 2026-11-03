@@ -33,6 +33,14 @@ defaults:
   lens: {focal_length: 35, aperture: 2.8}
   environment: {time_of_day: dusk}
 
+# Sound is mixed when the cut is assembled; editing it never re-renders a shot.
+# The BGM runs under the whole teaser. Sound effects sit on their shot (`sfx:`, `at` =
+# seconds from the shot's start, negative = leads into the cut) and move with it.
+# `shotpilot sound` mixes and checks the mix against professional launch films.
+audio:
+  gain: 0
+  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}
+
 # Order here is the order of the cut. Reordering never re-renders anything.
 # beat: hook -> establish -> escalate -> title (the teaser shape; editorial only)
 shots:
@@ -55,6 +63,8 @@ shots:
       anchor: well
       offset: [-180, 60, 60]
       lens: {focal_length: 85, aperture: 1.8}
+    sfx:
+      - {file: audio/whoosh.wav, at: -0.9, gain: -4, label: whoosh}
 
   - id: s03_window
     beat: escalate
@@ -68,6 +78,8 @@ shots:
     environment: {time_of_day: night}
     markers:
       - {at: 2.2, label: silhouette}
+    sfx:
+      - {file: audio/hit.wav, at: 2.2, gain: -3, label: silhouette}
 
   - id: s04_lantern
     beat: escalate
@@ -100,6 +112,8 @@ shots:
       lens: {focal_length: 18}
     environment: {time_of_day: night}
     notes: タイトルは編集で載せる。上1/3を空けておく
+    sfx:
+      - {file: audio/hit.wav, at: 0, gain: 0, label: title}
 "#;
 
 pub const EMPTY: &str = r#"version: 1

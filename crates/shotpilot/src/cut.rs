@@ -14,6 +14,7 @@ use crate::engines::find_on_path;
 use crate::error::Result;
 use crate::fingerprint as fp;
 use crate::model::{fmt_g, num, Definition, ResolvedShot};
+use crate::sound::Mixed;
 use crate::state::{now_iso, Take};
 
 pub struct Pick {
@@ -92,9 +93,17 @@ pub struct CutInfo {
     pub seconds: f64,
     pub shots: usize,
     pub video: Option<PathBuf>,
+    /// The mix laid under the video (cut/sound/mix.wav), when there is sound.
+    pub audio: Option<PathBuf>,
+    /// The sound check of that mix.
+    pub check: Option<Value>,
+    /// Things the user should know (e.g. sound skipped and why).
+    pub notes: Vec<String>,
 }
 
-pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool) -> Result<CutInfo> {
+/// Assemble the cut. With `mixed`, the video carries the mix as its soundtrack.
+pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool, mixed: Option<&Mixed>)
+    -> Result<CutInfo> {
     std::fs::create_dir_all(out_dir)?;
     let fps = defn.teaser.fps;
     let (mut w, mut h) = fp::resolution(defn, &fp::quality(defn, "preview")?);
@@ -123,20 +132,43 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool)
         "generated": now_iso(), "project": defn.project.name, "title": defn.teaser.title,
         "fps": fps, "total_frames": t, "total_seconds": total_seconds,
         "target_seconds": defn.teaser.target_duration, "shots": rows,
+        "audio": mixed.map(|m| json!({
+            "mix": relpath(&m.wav, out_dir), "key": m.key,
+            "verdict": m.check["verdict"], "summary": m.check["summary"],
+        })),
     });
     std::fs::write(out_dir.join("manifest.json"), serde_json::to_string_pretty(&manifest)?)?;
     std::fs::write(out_dir.join("spec.md"), spec_md(defn, &manifest))?;
     std::fs::write(out_dir.join("index.html"), storyboard_html(defn, &manifest))?;
 
-    let mut info = CutInfo { dir: out_dir.to_path_buf(), seconds: total_seconds, shots: picks.len(), video: None };
+    let mut info = CutInfo {
+        dir: out_dir.to_path_buf(),
+        seconds: total_seconds,
+        shots: picks.len(),
+        video: None,
+        audio: mixed.map(|m| m.wav.clone()),
+        check: mixed.map(|m| m.check.clone()),
+        notes: Vec::new(),
+    };
     if video && ffmpeg().is_some() {
         let segs: Vec<PathBuf> = picks.iter().map(|p| segment(&p.take, w, h, fps)).collect::<Result<_>>()?;
         let lst = out_dir.join("segments.txt");
         let body: String = segs.iter().map(|p| format!("file '{}'\n", p.display().to_string().replace('\\', "/"))).collect();
         std::fs::write(&lst, body)?;
         let out = out_dir.join("cut.mp4");
-        run_ffmpeg(&["-f", "concat", "-safe", "0", "-i", &lst.display().to_string(), "-c", "copy", &out.display().to_string()]
-            .map(String::from))?;
+        let mut args: Vec<String> =
+            ["-f", "concat", "-safe", "0", "-i", &lst.display().to_string()].map(String::from).to_vec();
+        match mixed {
+            // the picture is stream-copied either way; only the soundtrack is encoded
+            Some(m) => args.extend(
+                ["-i", &m.wav.display().to_string(), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
+                 "-b:a", "192k", "-shortest"]
+                    .map(String::from),
+            ),
+            None => args.extend(["-c", "copy"].map(String::from)),
+        }
+        args.push(out.display().to_string());
+        run_ffmpeg(&args)?;
         info.video = Some(out);
     }
     Ok(info)

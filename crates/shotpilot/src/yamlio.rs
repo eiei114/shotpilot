@@ -125,6 +125,20 @@ fn short_numeric(a: &[Value]) -> bool {
     a.len() <= 4 && a.iter().all(Value::is_number)
 }
 
+/// Keys whose value is a small record people write on one line (`move: {type: dolly_in, distance: 120}`).
+const INLINE_KEYS: &[&str] = &["bgm", "move", "lens", "environment"];
+
+/// A small mapping of plain values, short enough to read on one line.
+fn flat_map(m: &Map<String, Value>) -> bool {
+    !m.is_empty()
+        && m.values().all(|v| match v {
+            Value::Object(_) => false,
+            Value::Array(a) => short_numeric(a),
+            _ => true,
+        })
+        && emit_flow(&Value::Object(m.clone())).len() <= 72
+}
+
 fn pad(n: usize) -> String {
     " ".repeat(n)
 }
@@ -133,6 +147,7 @@ fn pad(n: usize) -> String {
 pub fn emit_entry(key: &str, val: &Value, indent: usize) -> Vec<String> {
     let head = format!("{}{}:", pad(indent), emit_str(key));
     match val {
+        Value::Object(m) if INLINE_KEYS.contains(&key) && flat_map(m) => vec![format!("{head} {}", emit_flow(val))],
         Value::Object(m) if !m.is_empty() => {
             let mut out = vec![head];
             out.extend(emit_map(m, indent + 2));
@@ -156,7 +171,8 @@ pub fn emit_map(m: &Map<String, Value>, indent: usize) -> Vec<String> {
 /// A sequence item: dash at `indent`, content at `indent + 2`.
 pub fn emit_item(v: &Value, indent: usize) -> Vec<String> {
     match v {
-        Value::Object(m) if !m.is_empty() => {
+        // items of a nested list (sfx, markers) go on one line; shots themselves stay blocks
+        Value::Object(m) if !m.is_empty() && (indent < 4 || !flat_map(m)) => {
             let mut lines = emit_map(m, indent + 2);
             lines[0] = format!("{}- {}", pad(indent), &lines[0][indent + 2..]);
             lines

@@ -106,6 +106,8 @@ pub struct Definition {
     pub anchors: Vec<(String, Vec3)>,
     pub defaults: Map<String, Value>,
     pub qualities: Map<String, Value>,
+    /// `audio:` (BGM, master gain). Sound effects live on their shots (`sfx:`). See sound.rs.
+    pub audio: Map<String, Value>,
     pub shots: Vec<Value>,
 }
 
@@ -336,6 +338,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     let defaults = obj(top.get("defaults"));
     let qualities = obj(top.get("qualities"));
+    let audio = obj(top.get("audio"));
     let shots: Vec<Value> = match top.get("shots") {
         None | Some(Value::Null) => Vec::new(),
         Some(Value::Array(a)) => a.clone(),
@@ -373,7 +376,9 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         }
     }
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, anchors, defaults, qualities, shots };
+    crate::sound::validate(top, &shots, &mut errs);
+
+    let defn = Definition { path: path.to_path_buf(), project, teaser, anchors, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {

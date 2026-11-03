@@ -92,6 +92,8 @@ fn offer_sample(dir: &Path) -> Option<PathBuf> {
         fail(&format!("could not write {}: {e}", p.display()));
         return None;
     }
+    // placeholder BGM and effects the demo refers to; the demo still opens without them
+    let _ = shotpilot::sound::write_demo_audio(dir);
     let gi = dir.join(".gitignore");
     if !gi.exists() {
         let _ = std::fs::write(gi, templates::GITIGNORE);
