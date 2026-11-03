@@ -35,6 +35,8 @@ paths:
 - MRQ の PIE は、Game Override の設定が無いと `MoviePipelineGameMode`（空の GameMode）で回る。レベルを実行時に組むゲーム（七号室）はそのままだと真っ黒になる。`project.game_mode` を書くと `MoviePipelineGameOverrideSetting` で差し替える。5.8 では `game_mode_override` は非推奨で効かない（警告だけ出て空の GameMode のまま）。`soft_game_mode_override` に `SoftClassPath` を入れる。
 - Rust 版でも実機で通った（2026-11-03、SPTest / Template_Default、2 ショット）。Python 版で push した状態と撮った take はそのまま有効だった（status が synced / fresh、build は何もしない）。1 ショットだけ直して render preview すると、そのショットだけ build・撮影された（約 25 秒）。pull は約 15 秒、render final（1920x1080、2 ショット × 30 フレーム）は約 37 秒、cut final は約 2 秒。
 - 七号室（RoomSeven の作業コピー `Production/RoomSeven-shotpilot`、本体には書かない）も撮れた。`map: /Engine/Maps/Entry`、`game_mode: /Script/RoomSeven.R7CourtyardMode`、`ue_args: [-R7StageOnly]` で、PIE の中で C++ が中庭を建ててから MRQ が撮る。build 7 ショットは約 45 秒、render still 7 ショット×3 フレームは約 75 秒。コピー側で MovieRenderPipeline / SequencerScripting / LevelSequenceEditor を有効にしたが、C++ の再ビルドは要らなかった。
+- 七号室の render final（7 ショット、1920x1080、930 フレーム）は 1 回の起動で約 5 分。1 回目は 4 本目の途中で PIE が終わり（ゲーム側のログなし。PIE ウィンドウへの Esc か、ウィンドウを閉じた可能性が高い）、残り 4 本が失敗した。撮り終えた 3 本は take として残り、再実行では失敗した 4 本だけを撮った。MRQ のジョブが途中で止まったときは、その理由を result の `error` に書く。
+- 七号室の `-R7StageOnly` では、正面玄関は施錠されたまま、七号室の扉は物語で出現するまで壁になっている。撮影の構図はこの状態を前提に決める。
 
 ## 検証
 
