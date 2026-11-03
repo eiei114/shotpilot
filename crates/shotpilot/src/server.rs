@@ -575,6 +575,7 @@ pub fn sound_payload(ws: &Workspace) -> Result<Value> {
         "cuts": sound::cuts(&shots, &starts).iter().map(|c| json!({"t": crate::geometry::round_to(c.t, 3), "from": c.from, "to": c.to}))
             .collect::<Vec<_>>(),
         "placements": placements,
+        "orphans": sound::orphans(&ws.defn, &shots).iter().map(sound::Orphan::to_json).collect::<Vec<_>>(),
         "lead_max": sound::LEAD_MAX,
         "ffmpeg": crate::cut::ffmpeg().is_some(),
         "mix": Value::Null,
@@ -1066,10 +1067,22 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     if let Some(s) = &scope {
         context.push(format!("shot {}", s[0]));
     }
+    if let Some(l) = body.get("line").and_then(Value::as_str).filter(|s| !s.is_empty()) {
+        let Some(line) = ws.defn.script.iter().find(|x| x.id == l) else { bail!("unknown script line '{l}'") };
+        if scope.is_some() || !pointer.sound {
+            bail!("a note on a script line's sound takes no shot");
+        }
+        context.push(format!("script line {} ({}: {})", line.id, line.kind, line.ja));
+        pointer.line = Some(line.id.clone());
+    }
     if pointer.sound {
         context.push("working on the sound (background music and sound effects)".into());
         if let Some(i) = body.get("sfx_index").and_then(Value::as_u64) {
-            context.push(format!("sound effect #{} of that shot's sfx list", i + 1));
+            let owner = if pointer.line.is_some() { "that script line's" } else { "that shot's" };
+            context.push(format!("sound effect #{} of {owner} sfx list", i + 1));
+        }
+        for o in sound::orphans(&ws.defn, &ws.resolved()?) {
+            context.push(o.text());
         }
         if let Some(t) = body.get("time").and_then(Value::as_f64) {
             context.push(format!("{t:.2} s into the teaser"));
@@ -1123,7 +1136,12 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     if let Some(a) = &rev.audio {
         changes.insert("audio".into(), Value::Array(field_changes(&Value::Object(ws.defn.audio.clone()), &Value::Object(a.clone()))));
     }
-    let rep = ws.edit_definition_with(&rev.edits, rev.order.as_deref(), rev.audio.as_ref(), "revise", note)?;
+    for (id, list) in &rev.lines {
+        let old = ws.defn.script.iter().find(|l| l.id == *id).map(|l| json!({"sfx": l.sfx})).unwrap_or(Value::Null);
+        let new = json!({"sfx": if list.is_null() { json!([]) } else { list.clone() }});
+        changes.insert(id.clone(), Value::Array(field_changes(&old, &new)));
+    }
+    let rep = ws.edit_definition_full(&rev.edits, &rev.lines, rev.order.as_deref(), rev.audio.as_ref(), "revise", note)?;
     let mut extra = Map::new();
     extra.insert("summary".into(), json!(rev.summary));
     extra.insert("changes".into(), Value::Object(changes.clone()));

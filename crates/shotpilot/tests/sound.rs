@@ -266,3 +266,68 @@ fn a_camera_note_is_not_shown_the_library() {
     ai::revise_at(&f.ws.defn, "門をもっと寄って", None, &pointer, &c).unwrap();
     assert!(!c.calls.borrow()[0].to_string().contains("splice:drone1"));
 }
+
+/// The fixture with a script: a card after s02 with a hit, a caption over s03.
+fn with_script() -> Fixture {
+    let mut f = rendered();
+    let mut text = f.text();
+    text.push_str("\nscript:\n  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2, after: s02_well, sfx: [{file: audio/hit.wav, at: 0, gain: -6}]}\n  - {id: cups, kind: caption, ja: コップ、七つ。, on: s03_window, at: 0.5, dur: 2}\n");
+    f.write(&text);
+    f.ws.reload().unwrap();
+    f
+}
+
+#[test]
+fn a_sound_note_reaches_script_lines_and_music_cues() {
+    let mut f = with_script();
+    let lib_dir = tempfile::tempdir().unwrap();
+    let pointer = Pointer { sound: true, library: Some(library_in(lib_dir.path())), ..Default::default() };
+    let c = fake(json!({"summary": "x", "edits": [], "order": [],
+        "audio": "loudness: -14\nmusic:\n  - {file: 'lib:splice:drone1', from: seven, until: s05_door, gain: -10}",
+        "lines": [{"id": "seven", "sfx": "- {file: audio/hit.wav, at: 0, gain: -2}"},
+                  {"id": "cups", "sfx": "- {file: 'lib:splice:hit1', at: 0}"}]}));
+    let rev = ai::revise_at(&f.ws.defn, "カードの音を強く、コップにも音", None, &pointer, &c).unwrap();
+    // Claude was shown the script with where each line sits
+    let req = c.calls.borrow()[0].to_string();
+    assert!(req.contains("Script lines") && req.contains("seven (card, after s02_well"), "{req}");
+    assert_eq!(rev.audio.as_ref().unwrap()["music"][0]["file"], "audio/lib/lib_drone.wav");
+    let before = launches(&f.ws).len();
+    let rep = f.ws.edit_definition_full(&rev.edits, &rev.lines, None, rev.audio.as_ref(), "revise", "n").unwrap();
+    assert!(rep.stale.is_empty());
+    assert_eq!(launches(&f.ws).len(), before, "sound never renders");
+    let line = |id: &str| f.ws.defn.script.iter().find(|l| l.id == id).unwrap().sfx.clone();
+    assert_eq!(line("seven")[0]["gain"], json!(-2));
+    assert_eq!(line("cups")[0]["file"], "audio/lib/lib_hit.wav");
+    assert!(f.text().contains("ja: 自分を入れて、七人。"), "the rest of the line is kept");
+}
+
+#[test]
+fn a_note_on_one_lines_sound_changes_only_that_line() {
+    let f = with_script();
+    let pointer = Pointer { sound: true, line: Some("seven".into()), ..Default::default() };
+    // the other line is out of scope
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "audio": "",
+        "lines": [{"id": "cups", "sfx": "- {file: audio/hit.wav, at: 0}"}]}));
+    let e = ai::revise_at(&f.ws.defn, "小さく", None, &pointer, &c).unwrap_err();
+    assert!(e.msg.contains("cups"), "{}", e.msg);
+    // so is the music
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "audio": "bgm: {file: audio/drone.wav, gain: -20}",
+        "lines": [{"id": "seven", "sfx": ""}]}));
+    assert!(ai::revise_at(&f.ws.defn, "小さく", None, &pointer, &c).unwrap_err().msg.contains("background music"));
+    // removing its effect is fine
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "audio": "", "lines": [{"id": "seven", "sfx": ""}]}));
+    let rev = ai::revise_at(&f.ws.defn, "音を消して", None, &pointer, &c).unwrap();
+    assert_eq!(rev.lines, vec![("seven".to_string(), Value::Null)]);
+    // a camera note cannot touch a line's sound
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "audio": "", "lines": [{"id": "seven", "sfx": ""}]}));
+    assert!(ai::revise(&f.ws.defn, "寄って", None, &c).is_err());
+}
+
+#[test]
+fn a_music_cue_must_start_on_a_piece_of_the_cut() {
+    let f = with_script();
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "lines": [],
+        "audio": "music:\n  - {file: audio/drone.wav, from: s09_nowhere}"}));
+    let e = ai::revise_at(&f.ws.defn, "曲", None, &sound_pointer(), &c).unwrap_err();
+    assert!(e.msg.contains("s09_nowhere"), "{}", e.msg);
+}
