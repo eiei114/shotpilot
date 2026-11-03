@@ -55,6 +55,8 @@ pub trait Engine {
         -> Result<Value>;
     fn pull(&self, items: &[Value]) -> Result<Value>;
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value>;
+    /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
+    fn assets(&self) -> Result<Value>;
 }
 
 pub fn make_engine(defn: &Definition) -> Result<Box<dyn Engine>> {
@@ -212,6 +214,23 @@ impl Engine for MockEngine {
             shots.insert(it["id"].as_str().unwrap_or_default().to_string(), v);
         }
         Ok(json!({"shots": shots}))
+    }
+
+    fn assets(&self) -> Result<Value> {
+        self.launch("assets", json!({}))?;
+        let f = self.store.join("assets.json");
+        if f.exists() {
+            return Ok(json!({"assets": read_json(&f)?}));
+        }
+        let mut list: Vec<Value> = self
+            .defn
+            .props
+            .iter()
+            .map(|(_, p)| json!({"asset": p.asset, "kind": p.kind, "size": p.size}))
+            .collect();
+        list.push(json!({"asset": "/Game/Mock/Props/SM_Crate", "kind": "static", "size": [100, 100, 80]}));
+        list.push(json!({"asset": "/Game/Mock/Characters/SK_Figure", "kind": "skeletal", "size": [60, 40, 180]}));
+        Ok(json!({"assets": list}))
     }
 
     fn scan(&self, _tag: &str, _prefix: &str) -> Result<Value> {
@@ -389,6 +408,10 @@ impl Engine for Ue5Engine {
 
     fn pull(&self, items: &[Value]) -> Result<Value> {
         self.run("pull", json!({"pull": items}))
+    }
+
+    fn assets(&self) -> Result<Value> {
+        self.run("assets", json!({}))
     }
 
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value> {

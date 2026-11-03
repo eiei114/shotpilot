@@ -514,6 +514,9 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     let mut props = Vec::new();
     for (name, v) in obj(top.get("props")) {
+        if v.is_null() {
+            continue; // removed (`shotpilot prop rm` leaves `name: null`)
+        }
         match parse_prop(&v) {
             Ok(p) => props.push((name, p)),
             Err(e) => errs.push(format!("props.{name}: {e}")),
@@ -602,7 +605,9 @@ fn parse_prop(v: &Value) -> std::result::Result<Prop, String> {
     let m = v.as_object().ok_or("must be {asset: /Game/..., kind: static|skeletal, size: [w, d, h]}")?;
     let asset = m.get("asset").map(str_of).unwrap_or_default();
     if !valid_package(&asset) {
-        return Err(format!("asset: a UE asset path like /Game/Characters/Mannequins/Meshes/SKM_Manny (got '{asset}')"));
+        return Err(format!(
+            "asset: a UE asset path like /Game/Characters/Mannequins/Meshes/SKM_Manny (got '{asset}').              Git Bash rewrites /Game/... arguments into Windows paths; set MSYS_NO_PATHCONV=1"
+        ));
     }
     let kind = m.get("kind").map(str_of).unwrap_or_else(|| "static".into());
     if !PROP_KINDS.contains(&kind.as_str()) {

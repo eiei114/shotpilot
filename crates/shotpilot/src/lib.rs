@@ -13,6 +13,7 @@ pub mod geometry;
 pub mod model;
 pub mod moodboard;
 pub mod previz;
+pub mod scout;
 pub mod server;
 pub mod shotcheck;
 pub mod sound;

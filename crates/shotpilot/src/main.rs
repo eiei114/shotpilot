@@ -103,6 +103,23 @@ enum Cmd {
         #[arg(long)]
         undo: bool,
     },
+    /// photograph every anchor from four sides into scout/ (stage 0, location scouting)
+    Scout {
+        anchors: Vec<String>,
+    },
+    /// the meshes the project has: assets [filter]  |  assets --scan (asks the engine)
+    Assets {
+        filter: Option<String>,
+        #[arg(long)]
+        scan: bool,
+    },
+    /// props shots may make appear: prop add <name> <asset>  |  prop rm <name>
+    Prop {
+        #[arg(value_parser = ["add", "rm"])]
+        action: String,
+        name: String,
+        asset: Option<String>,
+    },
     /// generate mood-board images from the brief (Codex, or an OpenAI API key)
     Moodboard {
         /// art direction, e.g. "cold blue, red lantern, fog"
@@ -426,6 +443,37 @@ fn run(cli: Cli) -> Result<u8> {
             for s in ws.select(&shots)? {
                 ws.approve(&s.id, !undo)?;
                 println!("{} {}", if undo { "withdrawn:" } else { "approved:" }, s.id);
+            }
+        }
+        Cmd::Scout { anchors } => {
+            let mut ws = ws(file)?;
+            let idx = ws.take_scout(&anchors)?;
+            for (name, views) in idx["anchors"].as_object().into_iter().flatten() {
+                let files: Vec<&str> = views.as_array().into_iter().flatten().filter_map(|v| v["file"].as_str()).collect();
+                println!("{name:<16} {}", files.join("  "));
+            }
+        }
+        Cmd::Assets { filter, scan } => {
+            let mut ws = ws(file)?;
+            let list = if scan { ws.scan_assets()? } else { shotpilot::scout::load_assets(&ws.root) };
+            if list.is_empty() {
+                println!("no inventory yet: run `shotpilot assets --scan`");
+            }
+            let f = filter.unwrap_or_default().to_lowercase();
+            for a in list.iter().filter(|a| a.asset.to_lowercase().contains(&f)) {
+                let size = a.size.map(|s| format!("{} x {} x {} cm", fmt_g(s[0]), fmt_g(s[1]), fmt_g(s[2]))).unwrap_or_else(|| "-".into());
+                println!("{:<9} {:<22} {}   (prop add {} {})", a.kind, size, a.asset, a.suggested_name(), a.asset);
+            }
+        }
+        Cmd::Prop { action, name, asset } => {
+            let mut ws = ws(file)?;
+            if action == "add" {
+                let Some(asset) = asset else { bail!("prop add <name> <asset path>") };
+                ws.add_prop(&name, &asset, None, None)?;
+                println!("added prop {name}: {asset}");
+            } else {
+                ws.remove_prop(&name)?;
+                println!("removed prop {name}");
             }
         }
         Cmd::Moodboard { direction, n } => {

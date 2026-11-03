@@ -43,7 +43,8 @@ cargo build --release -p shotpilot-app         # アプリ: target/release/shotp
 `shotpilot-app` を起動すると、ウィンドウが1枚開く（Tauri。ブラウザは使わない）。引数に `shots.yaml` かそのフォルダを渡すか、起動後にフォルダを選ぶ。`shots.yaml` が無いフォルダを選ぶと、サンプル（mock エンジン、6ショット）を作るか聞かれる。
 
 - 画面は左が会話、右がキャンバス。キャンバスの下に、尺に比例したタイムラインがある。
-- キャンバスの上には、トレーラー制作の工程どおりに「1 ブリーフ → 2 構成 → 3 構図 → 4 撮影 → 5 仕上げ」が並び、それぞれの状態（未記入、P0 の数、承認数、final の数、cut の有無）を出す。
+- キャンバスの上には、トレーラー制作の工程どおりに「0 ロケハン → 1 ブリーフ → 2 構成 → 3 構図 → 4 撮影 → 5 仕上げ」が並び、それぞれの状態（未記入、P0 の数、承認数、final の数、cut の有無）を出す。
+  - **ロケハン**: プロジェクトの中に何があるかを集める。各アンカーを4方向から撮った写真（mock は previz、UE は still。`scout/` に置く）と、UE の Asset Registry から寸法付きで棚卸しした mesh の一覧（`.shotpilot/assets.json`）から、ショットに出せるもの（`props:`）を選ぶ。写真は「構成を組む」ときに各アンカー1枚ずつ Claude にも見せる。CLI は `shotpilot scout`、`shotpilot assets --scan`、`shotpilot prop add <name> <asset>`。
   - **ブリーフ**: 種類（ティザー / ゲームプレイトレーラー）、ジャンル、コア体験、対象、必ず見せるもの、参考トレーラーを書く。`shots.yaml` の `brief:` に入り、撮り直しは起きない。
   - **ムードボード**（ブリーフの中）: 色・光・空気感の参照画像を置く。手持ちのスクリーンショットやコンセプトアートをドロップするか、ブリーフから4枚（場所・ディテール・不穏・タイトル）を生成する。生成は既定でログイン済みの Codex CLI（`codex exec`、読み取り専用で起動し、`~/.codex/generated_images/` から画像を回収。キー不要。4枚で約3分）を使い、無ければ OpenAI の API キー（既定 `gpt-image-2`、`SHOTPILOT_IMAGE_MODEL` で変更）を使う。接続設定で切り替えられ、CLI は `shotpilot moodboard --direction "..."`。画像は `moodboard/` に置かれ、`brief.images` に並ぶ。「構成を組む」ときに Claude に画像として見せる（雰囲気の参照で、ショットの画はすべてゲームから撮る）。API キーで生成するときのキーは接続設定で入れるか `OPENAI_API_KEY`。
   - **構成**: ショットを hook / establish / escalate / title の列に並べ、ショット検査（`shotcheck.rs`）の指摘を一覧する。

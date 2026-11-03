@@ -814,6 +814,152 @@ impl Workspace {
         self.state.save()
     }
 
+    // ------------------------------------------------------------------ location scouting (stage 0)
+
+    /// Ask the engine which meshes the project has, and keep the list (derived, not shots.yaml).
+    pub fn scan_assets(&mut self) -> Result<Vec<crate::scout::AssetInfo>> {
+        let engine = make_engine(&self.defn)?;
+        let found = engine.assets()?;
+        let mut list: Vec<crate::scout::AssetInfo> =
+            found["assets"].as_array().into_iter().flatten().filter_map(crate::scout::AssetInfo::from_json).collect();
+        list.sort_by(|a, b| a.asset.cmp(&b.asset));
+        list.dedup_by(|a, b| a.asset == b.asset);
+        crate::scout::save_assets(&self.root, &list)?;
+        self.state.log("assets", json!({"count": list.len()}));
+        self.state.save()?;
+        Ok(list)
+    }
+
+    /// Put a mesh in `props:` so shots may make it appear. Kind and size come from the
+    /// inventory when the asset is in it.
+    pub fn add_prop(&mut self, name: &str, asset: &str, kind: Option<&str>, size: Option<crate::geometry::Vec3>)
+        -> Result<()> {
+        if !model::valid_id(name) {
+            bail!("prop name: lowercase letters, digits, _ or - (got '{name}')");
+        }
+        let known = crate::scout::load_assets(&self.root).into_iter().find(|a| a.asset == asset);
+        let kind = kind.map(str::to_string).or_else(|| known.as_ref().map(|a| a.kind.clone())).unwrap_or_else(|| "static".into());
+        let mut entry = Map::new();
+        entry.insert("asset".into(), json!(asset));
+        entry.insert("kind".into(), json!(kind));
+        if let Some(sz) = size.or_else(|| known.and_then(|a| a.size)) {
+            entry.insert("size".into(), json!(sz.map(|v| round_to(v, 1))));
+        }
+        let mut doc = Doc::load(&self.path)?;
+        doc.upsert_entries("props", &[(name.to_string(), Value::Object(entry))])?;
+        model::parse(&doc.value()?, &self.path)?;
+        doc.save(&self.path)?;
+        self.reload()?;
+        self.state.log("prop", json!({"added": name, "asset": asset}));
+        self.state.save()
+    }
+
+    /// Take a prop out of `props:` (refused while a shot still makes it appear).
+    pub fn remove_prop(&mut self, name: &str) -> Result<()> {
+        if self.defn.prop(name).is_none() {
+            bail!("unknown prop '{name}'");
+        }
+        let users: Vec<String> = self.resolved()?.iter().filter(|s| s.appear.iter().any(|a| a.prop == name)).map(|s| s.id.clone()).collect();
+        if !users.is_empty() {
+            bail!("prop '{name}' still appears in: {}", users.join(", "));
+        }
+        let mut doc = Doc::load(&self.path)?;
+        doc.upsert_entries("props", &[(name.to_string(), Value::Null)])?;
+        model::parse(&doc.value()?, &self.path)?;
+        doc.save(&self.path)?;
+        self.reload()?;
+        self.state.log("prop", json!({"removed": name}));
+        self.state.save()
+    }
+
+    /// Photograph anchors from four sides (all anchors when `only` is empty) into scout/.
+    /// previz for the mock engine; one still per camera in the real engine. Scout cameras are
+    /// not shots: nothing here touches shots.yaml or the take state.
+    pub fn take_scout(&mut self, only: &[String]) -> Result<Value> {
+        let cams = crate::scout::cameras(&self.defn, only);
+        if cams.is_empty() {
+            bail!("no anchors to scout. add `anchors:` (or run `shotpilot scan`) first");
+        }
+        let dir = self.root.join(crate::scout::SCOUT_DIR);
+        std::fs::create_dir_all(&dir)?;
+        let fps = self.defn.teaser.fps;
+        let (w, h) = (960u32, 540u32);
+        let mut shots = Vec::new();
+        for (i, c) in cams.iter().enumerate() {
+            shots.push(model::resolve_shot(&self.defn, &c.shot(fps), i)?);
+        }
+        let mut files: Vec<Option<String>> = vec![None; cams.len()];
+        if self.defn.project.engine == "ue5" {
+            let raw = dir.join(".raw");
+            let q = fp::quality(&self.defn, "still")?;
+            let mut build = Vec::new();
+            let mut items = Vec::new();
+            for s in &shots {
+                let asset = format!("{}/Scout/SEQ_{}", self.defn.project.content_root, s.id);
+                build.push(json!({"id": s.id, "asset": asset, "fingerprint": fp::build_fingerprint(&self.defn, s),
+                                  "payload": s.engine_payload(), "base": Value::Null}));
+                let d = raw.join(&s.id);
+                if d.exists() {
+                    std::fs::remove_dir_all(&d)?;
+                }
+                std::fs::create_dir_all(&d)?;
+                items.push(json!({"key": format!("{}:scout", s.id), "id": s.id, "asset": asset, "quality_name": "still",
+                                  "quality": q, "resolution": [w, h], "frames": [0], "out_dir": d.display().to_string()}));
+            }
+            let engine = make_engine(&self.defn)?;
+            let result = engine.render(&build, None, &items, true)?;
+            for (i, it) in items.iter().enumerate() {
+                let key = it["key"].as_str().unwrap_or_default();
+                if result["renders"][key]["status"].as_str() != Some("ok") {
+                    continue;
+                }
+                let d = PathBuf::from(it["out_dir"].as_str().unwrap_or_default());
+                if let Some(f) = normalize_frames(&d, &[0]).ok().and_then(|v| v.into_iter().next()) {
+                    let ext = Path::new(&f).extension().and_then(|e| e.to_str()).unwrap_or("png").to_string();
+                    let name = format!("{}-{}.{ext}", cams[i].anchor, cams[i].side);
+                    std::fs::copy(d.join(&f), dir.join(&name))?;
+                    files[i] = Some(name);
+                }
+            }
+            let _ = std::fs::remove_dir_all(&raw);
+        } else {
+            let boxes = self.defn.anchor_boxes();
+            let ground_z = self.defn.defaults.get("previz").and_then(|p| p.get("ground_z")).and_then(num).unwrap_or(0.0);
+            for (i, s) in shots.iter().enumerate() {
+                let name = format!("{}-{}.png", cams[i].anchor, cams[i].side);
+                std::fs::write(dir.join(&name), previz::render_frame(s, 0, &boxes, w, h, ground_z, None).png())?;
+                files[i] = Some(name);
+            }
+        }
+        let mut idx = crate::scout::load_index(&self.root);
+        if !idx["anchors"].is_object() {
+            idx["anchors"] = json!({});
+        }
+        let mut taken = 0;
+        for (c, f) in cams.iter().zip(&files) {
+            let list = idx["anchors"].as_object_mut().expect("object").entry(c.anchor.clone()).or_insert_with(|| json!([]));
+            let arr = list.as_array_mut().expect("array");
+            arr.retain(|v| v["side"] != c.side.as_str());
+            if let Some(f) = f {
+                arr.push(json!({"side": c.side, "file": format!("{}/{f}", crate::scout::SCOUT_DIR), "location": c.location}));
+                taken += 1;
+            }
+        }
+        // anchors that no longer exist drop out of the index
+        let live: Vec<String> = self.defn.anchors.iter().map(|(n, _)| n.clone()).collect();
+        if let Some(m) = idx["anchors"].as_object_mut() {
+            m.retain(|k, _| live.contains(k));
+        }
+        idx["taken"] = json!(chrono::Local::now().to_rfc3339());
+        crate::scout::save_index(&self.root, &idx)?;
+        self.state.log("scout", json!({"photos": taken, "cameras": cams.len()}));
+        self.state.save()?;
+        if taken == 0 {
+            bail!("no scout photo came back from the engine (see .shotpilot/logs)");
+        }
+        Ok(idx)
+    }
+
     // ------------------------------------------------------------------ mood board
 
     fn set_images(&mut self, images: &[String]) -> Result<()> {

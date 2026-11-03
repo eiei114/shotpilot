@@ -272,3 +272,54 @@ fn codex_output_is_read_back_from_its_image_folder() {
     let ins = shotpilot::moodboard::CodexImages::instruction(&["one".into(), "two".into()]);
     assert!(ins.contains("exactly 2 image(s)") && ins.contains("--- Image 2 ---\ntwo") && ins.contains("Do not write"));
 }
+
+#[test]
+fn scouting_photographs_anchors_without_touching_shots() {
+    let mut f = ws();
+    let before = f.text();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let idx = f.ws.take_scout(&[]).unwrap();
+    let anchors = idx["anchors"].as_object().unwrap();
+    assert_eq!(anchors.len(), 5);
+    let well = anchors["well"].as_array().unwrap();
+    assert_eq!(well.len(), 4);
+    assert!(well.iter().all(|v| f.ws.root.join(v["file"].as_str().unwrap()).is_file()));
+    // scout cameras frame the anchor from outside its box
+    let b = f.ws.defn.known_box("well").unwrap();
+    for v in well {
+        let loc: Vec<f64> = v["location"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+        assert!(!b.contains([loc[0], loc[1], loc[2]], 0.0));
+    }
+    assert_eq!(f.text(), before); // shots.yaml untouched
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+    // re-scouting one anchor keeps the others
+    let idx = f.ws.take_scout(&ids(&["door"])).unwrap();
+    assert_eq!(idx["anchors"].as_object().unwrap().len(), 5);
+    // the planner gets one labelled photo per anchor
+    let blocks = shotpilot::scout::planner_blocks(&f.ws.defn, 8);
+    assert_eq!(blocks.len(), 10);
+    assert!(blocks[0]["text"].as_str().unwrap().starts_with("Location scout: `"));
+    assert_eq!(blocks[1]["type"], "image");
+}
+
+#[test]
+fn assets_become_props_and_props_in_use_stay() {
+    let mut f = ws();
+    let list = f.ws.scan_assets().unwrap();
+    assert!(list.iter().any(|a| a.asset == "/Game/Mock/Props/SM_Crate" && a.size == Some([100.0, 100.0, 80.0])));
+    let crate_ = list.iter().find(|a| a.asset.ends_with("SM_Crate")).unwrap();
+    assert_eq!(crate_.suggested_name(), "crate");
+    f.ws.add_prop("crate", "/Game/Mock/Props/SM_Crate", None, None).unwrap();
+    let p = f.ws.defn.prop("crate").unwrap();
+    assert_eq!((p.kind.as_str(), p.size), ("static", [100.0, 100.0, 80.0])); // from the inventory
+    assert!(f.text().contains("# Things a shot can make appear"));
+    assert!(f.ws.add_prop("Bad Name", "/Game/X/Y", None, None).is_err());
+
+    let ap = json!([{"prop": "crate", "at": 1, "anchor": "door"}]);
+    f.ws.set_fields("s05_door", &set(&[("appear", ap)])).unwrap();
+    let err = f.ws.remove_prop("crate").unwrap_err();
+    assert!(err.msg.contains("s05_door"), "{}", err.msg);
+    f.ws.set_fields("s05_door", &set(&[("appear", json!(null))])).unwrap();
+    f.ws.remove_prop("crate").unwrap();
+    assert!(f.ws.defn.prop("crate").is_none());
+}

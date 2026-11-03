@@ -167,6 +167,21 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .kinds label.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .kinds input { display: none; }
 .kinds b { font-size: 13px; } .kinds span { color: var(--muted); font-size: 11.5px; }
+.scout-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: start; max-width: 1100px; }
+.scout-row .nm { font-family: var(--mono); font-size: 12px; padding-top: 4px; }
+.scout-row .nm small { display: block; color: var(--muted); font-family: inherit; }
+.scout-shots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.scout-shots figure { margin: 0; position: relative; border-radius: 8px; overflow: hidden; background: var(--stage); aspect-ratio: 16 / 9; }
+.scout-shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scout-shots figcaption { position: absolute; left: 5px; bottom: 4px; font-size: 10px; color: #fff; background: rgb(0 0 0 / .55); padding: 0 5px; border-radius: 4px; }
+.props-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.props-list .chip { font-size: 12px; padding: 3px 9px; }
+table.assets { width: 100%; max-width: 1100px; border-collapse: collapse; font-size: 12px; }
+table.assets td, table.assets th { padding: 4px 8px; border-top: 1px solid var(--line); text-align: left; }
+table.assets th { font-size: 11px; color: var(--muted); background: var(--soft); }
+table.assets td.path { font-family: var(--mono); font-size: 11.5px; word-break: break-all; }
+table.assets input { width: 110px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font-family: var(--mono); font-size: 11.5px; background: var(--soft); }
+.assets-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; max-width: 1100px; }
 .mood { display: grid; gap: 10px; max-width: 900px; }
 .mood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .mood-item { position: relative; border-radius: 10px; overflow: hidden; background: var(--stage); aspect-ratio: 3 / 2; }
@@ -412,6 +427,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
   <section id="canvas" aria-label="canvas">
     <div class="tabs">
       <div class="stages" id="stages">
+        <button class="stage-btn" data-stage="scout" title="プロジェクトの中に何があるか（場所の写真と、出せるもの）"><span class="no">0</span><span class="lb">ロケハン</span><span class="sub" id="sg-scout"></span></button>
         <button class="stage-btn" data-stage="brief" title="何のための映像か"><span class="no">1</span><span class="lb">ブリーフ</span><span class="sub" id="sg-brief"></span></button>
         <button class="stage-btn" data-stage="structure" title="ビートの並びとショット検査"><span class="no">2</span><span class="lb">構成</span><span class="sub" id="sg-structure"></span></button>
         <button class="stage-btn" data-stage="framing" title="安いプレビューで構図を決めて承認する"><span class="no">3</span><span class="lb">構図</span><span class="sub" id="sg-framing"></span></button>
@@ -442,6 +458,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
     </div>
     <div id="findings" hidden></div>
+    <div id="scoutpanel" class="panel main" hidden></div>
     <div id="briefpanel" class="panel main" hidden></div>
     <div id="structpanel" class="panel main" hidden></div>
     <div id="capturepanel" class="panel main" hidden></div>
@@ -483,7 +500,7 @@ const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 // The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
-const STAGE_OF = { brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish" };
+const STAGE_OF = { scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish" };
 const BEAT_JA = {
   hook: "最初の 2〜5 秒。スクロールを止める1枚か、問い",
   establish: "どこで、どんなゲームかを見せる",
@@ -617,7 +634,8 @@ function draw() {
   for (const b of document.querySelectorAll("#finish-seg button")) b.classList.toggle("on", b.dataset.fin === ui.tab);
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
   const snd = ui.tab === "sound";
-  const panel = { brief: "briefpanel", structure: "structpanel", capture: "capturepanel" }[ui.tab];
+  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel" }[ui.tab];
+  $("scoutpanel").hidden = ui.tab !== "scout";
   const finishing = ui.tab === "teaser" || snd;
   $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
@@ -633,7 +651,7 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""} · ${st.ai?.effort || ""}`;
-  if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
+  if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
   else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
@@ -716,7 +734,10 @@ function stageState() {
   const approved = st.shots.filter((s) => s.approval === "approved").length;
   const finalFresh = st.shots.filter((s) => s.qualities.final === "fresh").length;
   const bestQ = [...st.qualities].reverse().find((q) => n && st.shots.every((s) => s.qualities[q] === "fresh"));
+  const photos = Object.values(st.scout || {}).reduce((a, v) => a + v.length, 0);
+  const nprops = (st.props || []).length;
   return {
+    scout: photos ? ["ok", `写真 ${photos} · prop ${nprops}`] : nprops ? ["", `prop ${nprops}`] : ["", "未"],
     brief: !b.written ? ["", "未記入"] : b.missing?.length ? ["warn", `未記入 ${b.missing.length}`] : ["ok", b.kind === "gameplay" ? "ゲームプレイ" : "ティザー"],
     structure: count("P0") ? ["bad", `P0 ${count("P0")}`] : count("P1") ? ["warn", `要確認 ${count("P1")}`] : ["ok", n ? "問題なし" : "ショットなし"],
     framing: f.some((x) => x.severity === "P0" && x.shot) ? ["bad", `承認 ${approved}/${n}`] : n && approved === n ? ["ok", `承認 ${n}/${n}`] : ["", `承認 ${approved}/${n}`],
@@ -761,6 +782,66 @@ function drawApprove() {
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
   b.title = p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます。画が変わる修正をすると自動で外れます";
   b.disabled = !!ui.busy || (!!p0 && a !== "approved");
+}
+
+// ------------------------------------------------------------------ stage 0: location scouting
+
+async function fetchAssets() {
+  try { ui.assets = (await api("GET", "/api/assets")).assets; } catch (e) { toast(e.message, true); }
+  drawScout.key = ""; if (ui.tab === "scout") drawScout();
+}
+
+function drawScout() {
+  const st = ui.status;
+  if (ui.assetsCount !== st.assets_count) { ui.assetsCount = st.assets_count; fetchAssets(); }
+  const key = JSON.stringify([st.scout, st.props, ui.busy, (ui.assets || []).length, st.engine]);
+  if (drawScout.key === key && $("scoutpanel").childElementCount) return;
+  drawScout.key = key;
+  const ue = st.engine === "ue5";
+  const scout = st.scout || {};
+  const anchors = Object.keys(scout);
+  const rows = anchors.map((a) => {
+    const views = scout[a] || [];
+    const side = { front: "中心側から", right: "右", back: "反対側", left: "左" };
+    return `<div class="scout-row"><div class="nm">${esc(a)}<small>${views.length} 枚</small></div><div class="scout-shots">${
+      views.map((v) => `<figure><img alt="" loading="lazy" src="/files/${esc(v.file)}?v=${encodeURIComponent(st.scout_taken || "")}"><figcaption>${esc(side[v.side] || v.side)}</figcaption></figure>`).join("")}</div></div>`;
+  }).join("");
+  const props = (st.props || []).map((p) => `<span class="chip" title="${esc(p.asset)}">${esc(p.name)} <small style="color:var(--muted)">${esc(p.kind === "skeletal" ? "キャラ" : "物")}</small> <button data-prop-rm="${esc(p.name)}" title="props から外す">✕</button></span>`).join("");
+  const have = new Set((st.props || []).map((p) => p.asset));
+  const assets = ui.assets || [];
+  const arows = assets.map((a, i) => {
+    const size = a.size ? a.size.map((v) => Math.round(v)).join(" × ") + " cm" : "-";
+    return `<tr data-asset-row="${esc(a.asset.toLowerCase())}"><td>${esc(a.kind === "skeletal" ? "キャラ" : "物")}</td><td class="path">${esc(a.asset)}</td><td>${esc(size)}</td>
+      <td>${have.has(a.asset) ? `<span class="appr approved">追加済み</span>` : `<input data-asset-name="${i}" value="${esc(a.suggested || "")}" spellcheck="false"> <button class="mini" data-prop-add="${i}">props に追加</button>`}</td></tr>`;
+  }).join("");
+  $("scoutpanel").innerHTML = `<h3>ロケハン</h3>
+    <div class="lead">撮る前に、プロジェクトの中に何があるかを集めます。場所（アンカー）を4方向から撮った写真と、ショットに出せるもの（props）です。写真は人間が確かめるためのもので、「構成を組む」ときに各アンカーの中心側からの1枚を Claude にも見せます。ここで集めたものは shots.yaml の anchors と props に入り、ショットの撮り直しは起きません。</div>
+    <h4 class="sec">場所の写真</h4>
+    <div class="capbar"><button class="btn dark" data-scout${ui.busy ? " disabled" : ""}>${ui.busy === "scout" ? "撮影中…" : "ロケハン写真を撮る"}</button>
+      <span class="sp-hint">${ue ? "UE を起動して still で撮ります（アンカー×4方向。数分）" : "mock エンジン: previz で数秒"}。アンカーは shots.yaml の anchors（scan で UE から取り込めます）。</span></div>
+    ${rows || `<div class="mood-empty">まだありません。「ロケハン写真を撮る」で、各アンカーを4方向から撮ります。</div>`}
+    <h4 class="sec">出せるもの（props）</h4>
+    <div class="lead">ショットの途中でいきなり出現させられるもの（アニメーションなし）。Claude は構成を組むとき、この中から使います。</div>
+    <div class="props-list">${props || `<span class="sp-hint">まだありません。下のアセット一覧から追加します。</span>`}</div>
+    <h4 class="sec">アセット</h4>
+    <div class="capbar"><button class="btn" data-assets-scan${ui.busy ? " disabled" : ""}>${ui.busy === "assets" ? "棚卸し中…" : assets.length ? "棚卸しをやり直す" : "アセットを棚卸し"}</button>
+      <input type="text" id="asset-filter" placeholder="絞り込み（例: character, door, SK_）" style="flex:1;min-width:200px;border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:var(--soft)" value="${esc(ui.assetFilter || "")}">
+      <span class="sp-hint">${assets.length ? `${assets.length} 件` : ue ? "UE の Asset Registry から mesh を寸法付きで一覧にします（UE 起動あり）" : ""}</span></div>
+    ${assets.length ? `<div class="assets-wrap"><table class="assets"><thead><tr><th>種類</th><th>アセット</th><th>大きさ</th><th>prop 名</th></tr></thead><tbody>${arows}</tbody></table></div>` : ""}`;
+  filterAssets();
+}
+
+function filterAssets() {
+  const f = (ui.assetFilter || "").toLowerCase();
+  for (const tr of document.querySelectorAll("[data-asset-row]")) tr.hidden = !!f && !tr.dataset.assetRow.includes(f);
+}
+
+async function scoutAction(kind, body, path, busy, done) {
+  if (ui.busy) return;
+  ui.busy = busy; drawScout.key = ""; draw();
+  try { const out = await api("POST", path, body); if (done) done(out); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; drawScout.key = ""; await refresh(); }
 }
 
 function briefField(key, label, hint, value, { area = false, ph = "" } = {}) {
@@ -1869,6 +1950,18 @@ for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventL
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { ui.tab = ui.fin = b.dataset.fin; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
+$("scoutpanel").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-scout],[data-assets-scan],[data-prop-add],[data-prop-rm]");
+  if (!t) return;
+  if (t.matches("[data-scout]")) scoutAction("scout", {}, "/api/scout", "scout", (idx) => toast(`${Object.keys(idx.anchors || {}).length} か所を撮りました`));
+  else if (t.matches("[data-assets-scan]")) scoutAction("assets", {}, "/api/assets/scan", "assets", (o) => { toast(`${o.count} 件のアセット`); ui.assetsCount = -1; });
+  else if (t.dataset.propAdd) {
+    const a = ui.assets[Number(t.dataset.propAdd)];
+    const name = document.querySelector(`[data-asset-name="${t.dataset.propAdd}"]`)?.value.trim();
+    scoutAction("prop", { name, asset: a.asset }, "/api/props", "save", () => toast(`${name} を props に追加しました`));
+  } else if (t.dataset.propRm) scoutAction("prop", { name: t.dataset.propRm }, "/api/props/remove", "save");
+});
+$("scoutpanel").addEventListener("input", (e) => { if (e.target.id === "asset-filter") { ui.assetFilter = e.target.value; filterAssets(); } });
 for (const id of ["briefpanel", "structpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
   const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label");
   if (!t) return;
@@ -1945,7 +2038,7 @@ setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refr
 // #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
 function applyHash() {
   for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
-    if (["teaser", "sound", "brief", "structure", "capture"].includes(part)) { ui.tab = part; if (part === "teaser" || part === "sound") ui.fin = part; }
+    if (["teaser", "sound", "scout", "brief", "structure", "capture"].includes(part)) { ui.tab = part; if (part === "teaser" || part === "sound") ui.fin = part; }
     else if (part === "tweak") { ui.mode = "tweak"; ui.tab = "shot"; } else { ui.sel = decodeURIComponent(part); ui.tab = "shot"; }
   }
 }

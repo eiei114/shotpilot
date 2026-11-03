@@ -374,13 +374,25 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
-    let mut content = crate::moodboard::image_blocks(defn, 4);
-    if !content.is_empty() {
+    let scout = crate::scout::planner_blocks(defn, 8);
+    if !scout.is_empty() {
         user.push_str(&format!(
-            "\n## Mood board\nThe {} attached image(s) are the director's mood board: match their palette, light \
-             and atmosphere (time of day, haze, contrast). They are mood, not shot designs: every shot still has to \
-             be filmed from the anchors above.\n",
-            content.len()
+            "\n## Location scout\nThe attached photos labelled \"Location scout\" show {} anchor(s) as they really look in \
+             the level, one view each. Place cameras where the photos show open space and a clear view; they are the \
+             ground truth for what each anchor is.\n",
+            scout.len() / 2
+        ));
+    }
+    let mood = crate::moodboard::image_blocks(defn, 4);
+    let mut content = scout;
+    let n_mood = mood.len();
+    content.extend(mood);
+    if n_mood > 0 {
+        user.push_str(&format!(
+            "\n## Mood board\nThe {} unlabelled image(s) after the scout photos are the director's mood board: match \
+             their palette, light and atmosphere (time of day, haze, contrast). They are mood, not shot designs: every \
+             shot still has to be filmed from the anchors above.\n",
+            n_mood
         ));
     }
     user.push_str(

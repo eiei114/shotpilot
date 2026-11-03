@@ -29,7 +29,7 @@ use crate::workspace::Workspace;
 
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout"];
 /// Loopback only; large enough for a mood-board image sent as base64.
 const MAX_BODY: usize = 20 << 20;
 
@@ -365,6 +365,10 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "warnings": ws.structure_warnings()?,
         "checks": ws.check()?.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
         "brief": brief_json(&ws.defn.brief),
+        "scout": crate::scout::summary(&ws.root),
+        "scout_taken": crate::scout::load_index(&ws.root)["taken"],
+        "props": ws.defn.props.iter().map(|(n, p)| json!({"name": n, "asset": p.asset, "kind": p.kind, "size": p.size})).collect::<Vec<_>>(),
+        "assets_count": crate::scout::load_assets(&ws.root).len(),
         "pitch": ws.defn.teaser.pitch,
         "fps": ws.defn.teaser.fps,
         "shots": shots,
@@ -675,6 +679,53 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             }
             s.save(&path)?;
             send_json(stream, false, 200, &app.ai_status()).map_err(io)
+        }
+        ("GET" | "HEAD", "/api/assets") => {
+            let ws = app.ws()?;
+            let list: Vec<Value> = crate::scout::load_assets(&ws.root)
+                .iter()
+                .map(|a| {
+                    let mut v = a.to_json();
+                    v["suggested"] = json!(a.suggested_name());
+                    v
+                })
+                .collect();
+            send_json(stream, head, 200, &json!({"assets": list})).map_err(io)
+        }
+        ("POST", "/api/assets/scan") => {
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let list = ws.scan_assets()?;
+            send_json(stream, false, 200, &json!({"count": list.len()})).map_err(io)
+        }
+        ("POST", "/api/props") => {
+            let body = req.json()?;
+            let name = body.get("name").and_then(Value::as_str).unwrap_or("").trim().to_string();
+            let asset = body.get("asset").and_then(Value::as_str).unwrap_or("").trim().to_string();
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.add_prop(&name, &asset, None, None)?;
+            send_json(stream, false, 200, &json!({"added": name})).map_err(io)
+        }
+        ("POST", "/api/props/remove") => {
+            let body = req.json()?;
+            let name = body.get("name").and_then(Value::as_str).unwrap_or("").to_string();
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.remove_prop(&name)?;
+            send_json(stream, false, 200, &json!({"removed": name})).map_err(io)
+        }
+        ("POST", "/api/scout") => {
+            let body = req.json()?;
+            let only: Vec<String> = body
+                .get("anchors")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let idx = ws.take_scout(&only)?;
+            send_json(stream, false, 200, &idx).map_err(io)
         }
         ("POST", "/api/moodboard/generate") => {
             let body = req.json()?;

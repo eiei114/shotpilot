@@ -454,6 +454,49 @@ def run_scan(job):
     return {"anchors": anchors}
 
 
+def _bounds_size(asset):
+    for fn in ("get_bounds", "get_imported_bounds"):
+        f = getattr(asset, fn, None)
+        if f is None:
+            continue
+        try:
+            b = f()
+            e = b.box_extent
+            size = [round(2 * e.x, 1), round(2 * e.y, 1), round(2 * e.z, 1)]
+            if all(v > 0.5 for v in size):
+                return size
+        except Exception:
+            continue
+    return None
+
+
+def run_assets(job):
+    """Static and skeletal meshes under /Game with their size, for the props catalogue."""
+    reg = unreal.AssetRegistryHelpers.get_asset_registry()
+    skip = (job["project"].get("content_root") or "/Game/Shotpilot").rstrip("/")
+    limit = int(job.get("limit", 400))
+    out = []
+    for cls, kind in (("StaticMesh", "static"), ("SkeletalMesh", "skeletal")):
+        try:
+            flt = unreal.ARFilter(class_paths=[unreal.TopLevelAssetPath("/Script/Engine", cls)],
+                                  package_paths=["/Game"], recursive_paths=True)
+        except Exception:  # older engines
+            flt = unreal.ARFilter(class_names=[cls], package_paths=["/Game"], recursive_paths=True)
+        for ad in reg.get_assets(flt):
+            path = str(ad.package_name)
+            if path.startswith(skip + "/") or path.startswith("/Game/ShotpilotTest/"):
+                continue
+            entry = {"asset": path, "kind": kind, "size": None}
+            if len(out) < limit:
+                try:
+                    entry["size"] = _bounds_size(unreal.load_asset(path))
+                except Exception as e:
+                    warn("bounds of %s: %s" % (path, e))
+            out.append(entry)
+    log("assets: %d meshes" % len(out))
+    return {"assets": out}
+
+
 # ------------------------------------------------------------------ render (async, full editor)
 
 
@@ -616,7 +659,7 @@ def main():
         if kind == "render":
             run_render(job)  # writes its own result asynchronously
             return
-        res = {"build": run_build, "pull": run_pull, "scan": run_scan}[kind](job)
+        res = {"build": run_build, "pull": run_pull, "scan": run_scan, "assets": run_assets}[kind](job)
         write_result(res)
     except Exception:
         write_result({"fatal": traceback.format_exc()})
