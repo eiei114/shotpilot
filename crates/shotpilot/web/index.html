@@ -138,6 +138,13 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .stage-btn.warn .no { background: var(--stale); border-color: var(--stale); color: #241900; }
 .stage-btn.bad .no { background: var(--err); border-color: var(--err); color: #fff; }
 
+/* the next step, one at a time */
+#next { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--line); background: var(--soft); font-size: 12.5px; }
+#next .lbl { color: var(--muted); font-weight: 600; white-space: nowrap; }
+#next .what { font-weight: 600; }
+#next .why { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+#next .btn { padding: 4px 12px; }
+
 /* findings (shot check) */
 #findings { border-bottom: 1px solid var(--line); padding: 6px 12px; display: grid; gap: 6px; max-height: 128px; overflow: auto; background: var(--card); }
 .find { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 8px; align-items: start; font-size: 12px; }
@@ -457,6 +464,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
     </div>
+    <div id="next" hidden></div>
     <div id="findings" hidden></div>
     <div id="scoutpanel" class="panel main" hidden></div>
     <div id="briefpanel" class="panel main" hidden></div>
@@ -643,7 +651,7 @@ function draw() {
   for (const el of [$("quality"), $("mark"), document.querySelector(".seg:not(#finish-seg)")]) el.hidden = finishing;
   $("finish-seg").hidden = !finishing;
   $("mark").disabled = ui.tab !== "shot" || tweak;
-  drawStages(); drawFindings(); drawApprove();
+  drawStages(); drawNext(); drawFindings(); drawApprove();
   $("render").disabled = $("cut").disabled = !!ui.busy;
   $("send").disabled = !!ui.busy || !st.ai?.ready;
   $("ai-warn").hidden = !!st.ai?.ready;
@@ -782,6 +790,66 @@ function drawApprove() {
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
   b.title = p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます。画が変わる修正をすると自動で外れます";
   b.disabled = !!ui.busy || (!!p0 && a !== "approved");
+}
+
+// ------------------------------------------------------------------ the next step
+
+const skipKey = (k) => `sp-skip:${ui.status?.path || ""}:${k}`;
+const skipped = (k) => localStorage.getItem(skipKey(k)) === "1";
+
+/** The one step to take next, from the state of the project (the human presses it). */
+function nextStep() {
+  const st = ui.status; if (!st) return null;
+  const ai = st.ai || {};
+  const shots = st.shots || [];
+  const photos = Object.values(st.scout || {}).reduce((a, v) => a + v.length, 0);
+  const b = st.brief || {};
+  const p0 = findings().filter((f) => f.severity === "P0");
+  const base = st.qualities[0];
+  const unapproved = shots.filter((x) => x.approval !== "approved");
+  const approved = shots.filter((x) => x.approval === "approved");
+  if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
+  if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
+  if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
+  if (!(b.images || []).length && !skipped("mood")) return { stage: "brief", what: "ムードボードを作る", why: "ロケハン写真を下敷きに、光と空気感だけを変えた参照画を作ります（任意）", act: "mood", skip: "mood", need: ai.image_active ? null : "画像の生成先（Codex か OpenAI キー）が未設定です" };
+  const needAi = ai.ready ? null : "Claude が未接続です";
+  if (!shots.length) return { stage: "structure", what: "Claude に構成を組ませる", why: "ステージ・ブリーフ・ムードボード・ロケハン写真を渡して組ませます", act: "plan", need: needAi };
+  const planned = (ui.log || []).some((e) => e.action === "plan");
+  if (!planned && !approved.length && !skipped("plan")) return { stage: "structure", what: "Claude に構成を組み直させる", why: "いまのショットは手書きです。ステージとブリーフから組み直せます（置き換え。任意）", act: "plan", skip: "plan", need: needAi };
+  if (p0.length) return { stage: "structure", what: `ショット検査の P0 を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
+  const notShot = shots.filter((x) => !st.qualities.some((q) => x.qualities[q] === "fresh"));
+  if (notShot.length) return { stage: "framing", what: `${base} で撮る（${notShot.length} 本）`, why: "一番安い品質で、構図を確かめられるようにします", act: "render", quality: base };
+  if (unapproved.length) return { stage: "framing", what: `構図を承認する（残り ${unapproved.length}）`, why: `${unapproved[0].id} から。画が変わる修正をすると承認は外れます`, act: "goto", shot: unapproved[0].id };
+  const finalStale = approved.filter((x) => x.qualities.final !== "fresh");
+  if (finalStale.length) return { stage: "capture", what: `承認済みを final で撮る（${finalStale.length} 本）`, why: "変わったショットだけを撮り、ほかは前の take を使います", act: "final" };
+  if (!st.cut) return { stage: "finish", what: "Cut でつなぐ", why: "take をショット順につなぎ、BGM と SE があれば載せます", act: "cut" };
+  return { stage: "finish", what: "仕上げを確認する", why: "映像とサウンドチェックを見て、気になるところだけ直します", act: "goto" };
+}
+
+function drawNext() {
+  const el = $("next"), n = nextStep();
+  el.hidden = !n || !!ui.busy;
+  if (el.hidden) return;
+  const stageName = { scout: "ロケハン", brief: "ブリーフ", structure: "構成", framing: "構図", capture: "撮影", finish: "仕上げ" }[n.stage];
+  const here = STAGE_OF[ui.tab] === n.stage;
+  const label = n.act === "goto" ? (here ? "" : `${stageName}へ →`) : "実行";
+  el.innerHTML = `<span class="lbl">次: ${esc(stageName)}</span><span class="what">${esc(n.what)}</span><span class="why" title="${esc(n.why)}">${esc(n.need || n.why)}</span>
+    ${label ? `<button class="btn dark" data-next${n.need ? " disabled" : ""}>${esc(label)}</button>` : ""}
+    ${n.skip ? `<button class="btn" data-next-skip="${esc(n.skip)}">飛ばす</button>` : ""}`;
+  drawNext.step = n;
+}
+
+async function runNext() {
+  const n = drawNext.step; if (!n || ui.busy) return;
+  goStage(n.stage === "framing" ? "framing" : n.stage);
+  if (n.shot) selectShot(n.shot);
+  if (n.act === "scout") scoutAction("scout", {}, "/api/scout", "scout");
+  else if (n.act === "stage") scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
+  else if (n.act === "mood") generateMood();
+  else if (n.act === "plan") planShots();
+  else if (n.act === "render") render(n.quality);
+  else if (n.act === "final") render("final", ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id));
+  else if (n.act === "cut") cut();
 }
 
 // ------------------------------------------------------------------ stage 0: location scouting
@@ -1957,6 +2025,11 @@ for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventL
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { ui.tab = ui.fin = b.dataset.fin; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
+$("next").addEventListener("click", (e) => {
+  if (e.target.closest("[data-next]")) runNext();
+  const sk = e.target.closest("[data-next-skip]");
+  if (sk) { localStorage.setItem(skipKey(sk.dataset.nextSkip), "1"); draw(); }
+});
 $("scoutpanel").addEventListener("click", (e) => {
   const t = e.target.closest("[data-scout],[data-stage-read],[data-assets-scan],[data-prop-add],[data-prop-rm]");
   if (!t) return;
