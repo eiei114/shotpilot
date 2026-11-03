@@ -204,6 +204,13 @@ impl State {
         }
     }
 
+    /// Merge more detail into the newest history entry (e.g. Claude's summary of an edit).
+    pub fn annotate_last(&mut self, extra: Map<String, Value>) {
+        if let Some(Value::Object(last)) = self.data["history"].as_array_mut().and_then(|h| h.last_mut()) {
+            last.extend(extra);
+        }
+    }
+
     pub fn history(&self) -> Vec<Value> {
         self.data["history"].as_array().cloned().unwrap_or_default()
     }

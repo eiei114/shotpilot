@@ -101,6 +101,11 @@ pub trait Claude {
 }
 
 pub fn request(system: &str, user: &str, schema: Value) -> Value {
+    request_with(system, json!(user), schema)
+}
+
+/// Like [`request`], with the user turn given as content (a string or content blocks).
+fn request_with(system: &str, user: Value, schema: Value) -> Value {
     json!({
         "model": model_name(),
         "max_tokens": 64000,
@@ -114,8 +119,8 @@ pub fn request(system: &str, user: &str, schema: Value) -> Value {
     })
 }
 
-fn ask_json(claude: &dyn Claude, system: &str, user: &str, schema: Value) -> Result<Value> {
-    let text = claude.ask(&request(system, user, schema))?;
+fn ask_json(claude: &dyn Claude, system: &str, user: Value, schema: Value) -> Result<Value> {
+    let text = claude.ask(&request_with(system, user, schema))?;
     serde_json::from_str(&text).map_err(|e| Error::user(format!("Claude returned malformed JSON: {e}")))
 }
 
@@ -128,6 +133,15 @@ pub struct HttpClaude {
 }
 
 impl HttpClaude {
+    /// A client with this API key (base URL still follows ANTHROPIC_BASE_URL).
+    pub fn with_key(key: String) -> HttpClaude {
+        let base_url = std::env::var("ANTHROPIC_BASE_URL")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "https://api.anthropic.com".into());
+        HttpClaude { base_url, auth: ("x-api-key".into(), key), oauth: false }
+    }
+
     pub fn from_env() -> Result<HttpClaude> {
         let base_url = std::env::var("ANTHROPIC_BASE_URL")
             .ok()
@@ -285,7 +299,7 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
          Write the shot list. Write `purpose` and `notes` in the same language as the pitch.",
         anchors_list(defn)
     ));
-    let out = ask_json(claude, &system, &user, plan_schema())?;
+    let out = ask_json(claude, &system, json!(user), plan_schema())?;
     let shots: Vec<Value> = out["shots"]
         .as_array()
         .ok_or_else(|| Error::user("Claude returned no shots"))?
@@ -364,6 +378,34 @@ fn validate_shots(defn: &Definition, shots: &[Value]) -> Result<()> {
 
 // --------------------------------------------------------------------------- revise
 
+/// What the director is pointing at when giving a note from the app: a line of context
+/// (shot, frame, marked region) and optionally the rendered frame itself.
+#[derive(Debug, Clone, Default)]
+pub struct Pointer {
+    pub context: Option<String>,
+    /// (media type, file bytes) of the frame on screen.
+    pub image: Option<(String, Vec<u8>)>,
+}
+
+/// Images above this are sent as text only (the API caps one image at 5 MB after base64).
+pub const MAX_IMAGE_BYTES: usize = 3_700_000;
+
+pub fn base64(bytes: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for c in bytes.chunks(3) {
+        let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
+        for i in 0..4 {
+            if i <= c.len() {
+                out.push(T[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
 pub struct Revision {
     /// Replacement shots by id, in the order Claude returned them.
     pub edits: Vec<(String, Value)>,
@@ -373,6 +415,12 @@ pub struct Revision {
 
 /// Nothing is written here; the caller applies the revision through the workspace.
 pub fn revise(defn: &Definition, instruction: &str, scope: Option<&[String]>, claude: &dyn Claude) -> Result<Revision> {
+    revise_at(defn, instruction, scope, &Pointer::default(), claude)
+}
+
+/// [`revise`] with what the director is looking at in the app.
+pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>, pointer: &Pointer,
+                 claude: &dyn Claude) -> Result<Revision> {
     let ids = defn.shot_ids();
     if let Some(scope) = scope {
         let unknown: Vec<&String> = scope.iter().filter(|s| !ids.contains(s)).collect();
@@ -397,7 +445,9 @@ pub fn revise(defn: &Definition, instruction: &str, scope: Option<&[String]>, cl
          editorial `beat` ({}); keep it unless the note changes the shot's role.\n\n{CONVENTIONS}\n\
          A shot's camera can be either `anchor`+`offset` (+ optional `move`, `look_at`, `lens`), or \
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
-         {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}.",
+         {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}.
+
+         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Judge the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.",
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );
@@ -410,7 +460,15 @@ pub fn revise(defn: &Definition, instruction: &str, scope: Option<&[String]>, cl
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
         lines.join("\n")
     );
-    let out = ask_json(claude, &system, &user, revise_schema())?;
+    let context = pointer.context.as_deref().map(|c| format!("
+
+Where the director is pointing: {c}")).unwrap_or_default();
+    let mut content = Vec::new();
+    if let Some((media_type, bytes)) = &pointer.image {
+        content.push(json!({"type": "image", "source": {"type": "base64", "media_type": media_type, "data": base64(bytes)}}));
+    }
+    content.push(json!({"type": "text", "text": format!("{user}{context}")}));
+    let out = ask_json(claude, &system, Value::Array(content), revise_schema())?;
 
     let mut edits: Vec<(String, Value)> = Vec::new();
     for e in out["edits"].as_array().into_iter().flatten() {
@@ -469,6 +527,13 @@ pub fn revise(defn: &Definition, instruction: &str, scope: Option<&[String]>, cl
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn base64_matches_rfc4648() {
+        for (raw, enc) in [("", ""), ("f", "Zg=="), ("fo", "Zm8="), ("foo", "Zm9v"), ("foob", "Zm9vYg=="), ("foobar", "Zm9vYmFy")] {
+            assert_eq!(base64(raw.as_bytes()), enc);
+        }
+    }
 
     #[test]
     fn stream_keeps_only_text_after_fallback() {

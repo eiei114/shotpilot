@@ -3,6 +3,7 @@
 //! Define shots in `shots.yaml`; only the shots whose pixels changed are re-rendered.
 
 pub mod ai;
+pub mod connect;
 pub mod cut;
 pub mod engines;
 pub mod error;

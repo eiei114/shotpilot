@@ -32,7 +32,7 @@ shotpilot cut                     # 既存 take を連結する（レンダは�
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければフォルダを選ぶ
 ```
 
-`cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は `ANTHROPIC_API_KEY` を使う（モデルは `SHOTPILOT_MODEL` で上書きできる）。
+`cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は、ログイン済みの Claude Code（`claude` コマンド）か API キー（アプリの設定、または `ANTHROPIC_API_KEY`）で Claude を呼ぶ（モデルは `SHOTPILOT_MODEL` で上書きできる）。
 
 ## 構成
 
@@ -47,6 +47,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
   src/cut.rs          take をショット順に連結してティザーにする
   src/ai.rs           Claude によるショットリスト作成（plan）と部分修正（revise）。Messages API を直接呼ぶ
+  src/connect.rs      Claude への接続。既定はログイン済みの Claude Code（`claude -p`）、ほかに API キー
   src/geometry.rs     UE 座標系のカメラ計算
   src/yamlio.rs       コメントを保持する YAML 編集（行単位の差し替え + 再パースで検証）
   src/templates.rs    shots.yaml の雛形
