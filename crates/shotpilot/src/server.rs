@@ -52,7 +52,7 @@ pub struct App {
     images: ImageFactory,
     /// Where the connection settings live; None = read-only defaults.
     settings_path: Option<PathBuf>,
-    /// The global sound library (D-25); its `sounds/` folder sits under this.
+    /// The global sound library (D-26); its `sounds/` folder sits under this.
     library_root: Option<PathBuf>,
 }
 

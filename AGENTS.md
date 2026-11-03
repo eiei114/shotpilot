@@ -60,6 +60,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/finish.rs       仕上げ: 帯・タイトル・エンドカード・字幕・つなぎ（黒/白）を ffmpeg のフィルタにする
   src/sound.rs        BGM と SE（`audio:` と各ショットの `sfx:`）の検証・配置・ミックス。cut/sound/ にキャッシュする
   src/soundcheck.rs   ミックスの検証。earshot の critique のうち、モデルを使わない部分の移植（MIT）
+  src/library.rs      音源ライブラリ（プロジェクト外、D-26）の検索と、プロジェクトの audio/lib/ への取り込み
   src/ai.rs           Claude によるショットリスト作成（plan）と部分修正（revise）。Messages API を直接呼ぶ
   src/connect.rs      Claude への接続。既定はログイン済みの Claude Code（`claude -p`）、ほかに API キー
   src/geometry.rs     UE 座標系のカメラ計算

@@ -1,4 +1,4 @@
-//! The global sound library shared by every project (D-25).
+//! The global sound library shared by every project (D-26).
 //!
 //! It lives outside any project, at `~/Documents/ShotpilotLibrary` (or `$SHOTPILOT_LIBRARY`):
 //!
