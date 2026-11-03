@@ -5,20 +5,57 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 31,
+    "adventure": 10
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=rJvxYqaF5_8",
     "channel": "XBOX",
-    "uploadDate": null,
+    "uploadDate": "20261030",
     "viewCount": 46937,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "Xbox",
+      "Xbox One",
+      "Xbox Series X",
+      "Xbox Series S",
+      "ASYLUM",
+      "ASYLUM game",
+      "ASYLUM launch trailer",
+      "ASYLUM horror game",
+      "ASYLUM psychological horror",
+      "ASYLUM gameplay",
+      "ASYLUM video game",
+      "ASYLUM 2026",
+      "psychological horror game",
+      "horror game",
+      "horror adventure game",
+      "Hanwell Mental Institute",
+      "psychological horror",
+      "indie horror game",
+      "mystery horror game",
+      "dark horror game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

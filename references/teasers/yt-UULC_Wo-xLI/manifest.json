@@ -2,23 +2,50 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-UULC_Wo-xLI",
   "name": "『魔法少女ノ因習村』 AnimeJapan2026出展 ティザーPV",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 16
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=UULC_Wo-xLI",
     "channel": "GOOD SMILE CHANNEL and Acacia",
-    "uploadDate": null,
+    "uploadDate": "20260328",
     "viewCount": 482049,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "グッドスマイルカンパニー",
+      "Good Smile Company",
+      "フィギュア",
+      "figure",
+      "GSC",
+      "魔法少女ノ魔女裁判",
+      "魔法少女ノ因習村",
+      "まのさば",
+      "まのむら",
+      "アカシア",
+      "Acacia"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -2,23 +2,61 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-gLihxsmI_OU",
   "name": "Secret Level - Teaser Trailer | Prime Video",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1,
+    "rpg": 7,
+    "action": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=gLihxsmI_OU",
     "channel": "Prime Video",
-    "uploadDate": null,
+    "uploadDate": "20240820",
     "viewCount": 4508924,
     "foundBy": "first teaser trailer game",
+    "tags": [
+      "secret level official teaser",
+      "secret level teaser",
+      "secret level 2024",
+      "official teaser",
+      "teaser",
+      "teaser 2024",
+      "new amazon teaser",
+      "secret level prime video",
+      "prime video secret level",
+      "secret level",
+      "action",
+      "fantasy",
+      "action series",
+      "fantasy series",
+      "action show",
+      "prime video",
+      "amazon prime video",
+      "amazon prime",
+      "prime",
+      "amazon"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

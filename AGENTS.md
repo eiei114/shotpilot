@@ -32,6 +32,7 @@ shotpilot check                   # ショット検査（P0 は承認を止め�
 shotpilot approve s03             # 構図を承認（画が変わると外れる）
 shotpilot brief genre=ホラー       # brief: を見る・書く
 shotpilot moodboard               # ブリーフからムードボードを4枚生成（Codex か OpenAI キー）
+shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
 shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
@@ -53,7 +54,9 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/sync.rs         Sequencer → shots.yaml の逆同期（base / engine / ours の三方比較）
   src/scout.rs        工程0「ロケハン」: アセットの棚卸し、props への追加、アンカーのロケハン写真
   src/moodboard.rs    ブリーフのムードボード（参照画像の保存、OpenAI での生成、plan に渡す画像ブロック）
+  src/produce.rs      初回の一気通し（D-28）。足りない下ごしらえを埋め、plan を1回、最安の品質で撮って仕上げ込みで Cut
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
+  src/refs.rs         実測リファレンス（references/craft/ と genres/<id>/ を埋め込み）。plan に渡す文と、骨格の hook・title の長さ
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
   src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せ、仕上げがあれば焼き込む）
@@ -88,6 +91,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
+- `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。
 - ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。
 - `build` は、Sequencer 側で人間が加えた変更を黙って上書きしない（`--force` のときだけ上書きする）。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。

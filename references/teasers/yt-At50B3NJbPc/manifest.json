@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=At50B3NJbPc",
     "channel": "BLACKPINK",
-    "uploadDate": null,
+    "uploadDate": "20200621",
     "viewCount": 31476969,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "YG Entertainment",
+      "YG",
+      "와이지",
+      "K-pop",
+      "BLACKPINK",
+      "블랙핑크",
+      "블핑",
+      "제니",
+      "로제",
+      "리사",
+      "지수",
+      "Lisa",
+      "Jisoo",
+      "Jennie",
+      "Rosé",
+      "BLINK",
+      "블링크",
+      "How You Like That",
+      "BLACKPINK How You Like That",
+      "블랙핑크 How You Like That"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

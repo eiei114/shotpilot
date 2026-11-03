@@ -5,20 +5,55 @@
   "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=crDUx5suLm4",
     "channel": "Mafia Game",
-    "uploadDate": null,
+    "uploadDate": "20240820",
     "viewCount": 1456132,
     "foundBy": "action game teaser trailer",
+    "tags": [
+      "Mafia Old Country",
+      "Mafia The Old Country",
+      "The Old Country",
+      "Old Country",
+      "Mafia",
+      "Hangar 13",
+      "Mob",
+      "Sicily",
+      "Crime",
+      "Gangster",
+      "Underworld",
+      "Gamescom",
+      "Gamescom 2024",
+      "tease",
+      "teaser trailer",
+      "gamescom announcements",
+      "gamescom reveals",
+      "gamescom trailers",
+      "hangar 13 games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

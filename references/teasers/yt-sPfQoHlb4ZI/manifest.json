@@ -2,23 +2,62 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-sPfQoHlb4ZI",
   "name": "『Shadow mate ～小さな竜と適合者～』 世界観紹介ティザー①",
-  "category": "general",
+  "category": "adventure",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4,
+    "rpg": 4,
+    "action": 4,
+    "adventure": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=sPfQoHlb4ZI",
     "channel": "Shadowmate_dev",
-    "uploadDate": null,
+    "uploadDate": "20230422",
     "viewCount": 1312,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "gamedev",
+      "indiedev",
+      "Maya",
+      "UnrealEngine",
+      "UE4",
+      "UE5",
+      "インディーゲーム",
+      "ゲーム開発",
+      "shadowmate",
+      "シャドウメイト",
+      "シャドーメイト",
+      "Shadowmate",
+      "SHADOWMATE",
+      "indie",
+      "indiergame",
+      "action",
+      "horror",
+      "adventure",
+      "アクション",
+      "ホラー"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

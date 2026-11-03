@@ -5,20 +5,52 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Q8lJRR7brq0",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20200715",
     "viewCount": 572999,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "PC",
+      "IGN",
+      "PS4",
+      "Sports",
+      "Konami",
+      "Trailer",
+      "PES 2022",
+      "Xbox One",
+      "PES 2020",
+      "eFootball PES 2022 Teaser",
+      "Pro Evolution Soccer 2022 Teaser",
+      "Pro Evolution Soccer Teaser Trailer",
+      "eFootball PES 2022 Teaser Trailer",
+      "PES 2022 Teaser",
+      "PES 2022 Trailer",
+      "PES Lionel Messi",
+      "Next Gen PES",
+      "Next Gen Football"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

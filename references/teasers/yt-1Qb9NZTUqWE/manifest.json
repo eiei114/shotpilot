@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-1Qb9NZTUqWE",
   "name": "Buddy: The Game Exclusive Teaser Trailer",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3,
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=1Qb9NZTUqWE",
@@ -12,6 +17,28 @@
     "uploadDate": "20260820",
     "viewCount": 631474,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "BoulderLight Pictures",
+      "Buddy [2026]",
+      "Dark Comedy",
+      "Horror",
+      "Low Spark Films",
+      "Roadside Attractions",
+      "Saban Films",
+      "Theater",
+      "Buddy: The Game",
+      "Buddy: The Game game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

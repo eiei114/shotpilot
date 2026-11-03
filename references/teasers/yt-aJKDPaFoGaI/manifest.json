@@ -2,23 +2,52 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-aJKDPaFoGaI",
   "name": "INARI - Official Announcement Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 1,
+    "action": 7,
+    "adventure": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=aJKDPaFoGaI",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20260107",
     "viewCount": 517254,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "1HP STUDIO",
+      "INARI",
+      "indie game",
+      "game trailer",
+      "announcemnet",
+      "pixel art",
+      "pixel art game",
+      "action",
+      "platformer",
+      "ninja",
+      "action adventure"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

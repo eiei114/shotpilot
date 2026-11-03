@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=I0YWGgZBiYc",
@@ -12,6 +14,7 @@
     "uploadDate": null,
     "viewCount": 5655036,
     "foundBy": "official teaser trailer game 2026",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

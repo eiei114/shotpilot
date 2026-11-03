@@ -4,21 +4,57 @@
   "name": "The Lost Wild - Official Gameplay Trailer | State of Play 2026",
   "category": "general",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=RuYcdIHu4L0",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260602",
     "viewCount": 2149957,
     "foundBy": "official teaser trailer game 2026",
+    "tags": [
+      "ign",
+      "playstation showcase",
+      "playstation showcase 2026",
+      "ps5 showcase",
+      "state of play",
+      "sony state of play",
+      "playstation state of play",
+      "ps5",
+      "ps5 gameplay",
+      "game trailer",
+      "game trailers",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2026"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

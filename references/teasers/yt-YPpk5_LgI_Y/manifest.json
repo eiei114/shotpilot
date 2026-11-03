@@ -2,23 +2,48 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-YPpk5_LgI_Y",
   "name": "GRINDWORM - Official Gameplay Teaser Trailer",
-  "category": "general",
+  "category": "horror",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=YPpk5_LgI_Y",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20260602",
     "viewCount": 42707,
     "foundBy": "indie game teaser trailer",
+    "tags": [
+      "Indie Games Hub",
+      "Snail Bite",
+      "GRINDWORM",
+      "indie game",
+      "game trailer",
+      "gameplay",
+      "horror",
+      "psychological horror",
+      "mining"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

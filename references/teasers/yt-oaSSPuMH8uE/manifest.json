@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-oaSSPuMH8uE",
   "name": "『DEATH STRANDING ISOLATIONS』｜ティザー映像｜ゲームクリエイター・小島秀夫が手掛けた大ヒットゲームがアニメーション・シリーズとして始動｜Disney+ (ディズニープラス）",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 5,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=oaSSPuMH8uE",
     "channel": "ディズニープラス",
-    "uploadDate": null,
+    "uploadDate": "20261030",
     "viewCount": 110814,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "DEATH STRANDING ISOLATIONS",
+      "Death Stranding Isolations",
+      "デス・ストランディング アイソレーションズ",
+      "デスストランディング",
+      "DEATH STRANDING",
+      "デススト",
+      "小島秀夫",
+      "Hideo Kojima",
+      "小島プロダクション",
+      "佐野誉幸",
+      "E&H production",
+      "手描きアニメーション",
+      "アニメーションシリーズ",
+      "アニメシリーズ",
+      "ゲーム原作アニメ",
+      "ゲーム原作",
+      "サム・ポーター・ブリッジズ",
+      "サム",
+      "ブリッジズ",
+      "カイラル通信"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

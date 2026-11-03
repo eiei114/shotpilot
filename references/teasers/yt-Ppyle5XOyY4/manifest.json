@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Ppyle5XOyY4",
@@ -12,6 +14,23 @@
     "uploadDate": "20210527",
     "viewCount": 3048610,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "IGN",
+      "Trailer",
+      "sonic",
+      "sonic trailer",
+      "sonic team",
+      "team sonic",
+      "sonic generations",
+      "3d sonic",
+      "new sonic game",
+      "new sonic trailer",
+      "sonic teaser",
+      "teaser",
+      "official",
+      "summer of gaming",
+      "e3"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

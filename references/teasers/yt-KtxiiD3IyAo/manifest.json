@@ -2,23 +2,61 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-KtxiiD3IyAo",
   "name": "Shrek 2 Remastered - Announce Trailer | PS5 Games",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 2,
+    "action": 5,
+    "adventure": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=KtxiiD3IyAo",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20261020",
     "viewCount": 3311598,
     "foundBy": "game teaser 30 seconds",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "shrek",
+      "shrek 2",
+      "shrek 2 remastered",
+      "shrek 2 movie",
+      "shrek 2 game",
+      "aspyr",
+      "dreamworks",
+      "nbcu",
+      "nbcuniversal",
+      "puss n boots",
+      "donkey",
+      "dragon",
+      "far far away",
+      "three little pigs",
+      "three blind mice"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

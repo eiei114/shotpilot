@@ -3,8 +3,10 @@
 //! Quality comes from what the planner is given, not from asking it to look at its own
 //! output afterwards (no self-review, no checklist, no repair rounds; see D-22). This
 //! module turns the brief and the craft rules into a write-time spec:
-//! - a skeleton: how many shots, which beat each has, a time budget and a shot size;
+//! - a skeleton: how many shots, which beat each has, a time budget and a shot size
+//!   (hook and title lengths measured from published teasers of the genre, see refs.rs);
 //! - the craft rules (the same table the shot check lints with, so they cannot drift);
+//! - the measured references: the all-genre craft and the brief's genre package (refs.rs);
 //! - a framing table: camera distance per shot size and lens, from the sensor geometry.
 //!
 //! Code then normalizes what comes back (beat order, duration range, runtime); the shot
@@ -36,9 +38,11 @@ fn half(v: f64) -> f64 {
 pub fn skeleton(brief: &BriefCfg, target: f64, n_shots: Option<usize>) -> Vec<Slot> {
     let target = if target > 0.0 { target } else { 45.0 };
     let n = n_shots.unwrap_or_else(|| default_shots(target)).max(4);
+    // hook and title lengths come from published teasers of the brief's genre (refs.rs)
+    let pace = crate::refs::pace(brief);
     let (hook_lo, hook_hi) = if brief.is_gameplay() { (1.5, 3.0) } else { (2.0, 5.0) };
-    let hook = half((0.12 * target).clamp(hook_lo, hook_hi));
-    let title = half((0.15 * target).clamp(3.0, 6.0));
+    let hook = half(pace.hook.clamp(hook_lo, hook_hi));
+    let title = half(pace.title.clamp(3.0, 6.0).min((0.2 * target).max(3.0)));
     let middle = n - 2;
     let establish = ((middle as f64 * 0.4).round() as usize).clamp(1, middle - 1);
     let escalate = middle - establish;
@@ -155,11 +159,27 @@ pub fn skeleton_text(slots: &[Slot]) -> String {
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n\n## Skeleton\n{}\n\n## Craft rules\n{}\n\n## Framing\n{}",
+        "## Brief\n{}\n\n## Skeleton\n{}\n\n## Craft rules\n{}\n\n{}\n## Framing\n{}",
         brief_text(&defn.brief),
         skeleton_text(slots),
         rules_text(),
+        crate::refs::planner_text(&defn.brief),
         framing_table(defn)
+    )
+}
+
+/// What the planner is told about the text and cuts burned in at the cut (D-25).
+pub fn finish_text(defn: &Definition) -> String {
+    format!(
+        "\n## Finish (burned in when the cut is assembled; never re-renders)\n\
+         - `caption`: at most 3 in the whole teaser, each short (Japanese up to ~15 characters, English up to ~6 words), \
+           so the teaser reads with the sound off. Leave it empty on the hook and the title shot.\n\
+         - `transition`: mostly `cut`. `dip` (through black) before the title or for a jump in time; `flash` (through \
+           white) only for one jolt at most.\n\
+         - `title_card`: the game's title{}.\n\
+         - `end_card`: only facts the brief states (platforms, release window, a call to action written there). \
+           Never invent a date or a platform; with none given, leave it empty.\n",
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
     )
 }
 

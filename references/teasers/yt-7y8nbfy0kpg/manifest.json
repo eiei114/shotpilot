@@ -2,23 +2,50 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-7y8nbfy0kpg",
   "name": "C-Beams Game Reveal Teaser Trailer",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 11,
+    "rpg": 1,
+    "action": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=7y8nbfy0kpg",
     "channel": "LevelCapGaming",
-    "uploadDate": null,
+    "uploadDate": "20250114",
     "viewCount": 148359,
     "foundBy": "game reveal teaser",
+    "tags": [
+      "C-Beams",
+      "CBeams",
+      "Sea Beams",
+      "space game",
+      "the expanse game",
+      "space sim",
+      "realistic space flight",
+      "space combat",
+      "hard sci-fi game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

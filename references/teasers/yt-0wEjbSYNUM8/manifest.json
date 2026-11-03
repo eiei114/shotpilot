@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-0wEjbSYNUM8",
   "name": "Tomb Raider: Legacy of Atlantis - Release Date Trailer | PS5 Games",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 4,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=0wEjbSYNUM8",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20260602",
     "viewCount": 2438255,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "tomb raider",
+      "lara croft",
+      "legacy of atlantis",
+      "tomb raider 2027",
+      "official release date trailer",
+      "tomb raider remake",
+      "atlantis",
+      "tomb raider preorder",
+      "most anticipated games 2027",
+      "new games 2027",
+      "release date revealed",
+      "ps5 games 2027",
+      "action adventure 2027",
+      "third person action game",
+      "single player games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

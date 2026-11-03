@@ -2,23 +2,55 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-1zBvt-NWKIk",
   "name": "Teaser Demo Steam Next Fest Souno's Curse | PixelHeart",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2,
+    "adventure": 8
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=1zBvt-NWKIk",
     "channel": "PixelHeart",
-    "uploadDate": null,
+    "uploadDate": "20241014",
     "viewCount": 1175,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "Action",
+      "platformer",
+      "wishlist",
+      "steam",
+      "videogame",
+      "indiegame",
+      "metroidvania",
+      "pixelheart",
+      "Souno's Curse",
+      "metroidvania game",
+      "Kiro Team",
+      "Pixel Heart",
+      "PixelHeart",
+      "Steam Next Fest",
+      "Steam Neo Fest"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

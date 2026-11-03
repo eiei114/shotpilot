@@ -2,7 +2,11 @@
 //!
 //! The desktop app (crates/shotpilot-app) opens one window on this server. It binds to
 //! loopback, answers only loopback Host/Origin headers, and serves files only from the
-//! project's render/, cut/ and audio/ folders.
+//! project's render/, cut/ and audio/ folders (and, for the home's cards, the render/
+//! folders of the projects in the recent list).
+//!
+//! The server starts on the home (`/home`) or on a project. One project is open at a
+//! time; the home switches it, and `/` is the studio for whichever is open.
 //!
 //! shots.yaml and .shotpilot/state.json stay the source of truth: every request opens a
 //! fresh Workspace, so edits made from the CLI or a text editor show up immediately.
@@ -13,7 +17,7 @@
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 use std::time::UNIX_EPOCH;
 
 use serde_json::{json, Map, Value};
@@ -24,11 +28,13 @@ use crate::bail;
 use crate::error::{Error, Kind, Result};
 use crate::fingerprint as fp;
 use crate::library::{self, Library};
+use crate::projects::{self, NewProject, Recents};
 use crate::sound;
 pub use crate::workspace::field_changes;
 use crate::workspace::Workspace;
 
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
+pub const HOME_HTML: &str = include_str!("../web/home.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
 const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout"];
 /// Loopback only; large enough for a mood-board image sent as base64.
@@ -45,8 +51,22 @@ pub fn default_claude() -> ClaudeFactory {
 /// Makes the image model for mood-board frames. Tests pass a fake.
 pub type ImageFactory = Box<dyn Fn(&Settings) -> Result<Box<dyn crate::moodboard::ImageGen>> + Send + Sync>;
 
+/// What the home asks the native side to pick.
+#[derive(Debug, Clone)]
+pub enum Pick {
+    /// A folder (to open a project, or to put a new one in).
+    Folder { title: String, start: Option<PathBuf> },
+    /// A .uproject file.
+    Uproject { start: Option<PathBuf> },
+}
+
+/// Shows a native file dialog. Only the desktop app has one; without it the home asks
+/// for paths as text.
+pub type Picker = Box<dyn Fn(Pick) -> Option<PathBuf> + Send + Sync>;
+
 pub struct App {
-    pub path: PathBuf,
+    /// The open project's shots.yaml; None while the home has nothing open.
+    current: RwLock<Option<PathBuf>>,
     lock: Mutex<()>,
     claude: ClaudeFactory,
     images: ImageFactory,
@@ -54,13 +74,43 @@ pub struct App {
     settings_path: Option<PathBuf>,
     /// The global sound library (D-26); its `sounds/` folder sits under this.
     library_root: Option<PathBuf>,
+    /// Projects opened before, for the home.
+    recents: Recents,
+    picker: Option<Picker>,
 }
 
 impl App {
-    pub fn new(shots_path: &Path, claude: ClaudeFactory, settings_path: Option<PathBuf>) -> Result<App> {
-        let ws = Workspace::open(shots_path)?; // fail fast on a broken definition
-        Ok(App { path: ws.path, lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen), settings_path,
-            library_root: library::default_root() })
+    pub fn new(shots_path: Option<&Path>, claude: ClaudeFactory, settings_path: Option<PathBuf>) -> Result<App> {
+        let current = match shots_path {
+            Some(p) => Some(Workspace::open(p)?.path), // fail fast on a broken definition
+            None => None,
+        };
+        Ok(App { current: RwLock::new(current), lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen),
+            settings_path, library_root: library::default_root(), recents: Recents::new(None), picker: None })
+    }
+
+    /// The open project's shots.yaml.
+    pub fn current(&self) -> Option<PathBuf> {
+        self.current.read().map(|g| g.clone()).unwrap_or_else(|p| p.into_inner().clone())
+    }
+
+    /// Open a project (a shots.yaml, or a folder with one) and put it at the top of the
+    /// recent list. A running operation keeps it from switching (409).
+    pub fn open(&self, path: &Path) -> Result<PathBuf> {
+        let shots = if path.is_dir() {
+            match projects::find_projects(path).as_slice() {
+                [one] => one.clone(),
+                [] => bail!("{} に shots.yaml がありません", path.display()),
+                _ => bail!("{} には shots.yaml が複数あります。どれかを選んでください", path.display()),
+            }
+        } else {
+            path.to_path_buf()
+        };
+        let ws = Workspace::open(&shots)?;
+        let _guard = self.mutate()?;
+        *self.current.write().unwrap_or_else(|p| p.into_inner()) = Some(ws.path.clone());
+        let _ = self.recents.touch(&ws.path); // a read-only config folder must not block opening
+        Ok(ws.path)
     }
 
     fn settings(&self) -> Settings {
@@ -87,7 +137,10 @@ impl App {
     }
 
     fn ws(&self) -> Result<Workspace> {
-        Workspace::open(&self.path)
+        match self.current() {
+            Some(p) => Workspace::open(p),
+            None => bail!("プロジェクトが開かれていません。ホームから開いてください"),
+        }
     }
 
     fn mutate(&self) -> Result<MutexGuard<'_, ()>> {
@@ -101,7 +154,24 @@ impl App {
     }
 
     fn root(&self) -> PathBuf {
-        self.path.parent().map(Path::to_path_buf).unwrap_or_default()
+        self.current().and_then(|p| p.parent().map(Path::to_path_buf)).unwrap_or_default()
+    }
+
+    /// A cover frame for a home card: an image under the render/ folder of the open
+    /// project or of one in the recent list.
+    fn cover_file(&self, path: &str) -> Option<PathBuf> {
+        let p = std::fs::canonicalize(percent_decode(path)).ok()?;
+        if !matches!(mime(&p), "image/png" | "image/jpeg" | "image/bmp") {
+            return None;
+        }
+        let roots = self.recents.list().into_iter().map(|r| r.path).chain(self.current());
+        for shots in roots {
+            let render = shots.parent().map(|r| r.join("render")).and_then(|r| std::fs::canonicalize(r).ok());
+            if render.is_some_and(|r| p.starts_with(r)) {
+                return p.is_file().then_some(p);
+            }
+        }
+        None
     }
 
     /// A served file under render/, cut/ or audio/, from a `/files/...` remainder.
@@ -132,10 +202,41 @@ impl Server {
 
     pub fn bind_with(shots_path: &Path, host: &str, port: u16, claude: ClaudeFactory, settings_path: Option<PathBuf>)
         -> Result<Server> {
+        Server::bind_opt(Some(shots_path), host, port, claude, settings_path)
+    }
+
+    /// Start on the home with no project open; the recent list is the user's.
+    pub fn bind_home(host: &str, port: u16) -> Result<Server> {
+        Ok(Server::bind_opt(None, host, port, default_claude(), Settings::default_path())?.with_recents(projects::default_path()))
+    }
+
+    pub fn bind_opt(shots_path: Option<&Path>, host: &str, port: u16, claude: ClaudeFactory, settings_path: Option<PathBuf>)
+        -> Result<Server> {
         let app = Arc::new(App::new(shots_path, claude, settings_path)?);
         let listener = TcpListener::bind((host, port))
             .map_err(|e| Error::user(format!("cannot listen on {host}:{port}: {e}")))?;
         Ok(Server { listener, app, bind_host: host.to_ascii_lowercase() })
+    }
+
+    /// Keep the recent-projects list in this file (None: remember nothing).
+    pub fn with_recents(mut self, file: Option<PathBuf>) -> Server {
+        if let Some(app) = Arc::get_mut(&mut self.app) {
+            app.recents = Recents::new(file);
+        }
+        self
+    }
+
+    /// Native file dialogs for the home (the desktop app).
+    pub fn with_picker(mut self, picker: Picker) -> Server {
+        if let Some(app) = Arc::get_mut(&mut self.app) {
+            app.picker = Some(picker);
+        }
+        self
+    }
+
+    /// Open a project before the window shows (a path given on the command line).
+    pub fn open(&self, path: &Path) -> Result<PathBuf> {
+        self.app.open(path)
     }
 
     /// Use another image model (tests).
@@ -241,6 +342,7 @@ fn read_request(stream: &TcpStream) -> std::io::Result<Option<Request>> {
 fn status_text(code: u16) -> &'static str {
     match code {
         200 => "OK",
+        302 => "Found",
         304 => "Not Modified",
         400 => "Bad Request",
         403 => "Forbidden",
@@ -376,7 +478,8 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         v["framing"] = crate::shotcheck::framing(&ws.defn, s).map(|f| f.to_json()).unwrap_or(Value::Null);
         shots.push(v);
     }
-    let total: f64 = resolved.iter().map(|s| s.duration).sum();
+    let timeline = timeline_json(&ws.defn, &resolved);
+    let total: f64 = timeline.last().map(|it| it["start"].as_f64().unwrap_or(0.0) + it["duration"].as_f64().unwrap_or(0.0)).unwrap_or(0.0);
     Ok(json!({
         "project": ws.defn.project.name,
         "engine": ws.defn.project.engine,
@@ -387,6 +490,8 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "qualities": qualities,
         "warnings": ws.structure_warnings()?,
         "checks": ws.check()?.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
+        "timeline": timeline,
+        "script": ws.defn.script.iter().map(line_json).collect::<Vec<_>>(),
         "brief": brief_json(&ws.defn.brief),
         "scout": crate::scout::summary(&ws.root),
         "scout_taken": crate::scout::load_index(&ws.root)["taken"],
@@ -409,6 +514,27 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "audio": ws.defn.audio,
         "cut": latest_cut(&ws.root),
     }))
+}
+
+/// The cut in order (shots and script slots) with start and length in seconds.
+fn timeline_json(defn: &crate::model::Definition, shots: &[crate::model::ResolvedShot]) -> Vec<Value> {
+    let fps = defn.teaser.fps.max(1);
+    let sec = |f: i64| crate::geometry::round_to(f as f64 / fps as f64, 3);
+    crate::script::layout(&defn.script, shots, fps)
+        .iter()
+        .map(|it| match it.piece {
+            crate::script::Piece::Shot(_) => json!({"id": it.id, "kind": "shot", "start": sec(it.start), "duration": sec(it.frames)}),
+            crate::script::Piece::Slot(i) => {
+                let l = &defn.script[i];
+                json!({"id": it.id, "kind": l.kind, "text": l.ja, "start": sec(it.start), "duration": sec(it.frames)})
+            }
+        })
+        .collect()
+}
+
+fn line_json(l: &crate::script::Line) -> Value {
+    json!({"id": l.id, "kind": l.kind, "ja": l.ja, "en": l.en, "head": l.head, "from": l.from, "dur": l.dur,
+           "after": l.after, "on": l.on, "at": l.at})
 }
 
 fn brief_json(b: &crate::model::BriefCfg) -> Value {
@@ -441,6 +567,7 @@ pub fn sound_payload(ws: &Workspace) -> Result<Value> {
             .collect::<Vec<_>>(),
         "audio": ws.defn.audio,
         "total": crate::geometry::round_to(total, 3),
+        "timeline": timeline_json(&ws.defn, &shots),
         "shots": shots.iter().zip(&starts).map(|(s, t)| json!({
             "id": s.id, "start": crate::geometry::round_to(*t, 3),
             "duration": crate::geometry::round_to(s.frames as f64 / fps, 3), "beat": s.beat,
@@ -501,7 +628,10 @@ fn etag(app: &App) -> String {
     };
     let root = app.root();
     let settings = app.settings_path.clone().map(stamp).unwrap_or_default();
-    format!("\"{}.{}.{settings}\"", stamp(app.path.clone()), stamp(root.join(".shotpilot").join("state.json")))
+    let shots = app.current().unwrap_or_default();
+    // the project's path too, so switching projects never answers 304
+    let which = path_tag(&shots);
+    format!("\"{which}.{}.{}.{settings}\"", stamp(shots), stamp(root.join(".shotpilot").join("state.json")))
 }
 
 // --------------------------------------------------------------------------- routes
@@ -529,8 +659,26 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
     let head = req.method == "HEAD";
     let io = |e: std::io::Error| Error::user(format!("io: {e}"));
     match (req.method.as_str(), req.path.as_str()) {
+        ("GET" | "HEAD", "/") if app.current().is_none() => {
+            send(stream, head, 302, "text/plain", b"", &[("Location", "/home".into())]).map_err(io)
+        }
         ("GET" | "HEAD", "/") => send(stream, head, 200, "text/html; charset=utf-8", INDEX_HTML.as_bytes(),
                                        &[("Cache-Control", "no-store".into())]).map_err(io),
+        ("GET" | "HEAD", "/home") => send(stream, head, 200, "text/html; charset=utf-8", HOME_HTML.as_bytes(),
+                                           &[("Cache-Control", "no-store".into())]).map_err(io),
+        ("GET" | "HEAD", "/api/home") => send_json(stream, head, 200, &home_payload(app)).map_err(io),
+        ("GET" | "HEAD", "/home/cover") => {
+            let p = req.query.split('&').find_map(|kv| kv.strip_prefix("p=")).unwrap_or("");
+            match app.cover_file(p) {
+                Some(file) => {
+                    let data = std::fs::read(&file).map_err(io)?;
+                    send(stream, head, 200, mime(&file), &data, &[("Cache-Control", "public, max-age=31536000, immutable".into())])
+                        .map_err(io)
+                }
+                None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
+            }
+        }
+        ("POST", p) if p.starts_with("/api/projects/") => projects_route(stream, app, &p["/api/projects/".len()..], req),
         ("GET" | "HEAD", "/api/status") => {
             let tag = etag(app);
             if req.header("if-none-match") == Some(tag.as_str()) {
@@ -642,6 +790,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
         }
         ("POST", "/api/render") => render_stream(stream, app, req),
+        ("POST", "/api/produce") => produce_stream(stream, app, req),
         ("GET" | "HEAD", "/api/sound") => send_json(stream, head, 200, &sound_payload(&app.ws()?)?).map_err(io),
         ("POST", "/api/sound") => {
             let body = req.json()?;
@@ -888,12 +1037,13 @@ fn plan(app: &App, body: &Map<String, Value>) -> Result<Value> {
     extra.insert("note".into(), json!(note));
     extra.insert("rationale".into(), json!(p.rationale));
     extra.insert("adjustments".into(), json!(p.adjustments));
+    extra.insert("references".into(), json!(p.references));
     extra.insert("checks".into(), checks.clone());
     ws.state.annotate_last(extra);
     ws.state.save()?;
     Ok(json!({
         "shots": p.shots.iter().map(|s| &s["id"]).collect::<Vec<_>>(), "rationale": p.rationale,
-        "adjustments": p.adjustments, "checks": checks,
+        "adjustments": p.adjustments, "references": p.references, "checks": checks,
     }))
 }
 
@@ -985,6 +1135,40 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     Ok(out)
 }
 
+/// The first pass in one go, streamed as server-sent events (one per step and per shot).
+fn produce_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
+    let body = req.json()?;
+    let opts = crate::produce::ProduceOpts {
+        quality: body.get("quality").and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or("previz").to_string(),
+        direction: body.get("note").and_then(Value::as_str).unwrap_or("").to_string(),
+        mood: body.get("mood").and_then(Value::as_bool).unwrap_or(true),
+    };
+    let settings = app.settings();
+    let claude = (app.claude)(&settings)?; // a plain 400 before streaming when Claude is not connected
+    let images = if opts.mood { (app.images)(&settings).ok() } else { None };
+    let _guard = app.mutate()?;
+    let mut ws = app.ws()?;
+    fp::quality(&ws.defn, &opts.quality)?;
+    let head = "HTTP/1.1 200 OK\r\nServer: shotpilot\r\nConnection: close\r\n\
+                Content-Type: text/event-stream; charset=utf-8\r\nCache-Control: no-cache, no-transform\r\n\
+                X-Accel-Buffering: no\r\n\r\n";
+    // the run must finish even if the window goes away, so write errors only stop the stream
+    let mut alive = stream.write_all(head.as_bytes()).is_ok();
+    let mut send_event = |event: &str, data: &Value, alive: &mut bool| {
+        if *alive {
+            let msg = format!("event: {event}\ndata: {data}\n\n");
+            *alive = stream.write_all(msg.as_bytes()).and_then(|_| stream.flush()).is_ok();
+        }
+    };
+    let mut on = |event: &str, data: &Value| send_event(event, data, &mut alive);
+    let result = crate::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut on);
+    match result {
+        Ok(out) => send_event("done", &out, &mut alive),
+        Err(e) => send_event("error", &json!({"error": e.msg}), &mut alive),
+    }
+    Ok(())
+}
+
 fn render_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
     let body = req.json()?;
     let quality = body.get("quality").and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or("previz").to_string();
@@ -1037,6 +1221,142 @@ fn render_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()>
         Err(e) => send_event("error", &json!({"error": e.msg}), &mut alive),
     }
     Ok(())
+}
+
+// --------------------------------------------------------------------------- home
+
+/// A short tag for a path (part of the status ETag).
+fn path_tag(p: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(p.display().to_string().as_bytes()).iter().take(4).map(|b| format!("{b:02x}")).collect()
+}
+
+/// The home: the open project, a card per recent project, and what a new one needs.
+fn home_payload(app: &App) -> Value {
+    let current = app.current();
+    let mut list = app.recents.list();
+    // the open project is on the list even when no recents file is kept
+    if let Some(c) = &current {
+        if !list.iter().any(|r| projects::same_path(&r.path, c)) {
+            list.insert(0, projects::Recent { path: c.clone(), opened: String::new() });
+        }
+    }
+    let cards: Vec<Value> = list
+        .iter()
+        .map(|r| {
+            let mut v = projects::summary(&r.path);
+            v["opened"] = json!(r.opened);
+            v["current"] = json!(current.as_ref().is_some_and(|c| projects::same_path(c, &r.path)));
+            if let Some(covers) = v["covers"].as_array_mut() {
+                for c in covers {
+                    let file = c["file"].as_str().unwrap_or("").to_string();
+                    c["url"] = json!(format!("/home/cover?p={}", percent_encode(&file)));
+                }
+            }
+            v
+        })
+        .collect();
+    json!({
+        "current": current.map(|p| p.display().to_string()),
+        "projects": cards,
+        "location": projects::default_location().map(|p| p.display().to_string()),
+        "picker": app.picker.is_some(),
+        "ai": app.ai_status(),
+    })
+}
+
+/// `POST /api/projects/<action>`: open, create, forget, reveal, pick, maps.
+fn projects_route(stream: &mut TcpStream, app: &App, action: &str, req: &Request) -> Result<()> {
+    let io = |e: std::io::Error| Error::user(format!("io: {e}"));
+    let body = req.json()?;
+    let text = |k: &str| body.get(k).and_then(Value::as_str).map(str::trim).unwrap_or("").to_string();
+    let path_arg = || Some(text("path")).filter(|s| !s.is_empty()).map(PathBuf::from);
+    let out = match action {
+        "open" => {
+            let Some(p) = path_arg() else { bail!("path is required") };
+            json!({"path": app.open(&p)?.display().to_string()})
+        }
+        "create" => {
+            let location = match text("location") {
+                l if l.is_empty() => projects::default_location().unwrap_or_default(),
+                l => PathBuf::from(l),
+            };
+            let engine = match text("engine") {
+                e if e.is_empty() => "mock".to_string(),
+                e => e,
+            };
+            let np = NewProject {
+                location,
+                name: text("name"),
+                engine,
+                uproject: Some(text("uproject")).filter(|s| !s.is_empty()).map(PathBuf::from),
+                map: Some(text("map")).filter(|s| !s.is_empty()),
+                pitch: text("pitch"),
+                kind: text("kind"),
+                sample: body.get("sample").and_then(Value::as_bool).unwrap_or(false),
+            };
+            let shots = {
+                let _guard = app.mutate()?;
+                projects::create(&np)?
+            };
+            json!({"path": app.open(&shots)?.display().to_string()})
+        }
+        "forget" => {
+            let Some(p) = path_arg() else { bail!("path is required") };
+            app.recents.forget(&p)?;
+            json!({"forgot": p.display().to_string()})
+        }
+        "reveal" => {
+            let Some(p) = path_arg() else { bail!("path is required") };
+            let known = app.recents.contains(&p) || app.current().is_some_and(|c| projects::same_path(&c, &p));
+            let Some(dir) = p.parent().filter(|d| known && d.is_dir()) else {
+                bail!("そのプロジェクトは一覧にありません");
+            };
+            open_with_os(dir)?;
+            json!({"opened": dir.display().to_string()})
+        }
+        "pick" => {
+            let Some(picker) = &app.picker else {
+                bail!("この画面ではフォルダを選べません。パスを入力してください");
+            };
+            let start = path_arg().filter(|p| p.exists());
+            match text("kind").as_str() {
+                "open" => match picker(Pick::Folder { title: "Shotpilot: shots.yaml のあるフォルダを選ぶ".into(), start }) {
+                    None => json!({"cancelled": true}),
+                    Some(d) => json!({"path": d.display().to_string(),
+                        "projects": projects::find_projects(&d).iter().map(|p| p.display().to_string()).collect::<Vec<_>>()}),
+                },
+                "location" => match picker(Pick::Folder { title: "Shotpilot: 新しいプロジェクトを置くフォルダ".into(), start }) {
+                    None => json!({"cancelled": true}),
+                    Some(d) => json!({"path": d.display().to_string()}),
+                },
+                "uproject" => match picker(Pick::Uproject { start }) {
+                    None => json!({"cancelled": true}),
+                    Some(up) => uproject_json(&up)?,
+                },
+                other => bail!("kind must be open, location or uproject (got '{other}')"),
+            }
+        }
+        "maps" => {
+            let Some(p) = path_arg() else { bail!("path is required") };
+            uproject_json(&p)?
+        }
+        other => bail!("unknown action: {other}"),
+    };
+    send_json(stream, false, 200, &out).map_err(io)
+}
+
+/// A .uproject (or its folder) with the levels it has, for the new-project form.
+fn uproject_json(p: &Path) -> Result<Value> {
+    let Some(up) = projects::find_uproject(p) else {
+        bail!("{} に .uproject がありません", p.display());
+    };
+    Ok(json!({
+        "path": up.display().to_string(),
+        "name": up.file_stem().map(|s| s.to_string_lossy().to_string()),
+        "maps": projects::list_maps(&up),
+        "projects": up.parent().map(projects::find_projects).unwrap_or_default().iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
+    }))
 }
 
 /// Open a file with the OS default application (video player, browser for HTML).

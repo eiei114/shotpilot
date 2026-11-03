@@ -5,20 +5,36 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "horror": 1,
+    "rpg": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=84JvYWUOOaU",
     "channel": "TVアニメ「シャングリラ・フロンティア」公式 and MBS animation 公式チャンネル",
-    "uploadDate": null,
+    "uploadDate": "20260707",
     "viewCount": 1035093,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,6 +5,10 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Ze1tVGywGxI",
@@ -12,6 +16,7 @@
     "uploadDate": "20260816",
     "viewCount": 1240252,
     "foundBy": "game teaser trailer",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

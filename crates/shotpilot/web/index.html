@@ -35,6 +35,9 @@ button:disabled { opacity: .45; cursor: default; }
 #chat { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
 .proj { display: flex; align-items: center; gap: 10px; padding: 6px 8px 12px; }
 .proj svg { flex: none; }
+.home-btn { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--ink); background: var(--card);
+  border: 1px solid var(--line); box-shadow: var(--shadow); }
+.home-btn:hover { background: var(--soft); }
 .proj .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 #log { scrollbar-width: thin; scrollbar-color: var(--line) transparent; overflow-y: auto; padding: 4px 8px 16px; display: flex; flex-direction: column; gap: 18px; min-height: 0; }
@@ -290,6 +293,10 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .clip.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
 @media (prefers-color-scheme: dark) { .clip.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px #fff; } }
 .clip.reused { filter: saturate(.3) brightness(.7); }
+.clip.slot { background: #0a0a0a; cursor: default; }
+.clip.slot::before { background: none; }
+.clip.slot .top { color: #9aa1a5; font-weight: 600; }
+.clip.slot .bot { white-space: normal; color: #e0dbcf; font-size: 10.5px; line-height: 1.3; overflow: hidden; }
 .tag { position: absolute; right: 6px; top: 22px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; }
 .tag.rendered { background: var(--accent); color: var(--accent-ink); }
 .tag.failed { background: var(--err); color: #fff; }
@@ -411,7 +418,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
   <!-- left: conversation -->
   <section id="chat" aria-label="chat">
     <div class="proj">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <a class="home-btn" href="/home" title="ホーム（ほかのプロジェクト・新しく作る）"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></a>
       <div style="min-width:0"><div class="name" id="title">shotpilot</div><div class="meta" id="subtitle"></div></div>
     </div>
     <div id="log"></div>
@@ -597,6 +604,7 @@ async function refresh() {
   try {
     const [st, log] = await Promise.all([api("GET", "/api/status"), api("GET", "/api/log?n=80")]);
     ui.status = st;
+    document.title = `Shotpilot — ${st.title || st.project}`;
     if (!ui.quality || !st.qualities.includes(ui.quality)) ui.quality = defaultQuality(st);
     if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
     const key = JSON.stringify(log);
@@ -605,7 +613,22 @@ async function refresh() {
     const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
     if (skey !== ui.soundKey) { ui.soundKey = skey; fetchSound(); }
     draw();
-  } catch (e) { toast(e.message, true); }
+    startFromHome();
+  } catch (e) {
+    // the home switched away from (or never opened) a project
+    if (/プロジェクトが開かれていません/.test(e.message)) { location.href = "/home"; return; }
+    toast(e.message, true);
+  }
+}
+
+/** A project made on the home with a prompt: run the first pass right away (D-28). */
+function startFromHome() {
+  const raw = sessionStorage.getItem("shotpilot.produce");
+  if (!raw) return;
+  sessionStorage.removeItem("shotpilot.produce");
+  if (ui.busy || !ui.status?.ai?.ready) return;
+  try { $("note").value = JSON.parse(raw).note || ""; } catch { return; }
+  produceAll();
 }
 
 async function fetchSound() {
@@ -898,6 +921,8 @@ function nextStep() {
   const base = st.qualities[0];
   const unapproved = shots.filter((x) => x.approval !== "approved");
   const approved = shots.filter((x) => x.approval === "approved");
+  const produced = (ui.log || []).some((e) => e.action === "produce");
+  if (!produced && !skipped("produce")) return { stage: "structure", what: "一気に作る", why: "ロケハン → ステージ → ムードボード → 構成と仕上げ → 撮影 → Cut まで、制約を全部渡して1本出します。そのあと1カットずつ確かめて直します", act: "produce", skip: "produce", need: ai.ready ? null : "Claude が未接続です" };
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
   if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
@@ -937,6 +962,7 @@ async function runNext() {
   else if (n.act === "stage") scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
   else if (n.act === "mood") generateMood();
   else if (n.act === "plan") planShots();
+  else if (n.act === "produce") produceAll();
   else if (n.act === "render") render(n.quality);
   else if (n.act === "final") render("final", ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id));
   else if (n.act === "cut") cut();
@@ -1222,7 +1248,7 @@ function drawTweak() {
 
 function drawTimeline() {
   const st = ui.status;
-  const total = st.shots.reduce((a, s) => a + s.duration, 0);
+  const total = st.total_duration ?? st.shots.reduce((a, s) => a + s.duration, 0);
   const span = Math.max(total, st.target_duration || 0);
   $("tl-total").textContent = `${Math.round(total * 10) / 10}s`;
   $("tl-target").textContent = `${st.target_duration}s`;
@@ -1237,7 +1263,13 @@ function drawTimeline() {
   $("ruler").innerHTML = r;
   // clips
   const qs = st.qualities;
-  $("track").innerHTML = st.shots.map((s) => {
+  const SLOT_JA = { card: "カード", rule: "決まり", title: "タイトル", message: "メッセージ", black: "黒" };
+  const slotHtml = (it) => `<div class="clip slot" data-id="${esc(it.id)}" style="flex:${it.duration} 1 0" title="${esc(`${SLOT_JA[it.kind] || it.kind} ${it.duration}s${it.text ? `: ${it.text}` : ""}`)}">
+      <div class="beat" style="background:#3a3d3f"></div><div class="top"><span class="id">${esc(SLOT_JA[it.kind] || it.kind)}</span></div>
+      <div class="bot">${esc(it.text || "")}</div></div>`;
+  const order = st.timeline || st.shots.map((s) => ({ kind: "shot", id: s.id }));
+  $("track").innerHTML = order.map((it) => it.kind !== "shot" ? slotHtml(it) : clipHtml(st.shots.find((x) => x.id === it.id))).join("");
+  function clipHtml(s) {
     const tk = shownTake(s);
     const o = ui.outcome[s.id];
     const cls = ["clip", s.id === ui.sel ? "sel" : "", o ? o.action : ""].join(" ");
@@ -1258,7 +1290,7 @@ function drawTimeline() {
       ${(s.node.appear || []).map((a) => `<div class="ap" style="left:${Math.min(100, ((a.at || 0) / s.duration) * 100)}%" title="${esc(`${a.at || 0}s で ${a.prop} が出現`)}"><span>${esc(a.prop)}</span></div>`).join("")}
       <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}${okm}${flags}
       <div class="bot"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span><span class="ladder">${ladder}</span></div></div>`;
-  }).join("");
+  }
   // target marker and playhead (target sits past the end when the cut is short)
   const body = $("tl-body");
   body.querySelectorAll(".playhead,.target").forEach((e) => e.remove());
@@ -1270,7 +1302,7 @@ function drawTimeline() {
   }
   const s = shot();
   if (s && ui.tab === "shot") {
-    const start = st.shots.slice(0, s.index).reduce((a, x) => a + x.duration, 0);
+    const start = (st.timeline || []).find((it) => it.id === s.id)?.start ?? st.shots.slice(0, s.index).reduce((a, x) => a + x.duration, 0);
     const tk = shownTake(s);
     const num = tk ? (tk.t.frame_numbers?.[ui.frame] ?? 0) : 0;
     const t = start + Math.min(num / (st.fps || 30), s.duration);
@@ -1305,7 +1337,7 @@ const SND_ROW = 24;
 
 /** Teaser seconds -> x in the timeline body, through the clip boxes (they have gaps). */
 function xOf(t) {
-  const sh = ui.sound?.shots || [];
+  const sh = ui.sound?.timeline || ui.sound?.shots || [];
   if (!sh.length) return 0;
   let k = sh.findIndex((s) => t < s.start + s.duration);
   if (k < 0) k = sh.length - 1;
@@ -1317,7 +1349,7 @@ function xOf(t) {
 
 /** x in the timeline body -> teaser seconds (the inverse of xOf). */
 function tOf(x) {
-  const sh = ui.sound?.shots || [];
+  const sh = ui.sound?.timeline || ui.sound?.shots || [];
   for (let k = 0; k < sh.length; k++) {
     const clip = $("track").querySelector(`.clip[data-id="${CSS.escape(sh[k].id)}"]`);
     if (!clip) continue;
@@ -1789,10 +1821,23 @@ function entryHtml(e, isLast) {
       ${changesHtml(e.changes)}
       <div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span>${e.stale?.length ? `撮り直しが必要: <b>${esc(e.stale.join(", "))}</b>` : "映像はそのまま。撮り直しなし（Cut で音が載ります）"} <span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   }
+  if (e.action === "produce") {
+    const c = e.checks || {};
+    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
+    const steps = (e.steps || []).map((s) => `<div><span class="k">${esc(STEP_ICON[s.status] || "")} ${esc(s.label)}</span> ${esc(s.detail || "")}</div>`).join("");
+    const notes = (e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`).join("");
+    return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
+      <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
+        ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}<div class="changes">${steps}</div>${notes}
+        <div class="done-row"><span class="ok"><span class="dot"></span>${(e.shots || []).length} ショット · ${esc(e.quality || "")} で撮って Cut 済み</span>
+          <span>ショット検査: ${sev || "指摘なし"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
+        ${(ui.log || []).filter((x) => x.action === "produce").pop() === e ? `<div class="suggest"><button data-goto-stage="finish">↗ できた1本を見る</button><button data-goto-stage="framing">↗ 1カットずつ確かめて直す（構図の承認）</button></div>` : ""}</div>`;
+  }
   if (e.action === "plan") {
     const c = e.checks || {};
     const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
-    const adj = (e.adjustments || []).length ? `<div class="changes">${e.adjustments.map((a) => `<div><span class="k">コードが整えた:</span> ${esc(a)}</div>`).join("")}</div>` : "";
+    const refs = (e.references || []).length ? `<div><span class="k">参照した実測:</span> ${esc(e.references.join(" / "))}</div>` : "";
+    const adj = (e.adjustments || []).length || refs ? `<div class="changes">${refs}${(e.adjustments || []).map((a) => `<div><span class="k">コードが整えた:</span> ${esc(a)}</div>`).join("")}</div>` : "";
     return `<div class="msg-user"><div class="bubble">${esc(e.note || "ブリーフから組む")}</div><div class="ctx">📐 構成を組む</div></div>
       <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
         ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}${adj}
@@ -1805,13 +1850,24 @@ function entryHtml(e, isLast) {
 }
 
 function drawChat() {
-  const keep = new Set(["plan", "revise", "set", "render", "cut", "order", "sound"]);
+  const keep = new Set(["produce", "plan", "revise", "set", "render", "cut", "order", "sound"]);
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
     ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
   // suggestions only while nothing has been rendered since the edit
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
+  if (ui.produce) {
+    const order = ["scout", "stage", "mood", "plan", "render", "cut"];
+    const names = { scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "構成と仕上げ", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
+    const rows = order.map((k) => {
+      const d = ui.produce.steps[k];
+      const icon = d ? STEP_ICON[d.status] : "　";
+      return `<div><span class="k">${icon} ${esc(names[k])}</span> ${esc(d?.status === "start" ? "実行中…" : d?.detail || "")}</div>`;
+    }).join("");
+    html += `<div class="msg-user"><div class="bubble">${esc(ui.produce.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
+      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state">作っています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div><div class="changes">${rows}</div></div>`;
+  }
   if (ui.pending) {
     html += `<div class="msg-user"><div class="bubble">${esc(ui.pending.note)}</div><div class="ctx">${esc(ui.pending.ctx)}</div></div>
       <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="think-state">考えています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div></div>`;
@@ -1826,7 +1882,7 @@ function drawChat() {
   drawChat.seen = true;
   log.innerHTML = html;
   // scroll after layout settles (the composer above can change height in the same frame)
-  if (atBottom || ui.pending) requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
+  if (atBottom || ui.pending || ui.produce) requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
 }
 
 // ------------------------------------------------------------------ actions
@@ -1849,6 +1905,36 @@ async function planShots() {
     clearInterval(tick); ui.busy = null; ui.pending = null; ui.logKey = "";
     await refresh();
   }
+}
+
+const STEP_ICON = { start: "…", done: "✓", skipped: "–", failed: "✕" };
+
+async function produceAll() {
+  const st = ui.status; if (ui.busy || !st?.ai?.ready) return;
+  const note = $("note").value.trim();
+  if (st.shots.length && !confirm(`いまの ${st.shots.length} ショットを置き換えて、一気に作ります（撮った take は消えません）。`)) return;
+  ui.busy = "produce"; ui.produce = { steps: {}, note }; ui.pending = null; $("note").value = "";
+  ui.started = Date.now(); draw(); drawChat();
+  try {
+    const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note, quality: "previz", mood: true }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = /^event: (.*)$/m.exec(block)?.[1];
+        const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
+        if (ev === "step") ui.produce.steps[d.key] = d;
+        else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); ui.tab = ui.fin = "teaser"; }
+        else if (ev === "error") toast(d.error, true);
+        drawChat();
+      }
+    }
+  } catch (e) { $("note").value = note; toast(e.message, true); }
+  finally { ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
 }
 
 async function sendNote() {
@@ -1966,6 +2052,7 @@ function selectShot(id, frame = 0) {
 
 $("track").addEventListener("click", (e) => {
   const clip = e.target.closest(".clip"); if (!clip) return;
+  if (clip.classList.contains("slot")) { ui.tab = ui.fin = "design"; draw(); return; } // script cards are edited in design
   const s = ui.status.shots.find((x) => x.id === clip.dataset.id);
   const tk = s && shownTake(s);
   let frame = 0;

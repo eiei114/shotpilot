@@ -5,6 +5,10 @@
   "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 24
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=qGbRasvjhhU",
@@ -12,6 +16,26 @@
     "uploadDate": "20261101",
     "viewCount": 173068,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "DLC / Expansion",
+      "Final Fantasy",
+      "Final Fantasy XIV Online: Evercold",
+      "Macintosh",
+      "Massively Multiplayer",
+      "Nintendo Switch 2",
+      "PC",
+      "PlayStation 4",
+      "PlayStation 5",
+      "RPG",
+      "Square Enix",
+      "Xbox Series X/S",
+      "final fantasy xiv online",
+      "final fantasy xiv",
+      "ffxiv evercold",
+      "final fantasy 14 evercold",
+      "final fantasy xiv evangelion - ghosts of desire",
+      "final fantasy 14 evangelion"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

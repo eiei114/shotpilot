@@ -2,23 +2,49 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-bCLRYGpCB0w",
   "name": "Murals - Official Announcement Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 6,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=bCLRYGpCB0w",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20260825",
     "viewCount": 54919,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "Dlala Studios",
+      "Murals",
+      "indie game",
+      "game trailer",
+      "isometric",
+      "action",
+      "adventure",
+      "hack and slash"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

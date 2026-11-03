@@ -5,20 +5,57 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 7,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=LequESlo33E",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20220610",
     "viewCount": 198586,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "Adventure",
+      "Horror",
+      "IGN",
+      "Madison",
+      "PC",
+      "PS4",
+      "PS5",
+      "Switch",
+      "Trailer",
+      "Xbox",
+      "Xbox One",
+      "ign",
+      "sog",
+      "summer of gaming",
+      "madison game",
+      "madison game trailer",
+      "horror",
+      "thriller",
+      "first-person",
+      "ign summer of gaming"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

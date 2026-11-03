@@ -4,21 +4,43 @@
   "name": "Forza Horizon 6 - Official Gameplay Teaser Trailer",
   "category": "general",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=pWw-UENvdTw",
     "channel": "Forza",
-    "uploadDate": null,
+    "uploadDate": "20260122",
     "viewCount": 4169898,
     "foundBy": "game reveal teaser",
+    "tags": [
+      "ForzaHorizon6",
+      "ForzaHorizon",
+      "ForzaHorizonJapan",
+      "ForzaJapan",
+      "ForzaHorizon2026",
+      "XboxDeveloperDirect",
+      "FH6Gameplay",
+      "Horizon6Gameplay"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

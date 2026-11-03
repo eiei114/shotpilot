@@ -107,6 +107,18 @@ enum Cmd {
     Scout {
         anchors: Vec<String>,
     },
+    /// the first pass in one go: scout, stage, mood board, plan + finish, render, cut
+    Produce {
+        /// first render quality (previz needs no engine)
+        #[arg(long, default_value = "previz")]
+        quality: String,
+        /// extra direction for the cut
+        #[arg(long, default_value = "")]
+        note: String,
+        /// skip the mood board
+        #[arg(long)]
+        no_mood: bool,
+    },
     /// read the set from the scout photos with Claude and write `stage:` (stage 0)
     Stage,
     /// the meshes the project has: assets [filter]  |  assets --scan (asks the engine)
@@ -455,6 +467,30 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("{name:<16} {}", files.join("  "));
             }
         }
+        Cmd::Produce { quality, note, no_mood } => {
+            let mut ws = ws(file)?;
+            let settings = Settings::load(Settings::default_path().as_deref());
+            let claude = connect::make_claude(&settings)?;
+            let images = if no_mood { None } else { connect::make_image_gen(&settings).ok() };
+            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood };
+            let mut print = |e: &str, d: &Value| {
+                if e == "step" && d["status"] != "start" {
+                    println!("{:<10} {:<8} {}", d["label"].as_str().unwrap_or(""), d["status"].as_str().unwrap_or(""),
+                             d["detail"].as_str().unwrap_or(""));
+                } else if e == "step" {
+                    println!("{} ...", d["label"].as_str().unwrap_or(""));
+                }
+            };
+            let out = shotpilot::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut print)?;
+            println!("\n{}", out["rationale"].as_str().unwrap_or(""));
+            for n in out["notes"].as_array().into_iter().flatten() {
+                println!("note: {}", n.as_str().unwrap_or(""));
+            }
+            if let Some(v) = out["video"].as_str() {
+                println!("video: {v}");
+            }
+            println!("next: check the shots (shotpilot check), approve or point-fix them, then render final");
+        }
         Cmd::Stage => {
             let mut ws = ws(file)?;
             let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
@@ -559,6 +595,7 @@ fn run(cli: Cli) -> Result<u8> {
             let planned = p.shots;
             let total: f64 = planned.iter().filter_map(|s| s["duration"].as_f64()).sum();
             println!("# {} shots, {}s\n# {}\n", planned.len(), fmt_g(total), p.rationale);
+            println!("# references: {}", p.references.join(", "));
             for a in &p.adjustments {
                 println!("# adjusted by code: {a}");
             }

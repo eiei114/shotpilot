@@ -2,23 +2,56 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-J1IIJTnccBA",
   "name": "[PV] Yo-kai Watch 2: Hado Teaser PV (LEVEL5 VISION 2026 II Ver.)",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=J1IIJTnccBA",
     "channel": "LEVEL5ch【公式】",
-    "uploadDate": null,
+    "uploadDate": "20260910",
     "viewCount": 1752990,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "レベルファイブ",
+      "LEVEL5",
+      "レベルファイブチャンネル",
+      "LEVEL5ch",
+      "ゲーム",
+      "RPG",
+      "レベルファイブビジョン",
+      "LEVEL5 VISION",
+      "妖怪ウォッチ",
+      "妖怪ウォッチ2",
+      "覇道",
+      "天野ケータ",
+      "ジバニャン",
+      "ウィスパー",
+      "戸松遥",
+      "小桜エツコ",
+      "関智一"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

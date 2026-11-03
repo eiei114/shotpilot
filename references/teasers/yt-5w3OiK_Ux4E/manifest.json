@@ -5,20 +5,43 @@
   "category": "cozy",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=5w3OiK_Ux4E",
     "channel": "PM Studios",
-    "uploadDate": null,
+    "uploadDate": "20210612",
     "viewCount": 17186,
     "foundBy": "Wholesome Direct teaser",
+    "tags": [
+      "PM Studios",
+      "hoa",
+      "hoa the game",
+      "skrollcat studio",
+      "trailer",
+      "release date",
+      "release date trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

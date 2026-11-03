@@ -387,25 +387,120 @@ fn the_finish_is_definition_and_never_rerenders() {
     assert!(f.ws.set_fields("s03_window", &set(&[("transition", json!("wipe"))])).unwrap_err().msg.contains("transition"));
     assert!(f.ws.set_fields("s03_window", &set(&[("caption", json!({"text": "x", "at": 9}))])).unwrap_err().msg.contains("caption.at"));
 
-    // the burn-in graph: dip as per-shot fades, bars, caption, title on the title shot, end card after
-    use shotpilot::finish::{self, Placed};
+    // the burn-in graph: each shot cut out with its dip, bars, caption, the title on the title
+    // shot (local time), the end card after the last piece
+    use shotpilot::finish::{self, CutPiece, Fonts, ShotPiece};
     let shots = f.ws.resolved().unwrap();
     let mut t = 0.0;
-    let placed: Vec<Placed> = shots.iter().map(|s| {
+    let pieces: Vec<CutPiece> = shots.iter().map(|s| {
         let raw = &f.ws.defn.shots[s.index];
-        let p = Placed { start: t, duration: s.duration, beat: s.beat.clone(), caption: finish::caption(raw), transition: finish::transition(raw) };
+        let p = CutPiece::Shot(ShotPiece { concat_start: t, duration: s.duration, beat: s.beat.clone(), caption: finish::caption(raw),
+                                           transition: finish::transition(raw), exposure: 0.0, overlays: Vec::new() });
         t += s.duration;
         p
     }).collect();
     let dir = tempfile::tempdir().unwrap();
-    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &placed, 1280, 720, 30, std::path::Path::new("C:/Windows/Fonts/x.ttf"), dir.path()).unwrap();
+    let fonts = Fonts { main: "C:/Windows/Fonts/x.ttf".into(), sans: "C:/Windows/Fonts/y.ttc".into() };
+    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, Some(&fonts), dir.path()).unwrap();
     assert!((total - (27.5 + 3.0)).abs() < 1e-6);
     assert!(g.contains("split=6") && g.contains("fade=t=out") && g.contains("fade=t=in"), "{g}");
     assert!(g.contains("drawbox=x=0:y=0:w=iw:h=92"), "{g}"); // (720 - 1280/2.39) / 2
     assert!(g.contains(r"fontfile='C\:/Windows/Fonts/x.ttf'"));
-    assert!(g.contains("color=c=black:s=1280x720") && g.contains("concat=n=2"));
+    assert!(g.contains("color=c=black:s=1280x720") && g.contains("concat=n=7"));
     let texts: Vec<String> = (1..=3).map(|i| std::fs::read_to_string(dir.path().join(format!("text{i}.txt"))).unwrap()).collect();
     assert!(texts.contains(&"住人が、一人ずつ消えていく".to_string()) && texts.contains(&"夜の中庭".to_string()));
-    // the title sits on the title shot (s06 starts at 21.5 s)
-    assert!(g.contains("between(t,22.500,26.500)"), "{g}");
+    // the title sits on the title shot, in its own time (at 1 s for 4 s)
+    assert!(g.contains("if(lt(t,1.000),0"), "{g}");
+}
+
+#[test]
+fn the_script_puts_cards_between_shots_and_keeps_sound_on_its_shot() {
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let (starts_before, total_before) = shotpilot::sound::timing(&f.ws.defn, &f.ws.resolved().unwrap());
+    let mut text = f.text();
+    text.push_str(r#"
+script:
+  - {id: intro, kind: card, ja: 今日から、ここに住む。, en: "TODAY, I MOVE IN.", dur: 3, after: start}
+  - {id: rooms, kind: caption, ja: 部屋は、六つ。, on: s02_well, at: 0.4, dur: 2.6}
+  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2.4, after: s02_well}
+  - {id: cups, kind: count, ja: コップ、七つ。, on: s03_window}
+  - {id: gap, kind: black, dur: 0.8, after: s05_door}
+  - {id: title, kind: title, ja: 七号室, en: ROOM SEVEN, dur: 4, after: gap}
+"#);
+    f.write(&text);
+    f.ws.reload().unwrap();
+    // editorial: nothing re-renders
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+
+    let shots = f.ws.resolved().unwrap();
+    let items = shotpilot::script::layout(&f.ws.defn.script, &shots, 30);
+    let order: Vec<&str> = items.iter().map(|i| i.id.as_str()).collect();
+    assert_eq!(order, ["intro", "s01_gate", "s02_well", "seven", "s03_window", "s04_lantern", "s05_door", "gap", "title", "s06_title"]);
+    // sound follows its shot: s01 now starts after the 3 s intro card, s03 after the card too
+    let (starts, total) = shotpilot::sound::timing(&f.ws.defn, &shots);
+    assert!((starts[0] - (starts_before[0] + 3.0)).abs() < 1e-6);
+    assert!((starts[2] - (starts_before[2] + 3.0 + 2.4)).abs() < 1e-6);
+    assert!((total - (total_before + 3.0 + 2.4 + 0.8 + 4.0)).abs() < 1e-6);
+    assert_eq!(shotpilot::script::overlays(&f.ws.defn.script, "s03_window")[0].kind, "count");
+
+    // bad references are refused
+    f.write(&f.text().replace("after: s02_well}", "after: nowhere}"));
+    let err = f.ws.reload().unwrap_err();
+    assert!(err.msg.contains("'nowhere' is not a shot"), "{}", err.msg);
+}
+
+#[test]
+fn the_first_pass_goes_all_the_way_in_one_go() {
+    use shotpilot::ai::Claude;
+    struct Director(std::cell::RefCell<Vec<String>>);
+    impl Claude for Director {
+        fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
+            let props = &request["output_config"]["format"]["schema"]["properties"];
+            if props.get("summary").is_some() {
+                self.0.borrow_mut().push("stage".into());
+                return Ok(json!({"summary": "中庭", "anchors": [{"name": "well", "description": "井戸"}],
+                                 "mood": {"place": "gate", "detail": "lantern", "threat": "window", "title": "well"}}).to_string());
+            }
+            self.0.borrow_mut().push("plan".into());
+            let user = request["messages"][0]["content"].to_string();
+            assert!(user.contains("## Finish") && user.contains("## Stage") && user.contains("Location scout"), "{user}");
+            let shot = |id: &str, beat: &str, d: f64, anchor: &str, cap: &str, tr: &str| json!({
+                "id": id, "beat": beat, "purpose": "p", "duration": d, "anchor": anchor, "offset": [-400, -300, 100],
+                "look_at": "", "focal_length": 35, "move": "static", "move_amount": 0, "time_of_day": "default",
+                "notes": "", "appear": [], "caption": cap, "transition": tr});
+            Ok(json!({"rationale": "静かに始める", "title_card": "夜の中庭", "end_card": [],
+                      "shots": [shot("h", "hook", 4.0, "lantern", "", "cut"), shot("e", "establish", 8.0, "gate", "住人が消える", "dip"),
+                                shot("x", "escalate", 6.0, "window", "", "flash"), shot("x2", "escalate", 5.0, "door", "", "cut"),
+                                shot("t", "title", 6.0, "well", "", "cut")]}).to_string())
+        }
+    }
+    let mut f = ws();
+    let claude = Director(Default::default());
+    let gen = FakeImages(Default::default());
+    let mut events = Vec::new();
+    let mut on = |e: &str, d: &serde_json::Value| events.push((e.to_string(), d.clone()));
+    let out = shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on).unwrap();
+
+    assert_eq!(*claude.0.borrow(), vec!["stage".to_string(), "plan".to_string()]); // one call each, no self-review rounds
+    let done: Vec<String> = events.iter().filter(|(e, d)| e == "step" && d["status"] != "start")
+        .map(|(_, d)| format!("{}:{}", d["key"].as_str().unwrap(), d["status"].as_str().unwrap())).collect();
+    assert_eq!(done, ["scout:done", "stage:done", "mood:done", "plan:done", "render:done", "cut:done"]);
+    assert_eq!(f.ws.defn.shot_ids(), ids(&["h", "e", "x", "x2", "t"]));
+    assert_eq!(f.ws.defn.brief.images.len(), 4);
+    assert_eq!(f.ws.defn.finish.title.as_ref().unwrap().text, "夜の中庭");
+    assert!(f.ws.defn.finish.end_card.is_none()); // nothing invented
+    assert_eq!(f.ws.defn.find("e").unwrap()["caption"], json!("住人が消える"));
+    assert_eq!(f.ws.defn.find("x").unwrap()["transition"], json!("flash"));
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+    assert_eq!(out["shots"].as_array().unwrap().len(), 5);
+    assert_eq!(f.ws.state.history().last().unwrap()["action"], json!("produce"));
+
+    // a second pass reuses the scout, the stage and the mood board
+    let mut events2 = Vec::new();
+    let mut on2 = |e: &str, d: &serde_json::Value| events2.push((e.to_string(), d.clone()));
+    shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on2).unwrap();
+    let skipped: Vec<String> = events2.iter().filter(|(e, d)| e == "step" && d["status"] == "skipped")
+        .map(|(_, d)| d["key"].as_str().unwrap().to_string()).collect();
+    assert_eq!(skipped, ["scout", "stage", "mood"]);
 }

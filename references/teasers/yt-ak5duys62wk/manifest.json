@@ -2,23 +2,38 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-ak5duys62wk",
   "name": "『ストリートファイター6』アレックス（Alex）ティザートレーラー",
-  "category": "general",
+  "category": "action",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 9
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ak5duys62wk",
     "channel": "CapcomChannel",
-    "uploadDate": null,
+    "uploadDate": "20260108",
     "viewCount": 459738,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

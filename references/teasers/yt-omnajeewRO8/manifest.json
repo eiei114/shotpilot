@@ -5,20 +5,57 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 9,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=omnajeewRO8",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20261027",
     "viewCount": 142232,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Action",
+      "Asymmetrical Multiplayer",
+      "Further Front",
+      "Gun Media",
+      "Halloween",
+      "Halloween: The Game",
+      "Horror",
+      "Illfonic",
+      "Online Co-Op Multiplayer",
+      "Online Versus Multiplayer",
+      "PC",
+      "PlayStation 5",
+      "Unreal Engine 5",
+      "Xbox Series X/S",
+      "Halloween: The Game game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

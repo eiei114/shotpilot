@@ -2,23 +2,42 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-jspE3YRAahw",
   "name": "『Terminus Historia｜境界戦役』【空の海編】ティザーPV①",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=jspE3YRAahw",
     "channel": "IMYUIC",
-    "uploadDate": null,
+    "uploadDate": "20251206",
     "viewCount": 125,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "同人ゲーム",
+      "インディーゲーム",
+      "RPG"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

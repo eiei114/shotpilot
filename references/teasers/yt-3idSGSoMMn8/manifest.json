@@ -2,23 +2,47 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-3idSGSoMMn8",
   "name": "HD-2D版『ドラゴンクエストI＆II』ティザートレーラー",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 9
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=3idSGSoMMn8",
     "channel": "スクウェア・エニックス",
-    "uploadDate": null,
+    "uploadDate": "20250327",
     "viewCount": 1011083,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "スクウェア･エニックス",
+      "スクエニ",
+      "SQUARE ENIX",
+      "スクエア",
+      "ドラクエ",
+      "ドラクエ1",
+      "ドラクエ2",
+      "ドラクエI＆II"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

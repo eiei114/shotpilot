@@ -5,6 +5,10 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=qETMnE_wNuw",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 47043,
     "foundBy": "survival horror teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

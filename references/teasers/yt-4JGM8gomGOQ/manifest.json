@@ -5,20 +5,42 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 8
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=4JGM8gomGOQ",
     "channel": "クモリノチハレ",
-    "uploadDate": null,
+    "uploadDate": "20230127",
     "viewCount": 30,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "ホラー",
+      "ゲーム",
+      "ホラーゲーム",
+      "怖い",
+      "恐怖",
+      "鮎鷺村"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

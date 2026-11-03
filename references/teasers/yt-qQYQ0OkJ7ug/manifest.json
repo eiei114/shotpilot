@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-qQYQ0OkJ7ug",
   "name": "Tormented Souls 2 - Extended Announcement Teaser Trailer | PS5 Games",
-  "category": "horror",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1,
+    "rpg": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=qQYQ0OkJ7ug",
@@ -12,6 +17,7 @@
     "uploadDate": null,
     "viewCount": 160582,
     "foundBy": "survival horror teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -2,23 +2,58 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-LsXDdRjh-Vw",
   "name": "1717 - Adventure on the High Seas - Teaser Trailer (Unreal Engine 5)",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "adventure": 8
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=LsXDdRjh-Vw",
     "channel": "Cpt N Algren",
-    "uploadDate": null,
+    "uploadDate": "20220109",
     "viewCount": 101,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "1717",
+      "pirate trailer",
+      "pirate film",
+      "caribbean",
+      "film trailers 2022",
+      "unreal engine",
+      "unreal engine 5 trailer",
+      "unreal engine concept",
+      "unreal engine short",
+      "unreal engine short film",
+      "upcoming pirate films",
+      "adventure film",
+      "adventure trailers",
+      "jack sparrow",
+      "pirates of the caribbean",
+      "pirates of the caribbean latest",
+      "pirates of the caribbean teaser",
+      "pirates of the caribbean 6",
+      "johnny depp"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

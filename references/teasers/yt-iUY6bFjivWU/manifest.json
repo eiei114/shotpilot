@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-iUY6bFjivWU",
   "name": "Terrible Lizards - Official Announcement Teaser Trailer",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 19,
+    "action": 1,
+    "adventure": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=iUY6bFjivWU",
     "channel": "WDR Studios and JT Music",
-    "uploadDate": null,
+    "uploadDate": "20251213",
     "viewCount": 281491,
     "foundBy": "indie game teaser trailer",
+    "tags": [
+      "terrible lizards",
+      "terrible lizards game",
+      "terrible lizards trailer",
+      "indie horror game",
+      "horror platformer",
+      "dinosaur horror game",
+      "mascot horror",
+      "first person horror",
+      "3d platformer",
+      "monster chase game",
+      "unreal engine 5",
+      "indie game trailer",
+      "survival horror",
+      "jt music",
+      "youtubers made a game",
+      "new horror games",
+      "upcoming indie horror",
+      "dino horror",
+      "pc game trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,20 +5,54 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=eoJsBXgrIvc",
     "channel": "Branching Paths JP (Branching Paths Japan)",
-    "uploadDate": null,
+    "uploadDate": "20150919",
     "viewCount": 27886,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "Japan (Country)",
+      "Branching Paths",
+      "ブランチングパズ",
+      "Indie game",
+      "Japanese games",
+      "Japanese indie games",
+      "Video Game Development (Conference Subject)",
+      "Doujin games",
+      "Documentary (TV Genre)",
+      "Dojin games",
+      "日本ゲーム",
+      "インディーゲーム",
+      "インディーズゲーム",
+      "自作ゲーム",
+      "同人ゲーム",
+      "ゲーム開発",
+      "ドキュメンタリー",
+      "ゲーム業界",
+      "Independent Video Game Development",
+      "Video Game Console (Invention)"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

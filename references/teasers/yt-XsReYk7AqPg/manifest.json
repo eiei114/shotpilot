@@ -2,23 +2,51 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-XsReYk7AqPg",
   "name": "Slayground | Official Teaser HD | A24",
-  "category": "horror",
+  "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "horror": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=XsReYk7AqPg",
     "channel": "A24",
-    "uploadDate": null,
+    "uploadDate": "20261020",
     "viewCount": 7617154,
     "foundBy": "horror game teaser trailer",
+    "tags": [
+      "a24",
+      "a24 films",
+      "a24 trailers",
+      "independent films",
+      "trailer",
+      "HD",
+      "official",
+      "movie",
+      "film",
+      "a24 movies",
+      "oscar winner",
+      "academy award winner"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

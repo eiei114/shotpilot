@@ -2,23 +2,49 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-UO_ZC5pcitE",
   "name": "『New VIRTUA FIGHTER』Project ティザートレーラー",
-  "category": "general",
+  "category": "action",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 15
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=UO_ZC5pcitE",
     "channel": "バーチャファイター 公式",
-    "uploadDate": null,
+    "uploadDate": "20241213",
     "viewCount": 413251,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "バーチャファイター",
+      "格ゲー",
+      "PS4",
+      "プロゲーマー",
+      "esports",
+      "格闘ゲーム",
+      "VF5FS",
+      "VFes",
+      "eスポーツ",
+      "Virtua Fighter"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

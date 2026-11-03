@@ -5,6 +5,10 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=5dKjhi90afk",
@@ -12,6 +16,13 @@
     "uploadDate": "20260918",
     "viewCount": 4361881,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "warhammer40000",
+      "warhammer40k",
+      "40k",
+      "40klore",
+      "warhammer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -2,23 +2,61 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-ayW7oCXggoE",
   "name": "WARLOCK - Teaser Trailer",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 6,
+    "action": 5,
+    "adventure": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ayW7oCXggoE",
     "channel": "Warlock and Dungeons & Dragons",
-    "uploadDate": null,
+    "uploadDate": "20251212",
     "viewCount": 415504,
     "foundBy": "cinematic teaser trailer game",
+    "tags": [
+      "WARLOCK Game",
+      "WARLOCK Official Trailer",
+      "WARLOCK Game Awards Trailer",
+      "The Game Awards 2025",
+      "WARLOCK Reveal Trailer",
+      "WARLOCK Announcement Trailer",
+      "WARLOCK Teaser",
+      "D&D Game",
+      "D&D video game",
+      "Dungeons & Dragons Game",
+      "Dungeons & Dragons Video Game",
+      "WARLOCK Action Adventure",
+      "Kaatri",
+      "Magic Game",
+      "Tricia Helfer Game",
+      "Tricia Helfer WARLOCK",
+      "Wizards of the Coast",
+      "Invoke Studios",
+      "Action-Adventure",
+      "2026 Video Games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-XjHdv_8qLLA",
   "name": "Tomb Raider: Legacy of Atlantis - Official 30th Anniversary Teaser Trailer",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=XjHdv_8qLLA",
@@ -12,6 +17,28 @@
     "uploadDate": "20261025",
     "viewCount": 5341866,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Action",
+      "Adventure",
+      "Amazon Games",
+      "Crystal Dynamics",
+      "Flying Wild Hog",
+      "Nintendo Switch 2",
+      "PC",
+      "PlayStation 5",
+      "Remake",
+      "Tomb Raider",
+      "Tomb Raider: Legacy of Atlantis",
+      "Unreal Engine 5",
+      "Xbox Series X/S",
+      "Tomb Raider: Legacy of Atlantis game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

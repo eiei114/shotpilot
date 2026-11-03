@@ -5,20 +5,50 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 8
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=lN_OLbagA6w",
     "channel": "Ales Devs Games and RedWills Interactive",
-    "uploadDate": null,
+    "uploadDate": "20251017",
     "viewCount": 62811,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "game",
+      "gamedevelopment",
+      "unrealengine5",
+      "blender",
+      "cinematic",
+      "kerala",
+      "keralagame",
+      "malayalam",
+      "malayalamgame",
+      "4k",
+      "horrorengine",
+      "horror",
+      "teaser",
+      "music"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

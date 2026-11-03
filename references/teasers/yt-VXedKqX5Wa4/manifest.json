@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=VXedKqX5Wa4",
@@ -12,6 +14,18 @@
     "uploadDate": "20250925",
     "viewCount": 1270336,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Xbox",
+      "Xbox One",
+      "Xbox Series X",
+      "Xbox Series S",
+      "Forza Horizon",
+      "Forza Horizon 6",
+      "H6",
+      "Forza",
+      "Tokyo Game Show 2025",
+      "Xbox Tokyo Game Show"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

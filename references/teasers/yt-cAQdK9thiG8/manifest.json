@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-cAQdK9thiG8",
   "name": "Soulframe - Official Open Preludes Teaser Trailer",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=cAQdK9thiG8",
@@ -12,6 +16,14 @@
     "uploadDate": "20261030",
     "viewCount": 192765,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Adventure",
+      "Digital Extremes",
+      "Free-to-Play",
+      "Open-World",
+      "PC",
+      "Soulframe"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

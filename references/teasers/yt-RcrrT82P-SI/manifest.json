@@ -2,23 +2,56 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-RcrrT82P-SI",
   "name": "[Broken Drive] - Official Announcement Teaser",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 11
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=RcrrT82P-SI",
     "channel": "Ferrule Entertainment",
-    "uploadDate": null,
+    "uploadDate": "20260805",
     "viewCount": 84,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "#SteamGames",
+      "#HorrorCommunity",
+      "#UnrealEngine5",
+      "#UE5",
+      "#UE5Horror",
+      "#UE5GameDev",
+      "#VideoGameDevelopment",
+      "#FerruleEntertainment",
+      "BrokenDrive",
+      "Games",
+      "İndieDeveloper",
+      "#Jumpscare",
+      "#HorrorDevlog",
+      "#GameDev",
+      "#PsychologicalHorror",
+      "#GamingCommunity",
+      "#SurvivalHorror"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

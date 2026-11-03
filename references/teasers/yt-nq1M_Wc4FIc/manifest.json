@@ -5,20 +5,53 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=nq1M_Wc4FIc",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20231003",
     "viewCount": 24729340,
     "foundBy": "cinematic teaser trailer game",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "Marvel's Spider-Man 2",
+      "Spider-Man 2",
+      "Spider-Man",
+      "Miles Morales",
+      "Peter Parker",
+      "Insomniac Games",
+      "Marvel Games",
+      "Venom",
+      "Cinematic Trailer",
+      "CG Trailer",
+      "Spider-Man Commercial",
+      "Spider-Man 2 Commercial"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

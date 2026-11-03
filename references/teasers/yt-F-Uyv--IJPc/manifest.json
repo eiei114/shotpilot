@@ -4,21 +4,58 @@
   "name": "📺😱 Tuned In: Free Prologue - Gameplay Trailer | Psychological Horror and Puzzle 📼👁️",
   "category": "horror",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 13,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=F-Uyv--IJPc",
     "channel": "KitorimatsuGaming",
-    "uploadDate": null,
+    "uploadDate": "20261031",
     "viewCount": 8,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "TunedIn",
+      "TunedInGame",
+      "TunedInJuego",
+      "VercorsGames",
+      "HorrorGame",
+      "JuegoDeTerror",
+      "IndieGame",
+      "ApoyaALosIndies",
+      "KitorimatsuGaming",
+      "TrailerDeGameplay",
+      "GameplayTrailer",
+      "PCGaming",
+      "SteamGames",
+      "JuegosIndies",
+      "IndieDev",
+      "GamerEspañol",
+      "JuegosDeSteam",
+      "GamingNews",
+      "TerrorPsicológico",
+      "JuegosGratis"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

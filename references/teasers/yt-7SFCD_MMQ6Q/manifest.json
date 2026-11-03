@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-7SFCD_MMQ6Q",
   "name": "Maskborne - Official Teaser Trailer",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2,
+    "adventure": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=7SFCD_MMQ6Q",
@@ -12,6 +17,27 @@
     "uploadDate": "20260903",
     "viewCount": 765144,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "dev",
+      "godot",
+      "devlog",
+      "dev log",
+      "development",
+      "game",
+      "game development",
+      "video games",
+      "godot development",
+      "indie game",
+      "solo developer",
+      "indie developer",
+      "mjthehunter",
+      "morten jaeger",
+      "emilie stabell",
+      "maskborne",
+      "metroidvania",
+      "action",
+      "platformer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

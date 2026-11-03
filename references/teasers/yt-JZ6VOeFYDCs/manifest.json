@@ -5,20 +5,38 @@
   "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=JZ6VOeFYDCs",
     "channel": "Руслан Рагимов",
-    "uploadDate": null,
+    "uploadDate": "20241220",
     "viewCount": 562958,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "BATTLEFIELD",
+      "UNREAL ENGINE"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

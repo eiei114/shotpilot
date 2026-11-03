@@ -4,21 +4,50 @@
   "name": "Visage — Release Gameplay Trailer",
   "category": "horror",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 11
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=dY8AVTFbR9o",
     "channel": "SadSquare Studio",
-    "uploadDate": null,
+    "uploadDate": "20201030",
     "viewCount": 865616,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "Visage",
+      "horror",
+      "video game",
+      "sadsquare",
+      "sadsquarestudio",
+      "psychological horror",
+      "gameplay",
+      "survival horror",
+      "ghost",
+      "scary",
+      "release",
+      "trailer",
+      "announcement"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-olOTdoW6XsQ",
   "name": "Tomb Raider: Catalyst - Teaser Trailer | PS5 Games",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 4,
+    "adventure": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=olOTdoW6XsQ",
@@ -12,6 +17,28 @@
     "uploadDate": "20251212",
     "viewCount": 1883356,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "tomb raider",
+      "lara croft",
+      "catalyst",
+      "teaser trailer",
+      "games",
+      "gaming",
+      "video game news",
+      "trailer",
+      "action adventure",
+      "action",
+      "adventure",
+      "crystal dynamics",
+      "amazongames",
+      "amazon game studios",
+      "game awards"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

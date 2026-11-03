@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-8X2kIfS6fb8",
   "name": "Cyberpunk 2077 — Official E3 2018 Trailer",
-  "category": "sci-fi",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=8X2kIfS6fb8",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 27630698,
     "foundBy": "cinematic teaser trailer game",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

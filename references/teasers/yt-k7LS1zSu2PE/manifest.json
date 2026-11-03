@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=k7LS1zSu2PE",
     "channel": "Shark'ZxD Unreal Artist",
-    "uploadDate": null,
+    "uploadDate": "20250823",
     "viewCount": 636,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "predecessor",
+      "predecessor gameplay",
+      "predecessor cinematic",
+      "paragon 2 gameplay",
+      "predecessor game",
+      "predecessor trailer",
+      "unreal engine cinematic",
+      "ue5 cinematic",
+      "predecessor lore trailer",
+      "predecessor tournament",
+      "predecessor cinematic teaser",
+      "predecessor cinematic trailer",
+      "ue5 short film",
+      "unreal cinematic",
+      "predecessor lore",
+      "predecessor lore teaser",
+      "ue5",
+      "predecessor legacy",
+      "predecessor 1.7",
+      "predecessor 1.8"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

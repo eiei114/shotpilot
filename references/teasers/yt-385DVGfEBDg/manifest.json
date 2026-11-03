@@ -2,23 +2,55 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-385DVGfEBDg",
   "name": "Sound of Darkness | Official Teaser Trailer | New Escape Room Horror Adventure",
-  "category": "horror",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 13,
+    "adventure": 20
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=385DVGfEBDg",
     "channel": "M9 Games",
-    "uploadDate": null,
+    "uploadDate": "20261031",
     "viewCount": 20,
     "foundBy": "horror game teaser trailer",
+    "tags": [
+      "Sound of Darkness",
+      "Sound of Darkness game",
+      "Sound of Darkness trailer",
+      "M9 Games",
+      "escape room game",
+      "escape room adventure",
+      "puzzle adventure game",
+      "horror puzzle game",
+      "atmospheric horror",
+      "mystery adventure game",
+      "first person puzzle game",
+      "indie horror game",
+      "abandoned house game",
+      "horror game trailer",
+      "new indie games 2026"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

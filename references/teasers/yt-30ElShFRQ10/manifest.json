@@ -2,23 +2,55 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-30ElShFRQ10",
   "name": "Pale Static (formerly Echoes of the Lost) — Announcement Teaser",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 15,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=30ElShFRQ10",
     "channel": "Veilgrain Studio",
-    "uploadDate": null,
+    "uploadDate": "20260915",
     "viewCount": 1743,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "Echoes of the Lost",
+      "Echoes of the Lost trailer",
+      "Echoes of the Lost teaser",
+      "Veilgrain",
+      "survival horror",
+      "indie horror",
+      "psychological horror",
+      "single player horror",
+      "first person horror",
+      "horror FPS",
+      "Unreal Engine 5",
+      "UE5",
+      "indie game",
+      "PC horror game",
+      "announcement teaser"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

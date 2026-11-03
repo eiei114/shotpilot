@@ -5,20 +5,49 @@
   "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 2,
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=t2QACjV9Bc0",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20261029",
     "viewCount": 44768,
     "foundBy": "action game teaser trailer",
+    "tags": [
+      "Action",
+      "Cross-Platform Play",
+      "Cross-Platform Saves",
+      "Free-to-Play",
+      "Grinding Gear Games",
+      "Online Six-Player Multiplayer",
+      "PC",
+      "Path of Exile",
+      "Path of Exile 2",
+      "PlayStation 5",
+      "RPG",
+      "Xbox Series X/S"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

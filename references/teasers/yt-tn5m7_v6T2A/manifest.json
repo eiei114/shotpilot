@@ -2,23 +2,54 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-tn5m7_v6T2A",
   "name": "Moadra - Official Steam Next Fest Trailer",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1,
+    "action": 2,
+    "adventure": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=tn5m7_v6T2A",
     "channel": "GameTrailers",
-    "uploadDate": null,
+    "uploadDate": "20250218",
     "viewCount": 12158,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "Action",
+      "Adventure",
+      "Gloomsoft",
+      "Indie",
+      "Moadra",
+      "PC",
+      "SteamOS",
+      "Moadra game",
+      "Moadra demo",
+      "Moadra gameplay",
+      "Moadra trailer",
+      "Moadra demo trailer",
+      "Steam Next Fest"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

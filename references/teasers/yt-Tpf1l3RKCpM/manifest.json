@@ -5,20 +5,58 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 20,
+    "scifi": 1,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Tpf1l3RKCpM",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20251111",
     "viewCount": 76378,
     "foundBy": "horror game teaser trailer",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "BrokenLore: Unfollow",
+      "BrokenLore UNFOLLOW",
+      "BrokenLore",
+      "UNFOLLOW game",
+      "psychological horror game",
+      "social media horror",
+      "mental health game",
+      "PlayStation 5 horror",
+      "PS5 horror game",
+      "akidearest",
+      "emotional horror game",
+      "horror game 2026",
+      "horror game trailer",
+      "PlayStation horror",
+      "narrative horror game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

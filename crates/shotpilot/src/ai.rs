@@ -93,10 +93,23 @@ fn shot_schema() -> Value {
 }
 
 pub fn plan_schema() -> Value {
+    let mut shot = shot_schema();
+    shot["properties"]["caption"] = json!({"type": "string", "description": "on-screen text burned in on this shot, or empty"});
+    shot["properties"]["transition"] = json!({"type": "string", "enum": crate::finish::TRANSITIONS,
+                                              "description": "how this shot hands over to the next one"});
+    if let Some(req) = shot["required"].as_array_mut() {
+        req.push(json!("caption"));
+        req.push(json!("transition"));
+    }
     json!({
         "type": "object",
-        "properties": {"rationale": {"type": "string"}, "shots": {"type": "array", "items": shot_schema()}},
-        "required": ["rationale", "shots"],
+        "properties": {
+            "rationale": {"type": "string"},
+            "shots": {"type": "array", "items": shot},
+            "title_card": {"type": "string", "description": "the title shown over the title shot"},
+            "end_card": {"type": "array", "items": {"type": "string"}, "description": "end card lines, or empty"},
+        },
+        "required": ["rationale", "shots", "title_card", "end_card"],
         "additionalProperties": false,
     })
 }
@@ -333,6 +346,10 @@ pub struct Planned {
     pub adjustments: Vec<String>,
     /// The skeleton Claude was given.
     pub skeleton: Vec<craft::Slot>,
+    /// `finish:` entries (title, end_card) Claude proposed; captions and transitions are on the shots.
+    pub finish: Vec<(String, Value)>,
+    /// The measured references the planner read, e.g. "horror (158 teasers)" (refs.rs).
+    pub references: Vec<String>,
 }
 
 pub fn stage_schema() -> Value {
@@ -438,6 +455,7 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
         props_list(defn),
         craft::plan_spec(defn, &slots)
     );
+    user.push_str(&craft::finish_text(defn));
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
@@ -492,7 +510,20 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     }
     let adjustments = craft::normalize(&mut shots, duration);
     validate_shots(defn, &shots)?;
-    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots })
+    let mut finish = Vec::new();
+    let title = out["title_card"].as_str().map(str::trim).filter(|t| !t.is_empty()).map(str::to_string)
+        .or_else(|| (!defn.teaser.title.is_empty()).then(|| defn.teaser.title.clone()));
+    if let Some(t) = title {
+        finish.push(("title".to_string(), json!({"text": t, "at": 0.5, "duration": 3})));
+    }
+    let lines: Vec<String> = out["end_card"].as_array().into_iter().flatten().filter_map(|l| l.as_str())
+        .map(str::trim).filter(|l| !l.is_empty()).map(str::to_string).collect();
+    finish.push(("end_card".to_string(), if lines.is_empty() { Value::Null } else { json!({"lines": lines, "duration": 3}) }));
+    let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
+    if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
+        references.push(format!("{} ({} teasers)", r.id, r.n));
+    }
+    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references })
 }
 
 fn r1(v: f64) -> f64 {
@@ -526,6 +557,12 @@ fn shot_from_plan(s: &Value, i: usize) -> Value {
     }
     if let Some(n) = s["notes"].as_str().filter(|n| !n.is_empty()) {
         shot.insert("notes".into(), json!(n));
+    }
+    if let Some(c) = s["caption"].as_str().map(str::trim).filter(|c| !c.is_empty()) {
+        shot.insert("caption".into(), json!(c));
+    }
+    if let Some(t) = s["transition"].as_str().filter(|t| *t != "cut" && crate::finish::TRANSITIONS.contains(t)) {
+        shot.insert("transition".into(), json!(t));
     }
     let appear: Vec<Value> = s["appear"]
         .as_array()

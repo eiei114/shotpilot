@@ -5,20 +5,42 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ti-ls5oPzE8",
     "channel": "鐘咲ユーリ // Kanesaki Yuri //",
-    "uploadDate": null,
+    "uploadDate": "20230831",
     "viewCount": 1964,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "Vtuber",
+      "vtuber",
+      "ティザーPV",
+      "TeaserPV",
+      "自己紹介",
+      "インディーゲーム",
+      "美少女",
+      "お嬢様"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

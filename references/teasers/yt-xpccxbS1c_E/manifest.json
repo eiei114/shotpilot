@@ -5,20 +5,45 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 8
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=xpccxbS1c_E",
     "channel": "Darkphobia",
-    "uploadDate": null,
+    "uploadDate": "20250105",
     "viewCount": 732369,
     "foundBy": "horror game teaser trailer",
+    "tags": [
+      "Amenti",
+      "Horror",
+      "Horror Games",
+      "Indie Game",
+      "Steam",
+      "Steam Game",
+      "Egypt",
+      "Egypt Horror",
+      "Unreal Engine 5"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt--NF3hbmXclE",
   "name": "『ディズニー ツイステッドワンダーランド ザ アニメーション ～エピソード オブ サバナクロー～』｜ティザーPV｜サバナクロー寮が企てる不穏な“計画”に波乱の予感｜Disney+ (ディズニープラス）",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "rpg": 3,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=-NF3hbmXclE",
     "channel": "ディズニープラス",
-    "uploadDate": null,
+    "uploadDate": "20260819",
     "viewCount": 892717,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "ディズニー ツイステッドワンダーランド",
+      "ツイステッドワンダーランド",
+      "ツイステ",
+      "ツイステ アニメ",
+      "ディズニー ツイステッドワンダーランド ザ アニメーション",
+      "エピソード オブ サバナクロー",
+      "サバナクロー",
+      "サバナクロー寮",
+      "レオナ・キングスカラー",
+      "ジャック・ハウル",
+      "ラギー・ブッチ",
+      "比良坂悠河",
+      "グリム",
+      "梅原裕一郎",
+      "坂泰斗",
+      "市川蒼",
+      "ファイルーズあい",
+      "杉山紀彰",
+      "枢やな",
+      "黒執事"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

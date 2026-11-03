@@ -5,20 +5,56 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=2oad7AX7gWM",
     "channel": "DayZ",
-    "uploadDate": null,
+    "uploadDate": "20250627",
     "viewCount": 244855,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "dayz",
+      "playstation",
+      "steam",
+      "survival",
+      "xbox",
+      "zombie",
+      "zombie apocalypse",
+      "New Terrain",
+      "Expansion",
+      "DesertMap",
+      "Desert",
+      "DayZBadlands",
+      "DayZUnite",
+      "NewDesertMap",
+      "Nasdara",
+      "DayZNasdara",
+      "DayZDesertMap",
+      "DayZTakistan",
+      "DesertCosmetic",
+      "Deagle"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

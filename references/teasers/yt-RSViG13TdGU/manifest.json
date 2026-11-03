@@ -5,20 +5,49 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 14
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=RSViG13TdGU",
     "channel": "Digital Chasm",
-    "uploadDate": null,
+    "uploadDate": "20261010",
     "viewCount": 117,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "Project Undo",
+      "Project Undo Teaser",
+      "Digital Chasm",
+      "Horror Game",
+      "Indie Horror",
+      "Psychological Horror",
+      "Industrial Horror",
+      "Unreal Engine 5",
+      "UE5",
+      "Indie Game",
+      "Horror Teaser",
+      "Official Teaser",
+      "SMART Industries"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

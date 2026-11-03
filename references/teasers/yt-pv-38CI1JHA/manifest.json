@@ -5,6 +5,10 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=pv-38CI1JHA",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 156,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -5,20 +5,47 @@
   "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=1rNnGTkh_pA",
     "channel": "SEGA",
-    "uploadDate": null,
+    "uploadDate": "20210917",
     "viewCount": 595898,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "sega",
+      "セガ",
+      "新作",
+      "RPG",
+      "東京ゲームショウ",
+      "TGS",
+      "TGS2021",
+      "真のRPG",
+      "一度きりの旅",
+      "ゲーム",
+      "情報解禁"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

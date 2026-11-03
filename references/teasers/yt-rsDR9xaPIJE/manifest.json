@@ -5,6 +5,10 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 11
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=rsDR9xaPIJE",
@@ -12,6 +16,14 @@
     "uploadDate": "20261028",
     "viewCount": 532522,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "dead by daylight",
+      "dbd",
+      "behaviour interactive",
+      "bhvr",
+      "slasher game",
+      "survival horror"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

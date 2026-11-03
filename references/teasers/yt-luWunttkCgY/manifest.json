@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-luWunttkCgY",
   "name": "Dear Passengers - Official 'Another Friendslop Game' Teaser Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=luWunttkCgY",
@@ -12,6 +17,28 @@
     "uploadDate": "20260723",
     "viewCount": 26602852,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Action",
+      "Adventure",
+      "Dear Passengers",
+      "FLEXUS",
+      "First-Person",
+      "Online Co-Op Multiplayer",
+      "PC",
+      "Dear Passengers game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2026",
+      "upcoming video games 2026"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=gnm4HgIAVmU",
@@ -12,6 +14,28 @@
     "uploadDate": "20260729",
     "viewCount": 29853719,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "MGM",
+      "MGM Studios",
+      "Metro-Goldwyn- Mayer",
+      "Metro Pictures Corporations",
+      "Goldwyn Pictures",
+      "Louis B. Mayer Pictures",
+      "MGM Pictures",
+      "United Artists",
+      "Metro MGM/UA",
+      "Amazon MGM",
+      "Amazon MGM Studios",
+      "The Thomas Crown Affair 2027",
+      "The Thomas Crown Affair",
+      "Michael B Jordan",
+      "Michael B. Jordan",
+      "The Thomas Crown Affair Michael B Jordan",
+      "The Thomas Crown Affair Teaser",
+      "The Thomas Crown Affair Trailer",
+      "New Movies 2027",
+      "Kenneth Branagh"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

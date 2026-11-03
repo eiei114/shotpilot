@@ -575,3 +575,64 @@ fn library_lists_plays_and_imports_without_rendering() {
     let (code, _) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:zz"})));
     assert_eq!(code, 400);
 }
+
+#[test]
+fn home_creates_opens_and_switches_projects() {
+    let tmp = tempfile::tempdir().unwrap();
+    let srv = Server::bind_opt(None, "127.0.0.1", 0, shotpilot::server::default_claude(), None)
+        .unwrap()
+        .with_recents(Some(tmp.path().join("projects.json")));
+    let s = Srv { port: srv.port(), f: ws() };
+    srv.spawn();
+
+    // nothing open: the studio sends you home, and project routes say so
+    let r = call(&s, "GET", "/", None, &[]);
+    assert_eq!((r.code, r.header("location")), (302, "/home"));
+    assert_eq!(call(&s, "GET", "/home", None, &[]).code, 200);
+    assert_eq!(jcall(&s, "GET", "/api/status", None).0, 400);
+    let (_, home) = jcall(&s, "GET", "/api/home", None);
+    assert!(home["current"].is_null());
+    assert_eq!(home["projects"].as_array().unwrap().len(), 0);
+
+    // a new sample project opens at once
+    let loc = tmp.path().join("projects");
+    let (code, out) = jcall(&s, "POST", "/api/projects/create",
+        Some(json!({"location": loc.display().to_string(), "name": "demo", "sample": true})));
+    assert_eq!(code, 200, "{out}");
+    let demo = out["path"].as_str().unwrap().to_string();
+    assert_eq!(call(&s, "GET", "/", None, &[]).code, 200);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["project"], "demo");
+    let etag_demo = call(&s, "GET", "/api/status", None, &[]).header("etag").to_string();
+
+    // its card shows what is shot, with cover frames served from its render/ only
+    render(&s, "previz");
+    let (_, home) = jcall(&s, "GET", "/api/home", None);
+    let card = &home["projects"][0];
+    assert_eq!((card["shots"].as_u64(), card["taken"].as_u64(), card["current"].as_bool()), (Some(6), Some(6), Some(true)));
+    let cover = card["covers"][0]["url"].as_str().unwrap();
+    let r = call(&s, "GET", cover, None, &[]);
+    assert_eq!((r.code, r.header("content-type")), (200, "image/png"));
+    let yaml = format!("/home/cover?p={}", demo.replace(' ', "%20"));
+    assert_eq!(call(&s, "GET", &yaml, None, &[]).code, 404);
+
+    // opening another project switches the studio; both stay on the list
+    let (code, _) = jcall(&s, "POST", "/api/projects/open", Some(json!({"path": s.f.path().display().to_string()})));
+    assert_eq!(code, 200);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["project"], "t");
+    let r = call(&s, "GET", "/api/status", None, &[("If-None-Match", &etag_demo)]);
+    assert_eq!(r.code, 200, "a switched project never answers 304");
+    let (_, home) = jcall(&s, "GET", "/api/home", None);
+    assert_eq!(home["projects"].as_array().unwrap().len(), 2);
+    assert_eq!(home["projects"][0]["name"], "t");
+
+    // forgetting drops it from the list, not from disk
+    let (code, _) = jcall(&s, "POST", "/api/projects/forget", Some(json!({"path": demo})));
+    assert_eq!(code, 200);
+    let (_, home) = jcall(&s, "GET", "/api/home", None);
+    assert_eq!(home["projects"].as_array().unwrap().len(), 1);
+    assert!(std::path::Path::new(&demo).is_file());
+    // without a native picker the home falls back to typed paths
+    assert_eq!(jcall(&s, "POST", "/api/projects/pick", Some(json!({"kind": "open"}))).0, 400);
+}

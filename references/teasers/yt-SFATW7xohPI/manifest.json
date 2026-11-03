@@ -2,23 +2,56 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-SFATW7xohPI",
   "name": "Vought Rising - Official Teaser Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=SFATW7xohPI",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260524",
     "viewCount": 317825,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Action",
+      "On-Demand",
+      "Prime Video",
+      "Superhero",
+      "The Boys",
+      "Vought Rising",
+      "Vought Rising Tv trailers",
+      "tv trailer",
+      "new tv shows",
+      "new tv trailers",
+      "upcoming tv shows 2026",
+      "new tv shows 2026",
+      "2026 new tv shows",
+      "2026 trailers",
+      "new trailers",
+      "ign",
+      "ign tv trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

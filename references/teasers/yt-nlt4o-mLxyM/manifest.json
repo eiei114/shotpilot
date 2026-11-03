@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-nlt4o-mLxyM",
   "name": "The Lost Wild - True Fear is Primal Trailer | PS5 Games",
-  "category": "horror",
+  "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=nlt4o-mLxyM",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 547468,
     "foundBy": "horror game teaser trailer",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

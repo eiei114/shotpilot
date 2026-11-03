@@ -5,20 +5,58 @@
   "category": "cozy",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 4,
+    "rpg": 2,
+    "action": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=m-PE7BPskpw",
     "channel": "GameTrailers",
-    "uploadDate": null,
+    "uploadDate": "20260606",
     "viewCount": 134366,
     "foundBy": "Wholesome Direct teaser",
+    "tags": [
+      "City-Building",
+      "Linux",
+      "Macintosh",
+      "Nintendo Switch",
+      "PC",
+      "PlayStation 4",
+      "PlayStation 5",
+      "RPG",
+      "Stray Fawn Studio",
+      "Xbox One",
+      "Xbox Series X/S",
+      "The Wandering Village: The Last Leviathan",
+      "The Wandering Village: The Last Leviathan game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

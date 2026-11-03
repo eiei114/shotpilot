@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-8EeriuU3IIo",
   "name": "Get The Artifact: Violent Incursion | Steam Next Fest 2026 Teaser #SteamNextFest #GetTheArtifact",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 4,
+    "adventure": 7
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=8EeriuU3IIo",
     "channel": "Overpressure Games and Insert Coin Podcast",
-    "uploadDate": null,
+    "uploadDate": "20261015",
     "viewCount": 114,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "Get The Artifact Violent Incursion",
+      "Get The Artifact",
+      "ARTIFACT game",
+      "Steam Next Fest",
+      "Steam Next Fest 2026",
+      "Steam Next Fest October 2026",
+      "Steam Next Fest demo",
+      "indie game",
+      "indie games 2026",
+      "indie game trailer",
+      "gameplay teaser",
+      "gameplay trailer",
+      "sci fi platformer",
+      "third person platformer",
+      "precision platformer",
+      "time attack game",
+      "speedrunning",
+      "speedrunning game",
+      "sci fi heist",
+      "space station game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

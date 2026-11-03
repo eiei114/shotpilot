@@ -5,6 +5,8 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=z3MnK1UNNrQ",
@@ -12,6 +14,7 @@
     "uploadDate": null,
     "viewCount": 315,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -5,20 +5,56 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=g79GPZSQHBk",
     "channel": "Apple TV",
-    "uploadDate": null,
+    "uploadDate": "20260725",
     "viewCount": 2874633,
     "foundBy": "cinematic teaser trailer game",
+    "tags": [
+      "neuromancer",
+      "trailer",
+      "trailers",
+      "neuromancer trailer",
+      "trailer neuromancer",
+      "official trailer",
+      "neuromancer official trailer",
+      "official trailer neuromancer",
+      "callum turner",
+      "callum turner neuromancer",
+      "briana middleton",
+      "briana middleton neuromancer",
+      "william franklyn-miller",
+      "march menchaca",
+      "peter sarsgaard",
+      "max irons",
+      "neuromancer series",
+      "neuromancer apple tv",
+      "apple neuromancer",
+      "apple tv"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

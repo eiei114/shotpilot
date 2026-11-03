@@ -2,23 +2,62 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-PsKAic7di1M",
   "name": "Warhammer Age of Sigmar: Deathmaster – Reveal Teaser | Warhammer Skulls 2026",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 6,
+    "rpg": 2,
+    "action": 3,
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=PsKAic7di1M",
     "channel": "Warhammer",
-    "uploadDate": null,
+    "uploadDate": "20260521",
     "viewCount": 217526,
     "foundBy": "game reveal teaser",
+    "tags": [
+      "Games Workshop",
+      "Citadel Miniatures",
+      "Warhammer Age of Sigmar",
+      "Warhammer 40000",
+      "Forge World",
+      "Black Library",
+      "40K",
+      "AoS",
+      "GW",
+      "Astartes",
+      "Space marine",
+      "Tow",
+      "The Old world",
+      "Middle earth strategy battle game",
+      "lord of the rings",
+      "the hobbit",
+      "warhammer underworlds",
+      "necromunda",
+      "the horus heresy",
+      "legions imperialis"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

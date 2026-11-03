@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-ATxEDzhKHZA",
   "name": "『進撃の巨人 死地からの脱出』ティザー映像",
-  "category": "general",
+  "category": "adventure",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ATxEDzhKHZA",
     "channel": "ルビーパーティーChannel",
-    "uploadDate": null,
+    "uploadDate": "20161115",
     "viewCount": 96513,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "UCkM0vkGtjtmXf47hfwFtFsw",
+      "ゲーム動画",
+      "進撃の巨人",
+      "ミカサ",
+      "進撃の巨人 死地からの脱出",
+      "ニンテンドー3DS",
+      "ゲーム",
+      "アドベンチャー",
+      "進撃",
+      "リヴァイ",
+      "アルミン",
+      "ベルトルト",
+      "クリスタ",
+      "コニー",
+      "サシャ",
+      "ライナー",
+      "ユミル",
+      "ジャン",
+      "ハンジ",
+      "エルヴィン"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

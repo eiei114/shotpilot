@@ -2,23 +2,58 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-by-RDmdaP_s",
   "name": "Archosaur Games’ Unreal Engine 5 - Official Teaser Trailer",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=by-RDmdaP_s",
     "channel": "GameTrailers",
-    "uploadDate": null,
+    "uploadDate": "20211203",
     "viewCount": 7213,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "IGN",
+      "Trailer",
+      "Unreal Open Day",
+      "Unreal Open Day 2021",
+      "tech trailer",
+      "tech trailers",
+      "game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2021",
+      "upcoming video games 2021"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

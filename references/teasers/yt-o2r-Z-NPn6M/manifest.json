@@ -2,23 +2,39 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-o2r-Z-NPn6M",
   "name": "Nintendo Switch『Nightmare: The Lunatic』ティザームービー",
-  "category": "general",
+  "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=o2r-Z-NPn6M",
     "channel": "CFK Official Channel",
-    "uploadDate": null,
+    "uploadDate": "20250731",
     "viewCount": 11269,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

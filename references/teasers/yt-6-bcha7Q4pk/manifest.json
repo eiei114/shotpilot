@@ -5,20 +5,42 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 2,
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=6-bcha7Q4pk",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20160614",
     "viewCount": 454948,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "here they lie",
+      "santa monica studios",
+      "e3",
+      "e3 2016",
+      "tangentlemen"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

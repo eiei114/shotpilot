@@ -2,23 +2,45 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-qDFEeeLy6ws",
   "name": "Hollow Knight: Silksong - Sea of Sorrow Teaser",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=qDFEeeLy6ws",
     "channel": "Team Cherry",
-    "uploadDate": null,
+    "uploadDate": "20251216",
     "viewCount": 5303083,
     "foundBy": "indie game teaser trailer",
+    "tags": [
+      "Hollow Knight",
+      "Sea of Sorrows",
+      "Silksong",
+      "Video Game",
+      "Metroidvania",
+      "Adventure"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

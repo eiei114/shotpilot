@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-7_vq-ETdiJg",
   "name": "Project Resistance - Teaser Trailer | PS4",
-  "category": "horror",
+  "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=7_vq-ETdiJg",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 114537,
     "foundBy": "survival horror teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

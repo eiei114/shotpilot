@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-i7jVfG-wB78",
   "name": "Garten of Banban: Last Ticket to the Abyss - Official Teaser Trailer (Delvers)",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 29
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=i7jVfG-wB78",
     "channel": "Euphoric Brothers",
-    "uploadDate": null,
+    "uploadDate": "20260807",
     "viewCount": 3731750,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "garten of banban ending",
+      "poppy playtime",
+      "garten of banban gameplay",
+      "garten of banban game",
+      "garten of banban",
+      "garten of banban trailer",
+      "garten of banban teaser",
+      "garden of banban",
+      "garden of banban gameplay",
+      "garden of banban trailer",
+      "garten of banban 0",
+      "garten of banban 5",
+      "garten of banban 8 gameplay",
+      "garten of banban 8 trailer",
+      "garden of banban 8",
+      "last ticket to the abyss",
+      "last ticket to the abyss trailer",
+      "garten of banban lttta",
+      "garten of banban 9",
+      "lttta"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

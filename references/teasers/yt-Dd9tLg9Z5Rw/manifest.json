@@ -2,23 +2,45 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Dd9tLg9Z5Rw",
   "name": "God of War Laufey - Official Pre-Orders Open Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Dd9tLg9Z5Rw",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260929",
     "viewCount": 551618,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Action",
+      "God of War",
+      "God of War Laufey",
+      "PlayStation 5",
+      "Santa Monica Studio",
+      "Sony Interactive Entertainment"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

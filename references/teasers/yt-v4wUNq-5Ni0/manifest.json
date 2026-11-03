@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-v4wUNq-5Ni0",
   "name": "SPINE: This is Gun Fu - Official Gameplay Trailer | Galaxies Autumn 2026 Showcase",
-  "category": "general",
+  "category": "action",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 3,
+    "action": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=v4wUNq-5Ni0",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20261015",
     "viewCount": 1404416,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Action",
+      "Nekki",
+      "Online Versus Multiplayer",
+      "PC",
+      "PS5 Pro Enhanced",
+      "PlayStation 5",
+      "Sci-Fi",
+      "Spine",
+      "Xbox Series X/S",
+      "SPINE: This is Gun Fu",
+      "SPINE: This is Gun Fu game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

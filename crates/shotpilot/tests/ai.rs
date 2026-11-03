@@ -110,11 +110,12 @@ fn plan_gets_the_brief_skeleton_and_craft_before_writing() {
     let mut f = ws();
     f.ws.set_brief(&common::set(&[("genre", json!("一人称ホラー")), ("must_show", json!(["井戸"]))])).unwrap();
     let fake = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
-    ai::plan(&f.ws.defn, None, None, None, Some("ジャンプスケアなしで"), &fake).unwrap();
+    let p = ai::plan(&f.ws.defn, None, None, None, Some("ジャンプスケアなしで"), &fake).unwrap();
+    assert!(p.references.iter().any(|r| r.starts_with("horror (")), "{:?}", p.references);
     let req = &fake.calls.borrow()[0];
     let user = req["messages"][0]["content"].as_str().unwrap();
     for part in ["well: [0.0, 0.0, 80.0], 140 x 140 x 90 cm", "fills the frame height from about", "## Brief", "Genre: 一人称ホラー", "Must show: 井戸", "## Skeleton", "## Craft rules",
-                 "Do not open on the title", "## Framing", "ジャンプスケアなしで"] {
+                 "Do not open on the title", "## Measured teaser craft", "## Genre reference: horror", "### 2. Do", "## Framing", "ジャンプスケアなしで"] {
         assert!(user.contains(part), "missing {part}:
 {user}");
     }
@@ -182,6 +183,42 @@ fn skeleton_follows_the_craft() {
     }
     let gameplay = BriefCfg { kind: "gameplay".into(), ..Default::default() };
     assert!(skeleton(&gameplay, 60.0, None)[0].duration <= 3.0);
+
+    // hook and title lengths follow the genre's measured teasers: horror holds both longer
+    let genre = |g: &str| BriefCfg { genre: g.into(), ..Default::default() };
+    let (horror, action) = (skeleton(&genre("ホラー"), 45.0, None), skeleton(&genre("アクション"), 45.0, None));
+    assert!(horror[0].duration > action[0].duration, "{horror:?}\n{action:?}");
+    assert!(horror.last().unwrap().duration > action.last().unwrap().duration, "{horror:?}\n{action:?}");
+}
+
+#[test]
+fn brief_genre_picks_a_measured_reference() {
+    use shotpilot::refs::{genre_for, genres};
+    let id = |t: &str| genre_for(t).map(|r| r.id);
+    assert_eq!(id("一人称ホラー"), Some("horror"));
+    assert_eq!(id("Psychological Horror"), Some("horror"));
+    assert_eq!(id("ほのぼの農場シム"), Some("cozy"));
+    assert_eq!(id("アクションRPG"), Some("rpg")); // rpg is matched before action
+    assert_eq!(id("見下ろし型シューター"), Some("action"));
+    assert_eq!(id("謎解きアドベンチャー"), Some("adventure"));
+    assert_eq!(id("adventure"), Some("adventure"));
+    assert_eq!(id("レース"), None);
+    assert_eq!(id(""), None);
+    for g in genres() {
+        assert!(g.n >= 20, "{} has only {} teasers", g.id, g.n);
+        assert!(!g.prose().is_empty() && !g.prose().contains("auto:"), "{}", g.id);
+    }
+}
+
+#[test]
+fn references_never_ask_claude_to_inspect_its_own_output() {
+    // D-22 holds for the measured references too: they are a spec, not a rubric
+    use shotpilot::model::BriefCfg;
+    for g in shotpilot::refs::genres() {
+        let text = shotpilot::refs::planner_text(&BriefCfg { genre: g.id.into(), ..Default::default() });
+        assert!(text.contains(&format!("## Genre reference: {}", g.id)));
+        assert!(shotpilot::craft::self_review_words(&text).is_empty(), "{}: {:?}", g.id, shotpilot::craft::self_review_words(&text));
+    }
 }
 
 #[test]

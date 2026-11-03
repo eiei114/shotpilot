@@ -5,20 +5,54 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=-PDHlviyssc",
     "channel": "コーエーテクモChannel",
-    "uploadDate": null,
+    "uploadDate": "20170821",
     "viewCount": 388725,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "進撃の巨人",
+      "エレン",
+      "イェーガー",
+      "ミカサ",
+      "リヴァイ",
+      "巨人",
+      "大型巨人",
+      "コーエー",
+      "新作",
+      "ティザー",
+      "進撃無双",
+      "ゲーム化",
+      "オメガフォース",
+      "立体機動",
+      "gamescom",
+      "GAMECITY",
+      "ωフォース",
+      "Atack on Titan",
+      "アニメ",
+      "進撃"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

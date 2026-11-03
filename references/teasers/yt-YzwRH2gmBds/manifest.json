@@ -2,23 +2,49 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-YzwRH2gmBds",
   "name": "Survive a Nightmare as a Cat | Meowmories 30-Second Trailer",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 13,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=YzwRH2gmBds",
     "channel": "MeowmoriesGame",
-    "uploadDate": null,
+    "uploadDate": "20260817",
     "viewCount": 11,
     "foundBy": "game teaser 30 seconds",
+    "tags": [
+      "Meowmories",
+      "indie horror",
+      "cat horror game",
+      "cat game",
+      "horror adventure",
+      "indie game",
+      "Steam game",
+      "Unreal Engine 5",
+      "Team Memolink"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

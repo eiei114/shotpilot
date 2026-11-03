@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=uLltiWS1KI4",
     "channel": "Level reDesign",
-    "uploadDate": null,
+    "uploadDate": "20250402",
     "viewCount": 146542,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "Unreal Engine 5",
+      "Remake",
+      "Unreal",
+      "Dev Log",
+      "Game Design",
+      "Game developer",
+      "Remaster",
+      "Making the map",
+      "Level",
+      "Level Design",
+      "Level Redesign",
+      "Mesh Painting",
+      "Game Dev",
+      "Video Games",
+      "Game engine",
+      "Game art",
+      "Retro game",
+      "indie",
+      "rtx",
+      "UE4"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

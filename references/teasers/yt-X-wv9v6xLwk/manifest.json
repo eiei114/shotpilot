@@ -5,20 +5,53 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=X-wv9v6xLwk",
     "channel": "PlayStation Japan",
-    "uploadDate": null,
+    "uploadDate": "20220615",
     "viewCount": 75233,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "プレイステーション",
+      "プレステ",
+      "PlayStation",
+      "PS",
+      "Vita",
+      "PS4",
+      "Game",
+      "ゲーム",
+      "ソニー",
+      "sony",
+      "SIE",
+      "ソニー・インタラクティブエンタテインメント",
+      "プレステ公式",
+      "PlayStation 4",
+      "psjapanizGN1LwfH8XME4mP",
+      "PS5",
+      "PlayStation 5"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

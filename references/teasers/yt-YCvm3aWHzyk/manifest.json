@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-YCvm3aWHzyk",
   "name": "Nintendo Switch 『リン、パズルに描かれた少女の物語』ティザームービー",
-  "category": "general",
+  "category": "adventure",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=YCvm3aWHzyk",
     "channel": "CFK Official Channel",
-    "uploadDate": null,
+    "uploadDate": "20210928",
     "viewCount": 1493,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "リン",
+      "パズル",
+      "少女",
+      "物語",
+      "ものがたり",
+      "九尾狐",
+      "きゅうびこ",
+      "日記",
+      "水墨画",
+      "迷路",
+      "お化け",
+      "Lynn",
+      "Girl",
+      "Drawn",
+      "Puzzle",
+      "oriental",
+      "art",
+      "Nine-tailed",
+      "Fox",
+      "Orb. secret"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

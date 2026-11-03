@@ -5,20 +5,49 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 9,
+    "action": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=7naiEFFSjcI",
     "channel": "みのん",
-    "uploadDate": null,
+    "uploadDate": "20261015",
     "viewCount": 67,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "#indiedev",
+      "#gamedev",
+      "#ホラーゲーム",
+      "#ゴシックホラー",
+      "#ブラウザゲーム",
+      "#自作ゲーム",
+      "#双子",
+      "#HOTELMIROIR",
+      "#インディーゲーム",
+      "#ゲーム制作",
+      "#TWINLIGHT",
+      "2Ðゲーム"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

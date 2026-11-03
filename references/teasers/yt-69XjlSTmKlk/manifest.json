@@ -5,20 +5,56 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 20
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=69XjlSTmKlk",
     "channel": "Trailer Forge",
-    "uploadDate": null,
+    "uploadDate": "20260330",
     "viewCount": 9420,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "ill game",
+      "ill trailer",
+      "ill gameplay",
+      "ill horror game",
+      "ill cinematic trailer",
+      "ill fan trailer",
+      "ill concept trailer",
+      "ill ps5",
+      "ill xbox series x",
+      "survival horror game",
+      "horror game trailer",
+      "body horror game",
+      "psychological horror game",
+      "realistic horror game",
+      "next gen horror game",
+      "unreal engine 5 horror",
+      "cinematic game trailer",
+      "fan made game trailer",
+      "ai generated trailer",
+      "gaming cinematic trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

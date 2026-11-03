@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-bWohQKWdkDY",
   "name": "Bodycam - Official Zombie Update Teaser Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=bWohQKWdkDY",
@@ -12,6 +16,14 @@
     "uploadDate": "20261103",
     "viewCount": 61718,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Bodycam",
+      "First-Person",
+      "PC",
+      "Reissad Studio",
+      "Shooter",
+      "Simulation"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
