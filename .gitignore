@@ -15,3 +15,7 @@ CLAUDE.local.md
 # Shotpilot outputs when a demo is run from the repo root
 render/
 .shotpilot/
+
+# Rust
+target/
+crates/shotpilot-app/gen/

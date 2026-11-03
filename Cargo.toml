@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = ["crates/shotpilot", "crates/shotpilot-app"]
+# `cargo test` / `cargo build` default to the core crate; the Tauri app builds with `-p shotpilot-app`.
+default-members = ["crates/shotpilot", "crates/shotpilot-app"]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+# previz draws pixels in tight loops; keep debug builds and tests fast
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2

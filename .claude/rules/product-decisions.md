@@ -16,6 +16,8 @@
 - D-12: 成果物はティザー1本（30〜60秒）。短尺は次回以降。
 - D-13: 部分修正ループを設計の芯に置く（ショット単位の再レンダ、定義と出力の分離、状態の保持、安いプレビュー）。
 - D-14: 差別化は3層で置く。①修正ループを製品の中心に置く ②ティザーの型 `hook → establish → escalate → title` を同梱する ③1ビートに3バリアントを出す。汎用の Unreal エージェントとは正面から戦わない。
+- D-15: open-design（nexu-io/open-design）型のローカル daemon と Web UI（`shotpilot serve`）を、標準ライブラリだけで薄く載せる。正本は shots.yaml のまま、リクエストごとに Workspace を開き直す。Next.js / Electron / SQLite は持ち込まない。狙いはデモの「1枚だけ rendered、残りは reused」を画面で見せること。（D-16 でブラウザ表示をやめ、アプリのウィンドウに置き換えた）
+- D-16: 全体を Rust に書き換え、Tauri のデスクトップアプリ（`shotpilot-app`）にする。ブラウザで開く Web UI はやめる。Python は UE の中で動く `sp_entry.py` だけに留める。fingerprint は Python 版と同じバイト列を hash するので、それまでに UE で撮った take はそのまま再利用できる。
 
 ## デモ（20秒）で見せる主張
 
@@ -26,5 +28,5 @@
 
 - ショットリストの生成を、どこまで AI に任せるか（カメラワークまで指定するか、目的だけを渡すか）。
 - ゲーム内イベント（戦闘、ギミック、UI 表示）の指定方法（Blueprint のタグか、アクター参照か）。
-- デモに使う UE5 プロジェクト（sharehouse-horror は非公開素材なので、利用範囲の確認が必要）。
+- デモに使う UE5 プロジェクト。2026-11-03 から七号室（sharehouse-horror の UE 版 RoomSeven）を仮で使う。撮影は作業コピー `Production/RoomSeven-shotpilot` で行い、本体のリポジトリには書かない。非公開素材なので、提出物に載せてよいかは未確認。
 - 提出形式とルーブリック原文の確認。
