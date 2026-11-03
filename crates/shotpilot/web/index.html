@@ -187,6 +187,91 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .playhead::before { content: ""; position: absolute; top: 0; left: -4px; border: 5px solid transparent; border-top-color: var(--accent); }
 .target { position: absolute; top: 14px; bottom: -2px; border-left: 1.5px dashed var(--muted); pointer-events: none; }
 .target span { position: absolute; top: -14px; left: 3px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+/* ------------------------------------------------------------------ sound lanes */
+.lanes { position: relative; display: grid; gap: 3px; margin-top: 5px; }
+.lane { position: relative; height: 26px; background: var(--soft); border-radius: 6px; overflow: hidden; cursor: default; }
+.lane.sfx { height: calc(var(--rows, 1) * 24px + 4px); }
+.lane .lbl { position: absolute; left: 4px; top: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
+  z-index: 3; pointer-events: none; background: var(--soft); padding: 2px 5px; border-radius: 4px; opacity: .92; }
+.lane .add { position: absolute; right: 4px; top: 3px; z-index: 3; border: 1px dashed var(--faint); background: var(--card); color: var(--muted);
+  font-size: 10.5px; border-radius: 5px; padding: 1px 7px; }
+.lane .add:hover { color: var(--ink); border-color: var(--ink); }
+.sblock { position: absolute; height: 22px; border-radius: 5px; overflow: hidden; color: var(--c); cursor: grab; touch-action: none;
+  background: color-mix(in srgb, var(--c) 18%, var(--card)); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
+.sblock.bgm { --c: var(--establish); top: 1px; cursor: pointer; }
+.sblock.sfx { --c: var(--hook); }
+.sblock svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sblock svg path { fill: currentColor; opacity: .55; }
+.sblock span { position: absolute; left: 5px; top: 3px; font-size: 10px; font-weight: 600; color: var(--ink); white-space: nowrap;
+  text-shadow: 0 0 3px var(--card), 0 0 3px var(--card); pointer-events: none; }
+.sblock.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; }
+.sblock.missing { border-style: dashed; border-color: var(--err); --c: var(--err); }
+.sblock.dragging { cursor: grabbing; opacity: .85; z-index: 4; box-shadow: 0 4px 14px rgb(0 0 0 / .2); }
+.cutmark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; pointer-events: auto; z-index: 1; }
+.cutmark.ok { background: color-mix(in srgb, var(--accent) 70%, transparent); }
+.cutmark.miss { background: repeating-linear-gradient(var(--stale) 0 3px, transparent 3px 6px); }
+.lane-note { font-size: 11px; color: var(--muted); padding: 5px 8px; }
+.drag-t { position: absolute; top: -18px; font-size: 10px; background: var(--ink); color: var(--card); padding: 1px 5px; border-radius: 4px;
+  white-space: nowrap; pointer-events: none; z-index: 6; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ sound tab */
+#soundpanel { overflow: auto; background: var(--card); display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 18px;
+  padding: 14px 18px; align-content: start; min-height: 0; }
+@media (max-width: 1100px) { #soundpanel { grid-template-columns: 1fr; } }
+#soundpanel h3 { margin: 0 0 6px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+#soundpanel h3 small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.sp-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.sp-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.sp-box audio { width: 100%; height: 34px; }
+.sp-hint { color: var(--muted); font-size: 12px; }
+.fields { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 12px; }
+.fields label { color: var(--muted); }
+.fields input, .fields select { border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; background: var(--soft); min-width: 0; width: 100%; font-size: 12px; }
+.fields .pair { display: flex; gap: 8px; align-items: center; }
+.fields .pair input[type=range] { flex: 1; accent-color: var(--ink); padding: 0; background: none; border: 0; }
+.fields .pair input[type=number] { width: 74px; flex: none; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.danger { color: var(--err); }
+.verdict { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vbadge { font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
+.vbadge.launch-grade { background: var(--accent); color: var(--accent-ink); }
+.vbadge.close { background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--ink); }
+.vbadge.needs-work { background: var(--stale); color: #241900; }
+.vbadge.not-launch-grade { background: var(--err); color: #fff; }
+.score { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.score small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.src { color: var(--faint); font-size: 11px; }
+.acts { display: grid; gap: 6px; }
+.act { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: start; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+.wpill { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; margin-top: 1px; }
+.wpill.critical { background: var(--err); color: #fff; } .wpill.major { background: var(--stale); color: #241900; } .wpill.minor { background: var(--soft); color: var(--muted); }
+.act .ops { display: flex; gap: 6px; }
+.act .ops button, .tchip { border: 1px solid var(--line); background: var(--card); border-radius: 7px; font-size: 11px; padding: 2px 7px; white-space: nowrap; }
+.act .ops button:hover, .tchip:hover { border-color: var(--ink); }
+.tip { font-size: 12px; color: var(--muted); padding-left: 10px; border-left: 3px solid var(--line); }
+.curve svg { width: 100%; height: 150px; display: block; }
+.curve .band { fill: color-mix(in srgb, var(--establish) 16%, transparent); }
+.curve .med { fill: none; stroke: var(--establish); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.curve .film { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.curve .zero { stroke: var(--line); }
+.curve .cut-ok { stroke: color-mix(in srgb, var(--accent) 80%, transparent); }
+.curve .cut-miss { stroke: var(--stale); stroke-dasharray: 2 2; }
+.curve text { font-size: 9px; fill: var(--faint); }
+.legend2 { display: flex; gap: 12px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+.legend2 i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+table.metrics { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.metrics td, table.metrics th { padding: 4px 6px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.metrics th { color: var(--muted); font-weight: 600; font-size: 11px; background: var(--soft); }
+table.metrics td.v { font-variant-numeric: tabular-nums; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; }
+table.metrics td.r { color: var(--muted); white-space: nowrap; font-size: 11.5px; }
+.st { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.st.ok { background: color-mix(in srgb, var(--accent) 30%, var(--card)); color: var(--ink); }
+.st.low, .st.high { background: var(--stale); color: #241900; }
+.st.crit { background: var(--err); color: #fff; }
+.st.info, .st.na { background: var(--soft); color: var(--muted); }
+details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.err-box { border: 1px solid var(--err); color: var(--err); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+
 #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 8px 14px;
   border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
 #toast.err { background: var(--err); color: #fff; }
@@ -230,6 +315,7 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
     <div class="tabs">
       <button class="tab on" data-tab="shot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg><span id="tab-shot">ショット</span></button>
       <button class="tab" data-tab="teaser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg>ティザー</button>
+      <button class="tab" data-tab="sound"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>サウンド<span id="tab-sound-v"></span></button>
       <div class="right">
         <span id="summary"></span>
         <button class="btn" id="cut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Cut</button>
@@ -253,6 +339,10 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
       <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
     </div>
     <div id="tweak" hidden></div>
+    <div id="soundpanel" hidden>
+      <div class="sp-col"><div class="sp-box" id="sp-player"></div><div class="sp-box" id="sp-insp"></div></div>
+      <div class="sp-col" id="sp-check"></div>
+    </div>
     <div id="timeline">
       <div class="tl-head">
         <span><b id="tl-total">0s</b> / 目標 <span id="tl-target"></span></span>
@@ -267,6 +357,7 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
       <div class="tl-body" id="tl-body">
         <div class="ruler" id="ruler"></div>
         <div class="track" id="track"></div>
+        <div class="lanes" id="lanes"></div>
       </div>
     </div>
   </section>
@@ -278,6 +369,7 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final: "final" };
+const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 const ui = {
   status: null, log: [], logKey: "",
@@ -293,6 +385,11 @@ const ui = {
   summary: "",
   pending: null,        // optimistic chat message while Claude works
   started: 0,
+  sound: null,          // /api/sound: placements, files, mix (lanes + check)
+  soundKey: "",         // what the last sound fetch was for
+  snd: null,            // selected sound: {kind: "bgm"} | {kind: "sfx", shot, index}
+  playT: null,          // teaser seconds of the sound player
+  mixing: false,
 };
 
 // ------------------------------------------------------------------ data
@@ -320,8 +417,31 @@ async function refresh() {
     if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
     const key = JSON.stringify(log);
     if (key !== ui.logKey) { ui.log = log; ui.logKey = key; drawChat(); }
+    // sound follows the definition (timing, sfx, audio); the mix itself is cached server-side
+    const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
+    if (skey !== ui.soundKey) { ui.soundKey = skey; fetchSound(); }
     draw();
   } catch (e) { toast(e.message, true); }
+}
+
+async function fetchSound() {
+  ui.mixing = true; drawSoundBits();
+  try { ui.sound = await api("GET", "/api/sound"); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.mixing = false; }
+  if (ui.snd && !soundItem(ui.snd)) ui.snd = null;
+  drawSoundBits();
+}
+
+/** Redraw what depends on the sound only (cheap; leaves the stage alone). */
+function drawSoundBits() {
+  if (!ui.status) return;
+  $("summary").innerHTML = ui.mixing ? "ミックス中…" : ui.summary;
+  drawLanes();
+  if (ui.tab === "sound") drawSoundPanel();
+  const v = ui.sound?.mix?.check;
+  const dot = v && ({ "launch-grade": "", close: "", "needs work": " warn" }[v.verdict] ?? " bad");
+  $("tab-sound-v").innerHTML = ui.mixing ? " …" : v && v.verdict !== "n.a." ? ` <span class="dot${dot}" title="${esc(v.verdict_ja)}"></span>` : "";
 }
 
 /** The highest quality any shot has a take for, so the app opens on real frames. */
@@ -359,7 +479,8 @@ function draw() {
   const s = shot();
   $("tab-shot").textContent = s ? `${s.index + 1}. ${s.id}` : "ショット";
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
-  $("stage").hidden = tweak; $("tweak").hidden = !tweak;
+  const snd = ui.tab === "sound";
+  $("stage").hidden = tweak || snd; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
   $("mark").disabled = ui.tab !== "shot" || tweak;
   $("render").disabled = $("cut").disabled = !!ui.busy;
   $("send").disabled = !!ui.busy || !st.ai?.ready;
@@ -368,9 +489,10 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""}`;
-  if (ui.tab === "teaser") drawTeaser(); else if (tweak) drawTweak(); else drawStage();
+  if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
+  if (ui.mixing) $("summary").innerHTML = "ミックス中…";
 }
 
 function drawStage() {
@@ -448,6 +570,11 @@ function flatten(node, prefix = "", out = []) {
 /** JSON with a space after commas in lists, which reads better for coordinates. */
 const show = (v) => (Array.isArray(v) ? `[${v.map(show).join(", ")}]` : JSON.stringify(v));
 
+/** For reading only (the chat): values the way shots.yaml writes them, on one line. */
+const showYaml = (v) => Array.isArray(v) ? `[${v.map(showYaml).join(", ")}]`
+  : v && typeof v === "object" ? `{${Object.entries(v).map(([k, x]) => `${k}: ${showYaml(x)}`).join(", ")}}`
+  : typeof v === "string" && /^[A-Za-z0-9_./-]+$/.test(v) && !/^(true|false|null|[-0-9.]+)$/.test(v) ? v : JSON.stringify(v);
+
 function drawTweak() {
   const s = shot(); if (!s) return;
   // polling must not wipe values being typed: rebuild only when the shot itself changed
@@ -522,11 +649,370 @@ function drawTimeline() {
       body.appendChild(ph);
     }
   }
+  drawLanes();
+  if (ui.tab === "sound") placePlayhead();
+}
+
+/** The sound player's playhead, moved without redrawing the timeline. */
+function placePlayhead() {
+  const body = $("tl-body");
+  let ph = body.querySelector(".playhead.snd");
+  if (ui.tab !== "sound" || !ui.sound) { ph?.remove(); return; }
+  if (!ph) { ph = document.createElement("div"); ph.className = "playhead snd"; body.appendChild(ph); }
+  ph.style.left = `${xOf(ui.playT ?? 0) - 1}px`;
+  ph.style.top = `${$("track").offsetTop - 4}px`; ph.style.bottom = "0";
+}
+
+// ------------------------------------------------------------------ sound: timeline lanes
+
+const SND_ROW = 24;
+
+/** Teaser seconds -> x in the timeline body, through the clip boxes (they have gaps). */
+function xOf(t) {
+  const sh = ui.sound?.shots || [];
+  if (!sh.length) return 0;
+  let k = sh.findIndex((s) => t < s.start + s.duration);
+  if (k < 0) k = sh.length - 1;
+  const s = sh[k];
+  const clip = $("track").querySelector(`.clip[data-id="${CSS.escape(s.id)}"]`);
+  if (!clip) return 0;
+  return clip.offsetLeft + ((t - s.start) / (s.duration || 1)) * clip.offsetWidth;
+}
+
+/** x in the timeline body -> teaser seconds (the inverse of xOf). */
+function tOf(x) {
+  const sh = ui.sound?.shots || [];
+  for (let k = 0; k < sh.length; k++) {
+    const clip = $("track").querySelector(`.clip[data-id="${CSS.escape(sh[k].id)}"]`);
+    if (!clip) continue;
+    const right = clip.offsetLeft + clip.offsetWidth;
+    if (x < right + 1 || k === sh.length - 1) return sh[k].start + ((x - clip.offsetLeft) / clip.offsetWidth) * sh[k].duration;
+  }
+  return 0;
+}
+
+/** Shot that holds teaser time t (clamped to the first / last shot). */
+function shotAt(t) {
+  const sh = ui.sound?.shots || [];
+  return sh.find((s) => t < s.start + s.duration) || sh[sh.length - 1];
+}
+
+/** A mirrored waveform from peaks (0..1, already with gain). */
+function wave(peaks) {
+  if (!peaks || peaks.length < 2) return "";
+  const n = peaks.length, h = peaks.map((p) => Math.min(1, Math.sqrt(p)) * 0.46);
+  let d = "M0 .5";
+  for (let i = 0; i < n; i++) d += `L${i} ${(0.5 - h[i]).toFixed(3)}`;
+  for (let i = n - 1; i >= 0; i--) d += `L${i} ${(0.5 + h[i]).toFixed(3)}`;
+  return `<svg viewBox="0 0 ${n - 1} 1" preserveAspectRatio="none" aria-hidden="true"><path d="${d}Z"/></svg>`;
+}
+
+const laneKey = (p) => `${p.role}:${p.shot ?? ""}:${p.index}`;
+const sfxList = (id) => JSON.parse(JSON.stringify(ui.status?.shots.find((s) => s.id === id)?.node?.sfx || []));
+
+/** The placement (with its mixed lane, when there is one) of a selection. */
+function soundItem(sel) {
+  const ps = ui.sound?.placements || [];
+  const p = sel.kind === "bgm" ? ps.find((x) => x.role === "bgm") : ps.find((x) => x.role === "sfx" && x.shot === sel.shot && x.index === sel.index);
+  if (!p) return null;
+  const lane = (ui.sound.mix?.lanes || []).find((l) => laneKey(l) === laneKey(p));
+  return { p, lane };
+}
+
+function drawLanes() {
+  if (sdrag?.moved) return; // a redraw would drop the block being dragged
+  const el = $("lanes");
+  const snd = ui.sound;
+  if (!snd) { el.innerHTML = `<div class="lane-note">音を読み込み中…</div>`; return; }
+  const lanes = new Map((snd.mix?.lanes || []).map((l) => [laneKey(l), l]));
+  const span = (p) => {
+    const l = lanes.get(laneKey(p));
+    // unmixed (missing file): a short stub at its start
+    return l && l.to > l.from ? { from: l.from, to: l.to, peaks: l.peaks } : { from: Math.max(p.start, 0), to: Math.max(p.start, 0) + 0.6, peaks: null };
+  };
+  const isSel = (p) => ui.snd && (ui.snd.kind === "bgm" ? p.role === "bgm" : p.shot === ui.snd.shot && p.index === ui.snd.index);
+  const block = (p, top) => {
+    const s = span(p);
+    const left = xOf(s.from), w = Math.max(xOf(s.to) - left, 8);
+    const cls = ["sblock", p.role, isSel(p) ? "sel" : "", p.missing ? "missing" : ""].join(" ");
+    const title = `${p.label} · ${p.file}${p.missing ? "（ファイルがありません）" : ""} · ${p.gain} dB${p.shot ? ` · ${p.shot}` : ""}`;
+    return `<div class="${cls}" data-k="${esc(laneKey(p))}" style="left:${left}px;width:${w}px;${top != null ? `top:${top}px` : ""}" title="${esc(title)}">${wave(s.peaks)}<span>${esc(p.label)}</span></div>`;
+  };
+  // BGM lane
+  const bgm = snd.placements.find((p) => p.role === "bgm");
+  const bgmHtml = bgm ? block(bgm) : `<button class="add" data-add="bgm">＋ BGM</button>`;
+  // SE lane: overlapping effects stack into rows
+  const fx = snd.placements.filter((p) => p.role === "sfx").map((p) => ({ p, s: span(p) })).sort((a, b) => a.s.from - b.s.from);
+  const ends = [];
+  const rows = fx.map(({ s }) => {
+    let r = ends.findIndex((e) => e <= xOf(s.from) - 2);
+    if (r < 0) { r = ends.length; ends.push(0); }
+    ends[r] = Math.max(xOf(s.to), xOf(s.from) + 8);
+    return r;
+  });
+  const nrows = Math.max(1, ends.length);
+  const cuts = snd.mix?.check?.events?.cuts || snd.cuts.map((c) => ({ ...c, onset: null }));
+  const marks = cuts.map((c) => {
+    const cls = c.onset === true ? "ok" : c.onset === false ? "miss" : "";
+    const why = c.onset === true ? "音の立ち上がりあり" : c.onset === false ? "音の立ち上がりなし（±100 ms）" : "";
+    return `<div class="cutmark ${cls}" style="left:${xOf(c.t)}px" title="${esc(`${c.from} → ${c.to}${why ? ": " + why : ""}`)}"></div>`;
+  }).join("");
+  const fxHtml = fx.map(({ p }, i) => block(p, 2 + rows[i] * SND_ROW)).join("");
+  const note = snd.error ? `<div class="lane-note" style="color:var(--err)">${esc(snd.error)}</div>` : "";
+  el.innerHTML = `<div class="lane bgm-lane" data-lane="bgm"><span class="lbl">BGM</span>${bgmHtml}</div>
+    <div class="lane sfx" data-lane="sfx" style="--rows:${nrows}"><span class="lbl">SE</span>${marks}${fxHtml}
+      <button class="add" data-add="sfx" title="選んだショットに SE を足す（レーンをダブルクリックでもその位置に足せます）">＋ SE</button></div>${note}`;
+}
+
+// ------------------------------------------------------------------ sound: the sound tab
+
+function drawSoundPanel() {
+  drawPlayer(); drawInspector(); drawCheck();
+}
+
+function drawPlayer() {
+  const box = $("sp-player"), snd = ui.sound;
+  const url = snd?.mix?.url || "";
+  if (box.dataset.url === url && box.childElementCount) return;
+  box.dataset.url = url;
+  if (!snd) { box.innerHTML = `<div class="sp-hint">読み込み中…</div>`; return; }
+  if (!url) {
+    box.innerHTML = `<h3>ミックス</h3><div class="sp-hint">${snd.placements.length ? "ミックスできませんでした（下の表示を確認してください）" : "まだ音がありません。BGM か SE を置くと、ここで試聴できます。"}</div>`;
+    return;
+  }
+  box.innerHTML = `<h3>ミックス <small>${esc(snd.total)}s · Cut で映像に載ります</small></h3>
+    <audio id="mixplayer" controls preload="auto" src="${esc(url)}"></audio>
+    <div class="sp-hint">再生するとタイムラインの再生ヘッドが動きます。音を直しても、映像の撮り直しは起きません。</div>`;
+  const a = $("mixplayer");
+  const follow = () => {
+    ui.playT = a.currentTime; placePlayhead();
+    if (!a.paused) requestAnimationFrame(follow);
+  };
+  a.addEventListener("play", follow);
+  a.addEventListener("seeked", follow);
+  if (ui.playT) a.currentTime = ui.playT;
+}
+
+const n3 = (v) => Math.round(Number(v) * 1000) / 1000;
+const opt = (v, cur, label = v) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(label)}</option>`;
+const gainRow = (name, label, v, lo, hi) => `<label>${esc(label)}</label><div class="pair">
+  <input type="range" min="${lo}" max="${hi}" step="0.5" value="${esc(v)}" data-mirror="${name}">
+  <input type="number" min="${lo}" max="${hi}" step="0.5" value="${esc(v)}" data-f="${name}"> dB</div>`;
+
+function drawInspector() {
+  const box = $("sp-insp"), snd = ui.sound;
+  if (!snd) { box.innerHTML = ""; return; }
+  const sel = ui.snd && soundItem(ui.snd);
+  const files = snd.files.map((f) => f.file);
+  const key = JSON.stringify([ui.snd, sel?.p, files, ui.status?.audio, sel && sfxList(sel.p.shot ?? "")]);
+  // do not wipe a field being typed into; rebuild when the selection or its data changed
+  if (box.dataset.key === key && box.childElementCount) return;
+  if (box.contains(document.activeElement) && box.dataset.sel === JSON.stringify(ui.snd)) return;
+  box.dataset.key = key; box.dataset.sel = JSON.stringify(ui.snd);
+  const noFiles = !files.length
+    ? `<div class="sp-hint">音のファイルがまだありません。shots.yaml と同じ場所の <b>audio/</b> フォルダに wav / mp3 などを入れてください。</div>
+       <div class="btns"><button class="btn" data-act="folder">audio フォルダを開く</button></div>` : "";
+  if (!sel) {
+    box.innerHTML = `<h3>音を選ぶ</h3>
+      <div class="sp-hint">タイムラインの BGM / SE をクリックすると、ここで直せます。SE はドラッグで動かせます（カットの境目に吸着。Alt で吸着なし）。レーンをダブルクリックすると、その位置に SE を足します。</div>
+      ${noFiles}
+      <div class="btns">${files.length ? `<button class="btn" data-act="add-sfx">＋ ${esc(shot()?.id || "")} に SE</button>` : ""}
+        <button class="btn" data-act="sel-bgm">BGM の設定</button></div>`;
+    return;
+  }
+  if (ui.snd.kind === "bgm" || sel.p.role === "bgm") {
+    const a = ui.status.audio || {}, b = a.bgm || {};
+    box.innerHTML = `<h3>BGM <small>ティザー全体に流れる</small></h3>
+      <div class="fields">
+        <label>ファイル</label><select data-f="file">${opt("", b.file || "", "（なし）")}${files.map((f) => opt(f, b.file)).join("")}</select>
+        ${gainRow("gain", "音量", b.gain ?? 0, -40, 12)}
+        <label>開始（秒）</label><input type="number" step="0.1" min="0" value="${esc(b.start ?? 0)}" data-f="start">
+        <label>頭出し（秒）</label><input type="number" step="0.1" min="0" value="${esc(b.offset ?? 0)}" data-f="offset" title="ファイルの何秒目から使うか">
+        <label>フェードイン</label><input type="number" step="0.1" min="0" max="30" value="${esc(b.fade_in ?? 0)}" data-f="fade_in">
+        <label>フェードアウト</label><input type="number" step="0.1" min="0" max="30" value="${esc(b.fade_out ?? 0)}" data-f="fade_out">
+        ${gainRow("master", "全体（master）", a.gain ?? 0, -30, 12)}
+      </div>${noFiles}
+      <div class="btns">${b.file ? `<button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button>` : ""}<button class="btn" data-act="desel">閉じる</button></div>`;
+    box.dataset.kind = "bgm";
+    return;
+  }
+  const it = sfxList(ui.snd.shot)[ui.snd.index] || {};
+  const shotsOpt = (ui.sound.shots || []).map((s) => opt(s.id, ui.snd.shot, `${s.id}（${s.duration}s）`)).join("");
+  const owner = ui.sound.shots.find((s) => s.id === ui.snd.shot);
+  box.innerHTML = `<h3>SE <small>${esc(sel.p.label)} · ${esc(ui.snd.shot)}</small></h3>
+    <div class="fields">
+      <label>ファイル</label><select data-f="file">${files.includes(it.file) ? "" : opt(it.file || "", it.file || "", `${it.file || ""}（見つかりません）`)}${files.map((f) => opt(f, it.file)).join("")}</select>
+      <label>ショット</label><select data-f="shot">${shotsOpt}</select>
+      <label>位置（秒）</label><input type="number" step="0.01" min="${-ui.sound.lead_max}" max="${owner ? owner.duration : 99}" value="${esc(it.at ?? 0)}" data-f="at" title="ショットの頭からの秒。マイナスにすると前のカットから鳴り始める（ウーッシュなど）">
+      ${gainRow("gain", "音量", it.gain ?? 0, -40, 12)}
+      <label>ラベル</label><input value="${esc(it.label ?? "")}" data-f="label" placeholder="${esc(sel.p.label)}">
+    </div>
+    <div class="btns"><button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button>
+      <button class="btn danger" data-act="del-sfx">削除</button><button class="btn" data-act="desel">閉じる</button></div>`;
+  box.dataset.kind = "sfx";
+}
+
+const WEIGHT_CLS = { critical: "critical", major: "major", minor: "minor" };
+
+function drawCheck() {
+  const box = $("sp-check"), snd = ui.sound;
+  const c = snd?.mix?.check;
+  const key = JSON.stringify([snd?.mix?.key, snd?.error, !!snd]);
+  if (box.dataset.key === key && box.childElementCount) return;
+  box.dataset.key = key;
+  if (!snd) { box.innerHTML = ""; return; }
+  if (snd.error) { box.innerHTML = `<div class="err-box">${esc(snd.error)}</div>`; return; }
+  if (!c) {
+    box.innerHTML = `<div class="sp-box"><h3>サウンドチェック</h3><div class="sp-hint">音を置くと、プロのローンチ映像7本と比べた採点がここに出ます（earshot の検証部分を移植）。</div></div>`;
+    return;
+  }
+  const pct = c.score == null ? "—" : `${Math.round(c.score * 100)}%`;
+  const vcls = String(c.verdict).replace(/[ .]/g, "-");
+  const acts = (c.actions || []).map((a, i) => `<div class="act"><span class="wpill ${WEIGHT_CLS[a.weight] || "minor"}">${esc(a.weight_ja)}</span>
+      <div>${esc(a.action)}</div>
+      <div class="ops">${a.at != null ? `<button data-seek="${a.at}" title="その位置へ">${esc(fmtT(a.at))}</button>` : ""}<button data-ask="${i}" title="この指摘を Claude に直してもらう">Claude に頼む</button></div></div>`).join("");
+  const tips = (c.tips || []).map((t) => `<div class="tip">${esc(t)}</div>`).join("");
+  const groups = new Map();
+  for (const m of c.metrics || []) { if (!groups.has(m.group_ja)) groups.set(m.group_ja, []); groups.get(m.group_ja).push(m); }
+  const stCls = (m) => m.status === "ok" ? "ok" : m.status === "info" ? "info" : m.status === "n.a." ? "na" : m.weight === "critical" ? "crit" : m.status;
+  const stTxt = (m) => ({ ok: "OK", low: "低い", high: "高い", info: "参考", "n.a.": "—" }[m.status] || m.status);
+  const table = [...groups].map(([g, ms]) => `<tr><th colspan="4">${esc(g)}</th></tr>` + ms.map((m) =>
+    `<tr title="${esc(m.why || "")}"><td>${esc(m.label)}</td><td class="v">${esc(m.shown)}</td><td class="r">${esc(m.range_text || "")}</td><td><span class="st ${stCls(m)}">${esc(stTxt(m))}</span>${m.status !== "ok" && m.status !== "info" && m.status !== "n.a." ? ` <small style="color:var(--muted)">${esc(m.weight_ja)}</small>` : ""}</td></tr>`).join("")).join("");
+  const nm = (c.not_measured || []).map((x) => x.metric).join(", ");
+  box.innerHTML = `<div class="sp-box">
+      <div class="verdict"><span class="vbadge ${esc(vcls)}">${esc(c.verdict_ja)}</span><span class="score">${pct}<small>${c.in_range} / ${c.scored} 指標が範囲内 · 重大 ${c.critical_issues} · 要対応 ${c.major_issues}</small></span></div>
+      <div class="src">earshot critique の検証部分（モデル不要）を移植 · 基準: プロのローンチ映像 7 本 · ${esc(c.duration)}s を計測</div>
+    </div>
+    ${acts ? `<div class="sp-box"><h3>まず直す <small>重要な順</small></h3><div class="acts">${acts}</div>${tips}</div>` : `<div class="sp-box"><h3>直すところはありません</h3>${tips}</div>`}
+    <div class="sp-box curve"><h3>ラウドネスの流れ <small>平均との差（LU）</small></h3>${curveSvg(c)}
+      <div class="legend2"><span><i style="background:var(--ink)"></i>このミックス（3秒窓）</span><span><i style="background:color-mix(in srgb, var(--establish) 40%, transparent)"></i>基準7本の幅（p10–p90）</span><span><i style="background:var(--establish)"></i>基準の中央値</span><span><i style="background:var(--stale)"></i>音の立ち上がりがないカット</span></div></div>
+    <div class="sp-box"><details><summary>採点表（${(c.metrics || []).length} 指標）</summary><table class="metrics"><tr><th>指標</th><th>値</th><th>基準</th><th></th></tr>${table}</table>
+      ${nm ? `<div class="sp-hint" style="margin-top:8px">未計測（ML モデルが必要）: ${esc(nm)}</div>` : ""}</details></div>`;
+}
+
+function fmtT(t) {
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+}
+
+/** Short-term loudness against the reference films' arc, with the cuts. */
+function curveSvg(c) {
+  const W = 600, H = 150, pad = 18, lo = -24, hi = 8;
+  const dur = c.duration || 1;
+  const x = (t) => pad + (t / dur) * (W - 2 * pad);
+  const y = (lu) => H - 12 - ((Math.min(Math.max(lu, lo), hi) - lo) / (hi - lo)) * (H - 24);
+  const arcT = (i) => (i / 10) * dur;
+  const band = c.arc.refs_p90.map((v, i) => `${x(arcT(i))},${y(v)}`).concat(c.arc.refs_p10.map((v, i) => [i, v]).reverse().map(([i, v]) => `${x(arcT(i))},${y(v)}`)).join(" ");
+  const med = c.arc.refs_median.map((v, i) => `${i ? "L" : "M"}${x(arcT(i))} ${y(v)}`).join("");
+  const integ = c.integrated;
+  const film = (c.curve?.lufs || []).map((l, i) => `${i ? "L" : "M"}${x(c.curve.t0 + i * c.curve.step).toFixed(1)} ${y(l - integ).toFixed(1)}`).join("");
+  const cuts = (c.events?.cuts || []).map((k) => `<line class="${k.onset ? "cut-ok" : "cut-miss"}" x1="${x(k.t)}" x2="${x(k.t)}" y1="6" y2="${H - 12}"><title>${esc(`${k.from} → ${k.to}`)}</title></line>`).join("");
+  const ticks = [0, -10, -20].map((v) => `<text x="0" y="${y(v) + 3}">${v}</text>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="loudness">
+    <line class="zero" x1="${pad}" x2="${W - pad}" y1="${y(0)}" y2="${y(0)}"/>${cuts}
+    <polygon class="band" points="${band}"/><path class="med" d="${med}"/><path class="film" d="${film}"/>${ticks}
+    <text x="${pad}" y="${H - 1}">0s</text><text x="${W - pad - 18}" y="${H - 1}">${esc(dur.toFixed(1))}s</text></svg>`;
+}
+
+// ------------------------------------------------------------------ sound: edits
+
+async function postSound(body, done) {
+  if (ui.busy) return;
+  ui.busy = "sound"; ui.mixing = true; draw();
+  try {
+    const out = await api("POST", "/api/sound", body);
+    ui.sound = out.sound;
+    if (done) done(out);
+    if (out.stale?.length) toast(`古くなったショット: ${out.stale.join(", ")}`, true);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; ui.mixing = false; ui.logKey = ""; await refresh(); drawSoundBits(); }
+}
+
+function fieldVals(box) {
+  const v = {};
+  for (const el of box.querySelectorAll("[data-f]")) v[el.dataset.f] = el.value;
+  return v;
+}
+
+function saveSfx() {
+  const s = ui.snd; if (!s || s.kind !== "sfx") return;
+  const v = fieldVals($("sp-insp"));
+  const list = sfxList(s.shot);
+  const it = { ...(list[s.index] || {}) };
+  it.file = v.file; it.at = n3(v.at || 0); it.gain = n3(v.gain || 0);
+  if (v.label.trim()) it.label = v.label.trim(); else delete it.label;
+  const sfx = {};
+  if (v.shot && v.shot !== s.shot) {
+    // moving to another shot keeps the moment in the teaser when it can
+    const from = ui.sound.shots.find((x) => x.id === s.shot), to = ui.sound.shots.find((x) => x.id === v.shot);
+    const t = from.start + it.at;
+    it.at = n3(Math.min(Math.max(t - to.start, 0), to.duration - 0.01));
+    list.splice(s.index, 1);
+    const dest = sfxList(v.shot); dest.push(it);
+    sfx[s.shot] = list; sfx[v.shot] = dest;
+    postSound({ sfx, note: `${it.label || it.file} を ${v.shot} へ` }, () => (ui.snd = { kind: "sfx", shot: v.shot, index: dest.length - 1 }));
+    return;
+  }
+  list[s.index] = it; sfx[s.shot] = list;
+  postSound({ sfx, note: `${it.label || it.file} @ ${s.shot}` });
+}
+
+function saveBgm() {
+  const v = fieldVals($("sp-insp"));
+  const a = JSON.parse(JSON.stringify(ui.status.audio || {}));
+  if (!v.file) delete a.bgm;
+  else {
+    const b = { ...(a.bgm || {}), file: v.file, gain: n3(v.gain || 0) };
+    for (const k of ["start", "offset", "fade_in", "fade_out"]) {
+      const x = n3(v[k] || 0);
+      if (x) b[k] = x; else delete b[k];
+    }
+    a.bgm = b;
+  }
+  a.gain = n3(v.master || 0);
+  postSound({ audio: a, note: v.file ? `BGM ${v.file}` : "BGM なし" });
+}
+
+function addSfxAt(t) {
+  const files = ui.sound?.files.map((f) => f.file) || [];
+  if (!files.length) { toast("audio/ フォルダに音のファイルを入れてください"); return; }
+  const owner = shotAt(Math.max(t, 0));
+  const fps = ui.status.fps || 30;
+  const at = n3(Math.round(Math.min(Math.max(t - owner.start, 0), owner.duration - 1 / fps) * fps) / fps);
+  const file = files.find((f) => /hit|impact|boom/i.test(f)) || files[0];
+  const list = sfxList(owner.id); list.push({ file, at });
+  postSound({ sfx: { [owner.id]: list }, note: `SE を足す @ ${owner.id}` }, () => {
+    ui.snd = { kind: "sfx", shot: owner.id, index: list.length - 1 }; ui.tab = "sound";
+  });
+}
+
+function deleteSfx() {
+  const s = ui.snd; if (!s || s.kind !== "sfx") return;
+  const list = sfxList(s.shot); const gone = list.splice(s.index, 1)[0];
+  postSound({ sfx: { [s.shot]: list }, note: `${gone?.label || gone?.file || "SE"} を削除` }, () => (ui.snd = null));
+}
+
+function seek(t) {
+  ui.playT = Math.max(0, t);
+  const a = $("mixplayer");
+  if (a) a.currentTime = ui.playT;
+  placePlayhead();
 }
 
 function drawChips() {
   const s = shot();
   const chips = [];
+  if (ui.tab === "sound") {
+    const it = ui.snd && soundItem(ui.snd);
+    chips.push(`<span class="chip">🔊 音だけ（映像は変えない）</span>`);
+    if (it) chips.push(`<span class="chip">${esc(it.p.role === "bgm" ? "BGM" : `SE ${it.p.label} · ${it.p.shot}`)} <button data-clear="snd" title="選択を外す">✕</button></span>`);
+    if (ui.playT) chips.push(`<span class="chip">${esc(fmtT(ui.playT))}</span>`);
+    $("chips").innerHTML = chips.join("");
+    $("scope").textContent = it?.p.role === "sfx" ? `🔊 ${it.p.shot} の SE に指示` : "🔊 BGM と全ショットの SE に指示";
+    $("note").placeholder = it?.p.role === "sfx" ? "この SE をどう直す？ 例: もう少し早く、カットの頭に合わせて"
+      : "音をどう直す？ 例: タイトルの前で一瞬音を抜いて / BGM をもう少し下げて";
+    return;
+  }
   if (ui.scopeAll) chips.push(`<span class="chip">全体（並べ替えも可）</span>`);
   else if (s) {
     chips.push(`<span class="chip">🎯 ${esc(s.index + 1 + ". " + s.id)}</span>`);
@@ -551,7 +1037,7 @@ function changesHtml(changes) {
   const rows = [];
   for (const [id, list] of Object.entries(changes || {})) {
     for (const c of list) {
-      rows.push(`<div><span class="k">${esc(id)}.</span>${esc(c.path)}: ${c.before === undefined || c.before === null ? "" : `<span class="b">${esc(show(c.before))}</span> → `}${esc(show(c.after ?? null))}</div>`);
+      rows.push(`<div><span class="k">${esc(id)}.</span>${esc(c.path)}: ${c.before === undefined || c.before === null ? "" : `<span class="b">${esc(showYaml(c.before))}</span> → `}${esc(showYaml(c.after ?? null))}</div>`);
     }
   }
   return rows.length ? `<div class="changes">${rows.join("")}</div>` : "";
@@ -586,14 +1072,20 @@ function entryHtml(e, isLast) {
     return `<div class="event"><span class="dot${bad ? " bad" : ""}"></span><span><b>${esc(e.quality)}</b>: ${e.rendered.length} rendered / ${e.reused.length} reused${bad ? ` / ${bad} failed` : ""}${e.rendered.length ? `（${esc(e.rendered.join(", "))}）` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   }
   if (e.action === "cut") {
-    return `<div class="event"><span class="dot"></span><span><b>cut</b> ${esc(e.quality)}: ${e.order.length} shots をつないだ</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+    const v = e.sound ? ` · 音: ${esc(VERDICT_JA[e.sound] || e.sound)}` : "";
+    return `<div class="event"><span class="dot"></span><span><b>cut</b> ${esc(e.quality)}: ${e.order.length} shots をつないだ${v}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
+  if (e.action === "sound") {
+    return `<div class="msg-user"><div class="bubble">🔊 音を編集${e.note ? `: ${esc(e.note)}` : ""}</div></div>
+      ${changesHtml(e.changes)}
+      <div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span>${e.stale?.length ? `撮り直しが必要: <b>${esc(e.stale.join(", "))}</b>` : "映像はそのまま。撮り直しなし（Cut で音が載ります）"} <span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   }
   if (e.action === "order") return `<div class="event"><span class="dot"></span><span>並べ替え（撮り直しなし）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   return "";
 }
 
 function drawChat() {
-  const keep = new Set(["revise", "set", "render", "cut", "order"]);
+  const keep = new Set(["revise", "set", "render", "cut", "order", "sound"]);
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
     ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
@@ -625,7 +1117,13 @@ async function sendNote() {
   if (!note || ui.busy || !ui.status?.ai?.ready) return;
   const body = { note };
   const ctx = [];
-  if (!ui.scopeAll && s) {
+  if (ui.tab === "sound") {
+    body.sound = true; ctx.push("🔊 音だけ");
+    const it = ui.snd && soundItem(ui.snd);
+    if (it?.p.role === "sfx") { body.shot = it.p.shot; body.sfx_index = it.p.index; ctx.push(`${it.p.shot} の ${it.p.label}`); }
+    else if (it) ctx.push("BGM");
+    if (ui.playT) { body.time = ui.playT; ctx.push(fmtT(ui.playT)); }
+  } else if (!ui.scopeAll && s) {
     body.shot = s.id; ctx.push(s.id);
     const tk = ui.tab === "shot" && ui.mode === "preview" && shownTake(s);
     if (tk) {
@@ -688,7 +1186,8 @@ async function cut() {
   ui.busy = "cut"; ui.summary = "つないでいます…"; draw();
   try {
     const info = await api("POST", "/api/cut", { quality: "best" });
-    ui.summary = `${info.shots} shots / ${info.seconds}s をつないだ（レンダなし）`;
+    ui.summary = `${info.shots} shots / ${info.seconds}s をつないだ（レンダなし）${info.sound ? ` · 音: ${esc(info.sound.verdict_ja)}` : ""}`;
+    for (const n of info.notes || []) toast(n, true);
     ui.tab = "teaser";
   } catch (e) { toast(e.message, true); }
   finally { ui.busy = null; await refresh(); }
@@ -745,11 +1244,124 @@ $("frame").addEventListener("input", (e) => { ui.frame = Number(e.target.value);
 $("quality").addEventListener("change", (e) => { ui.quality = e.target.value; ui.outcome = {}; ui.summary = ""; draw(); });
 $("render").addEventListener("click", () => render());
 $("cut").addEventListener("click", cut);
-$("reload").addEventListener("click", () => { ui.logKey = ""; refresh(); });
+$("reload").addEventListener("click", () => { ui.logKey = ""; ui.soundKey = ""; refresh(); });
 $("send").addEventListener("click", sendNote);
-$("scope").addEventListener("click", () => { ui.scopeAll = !ui.scopeAll; drawChips(); });
+$("scope").addEventListener("click", () => {
+  if (ui.tab === "sound") { ui.snd = null; drawSoundBits(); drawChips(); return; } // sound notes: drop to BGM + all SE
+  ui.scopeAll = !ui.scopeAll; drawChips();
+});
+
+// sound lanes: click selects, drag moves a sound effect, double-click adds one
+let sdrag = null;
+$("lanes").addEventListener("pointerdown", (e) => {
+  const b = e.target.closest(".sblock"); if (!b || e.button !== 0) return;
+  const p = ui.sound.placements.find((x) => laneKey(x) === b.dataset.k); if (!p) return;
+  sdrag = { b, p, x0: e.clientX, moved: false, left0: xOf(p.start), t: p.start };
+  if (p.role === "sfx") b.setPointerCapture(e.pointerId);
+});
+$("lanes").addEventListener("pointermove", (e) => {
+  if (!sdrag || sdrag.p.role !== "sfx") return;
+  const dx = e.clientX - sdrag.x0;
+  if (!sdrag.moved && Math.abs(dx) < 4) return;
+  sdrag.moved = true; sdrag.b.classList.add("dragging");
+  let x = sdrag.left0 + dx;
+  let t = tOf(x);
+  const fps = ui.status.fps || 30;
+  if (!e.altKey) {
+    // snap to the nearest cut within 8 px (sound on cuts is what the check looks for)
+    const cut = (ui.sound.cuts || []).map((c) => c.t).concat([0]).find((c) => Math.abs(xOf(c) - x) < 8);
+    t = cut ?? Math.round(t * fps) / fps;
+  }
+  t = Math.min(Math.max(t, -ui.sound.lead_max), ui.sound.total - 1 / fps);
+  sdrag.t = t;
+  // the block's left edge is where it is heard from; a lead before 0 stays clipped
+  sdrag.b.style.transform = `translateX(${xOf(Math.max(t, 0)) - xOf(Math.max(sdrag.p.start, 0))}px)`;
+  let lab = $("lanes").querySelector(".drag-t");
+  if (!lab) { lab = document.createElement("div"); lab.className = "drag-t"; $("lanes").appendChild(lab); }
+  const owner = shotAt(Math.max(t, 0));
+  lab.textContent = `${fmtT(t)} · ${owner.id} +${(t - owner.start).toFixed(2)}s`;
+  lab.style.left = `${xOf(Math.max(t, 0))}px`;
+});
+$("lanes").addEventListener("pointerup", () => {
+  const d = sdrag; sdrag = null;
+  if (!d) return;
+  $("lanes").querySelector(".drag-t")?.remove();
+  if (!d.moved) {
+    ui.snd = d.p.role === "bgm" ? { kind: "bgm" } : { kind: "sfx", shot: d.p.shot, index: d.p.index };
+    if (d.p.shot) ui.sel = d.p.shot;
+    ui.tab = "sound"; draw(); return;
+  }
+  // effects belong to a shot: dropping one over another shot hands it over
+  const sh = ui.sound.shots;
+  const owner = d.t < 0 ? sh[0] : shotAt(d.t);
+  const at = n3(d.t - owner.start);
+  const list = sfxList(d.p.shot);
+  const it = { ...list[d.p.index], at };
+  const sfx = {};
+  if (owner.id === d.p.shot) { list[d.p.index] = it; sfx[owner.id] = list; }
+  else { list.splice(d.p.index, 1); const dest = sfxList(owner.id); dest.push(it); sfx[d.p.shot] = list; sfx[owner.id] = dest; }
+  const index = owner.id === d.p.shot ? d.p.index : sfx[owner.id].length - 1;
+  postSound({ sfx, note: `${d.p.label} を ${owner.id} +${at}s へ` }, () => { ui.snd = { kind: "sfx", shot: owner.id, index }; ui.sel = owner.id; ui.tab = "sound"; });
+});
+$("lanes").addEventListener("click", (e) => {
+  const add = e.target.closest("[data-add]");
+  if (add) {
+    if (add.dataset.add === "bgm") { ui.snd = { kind: "bgm" }; ui.tab = "sound"; draw(); return; }
+    const s = shot(); const tk = s && shownTake(s);
+    const start = ui.sound.shots.find((x) => x.id === s?.id)?.start ?? 0;
+    const local = tk ? (tk.t.frame_numbers?.[ui.frame] ?? 0) / (ui.status.fps || 30) : 0;
+    addSfxAt(ui.tab === "sound" && ui.playT != null ? ui.playT : start + local);
+    return;
+  }
+  if (e.target.closest(".sblock")) return;
+  const lane = e.target.closest(".lane"); if (!lane) return;
+  // empty lane: move the sound playhead there
+  const x = e.clientX - $("tl-body").getBoundingClientRect().left;
+  ui.tab = "sound"; draw(); seek(tOf(x)); drawChips();
+});
+$("lanes").addEventListener("dblclick", (e) => {
+  if (e.target.closest(".sblock, [data-add]") || !e.target.closest(".lane.sfx")) return;
+  addSfxAt(tOf(e.clientX - $("tl-body").getBoundingClientRect().left));
+});
+
+// sound tab: inspector edits save on change (mixing is cheap and never re-renders)
+$("sp-insp").addEventListener("input", (e) => {
+  const m = e.target.dataset.mirror; // keep the slider and its number together
+  if (m) $("sp-insp").querySelector(`[data-f="${m}"]`).value = e.target.value;
+});
+$("sp-insp").addEventListener("change", (e) => {
+  if (!e.target.matches("[data-f], [data-mirror]")) return;
+  if ($("sp-insp").dataset.kind === "bgm") saveBgm(); else saveSfx();
+});
+let previewAudio = null;
+$("sp-insp").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act;
+  if (act === "desel") { ui.snd = null; drawSoundBits(); drawChips(); }
+  else if (act === "sel-bgm") { ui.snd = { kind: "bgm" }; drawSoundBits(); drawChips(); }
+  else if (act === "del-sfx") deleteSfx();
+  else if (act === "add-sfx") $("lanes").querySelector('[data-add="sfx"]')?.click();
+  else if (act === "preview" && b.dataset.url) { previewAudio?.pause(); previewAudio = new Audio(b.dataset.url); previewAudio.play().catch((err) => toast(err.message, true)); }
+  else if (act === "folder") { try { await api("POST", "/api/audio-folder"); } catch (err) { toast(err.message, true); } }
+});
+$("sp-check").addEventListener("click", (e) => {
+  const s = e.target.closest("[data-seek]");
+  if (s) { seek(Number(s.dataset.seek)); drawChips(); return; }
+  const a = e.target.closest("[data-ask]");
+  if (a) {
+    const act = ui.sound?.mix?.check?.actions?.[Number(a.dataset.ask)]; if (!act) return;
+    if (act.at != null) seek(act.at);
+    ui.snd = null; drawSoundBits(); drawChips();
+    $("note").value = `サウンドチェックの指摘を直して: ${act.action}`;
+    $("note").focus();
+  }
+});
 $("note").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendNote(); } });
-$("chips").addEventListener("click", (e) => { if (e.target.closest("[data-clear]")) { ui.region = null; draw(); } });
+$("chips").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-clear]"); if (!c) return;
+  if (c.dataset.clear === "snd") ui.snd = null; else ui.region = null;
+  draw();
+});
 $("log").addEventListener("click", (e) => { const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render); });
 function openConn() {
   const ai = ui.status?.ai || {};
@@ -821,6 +1433,10 @@ document.addEventListener("keydown", (e) => {
   if (e.target.closest("input, textarea, select")) return;
   const st = ui.status; if (!st) return;
   const i = st.shots.findIndex((s) => s.id === ui.sel);
+  if (ui.tab === "sound") {
+    if ((e.key === "Delete" || e.key === "Backspace") && ui.snd?.kind === "sfx") { deleteSfx(); e.preventDefault(); return; }
+    if (e.key === " ") { const a = $("mixplayer"); if (a) { a.paused ? a.play() : a.pause(); e.preventDefault(); } return; }
+  }
   if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
     const s = shot(); const tk = s && shownTake(s); const n = tk ? tk.t.frames.length : 1;
     const d = e.key === "ArrowRight" ? 1 : -1;
@@ -838,7 +1454,7 @@ window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(); }, 3000);
 // #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
 for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
-  if (part === "teaser") ui.tab = "teaser"; else if (part === "tweak") ui.mode = "tweak"; else ui.sel = decodeURIComponent(part);
+  if (part === "teaser" || part === "sound") ui.tab = part; else if (part === "tweak") ui.mode = "tweak"; else ui.sel = decodeURIComponent(part);
 }
 refresh();
 </script>
