@@ -265,10 +265,10 @@ fn srv_with_claude(payload: Value) -> (Srv, std::sync::Arc<std::sync::Mutex<Vec<
     let f = ws();
     let calls = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let c = calls.clone();
-    let factory: shotpilot::server::ClaudeFactory = Box::new(move || {
+    let factory: shotpilot::server::ClaudeFactory = Box::new(move |_| {
         Ok(Box::new(Recorder { payload: payload.clone(), calls: c.clone() }) as Box<dyn shotpilot::ai::Claude>)
     });
-    let s = Server::bind_with(&f.path(), "127.0.0.1", 0, factory).unwrap();
+    let s = Server::bind_with(&f.path(), "127.0.0.1", 0, factory, None).unwrap();
     let port = s.port();
     s.spawn();
     (Srv { port, f }, calls)
@@ -339,4 +339,45 @@ fn chat_scope_is_enforced_over_http() {
     assert_eq!(before, s.f.text());
     let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "  "})));
     assert_eq!(code, 400);
+}
+
+#[test]
+fn settings_save_the_key_but_never_send_it_back() {
+    let f = ws();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("settings.json");
+    let factory: shotpilot::server::ClaudeFactory = Box::new(|s| match s.provider {
+        shotpilot::connect::Provider::ApiKey if s.api_key.is_some() => {
+            Ok(Box::new(Recorder { payload: json!({}), calls: Default::default() }) as Box<dyn shotpilot::ai::Claude>)
+        }
+        _ => Err(shotpilot::error::Error::user("not connected")),
+    });
+    let srv = Server::bind_with(&f.path(), "127.0.0.1", 0, factory, Some(path.clone())).unwrap();
+    let port = srv.port();
+    srv.spawn();
+    let s = Srv { port, f };
+
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["ai"]["ready"], false);
+    assert_eq!(st["ai"]["error"], "not connected");
+
+    let (code, out) = jcall(&s, "POST", "/api/settings", Some(json!({"provider": "api-key", "api_key": "not-a-key"})));
+    assert_eq!(code, 400, "{out}");
+    let (code, out) = jcall(&s, "POST", "/api/settings", Some(json!({"provider": "api-key", "api_key": "sk-ant-test-9876"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["ready"], true);
+    assert_eq!(out["provider"], "api-key");
+    assert_eq!(out["api_key"], "…9876");
+    assert!(!out.to_string().contains("sk-ant-test"));
+    assert!(std::fs::read_to_string(&path).unwrap().contains("sk-ant-test-9876"));
+
+    // status picks the change up (the settings file is part of the ETag)
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["ai"]["ready"], true);
+    assert!(!st.to_string().contains("sk-ant-test"));
+
+    // an empty key removes it
+    let (_, out) = jcall(&s, "POST", "/api/settings", Some(json!({"api_key": ""})));
+    assert_eq!(out["ready"], false);
+    assert!(out["api_key"].is_null());
 }

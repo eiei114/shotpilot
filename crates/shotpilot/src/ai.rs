@@ -133,6 +133,15 @@ pub struct HttpClaude {
 }
 
 impl HttpClaude {
+    /// A client with this API key (base URL still follows ANTHROPIC_BASE_URL).
+    pub fn with_key(key: String) -> HttpClaude {
+        let base_url = std::env::var("ANTHROPIC_BASE_URL")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "https://api.anthropic.com".into());
+        HttpClaude { base_url, auth: ("x-api-key".into(), key), oauth: false }
+    }
+
     pub fn from_env() -> Result<HttpClaude> {
         let base_url = std::env::var("ANTHROPIC_BASE_URL")
             .ok()

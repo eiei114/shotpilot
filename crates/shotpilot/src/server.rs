@@ -18,7 +18,8 @@ use std::time::UNIX_EPOCH;
 
 use serde_json::{json, Map, Value};
 
-use crate::ai::{self, Claude, HttpClaude};
+use crate::ai::{self, Claude};
+use crate::connect::{self, Provider, Settings};
 use crate::bail;
 use crate::error::{Error, Kind, Result};
 use crate::fingerprint as fp;
@@ -29,23 +30,45 @@ const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
 const SERVED_DIRS: &[&str] = &["render", "cut"];
 const MAX_BODY: usize = 1 << 20;
 
-/// Makes the Claude client for one request. Tests pass a fake; the app reads the env.
-pub type ClaudeFactory = Box<dyn Fn() -> Result<Box<dyn Claude>> + Send + Sync>;
+/// Makes the Claude client for one request from the current settings. Tests pass a
+/// fake; the app uses [`connect::make_claude`] (Claude Code or an API key).
+pub type ClaudeFactory = Box<dyn Fn(&Settings) -> Result<Box<dyn Claude>> + Send + Sync>;
 
-pub fn env_claude() -> ClaudeFactory {
-    Box::new(|| Ok(Box::new(HttpClaude::from_env()?) as Box<dyn Claude>))
+pub fn default_claude() -> ClaudeFactory {
+    Box::new(connect::make_claude)
 }
 
 pub struct App {
     pub path: PathBuf,
     lock: Mutex<()>,
     claude: ClaudeFactory,
+    /// Where the connection settings live; None = read-only defaults.
+    settings_path: Option<PathBuf>,
 }
 
 impl App {
-    pub fn new(shots_path: &Path, claude: ClaudeFactory) -> Result<App> {
+    pub fn new(shots_path: &Path, claude: ClaudeFactory, settings_path: Option<PathBuf>) -> Result<App> {
         let ws = Workspace::open(shots_path)?; // fail fast on a broken definition
-        Ok(App { path: ws.path, lock: Mutex::new(()), claude })
+        Ok(App { path: ws.path, lock: Mutex::new(()), claude, settings_path })
+    }
+
+    fn settings(&self) -> Settings {
+        Settings::load(self.settings_path.as_deref())
+    }
+
+    /// The connection as the UI shows it: provider, what was found, and whether it works.
+    fn ai_status(&self) -> Value {
+        let s = self.settings();
+        let mut v = connect::describe(&s);
+        match (self.claude)(&s) {
+            Ok(_) => v["ready"] = json!(true),
+            Err(e) => {
+                v["ready"] = json!(false);
+                v["error"] = json!(e.msg);
+            }
+        }
+        v["model"] = json!(ai::model_name());
+        v
     }
 
     fn ws(&self) -> Result<Workspace> {
@@ -89,11 +112,12 @@ pub struct Server {
 
 impl Server {
     pub fn bind(shots_path: &Path, host: &str, port: u16) -> Result<Server> {
-        Server::bind_with(shots_path, host, port, env_claude())
+        Server::bind_with(shots_path, host, port, default_claude(), Settings::default_path())
     }
 
-    pub fn bind_with(shots_path: &Path, host: &str, port: u16, claude: ClaudeFactory) -> Result<Server> {
-        let app = Arc::new(App::new(shots_path, claude)?);
+    pub fn bind_with(shots_path: &Path, host: &str, port: u16, claude: ClaudeFactory, settings_path: Option<PathBuf>)
+        -> Result<Server> {
+        let app = Arc::new(App::new(shots_path, claude, settings_path)?);
         let listener = TcpListener::bind((host, port))
             .map_err(|e| Error::user(format!("cannot listen on {host}:{port}: {e}")))?;
         Ok(Server { listener, app, bind_host: host.to_ascii_lowercase() })
@@ -380,7 +404,8 @@ fn etag(app: &App) -> String {
             .unwrap_or_else(|| "0".into())
     };
     let root = app.root();
-    format!("\"{}.{}\"", stamp(app.path.clone()), stamp(root.join(".shotpilot").join("state.json")))
+    let settings = app.settings_path.clone().map(stamp).unwrap_or_default();
+    format!("\"{}.{}.{settings}\"", stamp(app.path.clone()), stamp(root.join(".shotpilot").join("state.json")))
 }
 
 // --------------------------------------------------------------------------- routes
@@ -416,7 +441,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 return send(stream, head, 304, "", b"", &[("ETag", tag)]).map_err(io);
             }
             let mut body = status_payload(&app.ws()?)?;
-            body["ai"] = json!({"ready": (app.claude)().is_ok(), "model": ai::model_name()});
+            body["ai"] = app.ai_status();
             send(stream, head, 200, "application/json; charset=utf-8", body.to_string().as_bytes(),
                  &[("Cache-Control", "no-cache".into()), ("ETag", tag)]).map_err(io)
         }
@@ -491,6 +516,26 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
         }
         ("POST", "/api/render") => render_stream(stream, app, req),
+        ("GET" | "HEAD", "/api/settings") => send_json(stream, head, 200, &app.ai_status()).map_err(io),
+        ("POST", "/api/settings") => {
+            let body = req.json()?;
+            let Some(path) = app.settings_path.clone() else {
+                bail!("settings cannot be saved in this session");
+            };
+            let mut s = app.settings();
+            if let Some(p) = body.get("provider").and_then(Value::as_str) {
+                s.provider = Provider::parse(p)?;
+            }
+            if let Some(k) = body.get("api_key").and_then(Value::as_str) {
+                let k = k.trim();
+                if !k.is_empty() && !k.starts_with("sk-") {
+                    bail!("that does not look like an Anthropic API key (they start with sk-)");
+                }
+                s.api_key = (!k.is_empty()).then(|| k.to_string());
+            }
+            s.save(&path)?;
+            send_json(stream, false, 200, &app.ai_status()).map_err(io)
+        }
         ("POST", "/api/revise") => {
             let out = revise(app, &req.json()?)?;
             send_json(stream, false, 200, &out).map_err(io)
@@ -541,7 +586,7 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     if !context.is_empty() {
         pointer.context = Some(context.join("; "));
     }
-    let claude = (app.claude)()?;
+    let claude = (app.claude)(&app.settings())?;
     let rev = ai::revise_at(&ws.defn, note, scope.as_deref(), &pointer, claude.as_ref())?;
     let mut changes = Map::new();
     for (id, new) in &rev.edits {

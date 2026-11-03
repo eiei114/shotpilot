@@ -7,7 +7,8 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 use serde_json::{json, Value};
 
-use shotpilot::ai::{self, HttpClaude};
+use shotpilot::ai;
+use shotpilot::connect::{self, Settings};
 use shotpilot::error::Result;
 use shotpilot::fingerprint as fp;
 use shotpilot::model::{self, fmt_g};
@@ -362,8 +363,8 @@ fn run(cli: Cli) -> Result<u8> {
         }
         Cmd::Plan { pitch, duration, shots, write, replace } => {
             let mut ws = ws(file)?;
-            let claude = HttpClaude::from_env()?;
-            let (planned, rationale) = ai::plan(&ws.defn, pitch.as_deref(), duration, shots, &claude)?;
+            let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
+            let (planned, rationale) = ai::plan(&ws.defn, pitch.as_deref(), duration, shots, claude.as_ref())?;
             let total: f64 = planned.iter().filter_map(|s| s["duration"].as_f64()).sum();
             println!("# {} shots, {}s\n# {rationale}\n", planned.len(), fmt_g(total));
             print!("{}", yamlio::dumps(&json!({"shots": planned})));
@@ -384,8 +385,8 @@ fn run(cli: Cli) -> Result<u8> {
             } else {
                 Some(ws.select(&shot)?.into_iter().map(|s| s.id).collect())
             };
-            let claude = HttpClaude::from_env()?;
-            let rev = ai::revise(&ws.defn, &note, scope.as_deref(), &claude)?;
+            let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
+            let rev = ai::revise(&ws.defn, &note, scope.as_deref(), claude.as_ref())?;
             if rev.edits.is_empty() && rev.order.is_none() {
                 println!("no change: {}", rev.summary);
                 return Ok(0);

@@ -78,6 +78,25 @@ button:disabled { opacity: .45; cursor: default; }
 .send { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--ink); display: grid; place-items: center; }
 .send svg { stroke: var(--accent); }
 .warn-ai { font-size: 12px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 8px 10px; }
+.warn-ai button { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 600; text-decoration: underline; }
+.model-btn { margin-left: auto; border: 0; background: none; color: var(--muted); font-size: 11.5px; display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 8px; }
+.model-btn:hover { background: var(--soft); color: var(--ink); }
+#chat { position: relative; }
+#conn { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 8px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: 0 8px 30px rgb(16 24 40 / .14); padding: 14px; display: grid; gap: 10px; z-index: 5; }
+.composer { position: relative; }
+#conn h4 { margin: 0; font-size: 13px; }
+.opt { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 10px; cursor: pointer; }
+.opt.on { border-color: var(--ink); }
+.opt input[type=radio] { margin: 3px 0 0; accent-color: var(--ink); }
+.opt .t { font-weight: 600; }
+.opt .d { grid-column: 2; color: var(--muted); font-size: 12px; word-break: break-all; }
+.opt input[type=password] { grid-column: 2; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
+  background: var(--soft); font-family: var(--mono); font-size: 12px; width: 100%; }
+.conn-row { display: flex; gap: 8px; align-items: center; }
+.conn-row .st { font-size: 12px; color: var(--muted); }
 
 /* ------------------------------------------------------------------ canvas card */
 #canvas { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); min-width: 0; min-height: 0;
@@ -184,12 +203,23 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
     </div>
     <div id="log"></div>
     <div class="composer">
+      <div id="conn" hidden>
+        <h4>Claude への接続</h4>
+        <label class="opt" data-p="claude-code"><input type="radio" name="prov" value="claude-code"><span class="t">Claude Code</span>
+          <span class="d" id="conn-cc">ログイン中の Claude Code をそのまま使います。API キーは要りません。</span></label>
+        <label class="opt" data-p="api-key"><input type="radio" name="prov" value="api-key"><span class="t">API キー</span>
+          <span class="d" id="conn-key">Anthropic Console の API キー。このパソコンの設定フォルダに保存し、画面には戻しません。</span>
+          <input type="password" id="conn-keyinput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></label>
+        <label class="opt" data-p="auto"><input type="radio" name="prov" value="auto"><span class="t">自動</span>
+          <span class="d">Claude Code があればそれを、無ければ API キーを使います。</span></label>
+        <div class="conn-row"><button class="btn dark" id="conn-save">保存</button><button class="btn" id="conn-close">閉じる</button><span class="st" id="conn-st"></span></div>
+      </div>
       <div class="chips" id="chips"></div>
       <textarea id="note" rows="3" placeholder="どう直す？ 例: もう少し手すりに寄せて"></textarea>
-      <div id="ai-warn" class="warn-ai" hidden>Claude に接続されていません。環境変数 <span class="mono">ANTHROPIC_API_KEY</span> を設定して、アプリを開き直してください。数値を直接直す「調整」はこのままでも使えます。</div>
+      <div id="ai-warn" class="warn-ai" hidden><span id="ai-err">Claude に接続されていません。</span> <button id="ai-open">接続を設定する</button>（数値を直接直す「調整」はこのままでも使えます）</div>
       <div class="comp-row">
         <button class="chip scope" id="scope" title="指示の範囲を切り替える"></button>
-        <span class="model"><span class="dot" id="ai-dot"></span><span id="model"></span></span>
+        <button class="model-btn" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="model"></span></button>
         <button class="send" id="send" title="送信 (Ctrl+Enter)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
       </div>
     </div>
@@ -334,8 +364,10 @@ function draw() {
   $("render").disabled = $("cut").disabled = !!ui.busy;
   $("send").disabled = !!ui.busy || !st.ai?.ready;
   $("ai-warn").hidden = !!st.ai?.ready;
+  if (st.ai?.error) $("ai-err").textContent = st.ai.error;
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
-  $("model").textContent = st.ai?.model || "";
+  const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
+  $("model").textContent = `${via} · ${st.ai?.model || ""}`;
   if (ui.tab === "teaser") drawTeaser(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
@@ -719,6 +751,40 @@ $("scope").addEventListener("click", () => { ui.scopeAll = !ui.scopeAll; drawChi
 $("note").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendNote(); } });
 $("chips").addEventListener("click", (e) => { if (e.target.closest("[data-clear]")) { ui.region = null; draw(); } });
 $("log").addEventListener("click", (e) => { const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render); });
+function openConn() {
+  const ai = ui.status?.ai || {};
+  const pick = ai.provider || "auto";
+  for (const r of document.querySelectorAll("input[name=prov]")) r.checked = r.value === pick;
+  $("conn-cc").textContent = ai.claude_code ? `見つかりました: ${ai.claude_code}` : "見つかりません。Claude Code を入れてログインすると、API キーなしで使えます。";
+  $("conn-key").textContent = ai.api_key ? `保存済み（${ai.api_key}）。変えるときだけ入力` : ai.env_key ? "環境変数 ANTHROPIC_API_KEY を使います。ここに入れると、こちらを優先します" : "Anthropic Console の API キー。このパソコンの設定フォルダに保存し、画面には戻しません。";
+  $("conn-keyinput").value = "";
+  $("conn-st").textContent = ai.ready ? "接続済み" : ai.error || "";
+  markConn();
+  $("conn").hidden = false;
+}
+function markConn() {
+  for (const o of document.querySelectorAll(".opt")) o.classList.toggle("on", o.querySelector("input[type=radio]").checked);
+}
+async function saveConn() {
+  const provider = document.querySelector("input[name=prov]:checked")?.value || "auto";
+  const body = { provider };
+  const key = $("conn-keyinput").value.trim();
+  if (key) body.api_key = key;
+  $("conn-st").textContent = "確認しています…";
+  try {
+    const ai = await api("POST", "/api/settings", body);
+    $("conn-keyinput").value = "";
+    $("conn-st").textContent = ai.ready ? "接続済み" : ai.error || "";
+    await refresh();
+    if (ai.ready) setTimeout(() => ($("conn").hidden = true), 600);
+  } catch (e) { $("conn-st").textContent = e.message; }
+}
+$("model-btn").addEventListener("click", () => ($("conn").hidden ? openConn() : ($("conn").hidden = true)));
+$("ai-open").addEventListener("click", openConn);
+$("conn-close").addEventListener("click", () => ($("conn").hidden = true));
+$("conn-save").addEventListener("click", saveConn);
+$("conn").addEventListener("change", markConn);
+$("conn-keyinput").addEventListener("focus", () => { document.querySelector("input[name=prov][value=api-key]").checked = true; markConn(); });
 $("mark").addEventListener("click", () => toast("プレビューの上をドラッグして、直したいところを囲んでください"));
 $("open-ext").addEventListener("click", async () => {
   const cut = ui.status?.cut;
