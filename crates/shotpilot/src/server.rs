@@ -18,6 +18,7 @@ use std::time::UNIX_EPOCH;
 
 use serde_json::{json, Map, Value};
 
+use crate::ai::{self, Claude, HttpClaude};
 use crate::bail;
 use crate::error::{Error, Kind, Result};
 use crate::fingerprint as fp;
@@ -28,15 +29,23 @@ const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
 const SERVED_DIRS: &[&str] = &["render", "cut"];
 const MAX_BODY: usize = 1 << 20;
 
+/// Makes the Claude client for one request. Tests pass a fake; the app reads the env.
+pub type ClaudeFactory = Box<dyn Fn() -> Result<Box<dyn Claude>> + Send + Sync>;
+
+pub fn env_claude() -> ClaudeFactory {
+    Box::new(|| Ok(Box::new(HttpClaude::from_env()?) as Box<dyn Claude>))
+}
+
 pub struct App {
     pub path: PathBuf,
     lock: Mutex<()>,
+    claude: ClaudeFactory,
 }
 
 impl App {
-    pub fn new(shots_path: &Path) -> Result<App> {
+    pub fn new(shots_path: &Path, claude: ClaudeFactory) -> Result<App> {
         let ws = Workspace::open(shots_path)?; // fail fast on a broken definition
-        Ok(App { path: ws.path, lock: Mutex::new(()) })
+        Ok(App { path: ws.path, lock: Mutex::new(()), claude })
     }
 
     fn ws(&self) -> Result<Workspace> {
@@ -80,7 +89,11 @@ pub struct Server {
 
 impl Server {
     pub fn bind(shots_path: &Path, host: &str, port: u16) -> Result<Server> {
-        let app = Arc::new(App::new(shots_path)?);
+        Server::bind_with(shots_path, host, port, env_claude())
+    }
+
+    pub fn bind_with(shots_path: &Path, host: &str, port: u16, claude: ClaudeFactory) -> Result<Server> {
+        let app = Arc::new(App::new(shots_path, claude)?);
         let listener = TcpListener::bind((host, port))
             .map_err(|e| Error::user(format!("cannot listen on {host}:{port}: {e}")))?;
         Ok(Server { listener, app, bind_host: host.to_ascii_lowercase() })
@@ -280,7 +293,14 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
             let is_fresh = fresh.is_some();
             let take = fresh.or_else(|| ws.state.list_takes(&s.id, q).pop());
             let url = take.as_ref().and_then(|t| t.thumb()).and_then(|p| file_url(&ws.root, &p));
-            thumbs.insert(q.clone(), json!({"url": url, "fresh": is_fresh, "fingerprint": &rfp[..12]}));
+            let frames: Vec<String> = take
+                .as_ref()
+                .map(|t| t.files().iter().filter_map(|f| file_url(&ws.root, &t.dir.join(f))).collect())
+                .unwrap_or_default();
+            let numbers = take.as_ref().map(|t| t.frames()).unwrap_or_default();
+            thumbs.insert(q.clone(), json!({
+                "url": url, "fresh": is_fresh, "fingerprint": &rfp[..12], "frames": frames, "frame_numbers": numbers,
+            }));
         }
         let mut v = row.to_json();
         v["lens"] = s.lens.get("focal_length").cloned().unwrap_or(Value::Null);
@@ -298,8 +318,53 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "total_duration": crate::geometry::round_to(total, 3),
         "qualities": qualities,
         "warnings": ws.structure_warnings()?,
+        "fps": ws.defn.teaser.fps,
         "shots": shots,
+        "cut": latest_cut(&ws.root),
     }))
+}
+
+/// The most recently written cut/<quality>/ folder that has a video or a storyboard.
+fn latest_cut(root: &Path) -> Value {
+    let Ok(dirs) = std::fs::read_dir(root.join("cut")) else { return Value::Null };
+    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+    for d in dirs.flatten() {
+        let dir = d.path();
+        let marker = if dir.join("cut.mp4").is_file() { dir.join("cut.mp4") } else { dir.join("index.html") };
+        if let Ok(t) = std::fs::metadata(&marker).and_then(|m| m.modified()) {
+            if !best.as_ref().is_some_and(|(bt, _)| t <= *bt) {
+                best = Some((t, dir));
+            }
+        }
+    }
+    let Some((_, dir)) = best else { return Value::Null };
+    let video = dir.join("cut.mp4");
+    json!({
+        "quality": dir.file_name().map(|n| n.to_string_lossy().to_string()),
+        "video_url": if video.is_file() { file_url(root, &video) } else { None },
+        "storyboard": file_url(root, &dir.join("index.html")),
+    })
+}
+
+/// Leaf-level differences between two shot nodes, as dotted paths (lists count as leaves).
+pub fn field_changes(before: &Value, after: &Value) -> Vec<Value> {
+    fn walk(path: &str, a: Option<&Value>, b: Option<&Value>, out: &mut Vec<Value>) {
+        match (a, b) {
+            (Some(Value::Object(x)), Some(Value::Object(y))) => {
+                let mut keys: Vec<&String> = x.keys().collect();
+                keys.extend(y.keys().filter(|k| !x.contains_key(*k)));
+                for k in keys {
+                    let p = if path.is_empty() { k.clone() } else { format!("{path}.{k}") };
+                    walk(&p, x.get(k), y.get(k), out);
+                }
+            }
+            _ if a == b => {}
+            _ => out.push(json!({"path": path, "before": a, "after": b})),
+        }
+    }
+    let mut out = Vec::new();
+    walk("", Some(before), Some(after), &mut out);
+    out
 }
 
 fn etag(app: &App) -> String {
@@ -348,7 +413,8 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             if req.header("if-none-match") == Some(tag.as_str()) {
                 return send(stream, head, 304, "", b"", &[("ETag", tag)]).map_err(io);
             }
-            let body = status_payload(&app.ws()?)?;
+            let mut body = status_payload(&app.ws()?)?;
+            body["ai"] = json!({"ready": (app.claude)().is_ok(), "model": ai::model_name()});
             send(stream, head, 200, "application/json; charset=utf-8", body.to_string().as_bytes(),
                  &[("Cache-Control", "no-cache".into()), ("ETag", tag)]).map_err(io)
         }
@@ -423,10 +489,74 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
         }
         ("POST", "/api/render") => render_stream(stream, app, req),
+        ("POST", "/api/revise") => {
+            let out = revise(app, &req.json()?)?;
+            send_json(stream, false, 200, &out).map_err(io)
+        }
         _ => {
             send_json(stream, head, 404, &json!({"error": format!("no route for {} {}", req.method, req.path)})).map_err(io)
         }
     }
+}
+
+/// A note from the app's chat: Claude edits the pointed-at shot (or, with no shot, the
+/// whole list) and the result goes through the same validated edit path as the CLI.
+fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
+    let note = body.get("note").and_then(Value::as_str).map(str::trim).unwrap_or("");
+    if note.is_empty() {
+        bail!("write what to change");
+    }
+    let _guard = app.mutate()?;
+    let mut ws = app.ws()?;
+    let scope = match body.get("shot").and_then(Value::as_str).filter(|s| !s.is_empty()) {
+        Some(s) => Some(vec![ws.select_one(s)?.id]),
+        None => None,
+    };
+    let mut context = Vec::new();
+    let mut pointer = ai::Pointer::default();
+    if let Some(s) = &scope {
+        context.push(format!("shot {}", s[0]));
+    }
+    if let Some(f) = body.get("frame").and_then(Value::as_object) {
+        if let (Some(i), Some(n)) = (f.get("index").and_then(Value::as_u64), f.get("count").and_then(Value::as_u64)) {
+            let t = f.get("time").and_then(Value::as_f64).map(|t| format!(", {t:.2} s into the shot")).unwrap_or_default();
+            context.push(format!("frame {} of {n}{t}", i + 1));
+        }
+        let url = f.get("url").and_then(Value::as_str).unwrap_or("");
+        if let Some(file) = url.strip_prefix("/files/").filter(|r| r.starts_with("render/")).and_then(|r| app.served_file(r)) {
+            let bytes = std::fs::read(&file).map_err(|e| Error::user(format!("cannot read {}: {e}", file.display())))?;
+            if bytes.len() <= ai::MAX_IMAGE_BYTES {
+                pointer.image = Some((mime(&file).to_string(), bytes));
+            }
+        }
+    }
+    if let Some(r) = body.get("region").and_then(Value::as_array) {
+        let v: Vec<f64> = r.iter().filter_map(Value::as_f64).map(|x| (x.clamp(0.0, 1.0) * 100.0).round()).collect();
+        if v.len() == 4 {
+            context.push(format!("the marked region spans x {}-{}% and y {}-{}% of the frame", v[0], v[2], v[1], v[3]));
+        }
+    }
+    if !context.is_empty() {
+        pointer.context = Some(context.join("; "));
+    }
+    let claude = (app.claude)()?;
+    let rev = ai::revise_at(&ws.defn, note, scope.as_deref(), &pointer, claude.as_ref())?;
+    let mut changes = Map::new();
+    for (id, new) in &rev.edits {
+        let old = ws.defn.find(id).cloned().unwrap_or(Value::Null);
+        changes.insert(id.clone(), Value::Array(field_changes(&old, new)));
+    }
+    let rep = ws.edit_definition(&rev.edits, rev.order.as_deref(), "revise", note)?;
+    let mut extra = Map::new();
+    extra.insert("summary".into(), json!(rev.summary));
+    extra.insert("changes".into(), Value::Object(changes.clone()));
+    extra.insert("pointer".into(), json!(pointer.context));
+    ws.state.annotate_last(extra);
+    ws.state.save()?;
+    let mut out = rep.to_json();
+    out["summary"] = json!(rev.summary);
+    out["changes"] = Value::Object(changes);
+    Ok(out)
 }
 
 fn render_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {

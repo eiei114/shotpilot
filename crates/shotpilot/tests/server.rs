@@ -246,3 +246,97 @@ fn cut_over_http_links_outputs() {
     assert_eq!(info["storyboard"], "/files/cut/best/index.html");
     assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[]).code, 200);
 }
+
+// --------------------------------------------------------------------------- chat (revise)
+
+struct Recorder {
+    payload: Value,
+    calls: std::sync::Arc<std::sync::Mutex<Vec<Value>>>,
+}
+
+impl shotpilot::ai::Claude for Recorder {
+    fn ask(&self, request: &Value) -> shotpilot::error::Result<String> {
+        self.calls.lock().unwrap().push(request.clone());
+        Ok(self.payload.to_string())
+    }
+}
+
+fn srv_with_claude(payload: Value) -> (Srv, std::sync::Arc<std::sync::Mutex<Vec<Value>>>) {
+    let f = ws();
+    let calls = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let c = calls.clone();
+    let factory: shotpilot::server::ClaudeFactory = Box::new(move || {
+        Ok(Box::new(Recorder { payload: payload.clone(), calls: c.clone() }) as Box<dyn shotpilot::ai::Claude>)
+    });
+    let s = Server::bind_with(&f.path(), "127.0.0.1", 0, factory).unwrap();
+    let port = s.port();
+    s.spawn();
+    (Srv { port, f }, calls)
+}
+
+const S03_CLOSER: &str = "id: s03_window
+purpose: 2階の窓を見上げる。人影が一瞬だけ映る
+duration: 4
+camera:
+  anchor: window
+  offset: [-400, -300, -280]
+  move: {type: crane_up, distance: 80}
+  lens: {focal_length: 85}
+environment: {time_of_day: night}
+";
+
+#[test]
+fn chat_note_on_a_frame_edits_only_that_shot() {
+    let (s, calls) = srv_with_claude(json!({
+        "summary": "寄りました", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
+    render(&s, "previz");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["ai"]["ready"], true);
+    let frames = st["shots"][2]["thumbs"]["previz"]["frames"].as_array().unwrap().clone();
+    assert!(!frames.is_empty());
+    let before = s.f.text();
+
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({
+        "note": "もっと寄って", "shot": "s03_window",
+        "frame": {"url": frames[0], "index": 0, "count": frames.len(), "time": 0.0},
+        "region": [0.1, 0.2, 0.4, 0.6],
+    })));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!(["s03_window"]));
+    assert_eq!(out["summary"], "寄りました");
+    assert!(out["changes"]["s03_window"].as_array().unwrap().iter().any(|c| c["path"] == "camera.lens.focal_length"));
+    // only s03 went stale; the other five keep their previz takes
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let stale: Vec<String> = previz_states(&st).into_iter().filter(|(_, v)| v == "stale").map(|(k, _)| k).collect();
+    assert_eq!(stale, vec!["s03_window".to_string()]);
+    assert_ne!(before, s.f.text());
+
+    // Claude saw the frame and where the director pointed, and was scoped to that shot
+    let req = calls.lock().unwrap()[0].clone();
+    let content = req["messages"][0]["content"].as_array().unwrap();
+    assert_eq!(content[0]["type"], "image");
+    assert_eq!(content[0]["source"]["media_type"], "image/png");
+    let text = content[1]["text"].as_str().unwrap();
+    assert!(text.contains("You may only edit these shots: s03_window"));
+    assert!(text.contains("x 10-40% and y 20-60%"));
+
+    // the note and Claude's summary are kept in the history the chat shows
+    let (_, log) = jcall(&s, "GET", "/api/log", None);
+    let last = log.as_array().unwrap().last().unwrap().clone();
+    assert_eq!(last["action"], "revise");
+    assert_eq!(last["note"], "もっと寄って");
+    assert_eq!(last["summary"], "寄りました");
+}
+
+#[test]
+fn chat_scope_is_enforced_over_http() {
+    let (s, _) = srv_with_claude(json!({
+        "summary": "x", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
+    let before = s.f.text();
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "直して", "shot": "s01_gate"})));
+    assert_eq!(code, 400);
+    assert!(out["error"].as_str().unwrap().contains("outside the allowed scope"));
+    assert_eq!(before, s.f.text());
+    let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "  "})));
+    assert_eq!(code, 400);
+}
