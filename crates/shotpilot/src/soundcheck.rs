@@ -40,7 +40,7 @@ use serde_json::{json, Map, Value};
 use crate::sound::{Pcm, SR as SR_U32};
 
 /// Bump when a measurement or the scoring changes for the same mix.
-pub const CHECK_VERSION: i64 = 1;
+pub const CHECK_VERSION: i64 = 2;
 
 const SR: f64 = SR_U32 as f64;
 /// 2 ms level frames used to find attacks and the edges of sound.
@@ -480,6 +480,30 @@ impl Loud {
         let rel = energy_mean(&s)? - 20.0;
         let s: Vec<f64> = s.into_iter().filter(|v| *v > rel).collect();
         (s.len() > 4).then(|| percentile(&s, 95.0) - percentile(&s, 10.0))
+    }
+}
+
+/// Bring a mix to the integrated loudness the cut is normalized to (`loudnorm` in
+/// cut.rs), with a peak limiter at `ceiling_db`, so what is heard in the app and what is
+/// checked is the level the teaser ships at. Silence is left as it is.
+pub fn normalize(pcm: &mut Pcm, target_lufs: f64, ceiling_db: f64) {
+    if pcm.is_empty() {
+        return;
+    }
+    let now = Loud::new(pcm).integrated();
+    if now <= -69.5 {
+        return;
+    }
+    let g = 10f64.powf((target_lufs - now) / 20.0) as f32;
+    let ceil = 10f64.powf(ceiling_db / 20.0) as f32;
+    let release = (-1.0 / (0.05 * SR)).exp() as f32; // 50 ms back to unity
+    let mut gr = 1f32;
+    for i in 0..pcm.len() {
+        let (l, r) = (pcm.l[i] * g, pcm.r[i] * g);
+        let need = (ceil / l.abs().max(r.abs()).max(1e-9)).min(1.0);
+        gr = need.min(1.0 - (1.0 - gr) * release);
+        pcm.l[i] = l * gr;
+        pcm.r[i] = r * gr;
     }
 }
 
@@ -1063,13 +1087,13 @@ fn actions(key: &'static str, st: &str, v: f64, me: &Measured, cuts: &[Cut]) -> 
     let one = |s: String| vec![(s, None)];
     match key {
         "lufs_i" if low => one(format!(
-            "マスターを {:+.1} dB 上げて、統合ラウドネスを -14 LUFS 前後（Web）にする。`audio.gain` で上げ、トゥルーピークリミッター（上限 -1 dBTP）を通す。リミッターが 3 dB 以上かかるなら先に音楽を圧縮する（{rng}）",
+            "統合ラウドネスを {:+.1} dB 上げて -14 LUFS 前後（Web）にする。Cut はミックスを `audio.loudness` の値にそろえるので、`audio.loudness` を -14 にする（`audio.gain` では変わらない）。リミッターが強くかかるなら先に音楽を圧縮する（{rng}）",
             -14.0 - v)),
         "lufs_i" => one(format!(
-            "マスターを {:.1} dB 下げて -12 LUFS 前後にする（`audio.gain`）。-9 LUFS を超えると配信側で下げられ、リミッターがヒットを全部つぶす（{rng}）",
+            "統合ラウドネスを {:.1} dB 下げて -12 LUFS 前後にする（`audio.loudness` を -12 に）。-9 LUFS を超えると配信側で下げられ、リミッターがヒットを全部つぶす（{rng}）",
             v + 12.0)),
         "true_peak" => one(format!(
-            "トゥルーピークが {v:+.1} dBTP。マスターの最後にトゥルーピークリミッター（上限 -1.0 dBTP）を置くか、`audio.gain` を {:.1} dB 下げる",
+            "トゥルーピークが {v:+.1} dBTP。`audio.loudness` を {:.1} dB 下げるか、ピークの強い SE の `gain` を下げる",
             v + 1.0)),
         "cuts_with_sound" => {
             let ct: Vec<f64> = cuts.iter().map(|c| c.t).collect();
@@ -1406,6 +1430,24 @@ mod tests {
         assert!((l - -20.0).abs() < 0.3, "{l}");
         let tp = true_peak(&p);
         assert!((tp - -20.0).abs() < 0.2, "{tp}");
+    }
+
+    #[test]
+    fn a_quiet_mix_is_brought_to_the_cut_level() {
+        // -40 dBFS: the check used to report the mix before the cut normalized it
+        let mut p = sine(997.0, 5.0, 0.01);
+        normalize(&mut p, -16.0, -1.5);
+        let l = Loud::new(&p).integrated();
+        assert!((l - -16.0).abs() < 0.3, "{l}");
+        // a loud one is held under the ceiling
+        let mut p = sine(997.0, 5.0, 0.9);
+        normalize(&mut p, -8.0, -1.5);
+        let peak = p.l.iter().fold(0f32, |m, v| m.max(v.abs()));
+        assert!(peak <= 10f32.powf(-1.5 / 20.0) + 1e-6, "{peak}");
+        // silence stays silent
+        let mut z = Pcm::silent(1000);
+        normalize(&mut z, -16.0, -1.5);
+        assert!(z.l.iter().all(|v| *v == 0.0));
     }
 
     #[test]

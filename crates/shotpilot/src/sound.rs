@@ -31,7 +31,7 @@ use crate::soundcheck::{self, Cut, CHECK_VERSION};
 /// Sample rate of every mix and of everything decoded for it.
 pub const SR: u32 = 48_000;
 /// Bump when the mix of the same placements changes.
-pub const MIX_VERSION: i64 = 1;
+pub const MIX_VERSION: i64 = 2;
 pub const AUDIO_EXTS: &[&str] = &["wav", "mp3", "ogg", "flac", "m4a", "aac", "opus", "aif", "aiff"];
 /// A sound effect may start this many seconds before its shot (a whoosh into the cut).
 pub const LEAD_MAX: f64 = 3.0;
@@ -314,6 +314,14 @@ pub fn orphans(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Orphan> {
     }
     out
 }
+
+/// Integrated loudness the cut is brought to (`audio.loudness`, LUFS).
+pub fn loudness(defn: &Definition) -> f64 {
+    defn.audio.get("loudness").and_then(num).unwrap_or(DEFAULT_LOUDNESS)
+}
+
+/// Peak ceiling of the cut's soundtrack (dBTP, as `loudnorm` TP in cut.rs).
+pub const CEILING_DB: f64 = -1.5;
 
 pub fn master_gain(defn: &Definition) -> f64 {
     defn.audio.get("gain").and_then(num).unwrap_or(0.0)
@@ -751,7 +759,7 @@ pub fn mix_key(defn: &Definition, root: &Path, placements: &[Placement], shots: 
     }
     fp::digest(&json!({
         "v": MIX_VERSION, "total": r3(total), "cuts": starts.iter().map(|s| r3(*s)).collect::<Vec<_>>(),
-        "master": master_gain(defn), "placements": placements.iter().map(Placement::to_json).collect::<Vec<_>>(),
+        "master": master_gain(defn), "loudness": loudness(defn), "placements": placements.iter().map(Placement::to_json).collect::<Vec<_>>(),
         "files": files,
     }))
 }
@@ -831,7 +839,9 @@ pub fn mix_cached(defn: &Definition, root: &Path, shots: &[ResolvedShot]) -> Res
     }
     let sources = load_sources(root, &placements)?;
     let (starts, total) = timing(defn, shots);
-    let (pcm, lanes) = mix(&placements, &sources, total, master_gain(defn));
+    let (mut pcm, lanes) = mix(&placements, &sources, total, master_gain(defn));
+    // checked and heard at the level the cut ships at (cut.rs normalizes the same way)
+    soundcheck::normalize(&mut pcm, loudness(defn), CEILING_DB);
     let check = soundcheck::check(&pcm, &cuts(shots, &starts), defn.teaser.fps.max(1) as f64);
     write_wav16(&wav, &pcm)?;
     let mixed = Mixed { key, wav, total, lanes: lanes.iter().map(Lane::to_json).collect(), check, reused: false };

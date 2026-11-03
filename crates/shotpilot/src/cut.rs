@@ -230,8 +230,7 @@ fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: 
 
 /// The loudness filter for the cut's soundtrack (`audio.loudness`, default -16 LUFS).
 fn loudnorm(defn: &Definition) -> String {
-    let i = defn.audio.get("loudness").and_then(num).unwrap_or(crate::sound::DEFAULT_LOUDNESS);
-    format!("loudnorm=I={i}:TP=-1.5:LRA=11")
+    format!("loudnorm=I={}:TP={}:LRA=11", crate::sound::loudness(defn), crate::sound::CEILING_DB)
 }
 
 /// The cut as finishing sees it: shots (with their place in the plain concatenation) and
