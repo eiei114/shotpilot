@@ -633,6 +633,13 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             if let Some(p) = body.get("provider").and_then(Value::as_str) {
                 s.provider = Provider::parse(p)?;
             }
+            if let Some(e) = body.get("effort").and_then(Value::as_str) {
+                let e = e.trim();
+                if !e.is_empty() && !ai::valid_effort(e) {
+                    bail!("effort must be one of {} (got '{e}')", ai::EFFORTS.join(", "));
+                }
+                s.effort = (!e.is_empty()).then(|| e.to_string()); // empty = back to the default
+            }
             if let Some(k) = body.get("api_key").and_then(Value::as_str) {
                 let k = k.trim();
                 if !k.is_empty() && !k.starts_with("sk-") {

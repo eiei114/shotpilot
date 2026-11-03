@@ -380,6 +380,16 @@ fn settings_save_the_key_but_never_send_it_back() {
     let (_, out) = jcall(&s, "POST", "/api/settings", Some(json!({"api_key": ""})));
     assert_eq!(out["ready"], false);
     assert!(out["api_key"].is_null());
+    // effort: one of the levels, saved; empty goes back to the default
+    assert_eq!(out["effort"], "medium");
+    let (code, out) = jcall(&s, "POST", "/api/settings", Some(json!({"effort": "turbo"})));
+    assert_eq!(code, 400, "{out}");
+    let (code, out) = jcall(&s, "POST", "/api/settings", Some(json!({"effort": "high"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["effort"], "high");
+    assert!(std::fs::read_to_string(&path).unwrap().contains("\"high\""));
+    let (_, out) = jcall(&s, "POST", "/api/settings", Some(json!({"effort": ""})));
+    assert_eq!(out["effort"], "medium");
 }
 
 // ------------------------------------------------------------------ sound

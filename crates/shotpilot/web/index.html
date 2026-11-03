@@ -96,6 +96,10 @@ button:disabled { opacity: .45; cursor: default; }
 .opt input[type=password] { grid-column: 2; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
   background: var(--soft); font-family: var(--mono); font-size: 12px; width: 100%; }
 .conn-row { display: flex; gap: 8px; align-items: center; }
+.effort-row { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.effort-row .t { font-weight: 600; }
+.effort-row .seg button { padding: 4px 9px; }
+.effort-row .d { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
 .conn-row .st { font-size: 12px; color: var(--muted); }
 
 /* ------------------------------------------------------------------ canvas card */
@@ -372,6 +376,8 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
           <input type="password" id="conn-keyinput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></label>
         <label class="opt" data-p="auto"><input type="radio" name="prov" value="auto"><span class="t">自動</span>
           <span class="d">Claude Code があればそれを、無ければ API キーを使います。</span></label>
+        <div class="effort-row"><span class="t">effort</span><div class="seg" id="conn-effort"></div>
+          <span class="d" id="conn-effort-d">Claude がどこまで考えるか。上げるほど丁寧で、時間と使用量が増えます。</span></div>
         <div class="conn-row"><button class="btn dark" id="conn-save">保存</button><button class="btn" id="conn-close">閉じる</button><span class="st" id="conn-st"></span></div>
       </div>
       <div class="chips" id="chips"></div>
@@ -609,7 +615,7 @@ function draw() {
   if (st.ai?.error) $("ai-err").textContent = st.ai.error;
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
-  $("model").textContent = `${via} · ${st.ai?.model || ""}`;
+  $("model").textContent = `${via} · ${st.ai?.model || ""} · ${st.ai?.effort || ""}`;
   if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
   else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
@@ -1734,15 +1740,26 @@ function openConn() {
   $("conn-key").textContent = ai.api_key ? `保存済み（${ai.api_key}）。変えるときだけ入力` : ai.env_key ? "環境変数 ANTHROPIC_API_KEY を使います。ここに入れると、こちらを優先します" : "Anthropic Console の API キー。このパソコンの設定フォルダに保存し、画面には戻しません。";
   $("conn-keyinput").value = "";
   $("conn-st").textContent = ai.ready ? "接続済み" : ai.error || "";
+  const efforts = ai.efforts || ["low", "medium", "high", "xhigh", "max"];
+  $("conn-effort").innerHTML = efforts.map((e) => `<button type="button" data-effort="${esc(e)}" class="${e === ai.effort ? "on" : ""}">${esc(e)}</button>`).join("");
+  $("conn-effort").dataset.value = ai.effort || "medium";
+  $("conn-effort-d").textContent = ai.effort_env
+    ? `環境変数 SHOTPILOT_EFFORT=${ai.effort_env} が優先されています。`
+    : "Claude がどこまで考えるか。plan（構成を組む）と直す指示の両方に効きます。上げるほど丁寧で、時間と使用量が増えます。既定は medium。";
   markConn();
   $("conn").hidden = false;
 }
+$("conn-effort").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-effort]"); if (!b) return;
+  $("conn-effort").dataset.value = b.dataset.effort;
+  for (const x of $("conn-effort").children) x.classList.toggle("on", x === b);
+});
 function markConn() {
   for (const o of document.querySelectorAll(".opt")) o.classList.toggle("on", o.querySelector("input[type=radio]").checked);
 }
 async function saveConn() {
   const provider = document.querySelector("input[name=prov]:checked")?.value || "auto";
-  const body = { provider };
+  const body = { provider, effort: $("conn-effort").dataset.value || "" };
   const key = $("conn-keyinput").value.trim();
   if (key) body.api_key = key;
   $("conn-st").textContent = "確認しています…";

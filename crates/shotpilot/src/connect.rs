@@ -52,6 +52,19 @@ impl Provider {
 pub struct Settings {
     pub provider: Provider,
     pub api_key: Option<String>,
+    /// How hard Claude thinks (low..max). None = the default (`ai::DEFAULT_EFFORT`).
+    pub effort: Option<String>,
+}
+
+impl Settings {
+    /// The effort requests go out with: `SHOTPILOT_EFFORT`, else the saved setting, else the default.
+    pub fn effective_effort(&self) -> String {
+        std::env::var("SHOTPILOT_EFFORT")
+            .ok()
+            .filter(|e| crate::ai::valid_effort(e))
+            .or_else(|| self.effort.clone())
+            .unwrap_or_else(|| crate::ai::DEFAULT_EFFORT.to_string())
+    }
 }
 
 impl Settings {
@@ -73,11 +86,12 @@ impl Settings {
         Settings {
             provider: v["provider"].as_str().and_then(|s| Provider::parse(s).ok()).unwrap_or_default(),
             api_key: v["api_key"].as_str().filter(|s| !s.is_empty()).map(str::to_string),
+            effort: v["effort"].as_str().filter(|e| crate::ai::valid_effort(e)).map(str::to_string),
         }
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
-        let v = json!({"provider": self.provider.name(), "api_key": self.api_key});
+        let v = json!({"provider": self.provider.name(), "api_key": self.api_key, "effort": self.effort});
         let io = |e: std::io::Error| Error::user(format!("cannot write {}: {e}", path.display()));
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(io)?;
@@ -99,8 +113,27 @@ pub fn claude_cli() -> Option<PathBuf> {
     })
 }
 
-/// The client the settings call for, or a message saying what is missing.
+/// Sends every request at one effort level, whichever way Claude is reached.
+pub struct WithEffort {
+    pub inner: Box<dyn Claude>,
+    pub effort: String,
+}
+
+impl Claude for WithEffort {
+    fn ask(&self, request: &Value) -> Result<String> {
+        let mut r = request.clone();
+        r["output_config"]["effort"] = json!(self.effort);
+        self.inner.ask(&r)
+    }
+}
+
+/// The client the settings call for (at the configured effort), or a message saying what is missing.
 pub fn make_claude(settings: &Settings) -> Result<Box<dyn Claude>> {
+    let inner = make_client(settings)?;
+    Ok(Box::new(WithEffort { inner, effort: settings.effective_effort() }))
+}
+
+fn make_client(settings: &Settings) -> Result<Box<dyn Claude>> {
     let key = settings.api_key.clone().or_else(env_key);
     match settings.provider {
         Provider::ApiKey => match key {
@@ -146,6 +179,10 @@ pub fn describe(settings: &Settings) -> Value {
         "claude_code": cli.map(|p| p.display().to_string()),
         "api_key": key.map(|k| format!("…{}", &k[k.len().saturating_sub(4)..])),
         "env_key": env_key().is_some(),
+        "effort": settings.effective_effort(),
+        "effort_saved": settings.effort,
+        "effort_env": std::env::var("SHOTPILOT_EFFORT").ok().filter(|e| crate::ai::valid_effort(e)),
+        "efforts": crate::ai::EFFORTS,
     })
 }
 
@@ -272,7 +309,7 @@ mod tests {
     fn settings_round_trip_and_hide_the_key() {
         let dir = std::env::temp_dir().join(format!("sp-settings-{}", std::process::id()));
         let p = dir.join("settings.json");
-        let s = Settings { provider: Provider::ApiKey, api_key: Some("sk-ant-secret-1234".into()) };
+        let s = Settings { provider: Provider::ApiKey, api_key: Some("sk-ant-secret-1234".into()), ..Default::default() };
         s.save(&p).unwrap();
         let back = Settings::load(Some(&p));
         assert_eq!(back.provider, Provider::ApiKey);
@@ -282,5 +319,33 @@ mod tests {
         assert!(shown.contains("…1234"));
         assert_eq!(Settings::load(Some(&dir.join("missing.json"))).provider, Provider::Auto);
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn effort_is_saved_and_applied_to_every_request() {
+        let dir = std::env::temp_dir().join(format!("sp-effort-{}", std::process::id()));
+        let p = dir.join("settings.json");
+        Settings { effort: Some("xhigh".into()), ..Default::default() }.save(&p).unwrap();
+        assert_eq!(Settings::load(Some(&p)).effort.as_deref(), Some("xhigh"));
+        std::fs::write(&p, r#"{"effort": "turbo"}"#).unwrap(); // unknown levels fall back to the default
+        assert_eq!(Settings::load(Some(&p)).effort, None);
+        let _ = std::fs::remove_dir_all(dir);
+
+        struct Echo;
+        impl Claude for Echo {
+            fn ask(&self, request: &Value) -> Result<String> {
+                Ok(request["output_config"]["effort"].as_str().unwrap_or("").to_string())
+            }
+        }
+        let c = WithEffort { inner: Box::new(Echo), effort: "high".into() };
+        let req = crate::ai::request("s", "u", json!({"type": "object"}));
+        assert_eq!(req["output_config"]["effort"], crate::ai::DEFAULT_EFFORT);
+        assert_eq!(c.ask(&req).unwrap(), "high");
+        // and Claude Code gets it as --effort
+        let mut r = req.clone();
+        r["output_config"]["effort"] = json!("high");
+        let args = CliClaude::args(&r);
+        let i = args.iter().position(|a| a == "--effort").unwrap();
+        assert_eq!(args[i + 1], "high");
     }
 }

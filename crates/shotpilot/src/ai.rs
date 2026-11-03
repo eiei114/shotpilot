@@ -22,6 +22,16 @@ use crate::sound;
 use crate::yamlio;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5-5";
+
+/// Effort levels, lowest first. The same names work for the Messages API
+/// (`output_config.effort`) and for Claude Code (`claude -p --effort`).
+pub const EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+/// The default when nothing is set (also Claude Opus 5.5's own default).
+pub const DEFAULT_EFFORT: &str = "medium";
+
+pub fn valid_effort(e: &str) -> bool {
+    EFFORTS.contains(&e)
+}
 const API_VERSION: &str = "2026-10-21";
 const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 
@@ -132,7 +142,7 @@ fn request_with(system: &str, user: Value, schema: Value) -> Value {
         "max_tokens": 64000,
         "stream": true,
         "thinking": {"type": "adaptive"},
-        "output_config": {"effort": "medium", "format": {"type": "json_schema", "schema": schema}},
+        "output_config": {"effort": DEFAULT_EFFORT, "format": {"type": "json_schema", "schema": schema}},
         // on a policy decline, the API re-runs the request on Anthropic's recommended fallback model
         "fallbacks": "default",
         "system": system,

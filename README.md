@@ -174,7 +174,7 @@ shotpilot revise "タイトルカットを最初に持ってきて"
 - `appear`: ショットの途中で prop をいきなり出す。`appear: [{prop: stranger, at: 1.5, anchor: door, offset: [150, 0, -120]}]` と書くと、1.5 秒の時点から扉の脇に立つ（向きは既定でカメラの方、`yaw` で指定もできる）。UE では Sequencer の spawnable と Spawn トラックで出し、previz では赤い箱で描く。fingerprint に入るのは使ったショットだけで、出現を足すとそのショットだけが撮り直しになる。Claude も plan / revise で使える。
 - ショット検査は、被写体（`look_at` のアンカー、無ければ `anchor`）の箱を画面に投影し、画面の高さの何割を占めるかを測る（`check` とアプリで表示）。カメラが箱の中にある、小さすぎる、大きすぎて切れている、を指摘する。
 - `revise`: 指示に関係するショットだけを書き換える（並べ替えと、SE・BGM も含む）。返ってきた編集は、適用する前に resolve して検証する。`--shot` を付けると、編集できる範囲をコードで制限する（このとき BGM は変えられない）。Claude が `audio/` に無いファイルを使おうとしたら、何も適用しない。
-- モデルの既定は `claude-opus-5-5`。`SHOTPILOT_MODEL` で上書きできる。Messages API を直接呼ぶ（ストリーミング、構造化出力、拒否されたときはサーバー側で既定のモデルに切り替える `fallbacks: "default"`）。
+- モデルの既定は `claude-opus-5-5`。`SHOTPILOT_MODEL` で上書きできる。effort（どこまで考えるか）は `low` / `medium` / `high` / `xhigh` / `max` から選べ、既定は `medium`。アプリでは入力欄の下のモデル名から開く接続設定で変え、CLI では `SHOTPILOT_EFFORT=high` のように環境変数で変える（環境変数が優先）。Claude Code 経由（`--effort`）でも API 経由（`output_config.effort`）でも同じ値が効く。Messages API を直接呼ぶ（ストリーミング、構造化出力、拒否されたときはサーバー側で既定のモデルに切り替える `fallbacks: "default"`）。
 
 ## コマンド一覧
 
