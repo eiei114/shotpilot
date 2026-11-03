@@ -28,6 +28,9 @@ shotpilot init --engine mock      # サンプル shots.yaml を作る
 shotpilot status                  # fresh / stale / out-of-sync の一覧
 shotpilot render previz           # 古くなったショットだけをエンジンなしで描く
 shotpilot set s03 camera.lens.focal_length=50
+shotpilot check                   # ショット検査（P0 は承認を止める）
+shotpilot approve s03             # 構図を承認（画が変わると外れる）
+shotpilot brief genre=ホラー       # brief: を見る・書く
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければフォルダを選ぶ
@@ -45,6 +48,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/workspace.rs    上の3つとエンジンを束ねる。全操作はここを通る
   src/engines.rs      mock / ue5 バックエンド。共通の job/result JSON プロトコル
   src/sync.rs         Sequencer → shots.yaml の逆同期（base / engine / ours の三方比較）
+  src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
   src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せる）
   src/sound.rs        BGM と SE（`audio:` と各ショットの `sfx:`）の検証・配置・ミックス。cut/sound/ にキャッシュする
@@ -64,12 +68,14 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 
 ## 守ること（不変条件）
 
-- **fingerprint にはピクセルを変えるものだけを入れる。** 並び順、`purpose`、メモ、音（`audio`、`sfx`）は入れない。並べ替えやメモ、音の修正で再レンダが起きてはいけない。
+- **fingerprint にはピクセルを変えるものだけを入れる。** 並び順、`purpose`、メモ、音（`audio`、`sfx`）、`brief:` は入れない。並べ替えやメモ、音の修正で再レンダが起きてはいけない。
 - エンジン側スクリプトが、同じ入力に対して違う出力を出すように変わったら `fingerprint::RENDERER_VERSION` を上げる。previz の描画を変えたら `PREVIZ_VERSION` を上げる（エンジンの take は無効にしない）。
 - fingerprint は Python 版と同じ正規化 JSON（キー整列・区切り `,` `:`）の SHA-256。`fingerprints_match_the_python_version` を落とさない（落ちると UE で撮った take が全部撮り直しになる）。
 - **take は fingerprint で管理し、上書きしない。** 定義を元に戻したら、古い take を再利用する。`render/` 以下を手で編集しない。
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
 - Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。ショットに絞った指示では BGM を変えさせない。
+- 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
+- ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。
 - `build` は、Sequencer 側で人間が加えた変更を黙って上書きしない（`--force` のときだけ上書きする）。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。
 - 座標系は UE 準拠（cm、Z が上、X が前、Y が右、左手系、回転は度）。`geometry.rs` は依存なしのまま保つ。
