@@ -272,6 +272,49 @@ pub fn timing(defn: &Definition, shots: &[ResolvedShot]) -> (Vec<f64>, f64) {
     (starts, total as f64 / fps as f64)
 }
 
+/// A music cue whose `from` or `until` names a piece that is not in the cut.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Orphan {
+    /// Index in `audio.music`.
+    pub cue: usize,
+    pub label: String,
+    /// `from` or `until`.
+    pub key: &'static str,
+    pub target: String,
+}
+
+impl Orphan {
+    pub fn to_json(&self) -> Value {
+        json!({"cue": self.cue, "label": self.label, "key": self.key, "target": self.target})
+    }
+
+    pub fn text(&self) -> String {
+        let what = if self.key == "from" { "is never played" } else { "plays to the end" };
+        format!("audio.music[{}] ({}): {} '{}' is not a shot or script line, so the cue {what}",
+                self.cue, self.label, self.key, self.target)
+    }
+}
+
+/// Music cues pointing at pieces that are gone (a shot renamed by a re-plan, a removed
+/// card). Parsing allows them, and [`plan`] skips or stretches them, so say so.
+pub fn orphans(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Orphan> {
+    let (spans, _) = spans(defn, shots);
+    let mut out = Vec::new();
+    let Some(Value::Array(cues)) = defn.audio.get("music") else { return out };
+    for (k, c) in cues.iter().enumerate() {
+        for key in ["from", "until"] {
+            let t = c.get(key).map(str_of).unwrap_or_default();
+            if t.is_empty() || t == "start" || t == "end" || spans.contains_key(&t) {
+                continue;
+            }
+            let label = c.get("label").map(str_of).filter(|l| !l.is_empty())
+                .unwrap_or_else(|| c.get("file").map(str_of).unwrap_or_default());
+            out.push(Orphan { cue: k, label, key, target: t });
+        }
+    }
+    out
+}
+
 pub fn master_gain(defn: &Definition) -> f64 {
     defn.audio.get("gain").and_then(num).unwrap_or(0.0)
 }

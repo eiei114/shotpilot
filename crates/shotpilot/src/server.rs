@@ -575,6 +575,7 @@ pub fn sound_payload(ws: &Workspace) -> Result<Value> {
         "cuts": sound::cuts(&shots, &starts).iter().map(|c| json!({"t": crate::geometry::round_to(c.t, 3), "from": c.from, "to": c.to}))
             .collect::<Vec<_>>(),
         "placements": placements,
+        "orphans": sound::orphans(&ws.defn, &shots).iter().map(sound::Orphan::to_json).collect::<Vec<_>>(),
         "lead_max": sound::LEAD_MAX,
         "ffmpeg": crate::cut::ffmpeg().is_some(),
         "mix": Value::Null,

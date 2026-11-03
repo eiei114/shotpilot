@@ -636,3 +636,15 @@ script:
     let cue = &f.ws.defn.audio["music"][0];
     assert_eq!((cue["from"].as_str(), cue["until"].as_str()), (Some("s04_yard"), Some("seven")));
 }
+
+#[test]
+fn a_music_cue_on_a_missing_piece_is_reported() {
+    let mut f = ws();
+    f.write(&f.text().replace("  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}",
+        "  music:\n    - {file: audio/tense.wav, from: s04_dining, label: tension}\n    - {file: audio/hum.wav, from: s02_well, until: gone}"));
+    f.ws.reload().unwrap();
+    let o = shotpilot::sound::orphans(&f.ws.defn, &f.ws.resolved().unwrap());
+    let got: Vec<(usize, &str, &str)> = o.iter().map(|o| (o.cue, o.key, o.target.as_str())).collect();
+    assert_eq!(got, vec![(0, "from", "s04_dining"), (1, "until", "gone")]);
+    assert!(o[0].text().contains("never played"));
+}

@@ -348,6 +348,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .sp-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
 .sp-box audio { width: 100%; height: 34px; }
 .sp-hint { color: var(--muted); font-size: 12px; }
+.sp-hint.warn { color: var(--stale); margin-top: 6px; }
 .fields { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 12px; }
 .fields label { color: var(--muted); }
 .fields input, .fields select { border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; background: var(--soft); min-width: 0; width: 100%; font-size: 12px; }
@@ -1524,19 +1525,28 @@ async function useLibrary(id, as) {
   }
 }
 
+// music cues that start or end on a shot or card that is gone (e.g. renamed by a re-plan)
+function orphanHint(snd) {
+  const os = snd?.orphans || [];
+  if (!os.length) return "";
+  const rows = os.map((o) => `「${esc(o.label)}」の ${o.key === "from" ? "開始" : "終わり"}（${esc(o.target)}）がカットにありません。${o.key === "from" ? "この曲は鳴りません" : "最後まで鳴ります"}`);
+  return `<div class="sp-hint warn">⚠ ${rows.join("<br>⚠ ")}<br>shots.yaml の audio.music を直すか、Claude に「曲の区間を今のショットに合わせて」と頼んでください。</div>`;
+}
+
 function drawPlayer() {
   const box = $("sp-player"), snd = ui.sound;
   const url = snd?.mix?.url || "";
-  if (box.dataset.url === url && box.childElementCount) return;
-  box.dataset.url = url;
+  const key = url + "|" + JSON.stringify(snd?.orphans || []);
+  if (box.dataset.url === key && box.childElementCount) return;
+  box.dataset.url = key;
   if (!snd) { box.innerHTML = `<div class="sp-hint">読み込み中…</div>`; return; }
   if (!url) {
-    box.innerHTML = `<h3>ミックス</h3><div class="sp-hint">${snd.placements.length ? "ミックスできませんでした（下の表示を確認してください）" : "まだ音がありません。BGM か SE を置くと、ここで試聴できます。"}</div>`;
+    box.innerHTML = `<h3>ミックス</h3><div class="sp-hint">${snd.placements.length ? "ミックスできませんでした（下の表示を確認してください）" : "まだ音がありません。BGM か SE を置くと、ここで試聴できます。"}</div>${orphanHint(snd)}`;
     return;
   }
   box.innerHTML = `<h3>ミックス <small>${esc(snd.total)}s · Cut で映像に載ります</small></h3>
     <audio id="mixplayer" controls preload="auto" src="${esc(url)}"></audio>
-    <div class="sp-hint">再生するとタイムラインの再生ヘッドが動きます。音を直しても、映像の撮り直しは起きません。</div>`;
+    <div class="sp-hint">再生するとタイムラインの再生ヘッドが動きます。音を直しても、映像の撮り直しは起きません。</div>${orphanHint(snd)}`;
   const a = $("mixplayer");
   const follow = () => {
     ui.playT = a.currentTime; placePlayhead();

@@ -680,6 +680,9 @@ fn run(cli: Cli) -> Result<u8> {
                          l["label"].as_str().unwrap_or(""), soundcheck::fmt_t(l["from"].as_f64().unwrap_or(0.0)),
                          l["gain"].as_f64().unwrap_or(0.0), l["file"].as_str().unwrap_or(""));
             }
+            for o in sound::orphans(&ws.defn, &ws.resolved()?) {
+                println!("warning: {}", o.text());
+            }
             println!("{}", soundcheck::text(&m.check));
         }
         Cmd::Takes { shot } => {
