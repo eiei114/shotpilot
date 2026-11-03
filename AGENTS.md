@@ -28,7 +28,8 @@ shotpilot init --engine mock      # サンプル shots.yaml を作る
 shotpilot status                  # fresh / stale / out-of-sync の一覧
 shotpilot render previz           # 古くなったショットだけをエンジンなしで描く
 shotpilot set s03 camera.lens.focal_length=50
-shotpilot cut                     # 既存 take を連結する（レンダはしない）
+shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
+shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければフォルダを選ぶ
 ```
 
@@ -45,7 +46,9 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/engines.rs      mock / ue5 バックエンド。共通の job/result JSON プロトコル
   src/sync.rs         Sequencer → shots.yaml の逆同期（base / engine / ours の三方比較）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
-  src/cut.rs          take をショット順に連結してティザーにする
+  src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せる）
+  src/sound.rs        BGM と SE（`audio:` と各ショットの `sfx:`）の検証・配置・ミックス。cut/sound/ にキャッシュする
+  src/soundcheck.rs   ミックスの検証。earshot の critique のうち、モデルを使わない部分の移植（MIT）
   src/ai.rs           Claude によるショットリスト作成（plan）と部分修正（revise）。Messages API を直接呼ぶ
   src/connect.rs      Claude への接続。既定はログイン済みの Claude Code（`claude -p`）、ほかに API キー
   src/geometry.rs     UE 座標系のカメラ計算
@@ -61,12 +64,12 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 
 ## 守ること（不変条件）
 
-- **fingerprint にはピクセルを変えるものだけを入れる。** 並び順、`purpose`、メモは入れない。並べ替えやメモの修正で再レンダが起きてはいけない。
+- **fingerprint にはピクセルを変えるものだけを入れる。** 並び順、`purpose`、メモ、音（`audio`、`sfx`）は入れない。並べ替えやメモ、音の修正で再レンダが起きてはいけない。
 - エンジン側スクリプトが、同じ入力に対して違う出力を出すように変わったら `fingerprint::RENDERER_VERSION` を上げる。previz の描画を変えたら `PREVIZ_VERSION` を上げる（エンジンの take は無効にしない）。
 - fingerprint は Python 版と同じ正規化 JSON（キー整列・区切り `,` `:`）の SHA-256。`fingerprints_match_the_python_version` を落とさない（落ちると UE で撮った take が全部撮り直しになる）。
 - **take は fingerprint で管理し、上書きしない。** 定義を元に戻したら、古い take を再利用する。`render/` 以下を手で編集しない。
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
-- Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。
+- Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。ショットに絞った指示では BGM を変えさせない。
 - `build` は、Sequencer 側で人間が加えた変更を黙って上書きしない（`--force` のときだけ上書きする）。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。
 - 座標系は UE 準拠（cm、Z が上、X が前、Y が右、左手系、回転は度）。`geometry.rs` は依存なしのまま保つ。
@@ -81,9 +84,10 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 
 - やる: UE5 のティザー映像1本。ティザーの型（`hook → establish → escalate → title`）を同梱する。1ビートに3バリアントを出すのは余力があればやる。
 - やる: デスクトップアプリ（`shotpilot-app`、Tauri）。ブラウザは使わない。中身はコアを組み込んだ loopback サーバーと、ビルド不要の HTML 1枚。
-- やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺、複数尺への展開、Electron、Web 公開する UI、GUI での録画後編集。
+- やる: BGM と SE（D-19）。`shots.yaml` に書き、cut のときにミックスして載せる。映像は撮り直さない。検証は earshot 式のサウンドチェック。
+- やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺、複数尺への展開、Electron、Web 公開する UI、GUI での録画後の映像編集（トリム、エフェクト、テロップ）。
 - mock エンジンはテストとデモ用で、別エンジン対応の足場ではない。抽象化を先回りして作らない。
-- 録画後の編集機能は作らない（差別化にならない）。差別化できるのは録画の前だけ。
+- 録画後の映像編集は作らない（差別化にならない）。差別化できるのは録画の前だけ。音は例外で、定義の一部として扱う（D-19）。
 
 ## スタイル
 
