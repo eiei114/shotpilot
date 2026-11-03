@@ -247,3 +247,20 @@ fn plan_sees_the_mood_board_as_images() {
     assert!(text.contains("## Mood board") && text.contains("not shot designs"), "{text}");
     assert!(shotpilot::craft::self_review_words(text).is_empty());
 }
+
+#[test]
+fn overlays_on_one_shot_come_one_at_a_time() {
+    let f = ws();
+    let line = |id: &str, kind: &str, on: &str, at: f64, dur: f64| json!({"id": id, "kind": kind, "ja": id, "en": "", "head": "",
+        "from": "", "dur": dur, "after": "", "on": on, "at": at});
+    let mut shot = plan_shot("h", "hook", 4.0, "well");
+    shot["transition"] = json!("cut");
+    let fake = FakeClaude::new(json!({"rationale": "r", "grade": "none", "letterbox": 0, "shots": [shot],
+        "script": [line("a", "caption", "h", 0.5, 2.0), line("b", "count", "h", 0.8, 1.0), line("c", "caption", "h", 3.0, 2.0)]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let at = |id: &str| p.script.iter().find(|l| l["id"] == id).map(|l| (l["at"].as_f64().unwrap(), l["dur"].as_f64().unwrap()));
+    assert_eq!(at("a"), Some((0.5, 2.0)));
+    assert_eq!(at("b"), Some((2.6, 1.0))); // waits for `a` (+0.1 s)
+    assert_eq!(at("c"), None); // no room left on the shot
+    assert!(p.adjustments.iter().any(|a| a.contains("moved script line `b`")) && p.adjustments.iter().any(|a| a.contains("left out script line `c`")), "{:?}", p.adjustments);
+}

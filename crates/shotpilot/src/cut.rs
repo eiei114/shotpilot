@@ -161,7 +161,7 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
         std::fs::write(&lst, body)?;
         let out = out_dir.join("cut.mp4");
         if finishing {
-            finish_pass(defn, &pieces, &lst, mixed.map(|m| m.wav.as_path()), out_dir, &out, w, h, fps, &mut info.notes)?;
+            info.seconds = finish_pass(defn, &pieces, &lst, mixed.map(|m| m.wav.as_path()), out_dir, &out, w, h, fps, &mut info.notes)?;
             info.video = Some(out);
             return Ok(info);
         }
@@ -187,7 +187,7 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
 /// title and end card; the mix (padded with silence over the end card) as the soundtrack.
 #[allow(clippy::too_many_arguments)]
 fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: &Path, mix: Option<&Path>, out_dir: &Path,
-               out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<()> {
+               out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<f64> {
     let fonts = crate::finish::fonts(&defn.finish);
     if fonts.is_none() {
         // the text is left out (cards stay as black, bars and dips still apply) rather than failing the cut
@@ -214,7 +214,7 @@ fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: 
     if let Some((_, d)) = &defn.finish.end_card {
         notes.push(format!("end card adds {}s after the last shot", fmt_g(*d)));
     }
-    Ok(())
+    Ok(crate::geometry::round_to(total, 3))
 }
 
 /// The loudness filter for the cut's soundtrack (`audio.loudness`, default -16 LUFS).

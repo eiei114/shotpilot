@@ -180,7 +180,8 @@ pub fn script_text(defn: &Definition) -> String {
            `black` a silent gap (0.5-1 s) before a reveal or the title; `title` the game's title{} (3-4 s, near the end); \
            `message` a last line from inside the world (`head` = where it is posted, `from` = who sends it).\n\
          - Overlays sit on a shot (`on`, `at` seconds into it): `caption` lower centre, `count` lower left like a note \
-           under a photograph, for a run of evidence shots.\n\
+           under a photograph, for a run of evidence shots. One line at a time: two overlays on the same shot must \
+           not overlap in time (a count reads best on its own short shot).\n\
          - Devices that hold a teaser together: a first-person voice (\"Today, I move in.\"); a count that keeps going \
            (seven shoes, seven cups, seven keys...) over short evidence shots of 1-1.5 s; a rule of the world that is \
            about to be broken; a final message that turns the premise back on the viewer.\n\
