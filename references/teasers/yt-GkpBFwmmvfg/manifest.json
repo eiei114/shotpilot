@@ -2,23 +2,53 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-GkpBFwmmvfg",
   "name": "Treasures of the Deep Slumber | Official Teaser Trailer | UE5",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1,
+    "rpg": 3,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=GkpBFwmmvfg",
     "channel": "Stormwave Entertainment ",
-    "uploadDate": null,
+    "uploadDate": "20260616",
     "viewCount": 463,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "Unreal engine",
+      "iClone",
+      "Character Creator 5",
+      "Virtual Production",
+      "3D Animation",
+      "Performance Capture",
+      "Perception Neuron 3",
+      "Reallusion",
+      "Digital Filmmaker",
+      "Adventure Fantasy",
+      "Storytelling",
+      "Comic books"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

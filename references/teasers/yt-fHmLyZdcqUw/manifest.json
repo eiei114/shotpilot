@@ -5,20 +5,45 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=fHmLyZdcqUw",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20261029",
     "viewCount": 22518,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "Juicy Beast",
+      "Deviled Dice",
+      "indie game",
+      "game trailer",
+      "roguelike",
+      "deckbuilder",
+      "arcade",
+      "2d",
+      "hand drawn",
+      "strategy"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

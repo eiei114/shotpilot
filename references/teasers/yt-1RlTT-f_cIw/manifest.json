@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-1RlTT-f_cIw",
   "name": "Marvel’s Wolverine - Official Story Trailer | Comic Con 2026",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=1RlTT-f_cIw",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260723",
     "viewCount": 1283086,
     "foundBy": "official teaser trailer game 2026",
+    "tags": [
+      "Action",
+      "Insomniac Games",
+      "Marvel",
+      "Marvel's Wolverine",
+      "PS5 Pro Enhanced",
+      "PlayStation 5",
+      "Sony Interactive Entertainment",
+      "Wolverine",
+      "sdcc",
+      "sdcc 2026",
+      "comic con",
+      "comic con 2026",
+      "san diego comic con",
+      "san diego comic con 2026 game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

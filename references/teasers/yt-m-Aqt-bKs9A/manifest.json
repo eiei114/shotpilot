@@ -5,20 +5,39 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=m-Aqt-bKs9A",
     "channel": "Steam",
-    "uploadDate": null,
+    "uploadDate": "20251013",
     "viewCount": 47571,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "steam",
+      "next fest",
+      "games",
+      "sale",
+      "nextfest"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

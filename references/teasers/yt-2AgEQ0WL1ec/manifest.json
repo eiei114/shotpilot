@@ -5,20 +5,54 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=2AgEQ0WL1ec",
     "channel": "ミリプロ - MillionProduction -",
-    "uploadDate": null,
+    "uploadDate": "20250512",
     "viewCount": 176685,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "VTuber",
+      "甘狼このみ",
+      "音ノ乃のの",
+      "あくび・でもんすぺーど",
+      "音ノ瀬らこ",
+      "ゆらぎゆら",
+      "ミリプロ",
+      "MillionProduction",
+      "バーチャルYoutuber",
+      "YouTuber",
+      "ユーチューバー",
+      "バーチャルユーチューバー",
+      "ライバー",
+      "アニメ",
+      "anime",
+      "このみ",
+      "のの",
+      "あくび",
+      "らこ",
+      "ゆら"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

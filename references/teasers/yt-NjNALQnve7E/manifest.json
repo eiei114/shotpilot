@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-NjNALQnve7E",
   "name": "ILL New Gameplay Teaser (2025) 4K",
-  "category": "horror",
+  "category": "action",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 5,
+    "action": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=NjNALQnve7E",
     "channel": "WildGamerSK",
-    "uploadDate": null,
+    "uploadDate": "20220612",
     "viewCount": 17386,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "WildGamerSK",
+      "PC",
+      "Trailer",
+      "HD",
+      "4K",
+      "Trailer 4K",
+      "4K Ultra HD",
+      "Game Trailer",
+      "Game Trailers",
+      "New",
+      "ill game trailer",
+      "ill game gameplay",
+      "fps horror",
+      "new fps games",
+      "new horror games",
+      "new games 2022",
+      "new fps games 2022",
+      "new indie games 2022",
+      "Ill trailer",
+      "Ill news"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

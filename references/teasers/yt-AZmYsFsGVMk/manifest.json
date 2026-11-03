@@ -2,23 +2,54 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-AZmYsFsGVMk",
   "name": "Lair of the Leviathan - Official Announcement Trailer",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 7,
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=AZmYsFsGVMk",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20261015",
     "viewCount": 577705,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "Nostalgic Realms",
+      "Whiskeybarrel Studios",
+      "Lair of the Leviathan",
+      "indie game",
+      "game trailer",
+      "pixel art",
+      "pixel art game",
+      "rpg",
+      "strategy",
+      "crpg",
+      "open world",
+      "tactical",
+      "jrpg"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

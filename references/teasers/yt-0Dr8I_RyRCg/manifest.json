@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=0Dr8I_RyRCg",
     "channel": "Prime Video",
-    "uploadDate": null,
+    "uploadDate": "20260724",
     "viewCount": 1520213,
     "foundBy": "official teaser trailer game 2025",
+    "tags": [
+      "blade runner 2099 official teaser",
+      "blade runner 2099 teaser",
+      "blade runner 2099 2026",
+      "official teaser",
+      "teaser",
+      "teaser 2026",
+      "new amazon teaser",
+      "blade runner 2099 prime video",
+      "prime video blade runner 2099",
+      "blade runner 2099",
+      "prime video",
+      "amazon prime video",
+      "amazon prime",
+      "prime blade runner 2099 teaser",
+      "blade runner 2099 amazon",
+      "blade runner 2099 series",
+      "michelle yeoh",
+      "hunter schafer",
+      "dimitri abold",
+      "blade runner"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

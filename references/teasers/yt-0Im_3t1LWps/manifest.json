@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=0Im_3t1LWps",
     "channel": "80 Level",
-    "uploadDate": null,
+    "uploadDate": "20260524",
     "viewCount": 5908,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "80lv",
+      "80lvl",
+      "3d",
+      "2d",
+      "video games",
+      "gamedev",
+      "game development",
+      "game news",
+      "game trailers",
+      "game demos",
+      "3d art",
+      "digital art",
+      "news",
+      "trailer",
+      "demo",
+      "new game",
+      "indie games",
+      "AA games",
+      "upcoming games",
+      "steam games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

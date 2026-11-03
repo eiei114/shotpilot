@@ -5,20 +5,37 @@
   "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=WKTOfvqL-bc",
     "channel": "Fortnite",
-    "uploadDate": null,
+    "uploadDate": "20261027",
     "viewCount": 1519628,
     "foundBy": "game teaser 30 seconds",
+    "tags": [
+      "yt:cc=on"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

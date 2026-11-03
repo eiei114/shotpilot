@@ -2,9 +2,15 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-zCFZbcO-1HU",
   "name": "Black Lake - Official Gameplay Teaser Trailer",
-  "category": "general",
+  "category": "horror",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3,
+    "action": 2,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=zCFZbcO-1HU",
@@ -12,6 +18,16 @@
     "uploadDate": "20261031",
     "viewCount": 178668,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Action",
+      "Adventure",
+      "Black Lake",
+      "First-Person",
+      "Horror",
+      "PC",
+      "Polydin Studio",
+      "Survival"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

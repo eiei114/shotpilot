@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-ASySoTPHrn0",
   "name": "Tekken 8 Roger Jr. Gameplay Reveal Teaser | EVO 2026",
-  "category": "general",
+  "category": "action",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "action": 24
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ASySoTPHrn0",
     "channel": "GamersPrey",
-    "uploadDate": null,
+    "uploadDate": "20260628",
     "viewCount": 98601,
     "foundBy": "game reveal teaser",
+    "tags": [
+      "Tekken 8",
+      "Tekken",
+      "Tekken 8 Roger Jr",
+      "Roger Jr",
+      "Roger Junior",
+      "Roger Jr Gameplay",
+      "Roger Jr Reveal",
+      "Roger Jr Teaser",
+      "Tekken 8 Gameplay",
+      "Tekken 8 Character Reveal",
+      "Tekken DLC",
+      "DLC Character",
+      "Season Pass",
+      "Bandai Namco",
+      "Fighting Games 2026",
+      "EVO 2026",
+      "EVO 2026 Reveal",
+      "EVO Teaser",
+      "Fighting Game",
+      "PS5"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

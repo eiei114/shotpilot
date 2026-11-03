@@ -2,23 +2,56 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-9lwef2jan-Q",
   "name": "Persona 6 — Teaser Trailer | XBOX Games Showcase 2026",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 5,
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=9lwef2jan-Q",
     "channel": "XBOX",
-    "uploadDate": null,
+    "uploadDate": "20260607",
     "viewCount": 1395164,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Xbox",
+      "Xbox One",
+      "Xbox Series X",
+      "Xbox Series S",
+      "Persona 6",
+      "P6",
+      "Persona",
+      "New Persona Game",
+      "Atlus",
+      "RPG",
+      "JRPG",
+      "Xbox Showcase",
+      "Sega",
+      "Xbox Series X|S",
+      "Persona 4 Revival",
+      "P4R"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

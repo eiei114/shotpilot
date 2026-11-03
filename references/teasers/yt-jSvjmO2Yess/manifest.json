@@ -2,23 +2,38 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-jSvjmO2Yess",
   "name": "ゲーム『ハートレジャー』ティザームービー / Heartreasure: Stellar Journey(Steam)",
-  "category": "general",
+  "category": "scifi",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=jSvjmO2Yess",
     "channel": "asaha",
-    "uploadDate": null,
+    "uploadDate": "20251101",
     "viewCount": 3332,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

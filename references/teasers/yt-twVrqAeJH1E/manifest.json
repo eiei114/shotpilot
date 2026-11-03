@@ -2,23 +2,36 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-twVrqAeJH1E",
   "name": "『BIOHAZARD Survival Unit』 | 1周年ティザーPV",
-  "category": "survival",
+  "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=twVrqAeJH1E",
     "channel": "BIOHAZARD Survival Unit",
-    "uploadDate": null,
+    "uploadDate": "20261102",
     "viewCount": 14116,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

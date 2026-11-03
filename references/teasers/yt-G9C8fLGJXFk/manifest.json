@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-G9C8fLGJXFk",
   "name": "Winter Lands: Journey Of A Life Time - (Game Announcement Teaser)",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=G9C8fLGJXFk",
     "channel": "JikanLimited",
-    "uploadDate": null,
+    "uploadDate": "20201122",
     "viewCount": 164,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "Games",
+      "Gaming",
+      "GameDev",
+      "gaming with kev",
+      "gaming music",
+      "gaming beaver",
+      "gaming pc",
+      "gaming with garry",
+      "gaming subrata",
+      "aj gaming",
+      "a gaming pc",
+      "a gaming setup",
+      "a gaming channel",
+      "a gaming computer",
+      "gaming development",
+      "ue4",
+      "unreal engine",
+      "ue5",
+      "ue4 tutorials",
+      "gaming news"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

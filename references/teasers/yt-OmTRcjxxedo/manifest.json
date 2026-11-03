@@ -4,21 +4,44 @@
   "name": "Avatar: Frontiers of Pandora - From the Ashes - Gameplay Teaser Trailer | PS5 Games",
   "category": "action",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "action": 3,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=OmTRcjxxedo",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20251028",
     "viewCount": 343730,
     "foundBy": "action game teaser trailer",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "Avatar: Frontiers of Pandora"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

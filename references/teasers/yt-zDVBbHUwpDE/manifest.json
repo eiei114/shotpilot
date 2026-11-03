@@ -2,23 +2,61 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-zDVBbHUwpDE",
   "name": "Terrible Lizards - Official Gameplay Trailer - IGN Live 2026",
-  "category": "general",
+  "category": "horror",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3,
+    "action": 3,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=zDVBbHUwpDE",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260606",
     "viewCount": 220737,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Action",
+      "Adventure",
+      "Horror",
+      "PC",
+      "Terrible Lizards",
+      "WDR Studios LLC",
+      "game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2026",
+      "upcoming video games 2026",
+      "summer of gaming"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

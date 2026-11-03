@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-9Oqf5J2RUAA",
   "name": "Forgive Me Father - Steam Next Fest Demo Teaser (October 1st - 7th)",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3,
+    "action": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=9Oqf5J2RUAA",
     "channel": "Fulqrum Publishing",
-    "uploadDate": null,
+    "uploadDate": "20210922",
     "viewCount": 3810,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "Forgive me Father",
+      "game",
+      "dark",
+      "retro",
+      "horror",
+      "FPS",
+      "comic book style",
+      "H.P. Lovecraft",
+      "Lovecraftian",
+      "indie game",
+      "indie dev",
+      "lovecraft",
+      "Lovecraft's Untold Stories",
+      "1c entertainment",
+      "games",
+      "video games",
+      "action",
+      "indie",
+      "indie developer",
+      "atmospheric"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

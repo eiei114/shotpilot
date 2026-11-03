@@ -5,20 +5,46 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 16,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=0HcNkl-Kr2s",
     "channel": "S-Indie labS",
-    "uploadDate": null,
+    "uploadDate": "20261019",
     "viewCount": 5731,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "six hours ahead",
+      "horror game",
+      "psychological horror",
+      "indie horror",
+      "mystery game",
+      "first person horror",
+      "godot",
+      "game teaser",
+      "radio horror"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

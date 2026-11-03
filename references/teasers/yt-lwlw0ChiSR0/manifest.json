@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=lwlw0ChiSR0",
@@ -12,6 +14,14 @@
     "uploadDate": "20250925",
     "viewCount": 3083283,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "forzahorizon6",
+      "forza",
+      "fh6",
+      "forzahorizon",
+      "forza horizon",
+      "forza horizon 6"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -5,20 +5,57 @@
   "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 4,
+    "action": 13
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=LkHNbsQMxPI",
     "channel": "Borderlands",
-    "uploadDate": null,
+    "uploadDate": "20190327",
     "viewCount": 2696181,
     "foundBy": "action game teaser trailer",
+    "tags": [
+      "borderlands",
+      "borderlands 2",
+      "Handsome collection",
+      "BL",
+      "BL2",
+      "pax trailer",
+      "pax 2019",
+      "shooter looter",
+      "co-op shooter",
+      "looter shooter",
+      "shooter RPG",
+      "FPS",
+      "FPS RPG",
+      "RPS",
+      "ps4",
+      "xbox one",
+      "pc",
+      "gearbox",
+      "2k",
+      "official trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

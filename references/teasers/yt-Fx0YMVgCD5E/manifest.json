@@ -2,23 +2,55 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Fx0YMVgCD5E",
   "name": "『龍が如く８』ティザートレーラー",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Fx0YMVgCD5E",
     "channel": "RGGスタジオ 公式",
-    "uploadDate": null,
+    "uploadDate": "20220914",
     "viewCount": 1702712,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "龍が如く",
+      "PS4",
+      "ゲーム",
+      "桐生一馬",
+      "PS5",
+      "黒田崇矢",
+      "中谷一博",
+      "春日一番",
+      "Xbox",
+      "steam",
+      "windows",
+      "yakuza",
+      "Like a DRAGON",
+      "公式",
+      "セガ",
+      "SEGA"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

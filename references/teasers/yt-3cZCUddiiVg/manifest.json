@@ -5,20 +5,46 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 19,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=3cZCUddiiVg",
     "channel": "BEverse -ビーヴァース-",
-    "uploadDate": null,
+    "uploadDate": "20251031",
     "viewCount": 4606,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "Fortnite",
+      "フォートナイト",
+      "恐怖の森",
+      "人狼",
+      "マーダーミステリー",
+      "murdermystery",
+      "desthforest",
+      "ホラー",
+      "horror"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

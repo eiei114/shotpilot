@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=V3GsB1Jgj0w",
@@ -12,6 +14,23 @@
     "uploadDate": "20260912",
     "viewCount": 610011,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "ign",
+      "Diablo 5",
+      "Diablo 5 game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2026",
+      "upcoming video games 2026"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

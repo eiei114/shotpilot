@@ -5,20 +5,33 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=W97r1qli5_k",
     "channel": "atlustube",
-    "uploadDate": null,
+    "uploadDate": "20260607",
     "viewCount": 1254295,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

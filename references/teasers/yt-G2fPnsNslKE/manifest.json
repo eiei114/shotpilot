@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-G2fPnsNslKE",
   "name": "Baptiste - Launch Trailer | PS5 Games",
-  "category": "horror",
+  "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=G2fPnsNslKE",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 73831,
     "foundBy": "psychological horror game teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

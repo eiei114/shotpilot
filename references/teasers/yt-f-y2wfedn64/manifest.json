@@ -2,23 +2,38 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-f-y2wfedn64",
   "name": "M!LK - しおざきわんだーらんど (塩﨑太智) (Official Teaser)",
-  "category": "horror",
+  "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=f-y2wfedn64",
     "channel": "M!LK",
-    "uploadDate": null,
+    "uploadDate": "20260705",
     "viewCount": 543348,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,20 +5,48 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=UUTON8f-YKg",
     "channel": "Red Barrels",
-    "uploadDate": null,
+    "uploadDate": "20121017",
     "viewCount": 593530,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "Outlast",
+      "survival",
+      "horror",
+      "video",
+      "games",
+      "trailer",
+      "official",
+      "teaser",
+      "Red",
+      "Barrels",
+      "MKultra",
+      "CIA"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

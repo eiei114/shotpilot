@@ -2,23 +2,39 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt--EoB8WHI3OM",
   "name": "HOLLOW CREW | Demo Announcement Trailer",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 6,
+    "scifi": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=-EoB8WHI3OM",
     "channel": "Dark Snow Games",
-    "uploadDate": null,
+    "uploadDate": "20261101",
     "viewCount": 603,
     "foundBy": "announcement trailer indie game",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

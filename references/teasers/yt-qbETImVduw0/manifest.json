@@ -2,23 +2,53 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-qbETImVduw0",
   "name": "In the Van - Official Announcement Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 1,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=qbETImVduw0",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20260806",
     "viewCount": 662520,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "Cosmic Tofu",
+      "In the Van",
+      "indie game",
+      "game trailer",
+      "pixel art",
+      "pixel art game",
+      "zombies",
+      "survival",
+      "action",
+      "sandbox",
+      "open world",
+      "base building"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

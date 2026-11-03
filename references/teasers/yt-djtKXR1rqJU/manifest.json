@@ -2,23 +2,38 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-djtKXR1rqJU",
   "name": "Follow the meaning Demo - Steam Next Fest Teaser",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=djtKXR1rqJU",
     "channel": "Second Maze",
-    "uploadDate": null,
+    "uploadDate": "20240208",
     "viewCount": 455,
     "foundBy": "steam next fest teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -2,23 +2,38 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-oQn41_ZcTZQ",
   "name": "The DESCENT VR Teaser - STEAM NEXT FEST VR DEMO",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=oQn41_ZcTZQ",
     "channel": "CeleritasGames",
-    "uploadDate": null,
+    "uploadDate": "20250303",
     "viewCount": 122,
     "foundBy": "steam next fest teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

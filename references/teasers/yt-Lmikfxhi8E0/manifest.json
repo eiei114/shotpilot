@@ -2,23 +2,38 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Lmikfxhi8E0",
   "name": "Mobile Suit Gundam RG XARX-ZERO Teaser PV",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 15
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Lmikfxhi8E0",
     "channel": "ガンダムチャンネル",
-    "uploadDate": null,
+    "uploadDate": "20260723",
     "viewCount": 1998403,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

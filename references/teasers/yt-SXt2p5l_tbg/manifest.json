@@ -5,20 +5,41 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=SXt2p5l_tbg",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20260430",
     "viewCount": 1694618,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

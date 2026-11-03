@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-5YdTrxAo2iU",
   "name": "Gate Zero - \"Unexpected Revolution\" Teaser Trailer | PS5 Games",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=5YdTrxAo2iU",
@@ -12,6 +17,19 @@
     "uploadDate": "20250710",
     "viewCount": 134399,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "action",
+      "adventure",
+      "bible",
+      "biblical",
+      "open world",
+      "government"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

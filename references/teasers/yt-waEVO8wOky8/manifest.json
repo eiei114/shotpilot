@@ -5,20 +5,38 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 1,
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=waEVO8wOky8",
     "channel": "Clockwork Acorn",
-    "uploadDate": null,
+    "uploadDate": "20260425",
     "viewCount": 716497,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "feathers edge"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,20 +5,53 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=TzvGu90MQe4",
     "channel": "PlayStation Japan",
-    "uploadDate": null,
+    "uploadDate": "20220720",
     "viewCount": 9511,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "プレイステーション",
+      "プレステ",
+      "PlayStation",
+      "PS",
+      "Vita",
+      "PS4",
+      "Game",
+      "ゲーム",
+      "ソニー",
+      "sony",
+      "SIE",
+      "ソニー・インタラクティブエンタテインメント",
+      "プレステ公式",
+      "PlayStation 4",
+      "psjapanizGN1LwfH8XME4mP",
+      "PS5",
+      "PlayStation 5"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

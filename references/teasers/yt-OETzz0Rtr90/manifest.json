@@ -5,20 +5,56 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=OETzz0Rtr90",
     "channel": "リミットゼロ ブレイカーズ",
-    "uploadDate": null,
+    "uploadDate": "20251205",
     "viewCount": 5061,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "BREAKERS",
+      "ブレイカーズ",
+      "BREAKERS : UNLOCK THE WORLD",
+      "VIC GAME STUDIOS",
+      "VIC GAME STUDIOS JAPAN",
+      "ブラッククローバーモバイル",
+      "ブラクロモ",
+      "ブラッククローバー",
+      "ブラクロ",
+      "モバイルゲーム",
+      "7つの大罪",
+      "グラクロ",
+      "少年ジャンプ",
+      "アニメーション",
+      "公式",
+      "原神",
+      "崩壊スターレイル",
+      "鳴潮",
+      "NIKKE",
+      "ヴィックゲームスタジオ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

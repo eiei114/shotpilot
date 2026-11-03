@@ -5,20 +5,49 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 18
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Up1otP8qc8s",
     "channel": "Airdorf",
-    "uploadDate": null,
+    "uploadDate": "20171003",
     "viewCount": 306672,
     "foundBy": "indie game teaser trailer",
+    "tags": [
+      "pixel horror",
+      "horror game",
+      "indie game",
+      "indie dev",
+      "retro game",
+      "retro indie game",
+      "retro horror",
+      "8 bit game",
+      "8 bit horror",
+      "horror trailer",
+      "top horror games",
+      "top indie horror games",
+      "pixel game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

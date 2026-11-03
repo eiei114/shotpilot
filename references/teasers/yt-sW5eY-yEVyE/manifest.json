@@ -2,23 +2,61 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-sW5eY-yEVyE",
   "name": "TRAILER The Chant | Official Teaser Unreal Engine HD 4K 2022",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 6,
+    "action": 1,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=sW5eY-yEVyE",
     "channel": "ENFANT TERRIBLE",
-    "uploadDate": null,
+    "uploadDate": "20220516",
     "viewCount": 3795,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "the chant",
+      "ps5",
+      "playstation",
+      "xbox",
+      "pc",
+      "unreal engine",
+      "ue4",
+      "ue5",
+      "unreal engine 5",
+      "unreal engine 4",
+      "unreal 4",
+      "unreal 5",
+      "horror",
+      "prime matter",
+      "koch media",
+      "brass token",
+      "new games 2022",
+      "indie games 2022",
+      "teaser",
+      "trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

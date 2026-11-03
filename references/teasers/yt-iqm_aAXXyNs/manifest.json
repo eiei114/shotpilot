@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-iqm_aAXXyNs",
   "name": "Horizon Zero Dawn VR by Indurhra | Teaser Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=iqm_aAXXyNs",
@@ -12,6 +16,20 @@
     "uploadDate": "20261030",
     "viewCount": 29995,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Horizon Zero Dawn VR",
+      "manual reloading",
+      "bow and arrow",
+      "horizon zero dawn",
+      "horizon call of the mountain",
+      "Aloy",
+      "VR mod",
+      "Horizon Zero Dawn",
+      "HZDVR",
+      "VR Gameplay",
+      "Teaser Trailer",
+      "Trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

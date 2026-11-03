@@ -5,20 +5,49 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=EFlq9Yhi-5w",
     "channel": "Blank Page Games",
-    "uploadDate": null,
+    "uploadDate": "20260103",
     "viewCount": 86,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "indie survival game",
+      "survival game trailer",
+      "post apocalyptic game",
+      "Steam Next Fest",
+      "Steam indie game",
+      "upcoming indie games",
+      "new indie game",
+      "indie game teaser",
+      "indie game trailer",
+      "2D survival game",
+      "pixel art game",
+      "This War of Mine",
+      "Sheltered"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

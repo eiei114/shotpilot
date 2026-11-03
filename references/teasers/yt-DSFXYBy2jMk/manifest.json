@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-DSFXYBy2jMk",
   "name": "Game Teaser Trailer - 3D Animation - Unreal Engine 5",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=DSFXYBy2jMk",
     "channel": "WASD cutter",
-    "uploadDate": null,
+    "uploadDate": "20220626",
     "viewCount": 111,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "unreal engine 5",
+      "unreal engine 5 graphics",
+      "3d animation",
+      "3d video",
+      "3d",
+      "motion design",
+      "motion graphics",
+      "motion designer",
+      "motion design trends",
+      "3d trends",
+      "3d film",
+      "how do 3d films work",
+      "vfx",
+      "best motion design & resources",
+      "best motion design",
+      "is 3d animation a good career",
+      "blender",
+      "cinema 4d",
+      "c4d",
+      "unreal engine"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

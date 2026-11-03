@@ -2,23 +2,58 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-8iS3CuqeJlA",
   "name": "We call him \"Deadlight\" DAYDREAM ENTITY TEASER",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 12
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=8iS3CuqeJlA",
     "channel": "Daydream the game",
-    "uploadDate": null,
+    "uploadDate": "20250519",
     "viewCount": 127119,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "daydream",
+      "daydream gameplay",
+      "teaser trailer",
+      "nostalgiacore",
+      "kanespixels",
+      "horrorgame",
+      "dreamcore",
+      "subliminal",
+      "escape the backrooms",
+      "backrooms",
+      "horrorgaming",
+      "new games",
+      "horror games 2025",
+      "r.e.p.o",
+      "gaming",
+      "pc",
+      "fnaf",
+      "five nights at freddys",
+      "deadbydaylight"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

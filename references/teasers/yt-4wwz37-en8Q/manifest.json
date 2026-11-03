@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-4wwz37-en8Q",
   "name": "HYPERVIOLENT - Steam Next Fest Demo Teaser (October 1st - 7th)",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 9
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=4wwz37-en8Q",
     "channel": "Fulqrum Publishing",
-    "uploadDate": null,
+    "uploadDate": "20210922",
     "viewCount": 1068,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "HYPERVIOLENT",
+      "Realms Deep 2021 Trailer",
+      "Realms Deep",
+      "FPS",
+      "retro",
+      "fast-paced",
+      "old-school",
+      "sprite-based",
+      "Pixel Hybrid",
+      "fast-paced combat",
+      "hand-crafted 1990s pixel art aesthetic",
+      "gore",
+      "violence",
+      "indie game",
+      "indie",
+      "indie developer",
+      "game dev",
+      "system shock",
+      "1990's",
+      "1C Entertainment"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

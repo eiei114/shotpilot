@@ -2,23 +2,51 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-dHP5QOEgqwI",
   "name": "SUBLUSTRUM – Official Gameplay Trailer | Psychological Horror Mystery Adventure (2027)",
-  "category": "horror",
+  "category": "adventure",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {
+    "horror": 10,
+    "adventure": 18
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=dHP5QOEgqwI",
     "channel": "R Gaming",
-    "uploadDate": null,
+    "uploadDate": "20261102",
     "viewCount": 5,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "Sublustrum",
+      "SublustrumGame",
+      "SublustrumGameplay",
+      "GameplayTrailer",
+      "PsychologicalHorror",
+      "HorrorGames",
+      "MysteryAdventure",
+      "IndieGames",
+      "PuzzleAdventure",
+      "UpcomingGames",
+      "Rgaming"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

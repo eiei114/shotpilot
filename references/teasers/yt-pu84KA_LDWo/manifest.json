@@ -5,20 +5,58 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 24,
+    "scifi": 1,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=pu84KA_LDWo",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20250525",
     "viewCount": 151643,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "BrokenLore UNFOLLOW",
+      "BrokenLore",
+      "UNFOLLOW game",
+      "psychological horror game",
+      "social media horror",
+      "mental health game",
+      "indie horror game",
+      "PlayStation 5 horror",
+      "PS5 horror game",
+      "akidearest game",
+      "emotional horror game",
+      "horror game 2025",
+      "horror game trailer",
+      "PlayStation horror",
+      "narrative horror game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

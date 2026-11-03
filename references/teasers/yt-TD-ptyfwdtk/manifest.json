@@ -5,20 +5,56 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 25
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=TD-ptyfwdtk",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20260622",
     "viewCount": 347403,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "Give Us A Sign",
+      "horror game",
+      "co-op horror",
+      "multiplayer horror",
+      "paranormal investigation",
+      "ghost hunting",
+      "ghost game",
+      "voice reactive gameplay",
+      "microphone gameplay",
+      "psychological horror",
+      "haunted locations",
+      "supernatural horror",
+      "investigation game",
+      "cooperative horror",
+      "scary game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

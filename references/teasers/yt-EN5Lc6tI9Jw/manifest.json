@@ -2,23 +2,40 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-EN5Lc6tI9Jw",
   "name": "The Division 2: Red Moon Unleashed Event Teaser",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1,
+    "rpg": 1,
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=EN5Lc6tI9Jw",
     "channel": "Ubisoft",
-    "uploadDate": null,
+    "uploadDate": "20261013",
     "viewCount": 84865,
     "foundBy": "Day of the Devs teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

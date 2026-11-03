@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Rk22tn8yDLc",
   "name": "Unawake - Official Steam Next Fest Trailer",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 7,
+    "action": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Rk22tn8yDLc",
     "channel": "GameTrailers",
-    "uploadDate": null,
+    "uploadDate": "20231009",
     "viewCount": 2524,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "PC",
+      "PlayStation 5",
+      "Toplitz Productions",
+      "Unawake",
+      "Unreal Engine 5",
+      "Xbox Series X|S",
+      "Steam Next Fest",
+      "Steam Next Fest 2023",
+      "Steam Games",
+      "Steam Demo",
+      "Steam Demo Games",
+      "Steam Next Fest Games",
+      "Steam Next Fest 2023 Games",
+      "Unawake Trailer",
+      "Unawake Game",
+      "Unawake Steam Next Fest",
+      "Unawake Game Trailer",
+      "Unawake Demo Trailer",
+      "Unawake Steam Demo",
+      "Action RPG"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

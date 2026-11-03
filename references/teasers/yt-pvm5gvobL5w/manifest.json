@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=pvm5gvobL5w",
     "channel": "Transformers: Rise of Unicron and Manolikas Studios",
-    "uploadDate": null,
+    "uploadDate": "20260914",
     "viewCount": 11185359,
     "foundBy": "official teaser trailer game 2026",
+    "tags": [
+      "Transformers",
+      "Rise of Unicron",
+      "Transformers fan film",
+      "teaser trailer",
+      "Optimus Prime",
+      "Bumblebee",
+      "Unicron",
+      "Megatron",
+      "Cliffjumper",
+      "Autobots",
+      "Decepticons",
+      "Blender",
+      "Blender animation",
+      "Blender 3D",
+      "3D animation",
+      "CGI",
+      "VFX",
+      "visual effects",
+      "cinematic animation",
+      "science fiction"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

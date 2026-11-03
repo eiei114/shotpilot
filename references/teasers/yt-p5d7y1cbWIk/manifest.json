@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-p5d7y1cbWIk",
   "name": "Rocket League x Unreal Engine 6 - Official Reveal Announcement Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=p5d7y1cbWIk",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260524",
     "viewCount": 526425,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "Action",
+      "Futuristic",
+      "Live Service",
+      "Nintendo Switch",
+      "Online",
+      "PC",
+      "Panic Button",
+      "PlayStation 4",
+      "Psyonix",
+      "Racing",
+      "Rocket League",
+      "Split-Screen Multiplayer",
+      "Sports",
+      "Steam Deck Verified",
+      "Xbox One",
+      "Rocket League x Unreal Engine 6",
+      "Rocket League x Unreal Engine 6 game trailer",
+      "game trailers",
+      "trailer",
+      "trailers"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

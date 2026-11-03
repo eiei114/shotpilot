@@ -5,6 +5,10 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=i9UMZCfKWi4",
@@ -12,6 +16,7 @@
     "uploadDate": null,
     "viewCount": 2421128,
     "foundBy": "horror game teaser trailer",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -5,20 +5,55 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "scifi": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=vbHD98a-kjs",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260907",
     "viewCount": 356382,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Anonymous Content",
+      "Bleecker Street",
+      "Closer Media",
+      "Documentary",
+      "Musk",
+      "Theater",
+      "ign movie reviews",
+      "ign",
+      "Muskmovie trailers",
+      "movie trailer",
+      "movies",
+      "new movies",
+      "new movie trailers",
+      "upcoming movies 2026",
+      "new movies 2026",
+      "2026 new movies",
+      "2026 trailers",
+      "new trailers",
+      "ign movie trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

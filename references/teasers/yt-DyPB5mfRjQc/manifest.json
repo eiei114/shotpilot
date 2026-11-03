@@ -5,20 +5,39 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=DyPB5mfRjQc",
     "channel": "追求型モノ語リ劇場【Lyco】",
-    "uploadDate": null,
+    "uploadDate": "20261017",
     "viewCount": 281,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "インディーゲーム",
+      "同人サークル",
+      "ゲーム制作",
+      "ティザー映像",
+      "同人ゲーム"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

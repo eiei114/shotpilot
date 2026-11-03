@@ -2,23 +2,39 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-UPMByUOj-tM",
   "name": "Back In Time - Official Announcement Trailer | Time Travel Indie game",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3,
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=UPMByUOj-tM",
     "channel": "Ajesh Nair",
-    "uploadDate": null,
+    "uploadDate": "20250405",
     "viewCount": 30595,
     "foundBy": "indie game teaser trailer",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

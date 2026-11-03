@@ -5,20 +5,35 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 7
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=hPv8abegsww",
     "channel": "蝦名　樹《Itsuki Ebina》",
-    "uploadDate": null,
+    "uploadDate": "20251108",
     "viewCount": 74,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

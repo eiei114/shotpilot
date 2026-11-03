@@ -5,20 +5,51 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 1,
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=gV6_uBQnrN8",
     "channel": "APO+CHANNEL",
-    "uploadDate": null,
+    "uploadDate": "20260514",
     "viewCount": 42491,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "Art",
+      "ドット絵",
+      "pixelart",
+      "イラスト",
+      "illustration",
+      "radio",
+      "10分ドット",
+      "APO",
+      "モトクロス斎藤",
+      "水曜ドット打つデイ",
+      "作業",
+      "作業用",
+      "描いてみた",
+      "描き方"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

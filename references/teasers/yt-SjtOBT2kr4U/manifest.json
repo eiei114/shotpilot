@@ -5,20 +5,58 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 6,
+    "action": 1,
+    "adventure": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=SjtOBT2kr4U",
     "channel": "青鬼チャンネル",
-    "uploadDate": null,
+    "uploadDate": "20250711",
     "viewCount": 126470,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "青鬼",
+      "あおおに",
+      "aooni",
+      "青鬼2",
+      "青鬼3",
+      "青鬼X",
+      "青鬼オンライン",
+      "ゲーム",
+      "ホラー",
+      "アドベンチャー",
+      "謎解き",
+      "鬼ごっこ",
+      "実況",
+      "配信",
+      "フワッティー",
+      "温泉",
+      "Nintendo Switch",
+      "Steam",
+      "スイッチ",
+      "Switch"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

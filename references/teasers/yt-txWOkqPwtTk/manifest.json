@@ -5,20 +5,38 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=txWOkqPwtTk",
     "channel": "ルーネ・サロワ / Rune Salowa",
-    "uploadDate": null,
+    "uploadDate": "20260917",
     "viewCount": 45624,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "ルーネサロワ",
+      "ジルコン",
+      "KONAMI",
+      "コナミ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

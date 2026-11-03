@@ -5,20 +5,48 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 9,
+    "rpg": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=1ULL2tDGdG0",
     "channel": "LEVEL5ch【公式】",
-    "uploadDate": null,
+    "uploadDate": "20260410",
     "viewCount": 118190,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "レベルファイブ",
+      "LEVEL5",
+      "レベルファイブチャンネル",
+      "LEVEL5ch",
+      "ゲーム",
+      "ゴーストクラフト",
+      "RPG",
+      "レベルファイブビジョン",
+      "LEVEL5 VISION",
+      "ホーリーホラーマンション",
+      "ホリホラ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

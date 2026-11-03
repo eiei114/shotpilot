@@ -2,23 +2,55 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-D2VYwmYjukM",
   "name": "「モンハンワイルズ×FF14」コラボティザー映像（無料タイトルアップデート第3弾）",
-  "category": "general",
+  "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=D2VYwmYjukM",
     "channel": "CapcomChannel",
-    "uploadDate": null,
+    "uploadDate": "20250819",
     "viewCount": 341661,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "MonsterHunter",
+      "MonsterHunterWilds",
+      "モンスターハンター",
+      "モンスターハンターワイルズ",
+      "PlayStation",
+      "PS5",
+      "Xbox",
+      "Steam",
+      "PC",
+      "Capcom",
+      "Trailer",
+      "Game",
+      "モンハン",
+      "FFXIV",
+      "FF14",
+      "ファイナルファンタジー"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

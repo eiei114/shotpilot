@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-2OHEEy_qhyE",
   "name": "Nayyi Navelli: Official Teaser | Yami, Addinath | Balaji Mohan | Aanand L Rai, Himanshu S | 16th Oct",
-  "category": "general",
+  "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "horror": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=2OHEEy_qhyE",
     "channel": "Amazon MGM Studios India and 2 more",
-    "uploadDate": null,
+    "uploadDate": "20260910",
     "viewCount": 28665325,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "nayyi navelli",
+      "nayyi navelli 2026",
+      "nayyi navelli film",
+      "nayyi navelli movie",
+      "nayyi navelli songs",
+      "nayyi navelli 16 oct",
+      "nayyi navelli teaser",
+      "nayyi navelli review",
+      "nayyi navelli trailer",
+      "nayyi naveli",
+      "nayyi navelli full movie",
+      "nayyi navelli prime video",
+      "nayyi navelli hindi movie",
+      "nayyi navelli - first look",
+      "nayyi navelli release date",
+      "nayyi navelli amazon prime",
+      "nayyi navelli movie review",
+      "nayyi navelli hindi review",
+      "nayyi navelli horror comedy",
+      "yami gautam"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

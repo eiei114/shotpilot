@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-0lEO0u1_ooY",
   "name": "Moylo | Classic Cartoony Game Teaser Trailer",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 7
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=0lEO0u1_ooY",
@@ -12,6 +16,7 @@
     "uploadDate": "20260917",
     "viewCount": 4273530,
     "foundBy": "game teaser trailer",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

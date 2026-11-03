@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-RTJLHx97Lu8",
   "name": "TVアニメ『SAKAMOTO DAYS』第2期 超ティザーPV│SEASON2│OFFICIAL TEASER TRAILER",
-  "category": "general",
+  "category": "action",
   "language": "ja",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=RTJLHx97Lu8",
     "channel": "ジャンプチャンネル",
-    "uploadDate": null,
+    "uploadDate": "20251226",
     "viewCount": 821499,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "週刊少年ジャンプ",
+      "ジャンプ",
+      "JUMP",
+      "漫画",
+      "漫画動画",
+      "アニメ",
+      "ボイスコミック",
+      "ハイキュー",
+      "鬼滅の刃",
+      "チェンソーマン",
+      "仄見える少年",
+      "呪術廻戦",
+      "ガラク",
+      "ロッカールーム",
+      "僕のヒーローアカデミア",
+      "Dr.STONE",
+      "ONEPIECE",
+      "約束のネバーランド",
+      "銀魂",
+      "BLEACH"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

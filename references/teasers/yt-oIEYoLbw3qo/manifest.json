@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-oIEYoLbw3qo",
   "name": "本格対戦格闘ゲーム『HUNTER×HUNTER NEN×IMPACT』ティザー映像",
-  "category": "general",
+  "category": "action",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 6
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=oIEYoLbw3qo",
     "channel": "ブシロード公式チャンネル",
-    "uploadDate": null,
+    "uploadDate": "20240106",
     "viewCount": 492953,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "ブシロード",
+      "ハンターハンター",
+      "ハンター",
+      "HUNTER×HUNTER",
+      "HUNTERHUNTER",
+      "冨樫義博",
+      "ジャンプ",
+      "ブシロードゲームズ",
+      "bushiroad",
+      "bushiroadgames",
+      "エイティング",
+      "格ゲー",
+      "Fighting game",
+      "ゴン",
+      "キルア",
+      "クラピカ",
+      "レオリオ",
+      "ヒソカ",
+      "ネテロ",
+      "アニメ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,20 +5,50 @@
   "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 2,
+    "action": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=bTUNO8_8luE",
     "channel": "Destiny 2",
-    "uploadDate": null,
+    "uploadDate": "20230817",
     "viewCount": 1069141,
     "foundBy": "action game teaser trailer",
+    "tags": [
+      "Destiny",
+      "destiny 2",
+      "xbox",
+      "playstation",
+      "steam",
+      "game",
+      "games",
+      "MMO",
+      "FPS",
+      "action",
+      "warlock",
+      "hunter",
+      "titan"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

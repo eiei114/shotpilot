@@ -2,23 +2,54 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-hBEDdMS400k",
   "name": "Neuromancer - Official Teaser Trailer (Callum Turner, Mark Strong) | Comic Con 2026",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=hBEDdMS400k",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20260725",
     "viewCount": 1287139,
     "foundBy": "IGN teaser trailer game",
+    "tags": [
+      "Apple TV",
+      "Neuromancer",
+      "On-Demand",
+      "Sci-Fi",
+      "Callum Turner",
+      "Briana Middleton",
+      "Mark Strong",
+      "Joseph Lee",
+      "Peter Sarsgaard",
+      "sdcc",
+      "sdcc 2026",
+      "comic con",
+      "comic con 2026",
+      "san diego comic con",
+      "san diego comic con 2026"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

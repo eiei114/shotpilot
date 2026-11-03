@@ -5,20 +5,49 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 21
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=pmK0zkZQqxY",
     "channel": "Tekir Studios",
-    "uploadDate": null,
+    "uploadDate": "20261102",
     "viewCount": 2,
     "foundBy": "horror game teaser trailer",
+    "tags": [
+      "Tethered Dread",
+      "Tethered Dread The Blind Spot",
+      "The Blind Spot",
+      "horror game",
+      "horror game trailer",
+      "horror teaser",
+      "indie horror",
+      "first person horror",
+      "atmospheric horror",
+      "Steam horror",
+      "PC horror game",
+      "korku oyunu",
+      "korku oyunu fragmanı"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

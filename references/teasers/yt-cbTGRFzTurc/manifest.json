@@ -5,20 +5,54 @@
   "category": "rpg",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 12,
+    "action": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=cbTGRFzTurc",
     "channel": "スクウェア・エニックス",
-    "uploadDate": null,
+    "uploadDate": "20251014",
     "viewCount": 712324,
     "foundBy": "ティザートレーラー ゲーム",
+    "tags": [
+      "スクウェア･エニックス",
+      "スクエニ",
+      "SQUARE ENIX",
+      "スクエア",
+      "ディシディア",
+      "ディシディアファイナルファンタジー",
+      "DISSIDIA FINAL FANTASY",
+      "DFFNT",
+      "DFFAC",
+      "FFシリーズ",
+      "ファイナルファンタジー",
+      "対戦アクション",
+      "3vs3バトル",
+      "召喚獣",
+      "デュエルム",
+      "DDFF",
+      "duellum"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

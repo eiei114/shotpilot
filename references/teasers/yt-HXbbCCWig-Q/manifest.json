@@ -5,20 +5,36 @@
   "category": "cozy",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 7,
+    "adventure": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=HXbbCCWig-Q",
     "channel": "NobleGames",
-    "uploadDate": null,
+    "uploadDate": "20250709",
     "viewCount": 22,
     "foundBy": "Wholesome Direct teaser",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

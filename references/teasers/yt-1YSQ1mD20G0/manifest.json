@@ -2,23 +2,42 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-1YSQ1mD20G0",
   "name": "TVアニメ『SAKAMOTO DAYS』第2期 ティザーPV｜Season 2 Teaser Trailer｜2027.01 ON AIR",
-  "category": "general",
+  "category": "action",
   "language": "ja",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=1YSQ1mD20G0",
     "channel": "TMSアニメ公式チャンネル and SHONEN JUMP CHANNEL OFFICIAL",
-    "uploadDate": null,
+    "uploadDate": "20260624",
     "viewCount": 770163,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "トムスエンタテインメント",
+      "TMS",
+      "アニメ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

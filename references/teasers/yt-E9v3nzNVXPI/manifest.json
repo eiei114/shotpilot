@@ -5,20 +5,44 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 1,
+    "action": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=E9v3nzNVXPI",
     "channel": "Unreal Engine",
-    "uploadDate": null,
+    "uploadDate": "20220826",
     "viewCount": 5780,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "Unreal Engine",
+      "Epic Games",
+      "UE4",
+      "Unreal",
+      "Game Engine",
+      "Game Dev",
+      "Game Development"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

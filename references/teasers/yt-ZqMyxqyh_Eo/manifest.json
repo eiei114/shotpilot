@@ -2,23 +2,61 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-ZqMyxqyh_Eo",
   "name": "gen ATLAS - Reveal Trailer | PS5 Games",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 6,
+    "action": 5,
+    "adventure": 11
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ZqMyxqyh_Eo",
     "channel": "PlayStation",
-    "uploadDate": null,
+    "uploadDate": "20260605",
     "viewCount": 1332380,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "PlayStation",
+      "PS5",
+      "video games",
+      "next gen",
+      "Sony",
+      "Action",
+      "Adventure",
+      "Single Player",
+      "Ueda",
+      "gen DESIGN",
+      "ICO",
+      "Shadow of the Colossus",
+      "The Last Guardian",
+      "gen ATLAS",
+      "genATLAS",
+      "gen ATLAS game",
+      "gen ATLAS Epic Games Publishing",
+      "gen ATLAS release date",
+      "gen ATLAS 2027",
+      "gen ATLAS wishlist"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

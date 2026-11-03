@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=jq5oCjhQtIc",
     "channel": "Amazon MGM Studios and IMDb",
-    "uploadDate": null,
+    "uploadDate": "20261022",
     "viewCount": 6757027,
     "foundBy": "game teaser 30 seconds",
+    "tags": [
+      "MGM",
+      "MGM Studios",
+      "Metro-Goldwyn- Mayer",
+      "Metro Pictures Corporations",
+      "Goldwyn Pictures",
+      "Louis B. Mayer Pictures",
+      "MGM Pictures",
+      "United Artists",
+      "Metro MGM/UA",
+      "Amazon MGM",
+      "Amazon MGM Studios",
+      "Amazon",
+      "I Play Rocky Movie",
+      "I Play Rocky (2026)",
+      "I Play Rocky 2026",
+      "I Play Rocky Trailer",
+      "I Play Rocky Official Trailer",
+      "I Play Rocky",
+      "Anthony Ippolito",
+      "Toby Kebbell"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

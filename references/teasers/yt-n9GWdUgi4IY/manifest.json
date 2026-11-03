@@ -5,20 +5,53 @@
   "category": "cozy",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 15,
+    "rpg": 1,
+    "action": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=n9GWdUgi4IY",
     "channel": "Wholesome Games",
-    "uploadDate": null,
+    "uploadDate": "20260606",
     "viewCount": 1371,
     "foundBy": "Wholesome Direct teaser",
+    "tags": [
+      "video games",
+      "cute",
+      "cozy",
+      "wholesome",
+      "games",
+      "gaming",
+      "gamer",
+      "ps",
+      "xbox",
+      "playstation",
+      "game",
+      "trailer",
+      "teaser",
+      "switch",
+      "nintendo"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

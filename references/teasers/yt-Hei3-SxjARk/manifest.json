@@ -5,20 +5,57 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 33,
+    "rpg": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Hei3-SxjARk",
     "channel": "Fordy",
-    "uploadDate": null,
+    "uploadDate": "20211011",
     "viewCount": 3946,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "silent hill",
+      "survival horror",
+      "video games",
+      "wronged us trailer",
+      "wronged us game",
+      "wronged us",
+      "wronged us gameplay",
+      "new survival horror games 2021",
+      "new survival horror games",
+      "new survival horror games coming out",
+      "new games 2021",
+      "new games",
+      "horror games gameplay",
+      "horror gameplay",
+      "horror games",
+      "resident evil",
+      "dark souls",
+      "wronged us teaser trailer",
+      "Wronged us",
+      "trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

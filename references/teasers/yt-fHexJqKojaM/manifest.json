@@ -2,23 +2,51 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-fHexJqKojaM",
   "name": "『Ira』ティザーPV   Nintendo Switch™ 2",
-  "category": "horror",
+  "category": "action",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 1,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=fHexJqKojaM",
     "channel": "Pikii",
-    "uploadDate": null,
+    "uploadDate": "20260514",
     "viewCount": 1932,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "IRA",
+      "イラ",
+      "いら",
+      "弓矢",
+      "ニラ",
+      "レバ",
+      "ぎら",
+      "キラ",
+      "チラ",
+      "Pikii",
+      "ムラ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

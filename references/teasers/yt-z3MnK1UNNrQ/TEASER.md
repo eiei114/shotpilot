@@ -7,6 +7,7 @@
 
 ## 0. 実測値（自動生成。手で直さない）
 
+- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
 - 尺: 52 秒 / 視聴数: 315 / 出典: https://www.youtube.com/watch?v=z3MnK1UNNrQ
 - 未計測（動画未取得、または `--measure` 未実行）
 

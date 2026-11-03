@@ -2,9 +2,13 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Zb-xvCPecps",
   "name": "Concord - Teaser Trailer | PS5 & PC Games",
-  "category": "general",
+  "category": "action",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "action": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Zb-xvCPecps",
@@ -12,6 +16,16 @@
     "uploadDate": "20230524",
     "viewCount": 366705,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Firewalk Studios",
+      "PS5",
+      "PVP",
+      "1st Person Shooter",
+      "Concord",
+      "Play Concord",
+      "Playstationshowcase",
+      "playstation showcase"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

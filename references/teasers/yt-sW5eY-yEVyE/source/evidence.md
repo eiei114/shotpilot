@@ -1,8 +1,9 @@
 # TRAILER The Chant | Official Teaser Unreal Engine HD 4K 2022 — Source Evidence
 
 - URL: https://www.youtube.com/watch?v=sW5eY-yEVyE
-- Channel: ENFANT TERRIBLE / Upload: ? / Views at retrieval: 3795
+- Channel: ENFANT TERRIBLE / Upload: 20220516 / Views at retrieval: 3795
 - Found by: YouTube search `UE5 game announcement teaser` (yt-dlp flat search, top 60), retrieved 2026-11-03
 - Local copy: `research_data/teasers/videos/sW5eY-yEVyE.mp4` (360p, analysis only, not redistributed)
-- Measurement: ffmpeg scene cut > 0.3, blackdetect d=0.2 pix_th=0.10, ebur128. Scene cuts miss
-  dissolves and over-count flashes; treat shot counts as roughly +/-20 %.
+- Measurement: adaptive scene-score peaks (>= 0.1 and 3x the local median), blackdetect d=0.2
+  pix_th=0.10, ebur128, signalstats. Dissolves are not counted as cuts and flashes are; treat shot
+  counts as roughly +/-20 %.

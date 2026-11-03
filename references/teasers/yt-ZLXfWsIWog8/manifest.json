@@ -2,23 +2,51 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-ZLXfWsIWog8",
   "name": "Brushland - Official Announcement Trailer",
-  "category": "general",
+  "category": "cozy",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ZLXfWsIWog8",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20261016",
     "viewCount": 1764140,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "Transhuman Design",
+      "Brushland",
+      "indie game",
+      "game trailer",
+      "city builder",
+      "simulation",
+      "sandbox",
+      "cozy",
+      "level editor",
+      "nature",
+      "base building"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

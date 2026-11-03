@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Ne2326XMcuo",
     "channel": "Green TV Entertainment",
-    "uploadDate": null,
+    "uploadDate": "20260904",
     "viewCount": 1880639,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "Mitti De Bawe",
+      "Green TV",
+      "MITTI DE BAWAY",
+      "mitti de baway",
+      "mitti de baway drama",
+      "wahaj ali drama",
+      "wahaj ali new drama",
+      "miti de baway",
+      "mahira khan mitti de baway",
+      "mitti de baway episode 01",
+      "mitti de baway teaser",
+      "mitti de baway green tv",
+      "Mitti De Baway Teaser 2",
+      "MITTI DE BAWAY TEASER 2",
+      "MITTI DE BAWAY | Teaser 2",
+      "mitti de baway drama teaser 2",
+      "green tv dramas",
+      "pakistani drama",
+      "mitti de baway trailer",
+      "Official Trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

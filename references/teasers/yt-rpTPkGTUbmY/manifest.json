@@ -5,20 +5,51 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=rpTPkGTUbmY",
     "channel": "eCricket",
-    "uploadDate": null,
+    "uploadDate": "20250318",
     "viewCount": 571248,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "cricket gaming",
+      "multiplayer cricket",
+      "sports video game",
+      "best cricket game 2026",
+      "esports cricket",
+      "sports esports",
+      "best sports game",
+      "upcoming cricket game",
+      "cricket game announcement",
+      "sports game reveal",
+      "ecricket",
+      "e-cricket",
+      "ecricket teaser",
+      "ecricket game",
+      "cricket esports",
+      "AAA cricket game",
+      "unreal engine cricket game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

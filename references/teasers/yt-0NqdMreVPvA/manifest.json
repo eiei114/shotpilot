@@ -5,20 +5,52 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 17
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=0NqdMreVPvA",
     "channel": "Tendogames",
-    "uploadDate": null,
+    "uploadDate": "20160721",
     "viewCount": 1824,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "zombie",
+      "zombies",
+      "game",
+      "survival",
+      "horror",
+      "UE4",
+      "resident evil hd",
+      "resident evil",
+      "silent hill",
+      "them & us",
+      "tendogames",
+      "unreal engine 4",
+      "epic games",
+      "resident evil 7",
+      "next gen graphic",
+      "1080p"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=ON4PFiPidOo",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20211206",
     "viewCount": 556939,
     "foundBy": "UE5 game announcement teaser",
+    "tags": [
+      "IGN",
+      "Matrix",
+      "The Matrix",
+      "The Matrix Awakens: An Unreal Engine 5 Experience",
+      "UE5",
+      "the matrix awakens trailer",
+      "the matrix awakens",
+      "the matrix awakens ue5",
+      "the matrix awakens ps5",
+      "the matrix awakens teaser",
+      "the matrix awakens unreal engine 5",
+      "the matrix awakens game awards",
+      "the game awards 2021",
+      "matrix awakens game",
+      "matrix awakens trailer",
+      "matrix awakens ps5",
+      "matrix awakens xbox",
+      "matrix awakens unreal engine 5",
+      "unreal engine 5 matrix",
+      "matrix unreal engine"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

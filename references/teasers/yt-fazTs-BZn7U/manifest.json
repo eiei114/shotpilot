@@ -5,20 +5,58 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 35,
+    "action": 2,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=fazTs-BZn7U",
     "channel": "The Horror Game Awards",
-    "uploadDate": null,
+    "uploadDate": "20261007",
     "viewCount": 116,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "horror game awards",
+      "game awards",
+      "game awards 2026",
+      "horror game awards 2026",
+      "new horror games 2026",
+      "new survival horror games 2026",
+      "video game trailers",
+      "new horror games",
+      "game trailers",
+      "indie horror games",
+      "indie horror",
+      "hga",
+      "hga 26",
+      "hga 2026",
+      "steam",
+      "xbox",
+      "playstation",
+      "nintendo",
+      "harvest of terror",
+      "harvest of terror 26"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

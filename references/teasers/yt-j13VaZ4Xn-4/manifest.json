@@ -2,23 +2,52 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-j13VaZ4Xn-4",
   "name": "Scholar Adventure: Lost Night - Official Announcement Trailer",
-  "category": "general",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 13
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=j13VaZ4Xn-4",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20260928",
     "viewCount": 23652,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "Making Enemies",
+      "Ayose Trujillo",
+      "Scholar Adventure: Lost Night",
+      "indie game",
+      "game trailer",
+      "pixel art",
+      "pixel art game",
+      "adventure",
+      "puzzle",
+      "mysteyr",
+      "visual novel",
+      "point & click"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

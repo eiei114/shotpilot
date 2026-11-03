@@ -2,23 +2,44 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-irCp04t09DY",
   "name": "クトゥルフ神話カードゲームADV Erase -missing link-【ティザーPV 1st】",
-  "category": "general",
+  "category": "adventure",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "adventure": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=irCp04t09DY",
     "channel": "Erase -missing link- 公式チャンネル",
-    "uploadDate": null,
+    "uploadDate": "20251016",
     "viewCount": 517,
     "foundBy": "インディーゲーム ティザー",
+    "tags": [
+      "クトゥルフ神話",
+      "TRPG",
+      "indiegame",
+      "インディーゲーム",
+      "yt:cc=on"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

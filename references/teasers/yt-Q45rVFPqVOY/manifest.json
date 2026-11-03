@@ -2,23 +2,54 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Q45rVFPqVOY",
   "name": "Amanda the Adventurer 3 - Official Announcement Teaser Trailer",
-  "category": "horror",
+  "category": "adventure",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 2,
+    "adventure": 7
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Q45rVFPqVOY",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20250425",
     "viewCount": 563121,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "Amanda the Adventurer 3",
+      "game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2025",
+      "upcoming video games 2025"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

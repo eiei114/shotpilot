@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Swiz1XyfhcI",
@@ -12,6 +14,7 @@
     "uploadDate": null,
     "viewCount": 4498721,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [],
     "retrieved": "2026-11-03"
   },
   "files": {

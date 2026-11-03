@@ -2,23 +2,59 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-n4RiVblVQ90",
   "name": "BELTFED – Official Announcement Trailer | Roguelike Factory Defense",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=n4RiVblVQ90",
     "channel": "BELTFED",
-    "uploadDate": null,
+    "uploadDate": "20260915",
     "viewCount": 1832647,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "BELTFED",
+      "BELTFED trailer",
+      "Beltfed game",
+      "roguelike factory defense",
+      "factory defense game",
+      "automation game",
+      "tower defense game",
+      "roguelike strategy",
+      "base building game",
+      "rogue AI game",
+      "automate death",
+      "bug swarm game",
+      "horde defense game",
+      "sci-fi strategy game",
+      "upcoming indie games 2027",
+      "indie game trailer",
+      "Steam game trailer",
+      "games like Factorio",
+      "games like They Are Billions",
+      "Hello World Studios"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

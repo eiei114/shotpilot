@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=DQr3EU4EJpw",
@@ -12,6 +14,17 @@
     "uploadDate": "20201119",
     "viewCount": 991682,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "007",
+      "James Bond",
+      "Project 007",
+      "Video game",
+      "IO interactive",
+      "Gaming",
+      "new game",
+      "Bond James Bond",
+      "Bond"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

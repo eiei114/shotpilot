@@ -5,20 +5,44 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=EaziqRICLyU",
     "channel": "Rockstar Games",
-    "uploadDate": null,
+    "uploadDate": "20110121",
     "viewCount": 789855,
     "foundBy": "game teaser 30 seconds",
+    "tags": [
+      "l.a. noire",
+      "trailer",
+      "rockstar games",
+      "playstation 3",
+      "xbox 360",
+      "los angeles",
+      "thriller",
+      "crime",
+      "noir",
+      "video game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

@@ -5,20 +5,46 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=c0u4DH4Jnxo",
     "channel": "コーエーテクモChannel",
-    "uploadDate": null,
+    "uploadDate": "20210328",
     "viewCount": 396986,
     "foundBy": "ゲーム ティザー映像",
+    "tags": [
+      "#最新動画_movielist",
+      "コーエーテクモゲームス",
+      "コーエーテクモ",
+      "シブサワコウ40周年",
+      "シブサワ・コウ",
+      "シブサワコウ",
+      "信長の野望",
+      "信長の野望新作",
+      "信長の野望新生",
+      "信長の野望・新生",
+      "織田信長",
+      "信長の野望 新生"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

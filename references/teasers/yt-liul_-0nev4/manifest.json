@@ -5,20 +5,54 @@
   "category": "general",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=liul_-0nev4",
     "channel": "バンドリちゃんねる☆",
-    "uploadDate": null,
+    "uploadDate": "20260301",
     "viewCount": 142713,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "ラブライブ",
+      "サンシャイン",
+      "虹ヶ咲",
+      "μ’s",
+      "Aqours",
+      "スクフェス",
+      "スクスタ",
+      "アニメ",
+      "アイドルマスター",
+      "アイマス",
+      "シンデレラガールズ",
+      "デレステ",
+      "ミリオンライブ",
+      "バンドリ",
+      "ガルパ",
+      "スタァライト",
+      "乃木坂",
+      "アイドル",
+      "アニソン",
+      "ポピパ"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

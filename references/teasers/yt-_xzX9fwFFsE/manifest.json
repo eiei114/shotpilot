@@ -4,21 +4,55 @@
   "name": "Prototype 30 Seconds of Gameplay Trailer",
   "category": "general",
   "language": "en",
-  "kind": "teaser",
+  "kind": "gameplay",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=_xzX9fwFFsE",
     "channel": "KnJ-G4M1NG",
-    "uploadDate": null,
+    "uploadDate": "20090115",
     "viewCount": 2656,
     "foundBy": "game teaser 30 seconds",
+    "tags": [
+      "PROTOTYPE",
+      "gameplay",
+      "game",
+      "play",
+      "playstation3",
+      "playstation",
+      "xbox360",
+      "xbox",
+      "360",
+      "WII",
+      "PSP",
+      "station",
+      "portable",
+      "Grand",
+      "Thief",
+      "Auto",
+      "IV",
+      "II",
+      "San",
+      "Andreas"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

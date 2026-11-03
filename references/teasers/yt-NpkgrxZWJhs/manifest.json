@@ -5,20 +5,49 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=NpkgrxZWJhs",
     "channel": "FridayNightFunkin",
-    "uploadDate": null,
+    "uploadDate": "20261006",
     "viewCount": 3901501,
     "foundBy": "Day of the Devs teaser",
+    "tags": [
+      "fnf",
+      "week8",
+      "week 8",
+      "boyfriend",
+      "girlfriend",
+      "friday night funkin",
+      "trailer",
+      "teaser",
+      "daddy dearest",
+      "mommy mearest",
+      "leak",
+      "newgrounds",
+      "rhythm",
+      "game",
+      "indie game"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

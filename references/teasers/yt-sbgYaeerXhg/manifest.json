@@ -5,6 +5,8 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=sbgYaeerXhg",
@@ -12,6 +14,19 @@
     "uploadDate": "20250129",
     "viewCount": 9394731,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Games Workshop",
+      "Citadel Miniatures",
+      "Warhammer Age of Sigmar",
+      "Warhammer 40000",
+      "Forge World",
+      "Black Library",
+      "40K",
+      "AoS",
+      "GW",
+      "astartes",
+      "astartes 2"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

@@ -5,20 +5,51 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=wZk8WgJ6N_4",
     "channel": "GameStop",
-    "uploadDate": null,
+    "uploadDate": "20260525",
     "viewCount": 5364,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "gamestop",
+      "gaming GameStop (Business Operation)",
+      "gaemstop",
+      "gamespot",
+      "game stop",
+      "power to the players",
+      "video games",
+      "preorder",
+      "trade",
+      "rocket league unreal engine 6",
+      "rocket league teaser trailer",
+      "rocket league update",
+      "unreal engine 6 trailer",
+      "rocket league graphics update",
+      "rocket league next gen",
+      "psyonix",
+      "rocket league new era"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

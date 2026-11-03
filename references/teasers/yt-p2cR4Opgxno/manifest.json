@@ -2,23 +2,58 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-p2cR4Opgxno",
   "name": "Space Frontier Stations - 4K Cinematic Trailer - Unreal Engine 5 #GameDev #UE5",
-  "category": "sci-fi",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 23
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=p2cR4Opgxno",
     "channel": "KK Design",
-    "uploadDate": null,
+    "uploadDate": "20220606",
     "viewCount": 18682,
     "foundBy": "unreal engine 5 teaser trailer",
+    "tags": [
+      "scifi",
+      "space",
+      "spacestation",
+      "spaceship",
+      "spacecraft",
+      "asteroid",
+      "meteorite",
+      "nasa",
+      "spacex",
+      "elon musk",
+      "science",
+      "unreal engine",
+      "game development",
+      "pc gaming",
+      "gamer",
+      "gameplay",
+      "explodarion",
+      "satelite",
+      "star wars"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

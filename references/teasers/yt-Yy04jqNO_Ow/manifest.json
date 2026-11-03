@@ -2,9 +2,14 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-Yy04jqNO_Ow",
   "name": "LEGENDS FESTIVAL 2026 Teaser Trailer | DRAGON BALL LEGENDS",
-  "category": "general",
+  "category": "rpg",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 7,
+    "action": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=Yy04jqNO_Ow",
@@ -12,6 +17,23 @@
     "uploadDate": "20261101",
     "viewCount": 175526,
     "foundBy": "game teaser trailer",
+    "tags": [
+      "Bandai Namco Entertainment",
+      "Bandai Namco",
+      "Bandai Namco mobilegames",
+      "Bandai Namco Entertainment mobile games",
+      "DRAGON BALL",
+      "DRAGON BALL Z",
+      "LEGENDS",
+      "DOKKAN",
+      "DOKKAN BATTLE",
+      "DB",
+      "Battle",
+      "LEGENDS INFORMATION",
+      "DBL",
+      "LEGENDS FESTIVAL",
+      "LEGENDS FESTIVAL 2026"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {

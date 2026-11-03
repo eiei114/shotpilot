@@ -2,23 +2,49 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-CP61GovN7ZE",
   "name": "From Scratch - Official Announcement Trailer",
-  "category": "general",
+  "category": "cozy",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "cozy": 4
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=CP61GovN7ZE",
     "channel": "Indie Games Hub",
-    "uploadDate": null,
+    "uploadDate": "20260925",
     "viewCount": 455917,
     "foundBy": "announcement trailer indie game",
+    "tags": [
+      "Indie Games Hub",
+      "DaMa",
+      "From Scratch",
+      "indie game",
+      "game trailer",
+      "simulation",
+      "cozy",
+      "relaxing",
+      "sandbox",
+      "organizing"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

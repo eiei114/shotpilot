@@ -2,23 +2,51 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-XqIBmn42Vk4",
   "name": "Carbon Teaser - Steam next fest",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "scifi": 4,
+    "rpg": 4,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=XqIBmn42Vk4",
     "channel": "Carbon ARPG",
-    "uploadDate": null,
+    "uploadDate": "20250224",
     "viewCount": 812,
     "foundBy": "steam next fest teaser",
+    "tags": [
+      "ARPG",
+      "cyberpunk",
+      "video games",
+      "sci-fi games",
+      "arpgs",
+      "best arpg",
+      "diablo like",
+      "best diablo like",
+      "action rpg",
+      "rpg games"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

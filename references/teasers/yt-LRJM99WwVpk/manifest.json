@@ -5,20 +5,41 @@
   "category": "horror",
   "language": "ja",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 5,
+    "action": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=LRJM99WwVpk",
     "channel": "しろゴリラ",
-    "uploadDate": null,
+    "uploadDate": "20220901",
     "viewCount": 724,
     "foundBy": "ホラーゲーム ティザー",
+    "tags": [
+      "ゲーム",
+      "Unity",
+      "ゲーム制作",
+      "ホラーゲーム"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

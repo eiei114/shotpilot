@@ -1,8 +1,9 @@
 # SILENT HILL: Ascension ティザートレーラー (4K:JP) | KONAMI — Source Evidence
 
 - URL: https://www.youtube.com/watch?v=nppaMqRizLA
-- Channel: SILENT HILL (Official) / Upload: ? / Views at retrieval: 37017
+- Channel: SILENT HILL (Official) / Upload: 20221019 / Views at retrieval: 37017
 - Found by: YouTube search `ホラーゲーム ティザー` (yt-dlp flat search, top 60), retrieved 2026-11-03
 - Local copy: `research_data/teasers/videos/nppaMqRizLA.mp4` (360p, analysis only, not redistributed)
-- Measurement: ffmpeg scene cut > 0.3, blackdetect d=0.2 pix_th=0.10, ebur128. Scene cuts miss
-  dissolves and over-count flashes; treat shot counts as roughly +/-20 %.
+- Measurement: adaptive scene-score peaks (>= 0.1 and 3x the local median), blackdetect d=0.2
+  pix_th=0.10, ebur128, signalstats. Dissolves are not counted as cuts and flashes are; treat shot
+  counts as roughly +/-20 %.

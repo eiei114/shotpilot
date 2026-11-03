@@ -7,6 +7,7 @@
 
 ## 0. 実測値（自動生成。手で直さない）
 
+- ジャンル（自動判定）: rpg / 種別: teaser / 集計対象: in
 - 尺: 85 秒 / 視聴数: 160582 / 出典: https://www.youtube.com/watch?v=qQYQ0OkJ7ug
 - 未計測（動画未取得、または `--measure` 未実行）
 

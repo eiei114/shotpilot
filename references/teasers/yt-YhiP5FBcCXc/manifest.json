@@ -5,20 +5,56 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 9
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=YhiP5FBcCXc",
     "channel": "Red Barrels",
-    "uploadDate": null,
+    "uploadDate": "20151029",
     "viewCount": 2134926,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "Outlast (Work Of Fiction)",
+      "Video Game Culture",
+      "Outlast 2",
+      "Outlast II",
+      "teaser",
+      "trailer",
+      "video game",
+      "horror",
+      "survival",
+      "gore",
+      "religion",
+      "sect",
+      "cult",
+      "scary",
+      "fear",
+      "red barrels",
+      "crazy",
+      "insane",
+      "murkoff",
+      "no weapon"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

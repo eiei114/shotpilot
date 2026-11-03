@@ -5,20 +5,52 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "horror": 3,
+    "adventure": 2
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=gH3fL9cMvuM",
     "channel": "Netflix",
-    "uploadDate": null,
+    "uploadDate": "20260728",
     "viewCount": 3806906,
     "foundBy": "survival horror teaser",
+    "tags": [
+      "Below",
+      "Below Teaser",
+      "Canada",
+      "Charlie Heaton",
+      "Horror",
+      "Josh Hartnett",
+      "Mackenzie Davis",
+      "Monster",
+      "Netflix",
+      "Netflix Drama",
+      "Netflix Mystery",
+      "Netflix Series",
+      "Netflix Thriller",
+      "Newfoundland",
+      "Something In The Water"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

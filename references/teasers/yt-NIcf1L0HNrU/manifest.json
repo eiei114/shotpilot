@@ -5,20 +5,54 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {},
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=NIcf1L0HNrU",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20251212",
     "viewCount": 2357260,
     "foundBy": "official teaser trailer game 2025",
+    "tags": [
+      "ign",
+      "tga",
+      "the game awards",
+      "game awards",
+      "tga trailers",
+      "the game awards trailer",
+      "game awards trailers",
+      "game trailer",
+      "game trailers",
+      "trailer",
+      "trailers",
+      "gaming",
+      "video games",
+      "video game trailer",
+      "video game trailers",
+      "new game trailers",
+      "new video game trailers",
+      "upcoming video games",
+      "new video games 2025",
+      "upcoming video games 2025"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

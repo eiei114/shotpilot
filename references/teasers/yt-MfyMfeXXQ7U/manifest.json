@@ -5,20 +5,56 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 3
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=MfyMfeXXQ7U",
     "channel": "PlayStation Europe",
-    "uploadDate": null,
+    "uploadDate": "20180123",
     "viewCount": 229543,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "ps 4",
+      "psvr",
+      "until dawn vr",
+      "PS4Pro",
+      "the inpatient game",
+      "the inpatient",
+      "playstation 4",
+      "virtual reality",
+      "playstation vr",
+      "the inpatient vr",
+      "playstation pro",
+      "until dawn",
+      "ps vr",
+      "Playstation virtual reality",
+      "the inpatient ps4 vr",
+      "the inpatient psvr",
+      "PS4 Pro",
+      "playstation",
+      "the inpatient gameplay",
+      "the inpatient walkthrough"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

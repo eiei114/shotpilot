@@ -2,23 +2,60 @@
   "schemaVersion": "shotpilot-teaser-reference/v1",
   "id": "yt-HIHduZ8-Jx0",
   "name": "“Fool Night”｜Teaser Trailer｜Only on Netflix in 2026",
-  "category": "general",
+  "category": "scifi",
   "language": "en",
   "kind": "teaser",
+  "scope": "non-game",
+  "genreScores": {
+    "scifi": 2,
+    "rpg": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=HIHduZ8-Jx0",
     "channel": "バンダイナムコフィルムワークス チャンネル and サンライズ  SUNRISE Official ",
-    "uploadDate": null,
+    "uploadDate": "20260623",
     "viewCount": 832495,
     "foundBy": "新作ゲーム ティザーPV",
+    "tags": [
+      "フールナイト",
+      "FoolNight",
+      "foolnight",
+      "FOOLNIGHT",
+      "サンライズ",
+      "シャフト",
+      "サンライズ×シャフト",
+      "安田佳澄",
+      "KasumiYasuda",
+      "スペリオール",
+      "小学館",
+      "KokiUchiyama",
+      "MinakoKotobuki",
+      "内山昂輝",
+      "寿美菜子",
+      "ToshiroKamiya",
+      "YomikoHorai",
+      "神谷トーシロー",
+      "蓬莱ヨミコ",
+      "Netlix"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

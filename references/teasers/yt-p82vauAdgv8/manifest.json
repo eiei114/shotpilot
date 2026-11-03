@@ -5,20 +5,56 @@
   "category": "general",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "rpg": 1
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=p82vauAdgv8",
     "channel": "IGN",
-    "uploadDate": null,
+    "uploadDate": "20210909",
     "viewCount": 1296621,
     "foundBy": "game reveal teaser",
+    "tags": [
+      "kotor remake",
+      "star wars kotor remake",
+      "star wars",
+      "knights of the old republic",
+      "star wars knights of the old republic",
+      "kotor",
+      "knights of the old republic remake",
+      "star wars kotor",
+      "star wars knights of the old republic remake",
+      "kotor remaster",
+      "ps5",
+      "playstation 5",
+      "ps5 games",
+      "new ps5 games",
+      "ps5 gameplay",
+      "playstation 5 games",
+      "playstation",
+      "playstation showcase",
+      "ps5 game trailers",
+      "game trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }

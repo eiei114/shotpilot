@@ -5,20 +5,57 @@
   "category": "horror",
   "language": "en",
   "kind": "teaser",
+  "scope": "in",
+  "genreScores": {
+    "horror": 42,
+    "adventure": 5
+  },
   "source": {
     "platform": "youtube",
     "url": "https://www.youtube.com/watch?v=_bgRvbdQaP0",
     "channel": "Serafini Productions | BrokenLore",
-    "uploadDate": null,
+    "uploadDate": "20251213",
     "viewCount": 7696,
     "foundBy": "psychological horror game teaser",
+    "tags": [
+      "BrokenLore",
+      "Psychological Horror",
+      "Horror",
+      "Survival Horror",
+      "Story Rich",
+      "Mystery",
+      "Indie Game",
+      "Serafini Productions",
+      "Horror PlayStation",
+      "Horror Xbox",
+      "BrokenLore FOLLOW",
+      "BrokenLore game",
+      "psychological horror",
+      "psychological horror game",
+      "first person horror",
+      "narrative horror",
+      "story driven horror",
+      "surreal horror",
+      "metaphorical horror",
+      "horror game trailer"
+    ],
     "retrieved": "2026-11-03"
   },
   "files": {
-    "teaser": "TEASER.md"
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
   },
   "sourceFiles": {
     "evidence": "source/evidence.md"
   },
-  "status": "catalogued"
+  "status": "measured"
 }
