@@ -187,6 +187,11 @@ fn request_with(system: &str, user: Value, schema: Value) -> Value {
     })
 }
 
+/// One structured call (for other modules: sound design).
+pub fn ask_structured(claude: &dyn Claude, system: &str, user: Value, schema: Value) -> Result<Value> {
+    ask_json(claude, system, user, schema)
+}
+
 fn ask_json(claude: &dyn Claude, system: &str, user: Value, schema: Value) -> Result<Value> {
     let text = claude.ask(&request_with(system, user, schema))?;
     serde_json::from_str(&text).map_err(|e| Error::user(format!("Claude returned malformed JSON: {e}")))

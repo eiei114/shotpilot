@@ -22,11 +22,21 @@ pub struct ProduceOpts {
     pub direction: String,
     /// Make a mood board when there is none and an image model is available.
     pub mood: bool,
+    /// The sound library to design the sound from (None: no sound design).
+    pub library: Option<std::path::PathBuf>,
 }
 
 impl Default for ProduceOpts {
     fn default() -> Self {
-        ProduceOpts { quality: "previz".into(), direction: String::new(), mood: true }
+        ProduceOpts { quality: "previz".into(), direction: String::new(), mood: true, library: None }
+    }
+}
+
+impl ProduceOpts {
+    /// The app's and the CLI's defaults: the user's library (D-26) when there is one.
+    pub fn with_user_library(mut self) -> Self {
+        self.library = crate::library::default_root();
+        self
     }
 }
 
@@ -34,7 +44,8 @@ pub const STEPS: &[(&str, &str)] = &[
     ("scout", "ロケハン写真"),
     ("stage", "ステージの理解"),
     ("mood", "ムードボード"),
-    ("plan", "構成と仕上げ"),
+    ("plan", "台本と構成"),
+    ("sound", "音の設計"),
     ("render", "撮影"),
     ("cut", "Cut（仕上げを焼き込む）"),
 ];
@@ -106,7 +117,26 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     let checks = json!({"P0": count("P0"), "P1": count("P1"), "P2": count("P2")});
     step("plan", "done", format!("{} ショット", p.shots.len()), emit, &mut steps);
 
-    // 5. render at the cheapest quality asked for
+    // 5. sound, from the library, against the cut's pieces (skipped without a library)
+    let lib = crate::library::Library::open(opts.library.as_deref()).unwrap_or_default();
+    if lib.sounds.is_empty() {
+        step("sound", "skipped", "音源ライブラリが無い".into(), emit, &mut steps);
+    } else {
+        step("sound", "start", String::new(), emit, &mut steps);
+        match crate::sounddesign::design(ws, &lib, claude).and_then(|d| crate::sounddesign::apply(ws, &d).map(|_| d)) {
+            Ok(d) => {
+                notes.extend(d.notes.iter().cloned());
+                let hits: usize = d.shot_sfx.iter().chain(&d.line_sfx).map(|(_, l)| l.len()).sum();
+                step("sound", "done", format!("曲 {} · SE {}", d.music.len(), hits), emit, &mut steps);
+            }
+            Err(e) => {
+                notes.push(format!("音の設計はできませんでした: {}", e.msg));
+                step("sound", "failed", e.msg, emit, &mut steps);
+            }
+        }
+    }
+
+    // 6. render at the cheapest quality asked for
     step("render", "start", opts.quality.clone(), emit, &mut steps);
     let mut fwd = |e: &str, d: &Value| emit(&format!("render.{e}"), d);
     let outcomes = ws.render(&[], &opts.quality, false, Some(&mut fwd))?;
@@ -118,7 +148,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         step("render", "failed", format!("{} 本失敗", failed.len()), emit, &mut steps);
     }
 
-    // 6. cut, finish burned in
+    // 7. cut, finish burned in
     step("cut", "start", String::new(), emit, &mut steps);
     let info = ws.cut("best", true)?;
     notes.extend(info.notes.iter().cloned());

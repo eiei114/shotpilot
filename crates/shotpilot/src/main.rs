@@ -472,7 +472,7 @@ fn run(cli: Cli) -> Result<u8> {
             let settings = Settings::load(Settings::default_path().as_deref());
             let claude = connect::make_claude(&settings)?;
             let images = if no_mood { None } else { connect::make_image_gen(&settings).ok() };
-            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood };
+            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood, library: None }.with_user_library();
             let mut print = |e: &str, d: &Value| {
                 if e == "step" && d["status"] != "start" {
                     println!("{:<10} {:<8} {}", d["label"].as_str().unwrap_or(""), d["status"].as_str().unwrap_or(""),
