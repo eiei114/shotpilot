@@ -599,12 +599,13 @@ fn run(cli: Cli) -> Result<u8> {
             for a in &p.adjustments {
                 println!("# adjusted by code: {a}");
             }
-            print!("{}", yamlio::dumps(&json!({"shots": planned})));
+            print!("{}", yamlio::dumps(&json!({"script": p.script, "shots": planned})));
             if write {
                 if !ws.defn.shots.is_empty() && !replace {
                     bail!("shots.yaml already has shots; use --replace to overwrite them");
                 }
-                ws.replace_all_shots(&planned)?;
+                ws.replace_plan(&planned, Some(&p.script))?;
+                ws.set_finish(&p.finish)?;
                 println!("wrote {} shots to {}", planned.len(), ws.path.display());
             } else {
                 println!("(preview only; add --write to put these in shots.yaml)");

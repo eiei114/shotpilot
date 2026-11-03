@@ -168,6 +168,33 @@ pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     )
 }
 
+/// What the planner is told about writing the script first (the text is the spine of the
+/// cut, D-25) and about the hand-overs between shots.
+pub fn script_text(defn: &Definition) -> String {
+    format!(
+        "\n## Script (write it first: it is the spine of the cut)\n\
+         Write `script` before choosing shots: the lines the viewer reads, in order. Then pick each shot to show one \
+         line, as evidence of it. A teaser told in text is read with the sound off.\n\
+         - Slots take their own time on black between shots (`after`: the shot or slot they follow, or `start`): \
+           `card` a centred line, with a quiet English line under it; `rule` a rule of the world with a small `head`; \
+           `black` a silent gap (0.5-1 s) before a reveal or the title; `title` the game's title{} (3-4 s, near the end); \
+           `message` a last line from inside the world (`head` = where it is posted, `from` = who sends it).\n\
+         - Overlays sit on a shot (`on`, `at` seconds into it): `caption` lower centre, `count` lower left like a note \
+           under a photograph, for a run of evidence shots.\n\
+         - Devices that hold a teaser together: a first-person voice (\"Today, I move in.\"); a count that keeps going \
+           (seven shoes, seven cups, seven keys...) over short evidence shots of 1-1.5 s; a rule of the world that is \
+           about to be broken; a final message that turns the premise back on the viewer.\n\
+         - Lines are short: Japanese up to ~15 characters, English up to ~6 words. Never invent a release date, a \
+           platform or a store claim; use only facts the brief states.\n\
+         - `target` length is the whole cut, cards included.\n\
+         - `transition`: mostly `cut`; `dip` through black for a jump in time; `flash` (from white) on each short \
+           evidence shot of a count, or for one jolt.\n\
+         - `grade`: `horror` for a cold, desaturated look; `red` only for a short jolt teaser; `none` otherwise. \
+           `letterbox`: 2.39 for a cinematic teaser, 0 for none.\n",
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
+    )
+}
+
 /// What the planner is told about the text and cuts burned in at the cut (D-25).
 pub fn finish_text(defn: &Definition) -> String {
     format!(

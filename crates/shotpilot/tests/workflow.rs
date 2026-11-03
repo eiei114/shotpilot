@@ -464,12 +464,17 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
             }
             self.0.borrow_mut().push("plan".into());
             let user = request["messages"][0]["content"].to_string();
-            assert!(user.contains("## Finish") && user.contains("## Stage") && user.contains("Location scout"), "{user}");
+            assert!(user.contains("## Script") && user.contains("## Stage") && user.contains("Location scout"), "{user}");
             let shot = |id: &str, beat: &str, d: f64, anchor: &str, cap: &str, tr: &str| json!({
                 "id": id, "beat": beat, "purpose": "p", "duration": d, "anchor": anchor, "offset": [-400, -300, 100],
                 "look_at": "", "focal_length": 35, "move": "static", "move_amount": 0, "time_of_day": "default",
                 "notes": "", "appear": [], "caption": cap, "transition": tr});
-            Ok(json!({"rationale": "静かに始める", "title_card": "夜の中庭", "end_card": [],
+            let line = |id: &str, kind: &str, ja: &str, after: &str, on: &str| json!({"id": id, "kind": kind, "ja": ja, "en": "",
+                "head": "", "from": "", "dur": 2.0, "after": after, "on": on, "at": 0.5});
+            Ok(json!({"rationale": "静かに始める", "grade": "horror", "letterbox": 2.39,
+                      "script": [line("intro", "card", "今日から、ここに住む。", "start", ""), line("gone", "caption", "住人が消える", "", "e"),
+                                 line("gap", "black", "", "x2", ""), line("ttl", "title", "夜の中庭", "gap", ""),
+                                 line("lost", "caption", "x", "", "nowhere")],
                       "shots": [shot("h", "hook", 4.0, "lantern", "", "cut"), shot("e", "establish", 8.0, "gate", "住人が消える", "dip"),
                                 shot("x", "escalate", 6.0, "window", "", "flash"), shot("x2", "escalate", 5.0, "door", "", "cut"),
                                 shot("t", "title", 6.0, "well", "", "cut")]}).to_string())
@@ -488,9 +493,13 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     assert_eq!(done, ["scout:done", "stage:done", "mood:done", "plan:done", "render:done", "cut:done"]);
     assert_eq!(f.ws.defn.shot_ids(), ids(&["h", "e", "x", "x2", "t"]));
     assert_eq!(f.ws.defn.brief.images.len(), 4);
-    assert_eq!(f.ws.defn.finish.title.as_ref().unwrap().text, "夜の中庭");
-    assert!(f.ws.defn.finish.end_card.is_none()); // nothing invented
-    assert_eq!(f.ws.defn.find("e").unwrap()["caption"], json!("住人が消える"));
+    // the script came with the shots: cards between them, a line over one, a broken line left out
+    let script: Vec<(&str, &str)> = f.ws.defn.script.iter().map(|l| (l.id.as_str(), l.kind.as_str())).collect();
+    assert_eq!(script, [("intro", "card"), ("gone", "caption"), ("gap", "black"), ("ttl", "title")]);
+    assert_eq!(f.ws.defn.script[1].on.as_deref(), Some("e"));
+    assert_eq!(f.ws.defn.finish.grade, "horror");
+    assert_eq!(f.ws.defn.finish.letterbox, Some(2.39));
+    assert!(f.ws.defn.finish.title.is_none() && f.ws.defn.finish.end_card.is_none()); // the title is a script slot now
     assert_eq!(f.ws.defn.find("x").unwrap()["transition"], json!("flash"));
     assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
     assert_eq!(out["shots"].as_array().unwrap().len(), 5);

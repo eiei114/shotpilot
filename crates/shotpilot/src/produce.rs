@@ -99,7 +99,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     step("plan", "start", String::new(), emit, &mut steps);
     let direction = Some(opts.direction.as_str()).filter(|d| !d.trim().is_empty());
     let p = ai::plan(&ws.defn, None, None, None, direction, claude)?;
-    ws.replace_all_shots(&p.shots)?;
+    ws.replace_plan(&p.shots, Some(&p.script))?;
     ws.set_finish(&p.finish)?;
     let found = ws.check()?;
     let count = |sev: &str| found.iter().filter(|f| f.severity.as_str() == sev).count();
