@@ -462,3 +462,28 @@ fn brief_checks_and_approval_over_http() {
     assert_eq!(code, 400);
     assert!(err["error"].as_str().unwrap().contains("open.title"), "{err}");
 }
+
+#[test]
+fn plan_over_http_needs_confirmation_and_logs_the_check() {
+    let shot = |id: &str, beat: &str, anchor: &str| json!({"id": id, "beat": beat, "purpose": "p", "duration": 7,
+        "anchor": anchor, "offset": [-300, 0, 120], "look_at": "", "focal_length": 35, "move": "static",
+        "move_amount": 0, "time_of_day": "default", "notes": ""});
+    let (s, calls) = srv_with_claude(json!({"rationale": "静かに始めて、最後に崩す", "shots": [
+        shot("p_title", "title", "well"), shot("p_hook", "hook", "gate"), shot("p_est", "establish", "well"),
+        shot("p_esc", "escalate", "door")]}));
+    // existing shots are not replaced without confirmation, and Claude is not called
+    let (code, err) = jcall(&s, "POST", "/api/plan", Some(json!({"note": "静かに"})));
+    assert_eq!(code, 400, "{err}");
+    assert!(calls.lock().unwrap().is_empty());
+
+    let (code, out) = jcall(&s, "POST", "/api/plan", Some(json!({"note": "静かに", "replace": true})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["shots"], json!(["p_hook", "p_est", "p_esc", "p_title"])); // code put the beats in order
+    assert!(out["checks"]["P0"].is_number());
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["shots"].as_array().unwrap().len(), 4);
+    let (_, log) = jcall(&s, "GET", "/api/log?n=1", None);
+    assert_eq!(log[0]["action"], json!("plan"));
+    assert_eq!(log[0]["rationale"], json!("静かに始めて、最後に崩す"));
+    assert_eq!(log[0]["note"], json!("静かに"));
+}

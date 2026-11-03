@@ -642,6 +642,10 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             s.save(&path)?;
             send_json(stream, false, 200, &app.ai_status()).map_err(io)
         }
+        ("POST", "/api/plan") => {
+            let out = plan(app, &req.json()?)?;
+            send_json(stream, false, 200, &out).map_err(io)
+        }
         ("POST", "/api/revise") => {
             let out = revise(app, &req.json()?)?;
             send_json(stream, false, 200, &out).map_err(io)
@@ -650,6 +654,38 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, head, 404, &json!({"error": format!("no route for {} {}", req.method, req.path)})).map_err(io)
         }
     }
+}
+
+/// The structure stage: Claude writes the whole shot list from the brief, the skeleton and
+/// the craft rules (one pass, no self-review; D-22). Code normalizes it, writes it, and the
+/// shot check result goes to the human. Replacing existing shots needs `replace: true`.
+fn plan(app: &App, body: &Map<String, Value>) -> Result<Value> {
+    let note = body.get("note").and_then(Value::as_str).map(str::trim).unwrap_or("");
+    let replace = body.get("replace").and_then(Value::as_bool).unwrap_or(false);
+    let duration = body.get("duration").and_then(Value::as_f64);
+    let n_shots = body.get("shots").and_then(Value::as_u64).map(|n| n as usize);
+    let _guard = app.mutate()?;
+    let mut ws = app.ws()?;
+    if !ws.defn.shots.is_empty() && !replace {
+        bail!("shots.yaml already has {} shots; replacing them needs confirmation", ws.defn.shots.len());
+    }
+    let claude = (app.claude)(&app.settings())?;
+    let p = ai::plan(&ws.defn, None, duration, n_shots, Some(note).filter(|n| !n.is_empty()), claude.as_ref())?;
+    ws.replace_all_shots(&p.shots)?;
+    let found = ws.check()?;
+    let count = |sev: &str| found.iter().filter(|f| f.severity.as_str() == sev).count();
+    let checks = json!({"P0": count("P0"), "P1": count("P1"), "P2": count("P2")});
+    let mut extra = Map::new();
+    extra.insert("note".into(), json!(note));
+    extra.insert("rationale".into(), json!(p.rationale));
+    extra.insert("adjustments".into(), json!(p.adjustments));
+    extra.insert("checks".into(), checks.clone());
+    ws.state.annotate_last(extra);
+    ws.state.save()?;
+    Ok(json!({
+        "shots": p.shots.iter().map(|s| &s["id"]).collect::<Vec<_>>(), "rationale": p.rationale,
+        "adjustments": p.adjustments, "checks": checks,
+    }))
 }
 
 /// A note from the app's chat: Claude edits the pointed-at shot (or, with no shot, the

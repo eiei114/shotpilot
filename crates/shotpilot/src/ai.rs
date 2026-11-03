@@ -15,6 +15,7 @@ use std::time::Duration;
 use serde_json::{json, Map, Value};
 
 use crate::bail;
+use crate::craft;
 use crate::error::{Error, Result};
 use crate::model::{self, beat_guide, num, tod_names_sorted, Definition, BEATS, MOVES};
 use crate::sound;
@@ -273,46 +274,74 @@ fn anchors_list(defn: &Definition) -> String {
         .join("\n")
 }
 
-pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>, claude: &dyn Claude)
-    -> Result<(Vec<Value>, String)> {
+/// A planned shot list, before it is written to shots.yaml.
+#[derive(Debug, Clone)]
+pub struct Planned {
+    pub shots: Vec<Value>,
+    pub rationale: String,
+    /// What code changed in Claude's list (beat order, duration range, runtime).
+    pub adjustments: Vec<String>,
+    /// The skeleton Claude was given.
+    pub skeleton: Vec<craft::Slot>,
+}
+
+/// The planner's system prompt: role, teaser shape and engine conventions. The brief,
+/// skeleton and craft rules go in the user turn (they change per project).
+pub fn plan_system() -> String {
+    let shape: Vec<String> = BEATS.iter().map(|b| format!("- {b}: {}", beat_guide(b))).collect();
+    format!(
+        "You are a trailer director planning a game teaser shot list for an indie developer. \
+         You plan what to film inside the engine before anything is recorded. Each shot exists \
+         to make the viewer feel one specific thing. Prefer fewer, deliberate shots over many busy ones.\n\n\
+         Write the whole list in one pass. The brief, the skeleton and the craft rules you are given \
+         come from how professional game trailers are cut; follow them as you write each shot.\n\n\
+         Every teaser follows this shape, in order, and each shot carries its beat:\n{}\n\n{CONVENTIONS}",
+        shape.join("\n")
+    )
+}
+
+/// Plan a shot list from the pitch, the brief and the anchors. `direction` is an extra
+/// note from the director (e.g. typed in the app's structure stage).
+pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>,
+            direction: Option<&str>, claude: &dyn Claude) -> Result<Planned> {
     if defn.anchors.is_empty() {
         bail!("no anchors. run `shotpilot scan` (or add `anchors:`) so shots can be placed");
     }
     let pitch = pitch.filter(|p| !p.is_empty()).unwrap_or(&defn.teaser.pitch);
+    let pitch = if pitch.is_empty() { defn.brief.core.as_str() } else { pitch };
     if pitch.is_empty() {
-        bail!("give a pitch: --pitch '...' or teaser.pitch in shots.yaml");
+        bail!("give a pitch: --pitch '...', teaser.pitch in shots.yaml, or brief.core");
     }
     let duration = duration.unwrap_or(defn.teaser.target_duration);
-    let shape: Vec<String> = BEATS.iter().map(|b| format!("- {b}: {}", beat_guide(b))).collect();
-    let system = format!(
-        "You are a trailer director planning a game teaser shot list for an indie developer. \
-         You plan what to film inside the engine before anything is recorded. Each shot exists \
-         to make the viewer feel one specific thing. Prefer fewer, deliberate shots over many busy ones.\n\n\
-         Every teaser follows this shape, in order, and each shot carries its beat:\n{}\n\n{CONVENTIONS}",
-        shape.join("\n")
-    );
+    let slots = craft::skeleton(&defn.brief, duration, n_shots);
     let mut user = format!(
-        "Game pitch: {pitch}\nTarget teaser length: {} seconds (shot durations must sum to within 10% of this).\n",
-        model::fmt_g(duration)
+        "Game pitch: {pitch}\nTarget teaser length: {} seconds.\n\
+         Available anchors (only use these names):\n{}\n\n{}\n",
+        model::fmt_g(duration),
+        anchors_list(defn),
+        craft::plan_spec(defn, &slots)
     );
-    if let Some(n) = n_shots {
-        user.push_str(&format!("Number of shots: {n}\n"));
+    if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
+        user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
-    user.push_str(&format!(
-        "Available anchors (only use these names):\n{}\n\n\
-         Write the shot list. Write `purpose` and `notes` in the same language as the pitch.",
-        anchors_list(defn)
-    ));
-    let out = ask_json(claude, &system, json!(user), plan_schema())?;
-    let shots: Vec<Value> = out["shots"]
+    user.push_str(
+        "\nWrite the shot list. Write `purpose` and `notes` in the same language as the pitch. \
+         `rationale`: two or three sentences on the idea of the cut, in that language too.",
+    );
+    let out = ask_json(claude, &plan_system(), json!(user), plan_schema())?;
+    let mut shots: Vec<Value> = out["shots"]
         .as_array()
         .ok_or_else(|| Error::user("Claude returned no shots"))?
         .iter()
         .enumerate()
         .map(|(i, s)| shot_from_plan(s, i))
         .collect();
+    if shots.is_empty() {
+        bail!("Claude returned no shots");
+    }
+    let adjustments = craft::normalize(&mut shots, duration);
     validate_shots(defn, &shots)?;
-    Ok((shots, out["rationale"].as_str().unwrap_or("").to_string()))
+    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots })
 }
 
 fn r1(v: f64) -> f64 {
@@ -491,7 +520,7 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
          {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}.
 
-         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Judge the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
+         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );

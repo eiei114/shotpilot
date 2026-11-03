@@ -129,6 +129,12 @@ enum Cmd {
         duration: Option<f64>,
         #[arg(long)]
         shots: Option<usize>,
+        /// extra direction for the cut (e.g. "slow burn, no jump scares")
+        #[arg(long)]
+        note: Option<String>,
+        /// print the brief, skeleton and craft rules Claude would get, without calling it
+        #[arg(long)]
+        spec: bool,
         #[arg(long)]
         write: bool,
         #[arg(long)]
@@ -453,12 +459,22 @@ fn run(cli: Cli) -> Result<u8> {
             };
             print_edit_report(&ws.edit_definition(&[], Some(&new), "order", "")?);
         }
-        Cmd::Plan { pitch, duration, shots, write, replace } => {
+        Cmd::Plan { pitch, duration, shots, note, spec, write, replace } => {
             let mut ws = ws(file)?;
+            if spec {
+                let target = duration.unwrap_or(ws.defn.teaser.target_duration);
+                let slots = shotpilot::craft::skeleton(&ws.defn.brief, target, shots);
+                println!("{}", shotpilot::craft::plan_spec(&ws.defn, &slots));
+                return Ok(0);
+            }
             let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
-            let (planned, rationale) = ai::plan(&ws.defn, pitch.as_deref(), duration, shots, claude.as_ref())?;
+            let p = ai::plan(&ws.defn, pitch.as_deref(), duration, shots, note.as_deref(), claude.as_ref())?;
+            let planned = p.shots;
             let total: f64 = planned.iter().filter_map(|s| s["duration"].as_f64()).sum();
-            println!("# {} shots, {}s\n# {rationale}\n", planned.len(), fmt_g(total));
+            println!("# {} shots, {}s\n# {}\n", planned.len(), fmt_g(total), p.rationale);
+            for a in &p.adjustments {
+                println!("# adjusted by code: {a}");
+            }
             print!("{}", yamlio::dumps(&json!({"shots": planned})));
             if write {
                 if !ws.defn.shots.is_empty() && !replace {

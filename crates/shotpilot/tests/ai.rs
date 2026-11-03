@@ -88,7 +88,7 @@ fn plan_builds_valid_shots() {
                       "offset": [-300, 0, 120], "look_at": "", "focal_length": 35, "move": "orbit_left",
                       "move_amount": 20, "time_of_day": "night", "notes": ""});
     let fake = FakeClaude::new(json!({"rationale": "r", "shots": [shot]}));
-    let (shots, _) = ai::plan(&f.ws.defn, Some("test"), None, None, &fake).unwrap();
+    let shots = ai::plan(&f.ws.defn, Some("test"), None, None, None, &fake).unwrap().shots;
     assert_eq!(shots[0]["id"], "s01_hook");
     assert_eq!(shots[0]["beat"], "hook");
     assert_eq!(shots[0]["camera"]["move"], json!({"type": "orbit_left", "degrees": 20.0}));
@@ -97,4 +97,89 @@ fn plan_builds_valid_shots() {
     f.ws.replace_all_shots(&shots).unwrap();
     assert_eq!(f.ws.defn.shot_ids(), ids(&["s01_hook"]));
     assert!(f.text().contains("# Order here is the order of the cut"));
+}
+
+fn plan_shot(id: &str, beat: &str, duration: f64, anchor: &str) -> Value {
+    json!({"id": id, "beat": beat, "purpose": "p", "duration": duration, "anchor": anchor,
+           "offset": [-300, 0, 120], "look_at": "", "focal_length": 35, "move": "static",
+           "move_amount": 0, "time_of_day": "default", "notes": ""})
+}
+
+#[test]
+fn plan_gets_the_brief_skeleton_and_craft_before_writing() {
+    let mut f = ws();
+    f.ws.set_brief(&common::set(&[("genre", json!("一人称ホラー")), ("must_show", json!(["井戸"]))])).unwrap();
+    let fake = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
+    ai::plan(&f.ws.defn, None, None, None, Some("ジャンプスケアなしで"), &fake).unwrap();
+    let req = &fake.calls.borrow()[0];
+    let user = req["messages"][0]["content"].as_str().unwrap();
+    for part in ["## Brief", "Genre: 一人称ホラー", "Must show: 井戸", "## Skeleton", "## Craft rules",
+                 "Do not open on the title", "## Framing", "ジャンプスケアなしで"] {
+        assert!(user.contains(part), "missing {part}:
+{user}");
+    }
+}
+
+#[test]
+fn prompts_never_ask_claude_to_inspect_its_own_output() {
+    // D-22: quality comes from the spec given before writing, not from self-review
+    let f = ws();
+    let fake = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
+    ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let rev = FakeClaude::new(json!({"summary": "x", "edits": [], "order": [], "audio": ""}));
+    ai::revise(&f.ws.defn, "3番目はもっと寄って", Some(&ids(&["s03_window"])), &rev).unwrap();
+    for req in [&fake.calls.borrow()[0], &rev.calls.borrow()[0]] {
+        let system = req["system"].as_str().unwrap();
+        assert!(shotpilot::craft::self_review_words(system).is_empty(), "{:?}", shotpilot::craft::self_review_words(system));
+    }
+    let plan_user = fake.calls.borrow()[0]["messages"][0]["content"].as_str().unwrap().to_string();
+    assert!(shotpilot::craft::self_review_words(&plan_user).is_empty(), "{:?}", shotpilot::craft::self_review_words(&plan_user));
+}
+
+#[test]
+fn code_puts_beats_in_order_and_fits_the_runtime() {
+    let f = ws(); // target 30s
+    let shots = vec![
+        plan_shot("t", "title", 4.0, "well"),
+        plan_shot("h", "hook", 12.0, "gate"),
+        plan_shot("e", "establish", 10.0, "well"),
+        plan_shot("x", "escalate", 20.0, "door"),
+    ];
+    let fake = FakeClaude::new(json!({"rationale": "r", "shots": shots}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let order: Vec<&str> = p.shots.iter().map(|s| s["id"].as_str().unwrap()).collect();
+    assert_eq!(order, ["h", "e", "x", "t"]);
+    let total: f64 = p.shots.iter().map(|s| s["duration"].as_f64().unwrap()).sum();
+    assert!((total - 30.0).abs() <= 3.0, "{total}");
+    assert!(p.shots.iter().all(|s| (1.0..=8.0).contains(&s["duration"].as_f64().unwrap())));
+    // 12/10/20 s clamp to 8 s; 28 s is within 10% of 30 s, so nothing is rescaled
+    assert_eq!(p.adjustments.len(), 2, "{:?}", p.adjustments);
+
+    // far off the target: durations are rescaled to fit
+    let short = vec![plan_shot("h", "hook", 1.0, "gate"), plan_shot("e", "establish", 2.0, "well"),
+                     plan_shot("x", "escalate", 2.0, "door"), plan_shot("t", "title", 2.0, "well")];
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &FakeClaude::new(json!({"rationale": "r", "shots": short}))).unwrap();
+    let total: f64 = p.shots.iter().map(|s| s["duration"].as_f64().unwrap()).sum();
+    assert!((total - 30.0).abs() <= 3.0, "{total}");
+    assert!(p.adjustments.iter().any(|a| a.starts_with("scaled durations")), "{:?}", p.adjustments);
+}
+
+#[test]
+fn skeleton_follows_the_craft() {
+    use shotpilot::craft::skeleton;
+    use shotpilot::model::BriefCfg;
+    for target in [30.0, 45.0, 60.0] {
+        let slots = skeleton(&BriefCfg::default(), target, None);
+        let total: f64 = slots.iter().map(|s| s.duration).sum();
+        assert!((total - target).abs() < 0.6, "{target}: {total}");
+        assert_eq!(slots.first().unwrap().beat, "hook");
+        assert_eq!(slots.last().unwrap().beat, "title");
+        let mean = |b: &str| {
+            let d: Vec<f64> = slots.iter().filter(|s| s.beat == b).map(|s| s.duration).collect();
+            d.iter().sum::<f64>() / d.len() as f64
+        };
+        assert!(mean("escalate") < mean("establish"), "{slots:?}");
+    }
+    let gameplay = BriefCfg { kind: "gameplay".into(), ..Default::default() };
+    assert!(skeleton(&gameplay, 60.0, None)[0].duration <= 3.0);
 }
