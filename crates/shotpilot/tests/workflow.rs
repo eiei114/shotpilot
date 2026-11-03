@@ -597,3 +597,42 @@ fn sound_design_picks_from_the_library_and_lands_on_the_pieces() {
     let boom = plan.iter().find(|p| p.label == "boom").unwrap();
     assert!((boom.start - 8.5).abs() < 1e-6, "{}", boom.start); // the card starts after s01 (5 s) and s02 (3.5 s)
 }
+
+#[test]
+fn a_fresh_plan_keeps_the_sound_on_the_pieces_it_replaces() {
+    let mut f = ws();
+    let mut text = f.text();
+    text.push_str(r#"
+script:
+  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2, after: s02_well, sfx: [{file: audio/boom.wav, at: 0}]}
+  - {id: c4, kind: caption, ja: 灯りが消えた。, on: s04_lantern, at: 0.5, dur: 2, sfx: [{file: audio/tick.wav, at: 0}]}
+"#);
+    f.write(&text.replace("  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}",
+        "  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}\n  music:\n    - {file: audio/tense.wav, from: s04_lantern, until: seven, label: tension}"));
+    f.ws.reload().unwrap();
+    f.ws.edit_sound(&[("s03_window".into(), Some(json!([{"file": "audio/hit.wav", "at": 0.5}])))], None, "").unwrap();
+
+    // Claude re-plans: s04 comes back under a new id, the caption on it too, nothing carries sound
+    let shots: Vec<serde_json::Value> = f.ws.defn.shots.iter().map(|s| {
+        let mut s = s.clone();
+        s.as_object_mut().unwrap().remove("sfx");
+        if s["id"] == "s04_lantern" {
+            s["id"] = json!("s04_yard");
+        }
+        s
+    }).collect();
+    let script = vec![
+        json!({"id": "intro", "kind": "card", "ja": "今日から。", "dur": 2, "after": "start"}),
+        json!({"id": "seven", "kind": "card", "ja": "七人。", "dur": 2, "after": "s02_well"}),
+        json!({"id": "n4", "kind": "caption", "ja": "灯りが、消えた。", "on": "s04_yard", "at": 0.4, "dur": 2}),
+    ];
+    f.ws.replace_plan(&shots, Some(&script)).unwrap();
+
+    let line = |id: &str| f.ws.defn.script.iter().find(|l| l.id == id).unwrap().sfx.clone();
+    assert_eq!(line("seven")[0]["file"], "audio/boom.wav");
+    assert_eq!(line("n4")[0]["file"], "audio/tick.wav");
+    assert!(line("intro").is_empty());
+    assert_eq!(f.ws.defn.find("s03_window").unwrap()["sfx"][0]["file"], "audio/hit.wav");
+    let cue = &f.ws.defn.audio["music"][0];
+    assert_eq!((cue["from"].as_str(), cue["until"].as_str()), (Some("s04_yard"), Some("seven")));
+}

@@ -1181,13 +1181,19 @@ impl Workspace {
     /// Write a fresh plan: the shots and (when given) the script together, since script lines
     /// refer to shot ids. Checked as a whole before anything is written.
     pub fn replace_plan(&mut self, shots: &[Value], script: Option<&[Value]>) -> Result<()> {
+        let mut shots = shots.to_vec();
+        let mut lines = script.map(<[Value]>::to_vec);
+        let music = carry_sound(&self.defn, &mut shots, lines.as_deref_mut().unwrap_or(&mut []));
         let mut doc = Doc::load(&self.path)?;
-        doc.set_items("shots", shots)?;
-        match script {
+        doc.set_items("shots", &shots)?;
+        match &lines {
             Some(lines) => doc.set_items("script", lines)?,
             // a script that points at shots that are gone would not parse: drop it with them
             None if !self.defn.script.is_empty() => doc.set_items("script", &[])?,
             None => {}
+        }
+        if let Some(music) = music {
+            doc.upsert_entries("audio", &[("music".to_string(), music)])?;
         }
         model::parse(&doc.value()?, &self.path)?;
         doc.save(&self.path)?;
@@ -1195,6 +1201,103 @@ impl Workspace {
         self.state.log("plan", json!({"shots": shots.iter().map(|s| &s["id"]).collect::<Vec<_>>()}));
         self.state.save()
     }
+}
+
+/// Keep the sound of the old plan on a fresh one: a re-plan rewrites shots and script
+/// lines (often under new ids), and the effects and music cues placed on them would
+/// otherwise be dropped or left pointing at nothing. A shot is matched by id, else by its
+/// position; a script line by id (same kind), else by kind and the matched shot it sits on
+/// or follows. Items the new plan gives sound of its own keep theirs. Returns the music
+/// cues with their `from`/`until` moved, when any moved.
+fn carry_sound(old: &Definition, shots: &mut [Value], lines: &mut [Value]) -> Option<Value> {
+    let new_shots: Vec<String> = shots.iter().map(|s| model::str_of(&s["id"])).collect();
+    let old_shots = old.shot_ids();
+    let mut shot_map: HashMap<String, String> = HashMap::new();
+    for (i, oid) in old_shots.iter().enumerate() {
+        if new_shots.contains(oid) {
+            shot_map.insert(oid.clone(), oid.clone());
+        } else if let Some(nid) = new_shots.get(i).filter(|n| !old_shots.contains(n)) {
+            shot_map.insert(oid.clone(), nid.clone());
+        }
+    }
+    let no_sfx = |v: &Value| v.get("sfx").and_then(Value::as_array).map_or(true, Vec::is_empty);
+
+    // effects on shots (an effect past the new shot's end is dropped)
+    for (oid, nid) in &shot_map {
+        let Some(sfx) = old.find(oid).ok().and_then(|s| s.get("sfx")).and_then(Value::as_array) else { continue };
+        let Some(shot) = shots.iter_mut().find(|s| model::str_of(&s["id"]) == *nid) else { continue };
+        if !no_sfx(shot) {
+            continue;
+        }
+        let dur = shot.get("duration").and_then(num).unwrap_or(0.0);
+        let kept: Vec<Value> = sfx.iter().filter(|it| it.get("at").and_then(num).unwrap_or(0.0) < dur).cloned().collect();
+        if let (false, Some(m)) = (kept.is_empty(), shot.as_object_mut()) {
+            m.insert("sfx".into(), Value::Array(kept));
+        }
+    }
+
+    // effects on script lines
+    let anchor = |kind: &str, on: Option<&String>, after: Option<&String>| -> String {
+        let a = on.or(after).cloned().unwrap_or_default();
+        format!("{kind}@{}", shot_map.get(&a).cloned().unwrap_or(a))
+    };
+    let new_lines: Vec<(String, String, String)> = lines
+        .iter()
+        .map(|l| {
+            let kind = l.get("kind").map(model::str_of).unwrap_or_else(|| "caption".into());
+            let key = format!("{kind}@{}", model::str_of(l.get("on").or(l.get("after")).unwrap_or(&Value::Null)));
+            (model::str_of(&l["id"]), kind, key)
+        })
+        .collect();
+    let mut line_map: HashMap<String, String> = HashMap::new();
+    let mut taken: Vec<String> = Vec::new();
+    for ol in &old.script {
+        if new_lines.iter().any(|(id, kind, _)| *id == ol.id && *kind == ol.kind) {
+            line_map.insert(ol.id.clone(), ol.id.clone());
+            taken.push(ol.id.clone());
+        }
+    }
+    for ol in &old.script {
+        if line_map.contains_key(&ol.id) {
+            continue;
+        }
+        let key = anchor(&ol.kind, ol.on.as_ref(), ol.after.as_ref());
+        let free = new_lines.iter().find(|(id, _, k)| *k == key && !taken.contains(id) && !old.script.iter().any(|o| o.id == *id));
+        if let Some((id, _, _)) = free {
+            line_map.insert(ol.id.clone(), id.clone());
+            taken.push(id.clone());
+        }
+    }
+    for ol in old.script.iter().filter(|l| !l.sfx.is_empty()) {
+        let Some(nid) = line_map.get(&ol.id) else { continue };
+        let Some(line) = lines.iter_mut().find(|l| model::str_of(&l["id"]) == *nid) else { continue };
+        if let (true, Some(m)) = (no_sfx(line), line.as_object_mut()) {
+            m.insert("sfx".into(), Value::Array(ol.sfx.clone()));
+        }
+    }
+
+    // music cues follow the pieces they start and end on
+    let Some(Value::Array(cues)) = old.audio.get("music") else { return None };
+    let known = |r: &str| r == "start" || r == "end" || new_shots.contains(&r.to_string()) || new_lines.iter().any(|(id, _, _)| id == r);
+    let mut moved = false;
+    let cues: Vec<Value> = cues
+        .iter()
+        .map(|c| {
+            let mut c = c.clone();
+            for key in ["from", "until"] {
+                let r = c.get(key).map(model::str_of).unwrap_or_default();
+                if r.is_empty() || known(&r) {
+                    continue;
+                }
+                if let Some(to) = shot_map.get(&r).or(line_map.get(&r)) {
+                    c[key] = json!(to);
+                    moved = true;
+                }
+            }
+            c
+        })
+        .collect();
+    moved.then_some(Value::Array(cues))
 }
 
 /// Leaf-level differences between two nodes, as dotted paths. Lists are leaves, except
