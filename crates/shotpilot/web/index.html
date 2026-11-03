@@ -100,6 +100,7 @@ button:disabled { opacity: .45; cursor: default; }
 .effort-row .t { font-weight: 600; }
 .effort-row .seg button { padding: 4px 9px; }
 .effort-row .d { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.effort-row input[type=password] { border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; background: var(--soft); font-family: var(--mono); font-size: 12px; min-width: 0; }
 .conn-row .st { font-size: 12px; color: var(--muted); }
 
 /* ------------------------------------------------------------------ canvas card */
@@ -166,6 +167,17 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .kinds label.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .kinds input { display: none; }
 .kinds b { font-size: 13px; } .kinds span { color: var(--muted); font-size: 11.5px; }
+.mood { display: grid; gap: 10px; max-width: 900px; }
+.mood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.mood-item { position: relative; border-radius: 10px; overflow: hidden; background: var(--stage); aspect-ratio: 3 / 2; }
+.mood-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mood-item button { position: absolute; top: 6px; right: 6px; border: 0; border-radius: 6px; background: rgb(0 0 0 / .6); color: #fff;
+  font-size: 11px; padding: 2px 7px; }
+.mood-item .missing { color: #c9cfd2; font-size: 11px; padding: 10px; }
+.mood-empty { border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); font-size: 12.5px; text-align: center; }
+.mood-empty.drag, .mood.drag .mood-grid { outline: 2px dashed var(--ink); outline-offset: 3px; }
+.mood-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mood-bar input[type=text] { flex: 1; min-width: 220px; border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; background: var(--soft); outline: 0; }
 .readonly { padding: 7px 10px; border-radius: 9px; background: var(--soft); color: var(--muted); font-size: 12.5px; }
 .beats { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; }
 .beatcol { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 8px; align-content: start; border-top: 4px solid var(--c); min-width: 0; }
@@ -376,6 +388,8 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
           <input type="password" id="conn-keyinput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></label>
         <label class="opt" data-p="auto"><input type="radio" name="prov" value="auto"><span class="t">自動</span>
           <span class="d">Claude Code があればそれを、無ければ API キーを使います。</span></label>
+        <div class="effort-row"><span class="t">OpenAI</span><input type="password" id="conn-openai" placeholder="sk-...（ムードボードの画像生成用）" autocomplete="off" spellcheck="false">
+          <span class="d" id="conn-openai-d">ブリーフのムードボードを生成するときだけ使います。Claude は画像を生成できないためです。</span></div>
         <div class="effort-row"><span class="t">effort</span><div class="seg" id="conn-effort"></div>
           <span class="d" id="conn-effort-d">Claude がどこまで考えるか。上げるほど丁寧で、時間と使用量が増えます。</span></div>
         <div class="conn-row"><button class="btn dark" id="conn-save">保存</button><button class="btn" id="conn-close">閉じる</button><span class="st" id="conn-st"></span></div>
@@ -755,8 +769,8 @@ function briefField(key, label, hint, value, { area = false, ph = "" } = {}) {
 
 function drawBrief() {
   const st = ui.status, b = st.brief || {};
-  const key = JSON.stringify([b, st.pitch]);
-  if (drawBrief.key === key && $("briefpanel").childElementCount) return; // keep what is being typed
+  const key = JSON.stringify([{ ...b, images: undefined }, st.pitch]);
+  if (drawBrief.key === key && $("briefpanel").childElementCount) { drawMood(); return; } // keep what is being typed
   drawBrief.key = key;
   const kind = (k, t, d) => `<label class="${b.kind === k ? "on" : ""}"><input type="radio" name="bkind" value="${k}"${b.kind === k ? " checked" : ""}><b>${t}</b><span>${d}</span></label>`;
   $("briefpanel").innerHTML = `<h3>ブリーフ</h3>
@@ -772,7 +786,56 @@ function drawBrief() {
       ${briefField("references", "参考トレーラー", "お手本にする実在のトレーラー。1行に1本", b.references, { area: true, ph: "例: Inscryption – Announcement Trailer" })}
       ${briefField("notes", "メモ", "避けたいこと、載せる文字、締切など", b.notes, { area: true })}
       <span></span><div class="btns"><button class="btn dark" id="brief-save">保存</button><button class="btn" data-goto="structure">構成へ →</button></div>
-    </div>`;
+    </div>
+    <h4 class="sec">ムードボード</h4>
+    <div class="lead">色・光・空気感の方向を、絵で先に決めます。ここの画像は「構成を組む」ときに Claude に見せます。ショットの設計図ではなく雰囲気の参照で、ティザーの画はすべてゲームから撮ります。</div>
+    <div class="mood" id="mood"></div>`;
+  drawMood.key = "";
+  drawMood();
+}
+
+function drawMood() {
+  const el = $("mood"); if (!el) return;
+  const st = ui.status, b = st.brief || {}, ai = st.ai || {};
+  const canGen = !!(ai.openai_key || ai.openai_env);
+  const key = JSON.stringify([b.images, canGen, ui.busy, ai.image_model]);
+  if (drawMood.key === key && el.childElementCount) return;
+  const keepDir = $("mood-dir")?.value || "";
+  drawMood.key = key;
+  const imgs = (b.images || []).map((rel) => `<div class="mood-item"><img alt="" src="/files/${esc(rel)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'missing',textContent:'見つかりません: ${esc(rel)}'}))">
+    <button data-mood-rm="${esc(rel)}" title="ムードボードから外す（ファイルも消します）">✕</button></div>`).join("");
+  const gen = canGen
+    ? `<button class="btn dark" data-mood-gen${ui.busy ? " disabled" : ""}>${ui.busy === "mood" ? "生成中…" : `OpenAI で 4 枚生成（${esc(ai.image_model || "")}）`}</button>`
+    : `<button class="btn" data-mood-key title="接続設定で OpenAI の API キーを入れると生成できます">OpenAI のキーを設定して生成</button>`;
+  el.innerHTML = `<div class="mood-bar"><input type="text" id="mood-dir" placeholder="画づくりの指示（任意） 例: 冷たい青と提灯の赤、霧、低いコントラスト" value="${esc(keepDir)}">${gen}
+      <label class="btn" style="cursor:pointer">画像を追加<input type="file" id="mood-file" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
+    ${imgs ? `<div class="mood-grid">${imgs}</div>` : `<div class="mood-empty" id="mood-drop">まだありません。ブリーフから生成するか、手持ちのスクリーンショットやコンセプトアートをドロップしてください。</div>`}`;
+}
+
+async function generateMood() {
+  if (ui.busy) return;
+  ui.busy = "mood"; drawMood();
+  toast("ムードボードを生成しています（1 枚ずつ。数十秒〜数分）");
+  try {
+    const out = await api("POST", "/api/moodboard/generate", { direction: $("mood-dir")?.value || "", n: 4 });
+    toast(`${out.added.length} 枚を追加しました`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+}
+
+async function uploadMood(files) {
+  for (const f of files) {
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { toast(`${f.name}: PNG / JPEG / WebP だけ追加できます`, true); continue; }
+    const data = await new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ng; r.readAsDataURL(f); });
+    try { await api("POST", "/api/moodboard/upload", { name: f.name, data }); }
+    catch (e) { toast(`${f.name}: ${e.message}`, true); }
+  }
+  await refresh();
+}
+
+async function removeMood(rel) {
+  try { await api("POST", "/api/moodboard/remove", { image: rel }); } catch (e) { toast(e.message, true); }
+  await refresh();
 }
 
 function drawStructure() {
@@ -1743,6 +1806,10 @@ function openConn() {
   const efforts = ai.efforts || ["low", "medium", "high", "xhigh", "max"];
   $("conn-effort").innerHTML = efforts.map((e) => `<button type="button" data-effort="${esc(e)}" class="${e === ai.effort ? "on" : ""}">${esc(e)}</button>`).join("");
   $("conn-effort").dataset.value = ai.effort || "medium";
+  $("conn-openai").value = "";
+  $("conn-openai-d").textContent = ai.openai_key ? `保存済み（${ai.openai_key}）。変えるときだけ入力。ムードボードの生成に使います（${ai.image_model}）`
+    : ai.openai_env ? "環境変数 OPENAI_API_KEY を使います。ムードボードの生成に使います"
+    : "ブリーフのムードボードを生成するときだけ使います。Claude は画像を生成できないためです。";
   $("conn-effort-d").textContent = ai.effort_env
     ? `環境変数 SHOTPILOT_EFFORT=${ai.effort_env} が優先されています。`
     : "Claude がどこまで考えるか。plan（構成を組む）と直す指示の両方に効きます。上げるほど丁寧で、時間と使用量が増えます。既定は medium。";
@@ -1762,10 +1829,12 @@ async function saveConn() {
   const body = { provider, effort: $("conn-effort").dataset.value || "" };
   const key = $("conn-keyinput").value.trim();
   if (key) body.api_key = key;
+  const okey = $("conn-openai").value.trim();
+  if (okey) body.openai_api_key = okey;
   $("conn-st").textContent = "確認しています…";
   try {
     const ai = await api("POST", "/api/settings", body);
-    $("conn-keyinput").value = "";
+    $("conn-keyinput").value = ""; $("conn-openai").value = "";
     $("conn-st").textContent = ai.ready ? "接続済み" : ai.error || "";
     await refresh();
     if (ai.ready) setTimeout(() => ($("conn").hidden = true), 600);
@@ -1789,10 +1858,13 @@ for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListe
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
 for (const id of ["briefpanel", "structpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
-  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],#brief-save,.kinds label");
+  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label");
   if (!t) return;
   if (t.matches(".kinds label")) { for (const l of t.parentElement.children) l.classList.toggle("on", l === t); return; }
   if (t.id === "brief-save") saveBrief();
+  else if (t.matches("[data-mood-gen]")) generateMood();
+  else if (t.dataset.moodRm) removeMood(t.dataset.moodRm);
+  else if (t.matches("[data-mood-key]")) openConn();
   else if (t.matches("[data-plan]")) planShots();
   else if (t.dataset.open) selectShot(t.dataset.open);
   else if (t.dataset.fix) { const [r, sid] = JSON.parse(t.dataset.fix); askFix(r, sid); }
@@ -1801,6 +1873,14 @@ for (const id of ["briefpanel", "structpanel", "capturepanel", "findings"]) $(id
     const ids = ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id);
     if (ids.length) render(t.dataset.cap, ids);
   }
+});
+$("briefpanel").addEventListener("change", (e) => { if (e.target.id === "mood-file") { uploadMood([...e.target.files]); e.target.value = ""; } });
+$("briefpanel").addEventListener("dragover", (e) => { if (e.target.closest("#mood")) { e.preventDefault(); $("mood").classList.add("drag"); } });
+$("briefpanel").addEventListener("dragleave", (e) => { if (e.target.closest("#mood")) $("mood").classList.remove("drag"); });
+$("briefpanel").addEventListener("drop", (e) => {
+  if (!e.target.closest("#mood")) return;
+  e.preventDefault(); $("mood").classList.remove("drag");
+  uploadMood([...e.dataTransfer.files]);
 });
 $("briefpanel").addEventListener("input", (e) => { const el = e.target.closest("[data-bf]"); if (el) el.classList.toggle("dirty", el.value !== el.dataset.orig); });
 

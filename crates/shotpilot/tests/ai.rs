@@ -195,3 +195,18 @@ fn plan_can_make_a_prop_appear() {
     let user = fake.calls.borrow()[0]["messages"][0]["content"].as_str().unwrap().to_string();
     assert!(user.contains("- stranger: /Game/Characters/Mannequins/Meshes/SKM_Manny (a character, no animation)"), "{user}");
 }
+
+#[test]
+fn plan_sees_the_mood_board_as_images() {
+    let mut f = ws();
+    let png = [0x89u8, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0];
+    f.ws.add_moodboard_image("mood.png", &png).unwrap();
+    let fake = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("h", "hook", 4.0, "well")]}));
+    ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let content = fake.calls.borrow()[0]["messages"][0]["content"].clone();
+    let blocks = content.as_array().unwrap();
+    assert_eq!(blocks[0]["type"], "image");
+    let text = blocks.last().unwrap()["text"].as_str().unwrap();
+    assert!(text.contains("## Mood board") && text.contains("not shot designs"), "{text}");
+    assert!(shotpilot::craft::self_review_words(text).is_empty());
+}

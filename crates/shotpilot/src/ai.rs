@@ -374,11 +374,26 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
+    let mut content = crate::moodboard::image_blocks(defn, 4);
+    if !content.is_empty() {
+        user.push_str(&format!(
+            "\n## Mood board\nThe {} attached image(s) are the director's mood board: match their palette, light \
+             and atmosphere (time of day, haze, contrast). They are mood, not shot designs: every shot still has to \
+             be filmed from the anchors above.\n",
+            content.len()
+        ));
+    }
     user.push_str(
         "\nWrite the shot list. Write `purpose` and `notes` in the same language as the pitch. \
          `rationale`: two or three sentences on the idea of the cut, in that language too.",
     );
-    let out = ask_json(claude, &plan_system(), json!(user), plan_schema())?;
+    let user = if content.is_empty() {
+        json!(user)
+    } else {
+        content.push(json!({"type": "text", "text": user}));
+        Value::Array(content)
+    };
+    let out = ask_json(claude, &plan_system(), user, plan_schema())?;
     let mut shots: Vec<Value> = out["shots"]
         .as_array()
         .ok_or_else(|| Error::user("Claude returned no shots"))?

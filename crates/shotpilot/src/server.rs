@@ -29,8 +29,9 @@ use crate::workspace::Workspace;
 
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio"];
-const MAX_BODY: usize = 1 << 20;
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard"];
+/// Loopback only; large enough for a mood-board image sent as base64.
+const MAX_BODY: usize = 20 << 20;
 
 /// Makes the Claude client for one request from the current settings. Tests pass a
 /// fake; the app uses [`connect::make_claude`] (Claude Code or an API key).
@@ -40,10 +41,14 @@ pub fn default_claude() -> ClaudeFactory {
     Box::new(connect::make_claude)
 }
 
+/// Makes the image model for mood-board frames. Tests pass a fake.
+pub type ImageFactory = Box<dyn Fn(&Settings) -> Result<Box<dyn crate::moodboard::ImageGen>> + Send + Sync>;
+
 pub struct App {
     pub path: PathBuf,
     lock: Mutex<()>,
     claude: ClaudeFactory,
+    images: ImageFactory,
     /// Where the connection settings live; None = read-only defaults.
     settings_path: Option<PathBuf>,
 }
@@ -51,7 +56,7 @@ pub struct App {
 impl App {
     pub fn new(shots_path: &Path, claude: ClaudeFactory, settings_path: Option<PathBuf>) -> Result<App> {
         let ws = Workspace::open(shots_path)?; // fail fast on a broken definition
-        Ok(App { path: ws.path, lock: Mutex::new(()), claude, settings_path })
+        Ok(App { path: ws.path, lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen), settings_path })
     }
 
     fn settings(&self) -> Settings {
@@ -123,6 +128,14 @@ impl Server {
         let listener = TcpListener::bind((host, port))
             .map_err(|e| Error::user(format!("cannot listen on {host}:{port}: {e}")))?;
         Ok(Server { listener, app, bind_host: host.to_ascii_lowercase() })
+    }
+
+    /// Use another image model (tests).
+    pub fn with_images(mut self, images: ImageFactory) -> Server {
+        if let Some(app) = Arc::get_mut(&mut self.app) {
+            app.images = images;
+        }
+        self
     }
 
     pub fn port(&self) -> u16 {
@@ -364,7 +377,7 @@ fn brief_json(b: &crate::model::BriefCfg) -> Value {
     json!({
         "kind": b.kind, "genre": b.genre, "audience": b.audience, "core": b.core,
         "must_show": b.must_show, "references": b.references, "notes": b.notes,
-        "missing": b.missing(), "written": !b.raw.is_empty(),
+        "missing": b.missing(), "written": !b.raw.is_empty(), "images": b.images,
     })
 }
 
@@ -640,6 +653,13 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 }
                 s.effort = (!e.is_empty()).then(|| e.to_string()); // empty = back to the default
             }
+            if let Some(k) = body.get("openai_api_key").and_then(Value::as_str) {
+                let k = k.trim();
+                if !k.is_empty() && !k.starts_with("sk-") {
+                    bail!("that does not look like an OpenAI API key (they start with sk-)");
+                }
+                s.openai_api_key = (!k.is_empty()).then(|| k.to_string());
+            }
             if let Some(k) = body.get("api_key").and_then(Value::as_str) {
                 let k = k.trim();
                 if !k.is_empty() && !k.starts_with("sk-") {
@@ -649,6 +669,35 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             }
             s.save(&path)?;
             send_json(stream, false, 200, &app.ai_status()).map_err(io)
+        }
+        ("POST", "/api/moodboard/generate") => {
+            let body = req.json()?;
+            let direction = body.get("direction").and_then(Value::as_str).unwrap_or("").to_string();
+            let n = body.get("n").and_then(Value::as_u64).unwrap_or(4).clamp(1, 4) as usize;
+            let gen = (app.images)(&app.settings())?; // say what is missing before taking the lock
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let made = ws.generate_moodboard(gen.as_ref(), &direction, n)?;
+            send_json(stream, false, 200, &json!({"added": made, "images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/moodboard/upload") => {
+            let body = req.json()?;
+            let name = body.get("name").and_then(Value::as_str).unwrap_or("image");
+            let data = body.get("data").and_then(Value::as_str).unwrap_or("");
+            let data = data.split_once("base64,").map(|(_, d)| d).unwrap_or(data); // a data: URL is fine too
+            let bytes = crate::moodboard::base64_decode(data).ok_or_else(|| Error::user("the image data is not base64"))?;
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let rel = ws.add_moodboard_image(name, &bytes)?;
+            send_json(stream, false, 200, &json!({"added": [rel], "images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/moodboard/remove") => {
+            let body = req.json()?;
+            let rel = body.get("image").and_then(Value::as_str).unwrap_or("");
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.remove_moodboard_image(rel)?;
+            send_json(stream, false, 200, &json!({"images": ws.defn.brief.images})).map_err(io)
         }
         ("POST", "/api/plan") => {
             let out = plan(app, &req.json()?)?;

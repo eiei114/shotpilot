@@ -206,3 +206,50 @@ fn previz_shows_the_prop_only_from_its_frame() {
     assert_eq!(png(&s, 30), png(&without, 30)); // 1 s: not there yet
     assert_ne!(png(&s, 90), png(&without, 90)); // 3 s: there
 }
+
+/// A 1x1 PNG.
+const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
+
+struct FakeImages(std::cell::RefCell<Vec<String>>);
+impl shotpilot::moodboard::ImageGen for FakeImages {
+    fn generate(&self, prompt: &str) -> shotpilot::Result<Vec<u8>> {
+        self.0.borrow_mut().push(prompt.to_string());
+        Ok(PNG.to_vec())
+    }
+}
+
+#[test]
+fn the_mood_board_is_editorial_and_reaches_the_planner() {
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let gen = FakeImages(Default::default());
+    let made = f.ws.generate_moodboard(&gen, "冷たい青、霧", 4).unwrap();
+    assert_eq!(made.len(), 4);
+    assert!(made.iter().all(|m| m.starts_with("moodboard/gen-") && f.ws.root.join(m).is_file()));
+    let prompts = gen.0.borrow();
+    assert!(prompts[0].contains("Genre: 一人称ホラー") && prompts[0].contains("Art direction: 冷たい青、霧"));
+    assert!(prompts.iter().all(|p| p.contains("No text, no logos")));
+    assert_eq!(f.ws.defn.brief.images, made);
+    // nothing re-renders
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+
+    let own = f.ws.add_moodboard_image("my shot.png", PNG).unwrap();
+    assert!(own.starts_with("moodboard/my_shot-"));
+    assert!(f.ws.add_moodboard_image("x.txt", b"hello").is_err());
+    f.ws.remove_moodboard_image(&made[0]).unwrap();
+    assert!(!f.ws.root.join(&made[0]).exists());
+    assert_eq!(f.ws.defn.brief.images.len(), 4);
+    assert!(f.ws.remove_moodboard_image("moodboard/nope.png").is_err());
+
+    let blocks = shotpilot::moodboard::image_blocks(&f.ws.defn, 4);
+    assert_eq!(blocks.len(), 4);
+    assert_eq!(blocks[0]["source"]["media_type"], "image/png");
+}
+
+#[test]
+fn base64_round_trips() {
+    for data in [&b""[..], b"a", b"ab", b"abc", b"abcd", PNG] {
+        let enc = shotpilot::ai::base64(data);
+        assert_eq!(shotpilot::moodboard::base64_decode(&enc).unwrap(), data);
+    }
+}

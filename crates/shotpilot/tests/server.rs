@@ -497,3 +497,40 @@ fn plan_over_http_needs_confirmation_and_logs_the_check() {
     assert_eq!(log[0]["rationale"], json!("静かに始めて、最後に崩す"));
     assert_eq!(log[0]["note"], json!("静かに"));
 }
+
+struct OnePng;
+impl shotpilot::moodboard::ImageGen for OnePng {
+    fn generate(&self, _prompt: &str) -> shotpilot::error::Result<Vec<u8>> {
+        Ok(vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3])
+    }
+}
+
+#[test]
+fn mood_board_over_http() {
+    let f = ws();
+    let srv = Server::bind_with(&f.path(), "127.0.0.1", 0, shotpilot::server::default_claude(), None).unwrap()
+        .with_images(Box::new(|_| Ok(Box::new(OnePng) as Box<dyn shotpilot::moodboard::ImageGen>)));
+    let port = srv.port();
+    srv.spawn();
+    let s = Srv { port, f };
+    let (code, out) = jcall(&s, "POST", "/api/moodboard/generate", Some(json!({"direction": "霧", "n": 2})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["added"].as_array().unwrap().len(), 2);
+    let first = out["added"][0].as_str().unwrap().to_string();
+    let r = call(&s, "GET", &format!("/files/{first}"), None, &[]);
+    assert_eq!(r.code, 200);
+    assert_eq!(r.header("content-type"), "image/png");
+
+    let data = format!("data:image/png;base64,{}", shotpilot::ai::base64(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 9]));
+    let (code, out) = jcall(&s, "POST", "/api/moodboard/upload", Some(json!({"name": "ref.png", "data": data})));
+    assert_eq!(code, 200, "{out}");
+    let (code, _) = jcall(&s, "POST", "/api/moodboard/upload", Some(json!({"name": "x.png", "data": "aGVsbG8="})));
+    assert_eq!(code, 400);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["brief"]["images"].as_array().unwrap().len(), 3);
+    let (code, out) = jcall(&s, "POST", "/api/moodboard/remove", Some(json!({"image": first})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["images"].as_array().unwrap().len(), 2);
+    // outside moodboard/ is never served
+    assert_eq!(call(&s, "GET", "/files/moodboard/../shots.yaml", None, &[]).code, 404);
+}

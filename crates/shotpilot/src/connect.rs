@@ -54,6 +54,20 @@ pub struct Settings {
     pub api_key: Option<String>,
     /// How hard Claude thinks (low..max). None = the default (`ai::DEFAULT_EFFORT`).
     pub effort: Option<String>,
+    /// OpenAI API key, for mood-board images (Claude does not make images).
+    pub openai_api_key: Option<String>,
+}
+
+fn env_openai() -> Option<String> {
+    std::env::var("OPENAI_API_KEY").ok().filter(|s| !s.is_empty())
+}
+
+/// The image model for the mood board, or a message saying what is missing.
+pub fn make_image_gen(settings: &Settings) -> Result<Box<dyn crate::moodboard::ImageGen>> {
+    match settings.openai_api_key.clone().or_else(env_openai) {
+        Some(k) => Ok(Box::new(crate::moodboard::OpenAiImages::new(k))),
+        None => bail!("no OpenAI API key yet: enter one in the connection settings (or set OPENAI_API_KEY) to generate mood-board images"),
+    }
 }
 
 impl Settings {
@@ -87,11 +101,13 @@ impl Settings {
             provider: v["provider"].as_str().and_then(|s| Provider::parse(s).ok()).unwrap_or_default(),
             api_key: v["api_key"].as_str().filter(|s| !s.is_empty()).map(str::to_string),
             effort: v["effort"].as_str().filter(|e| crate::ai::valid_effort(e)).map(str::to_string),
+            openai_api_key: v["openai_api_key"].as_str().filter(|s| !s.is_empty()).map(str::to_string),
         }
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
-        let v = json!({"provider": self.provider.name(), "api_key": self.api_key, "effort": self.effort});
+        let v = json!({"provider": self.provider.name(), "api_key": self.api_key, "effort": self.effort,
+                       "openai_api_key": self.openai_api_key});
         let io = |e: std::io::Error| Error::user(format!("cannot write {}: {e}", path.display()));
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(io)?;
@@ -183,6 +199,9 @@ pub fn describe(settings: &Settings) -> Value {
         "effort_saved": settings.effort,
         "effort_env": std::env::var("SHOTPILOT_EFFORT").ok().filter(|e| crate::ai::valid_effort(e)),
         "efforts": crate::ai::EFFORTS,
+        "openai_key": settings.openai_api_key.as_deref().map(|k| format!("…{}", &k[k.len().saturating_sub(4)..])),
+        "openai_env": env_openai().is_some(),
+        "image_model": crate::moodboard::image_model(),
     })
 }
 
@@ -318,6 +337,19 @@ mod tests {
         assert!(!shown.contains("secret"));
         assert!(shown.contains("…1234"));
         assert_eq!(Settings::load(Some(&dir.join("missing.json"))).provider, Provider::Auto);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn openai_key_is_kept_but_never_shown() {
+        let dir = std::env::temp_dir().join(format!("sp-openai-{}", std::process::id()));
+        let p = dir.join("settings.json");
+        Settings { openai_api_key: Some("sk-proj-secret-5678".into()), ..Default::default() }.save(&p).unwrap();
+        let back = Settings::load(Some(&p));
+        assert_eq!(back.openai_api_key.as_deref(), Some("sk-proj-secret-5678"));
+        let shown = describe(&back).to_string();
+        assert!(!shown.contains("secret") && shown.contains("…5678"));
+        assert!(make_image_gen(&back).is_ok());
         let _ = std::fs::remove_dir_all(dir);
     }
 

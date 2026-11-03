@@ -103,7 +103,7 @@ pub struct TeaserCfg {
 pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
 
 /// Fields of `brief:` a planner reads. Order is the order the app asks them in.
-pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "audience", "core", "must_show", "references", "notes"];
+pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "audience", "core", "must_show", "references", "notes", "images"];
 
 /// `brief:`: what the trailer is for, written before any shot. Editorial only: it never
 /// affects pixels, so editing it never re-renders anything.
@@ -117,6 +117,8 @@ pub struct BriefCfg {
     pub must_show: Vec<String>,
     /// Trailers to learn from ("Inspired by ...").
     pub references: Vec<String>,
+    /// Mood-board images (paths under moodboard/): palette, light and tone, not shot designs.
+    pub images: Vec<String>,
     pub notes: String,
     /// The raw mapping, for the app's form.
     pub raw: Map<String, Value>,
@@ -645,6 +647,7 @@ fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
         core: opt_str(raw.get("core")).unwrap_or_default(),
         must_show: list("must_show", errs),
         references: list("references", errs),
+        images: list("images", errs),
         notes: opt_str(raw.get("notes")).unwrap_or_default(),
         raw,
     }

@@ -48,6 +48,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/workspace.rs    上の3つとエンジンを束ねる。全操作はここを通る
   src/engines.rs      mock / ue5 バックエンド。共通の job/result JSON プロトコル
   src/sync.rs         Sequencer → shots.yaml の逆同期（base / engine / ours の三方比較）
+  src/moodboard.rs    ブリーフのムードボード（参照画像の保存、OpenAI での生成、plan に渡す画像ブロック）
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
@@ -76,6 +77,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
 - Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。ショットに絞った指示では BGM を変えさせない。
 - 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
+- ムードボードの画像は雰囲気の参照に限る。生成画像をティザーの画として使わない（実際のゲームと違うものを見せない）。`brief.images` は編集的で、撮り直しを起こさない。
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。

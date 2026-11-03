@@ -814,6 +814,62 @@ impl Workspace {
         self.state.save()
     }
 
+    // ------------------------------------------------------------------ mood board
+
+    fn set_images(&mut self, images: &[String]) -> Result<()> {
+        self.set_brief(&[("images".to_string(), json!(images))])
+    }
+
+    /// Generate mood-board frames (place, detail, threat, title; `n` of them) and add them to
+    /// `brief.images`. A failed frame stops the run; the ones already made are kept.
+    pub fn generate_moodboard(&mut self, gen: &dyn crate::moodboard::ImageGen, direction: &str, n: usize)
+        -> Result<Vec<String>> {
+        let mut made = Vec::new();
+        let mut err = None;
+        for (key, prompt) in crate::moodboard::prompts(&self.defn, direction).into_iter().take(n.max(1)) {
+            match gen.generate(&prompt) {
+                Ok(bytes) => made.push(crate::moodboard::store(&self.root, &format!("gen-{key}"), &bytes)?),
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+        }
+        if !made.is_empty() {
+            let mut all = self.defn.brief.images.clone();
+            all.extend(made.iter().cloned());
+            self.set_images(&all)?;
+            self.state.log("moodboard", json!({"added": made, "direction": direction}));
+            self.state.save()?;
+        }
+        match err {
+            Some(e) if made.is_empty() => Err(e),
+            _ => Ok(made),
+        }
+    }
+
+    /// Add an image of the developer's own (a screenshot, concept art) to the mood board.
+    pub fn add_moodboard_image(&mut self, name: &str, bytes: &[u8]) -> Result<String> {
+        let rel = crate::moodboard::store(&self.root, name, bytes)?;
+        let mut all = self.defn.brief.images.clone();
+        all.push(rel.clone());
+        self.set_images(&all)?;
+        Ok(rel)
+    }
+
+    /// Take an image off the mood board (and delete its file from moodboard/).
+    pub fn remove_moodboard_image(&mut self, rel: &str) -> Result<()> {
+        if !self.defn.brief.images.iter().any(|i| i == rel) {
+            bail!("'{rel}' is not on the mood board");
+        }
+        let all: Vec<String> = self.defn.brief.images.iter().filter(|i| *i != rel).cloned().collect();
+        self.set_images(&all)?;
+        if let Some(p) = crate::moodboard::resolve(&self.root, rel) {
+            let _ = std::fs::remove_file(p);
+        }
+        Ok(())
+    }
+
     // ------------------------------------------------------------------ sound
 
     /// The teaser's mix (cached under cut/sound/), or None when nothing is set to play.
