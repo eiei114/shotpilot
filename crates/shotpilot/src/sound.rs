@@ -191,15 +191,19 @@ fn r3(v: f64) -> f64 {
 
 /// The cut's timing: each shot's start in teaser seconds (frames at the teaser fps, as
 /// the video is assembled), and the total length.
+/// Where each shot starts in the cut (seconds) and the cut's length, cards between shots
+/// included (script.rs), so sound stays on its shot when cards are added or moved.
 pub fn timing(defn: &Definition, shots: &[ResolvedShot]) -> (Vec<f64>, f64) {
-    let fps = defn.teaser.fps.max(1) as f64;
-    let mut t = 0i64;
-    let mut starts = Vec::new();
-    for s in shots {
-        starts.push(t as f64 / fps);
-        t += s.frames;
+    let fps = defn.teaser.fps.max(1);
+    let items = crate::script::layout(&defn.script, shots, fps);
+    let mut starts = vec![0.0; shots.len()];
+    for it in &items {
+        if let crate::script::Piece::Shot(k) = it.piece {
+            starts[k] = it.start as f64 / fps as f64;
+        }
     }
-    (starts, t as f64 / fps)
+    let total = items.last().map(|it| it.start + it.frames).unwrap_or(0);
+    (starts, total as f64 / fps as f64)
 }
 
 pub fn master_gain(defn: &Definition) -> f64 {

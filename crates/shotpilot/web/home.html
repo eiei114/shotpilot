@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shotpilot</title>
+<style>
+:root {
+  --app: #dfe7ea; --card: #ffffff; --ink: #111312; --muted: #6b7276; --faint: #9aa1a5; --line: #e4e8ea;
+  --soft: #f3f6f7; --tray: #eceff0; --accent: #3be02b; --accent-ink: #0b3d06; --stale: #d99a00; --err: #d92d20;
+  --hook: #ff6b3d; --establish: #3d8bff; --escalate: #b45cff; --title: #3be02b;
+  --shadow: 0 1px 3px rgb(16 24 40 / .06); --pop: 0 10px 34px rgb(16 24 40 / .16);
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --serif: "Iowan Old Style", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #6b7276; --line: #2a2e30;
+    --soft: #202325; --tray: #1d2022; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--app); color: var(--ink); overflow: hidden;
+  font: 13.5px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ------------------------------------------------------------------ shell: rail + main card */
+#shell { height: 100vh; display: grid; grid-template-columns: 248px 1fr; }
+#rail { display: flex; flex-direction: column; min-height: 0; padding: 14px 10px 12px; gap: 2px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 16px; font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+.logo { width: 26px; height: 26px; border-radius: 8px; background: var(--ink); display: grid; place-items: center; flex: none; }
+.logo svg { width: 16px; height: 16px; stroke: var(--accent); fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.nav { display: flex; align-items: center; gap: 11px; padding: 8px 12px; border-radius: 10px; border: 0; background: none;
+  color: var(--ink); text-align: left; font-size: 14px; width: 100%; }
+.nav:hover { background: color-mix(in srgb, var(--card) 45%, transparent); }
+.nav.on { background: color-mix(in srgb, var(--ink) 9%, transparent); font-weight: 600; }
+.rail-sep { height: 1px; background: color-mix(in srgb, var(--ink) 8%, transparent); margin: 10px 8px; }
+.rail-h { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; color: var(--muted); font-size: 13px;
+  border: 0; background: none; width: 100%; }
+.rail-h svg { width: 14px; height: 14px; transition: transform .15s; }
+.rail-h.closed svg { transform: rotate(-90deg); }
+#recent { overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.rec { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; border: 0; background: none; width: 100%;
+  color: var(--ink); text-align: left; font-size: 13.5px; }
+.rec:hover { background: color-mix(in srgb, var(--card) 45%, transparent); }
+.rec .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec .live { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+.rec.gone { color: var(--faint); }
+.rail-foot { padding: 10px 12px 0; color: var(--faint); font-size: 11.5px; }
+#main { margin: 10px 10px 10px 0; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--line);
+  min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; position: relative; }
+.view { min-height: 100%; }
+
+/* ------------------------------------------------------------------ home: hero + composer */
+#v-home { display: flex; flex-direction: column; align-items: center; padding: 11vh 32px 60px; }
+.hero { text-align: center; margin-bottom: 26px; }
+.hero h1 { font-family: var(--serif); font-size: 44px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -.01em; font-weight: 700; }
+.hero h1 mark { background: color-mix(in srgb, var(--accent) 34%, transparent); color: inherit; padding: 0 .12em; border-radius: 4px;
+  box-shadow: inset -3px 0 0 var(--accent); }
+.hero p { margin: 0; color: var(--muted); font-size: 15px; }
+.cwrap { width: min(780px, 100%); background: var(--tray); border-radius: 20px; padding: 4px 4px 0; }
+.composer { background: var(--card); border-radius: 17px; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 14px 14px 12px;
+  display: grid; gap: 10px; }
+.composer:focus-within { border-color: color-mix(in srgb, var(--ink) 30%, var(--line)); }
+#prompt { border: 0; outline: 0; resize: none; background: transparent; min-height: 74px; max-height: 260px; padding: 2px 4px; font-size: 15px; line-height: 1.6; }
+#prompt::placeholder { color: var(--faint); }
+.crow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.crow .sp { flex: 1; }
+.pill { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.pill:hover { background: var(--soft); }
+.pill.accent { background: color-mix(in srgb, var(--accent) 16%, var(--card)); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); color: var(--accent-ink); }
+@media (prefers-color-scheme: dark) { .pill.accent { color: var(--accent); } }
+.pill svg.i { width: 15px; height: 15px; }
+.pill .chev { width: 12px; height: 12px; opacity: .6; }
+.round { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--ink); display: grid; place-items: center; }
+.round svg { width: 17px; height: 17px; stroke: var(--accent); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.model { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--soft);
+  color: var(--muted); font-size: 12.5px; }
+.model:hover { color: var(--ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; flex: none; }
+.dot.bad { background: var(--err); } .dot.warn { background: var(--stale); }
+.tray { display: flex; align-items: center; gap: 4px 14px; padding: 9px 14px 11px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+.tray .slot { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 4px 6px; border-radius: 8px; color: var(--muted);
+  max-width: 100%; min-width: 0; }
+.tray button.slot:hover { color: var(--ink); background: color-mix(in srgb, var(--card) 60%, transparent); }
+.tray .slot .v { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
+.tray .slot input { border: 0; outline: 0; background: transparent; color: var(--ink); width: 180px; padding: 0; }
+.tray .slot input::placeholder { color: var(--faint); }
+.tray select { border: 0; background: transparent; color: var(--ink); max-width: 300px; padding: 2px 0; outline: 0; }
+.tray .sep { width: 1px; height: 16px; background: var(--line); }
+.hint { width: min(780px, 100%); margin-top: 10px; font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; padding: 0 6px; }
+.hint button { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 600; text-decoration: underline; }
+.menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 240px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--pop); padding: 6px; display: grid; gap: 2px; }
+.menu button { display: grid; grid-template-columns: 20px 1fr; gap: 1px 9px; align-items: center; text-align: left; border: 0; background: none;
+  padding: 8px 10px; border-radius: 9px; color: var(--ink); }
+.menu button:hover { background: var(--soft); }
+.menu .ck { grid-row: span 2; color: var(--accent-ink); font-weight: 700; }
+@media (prefers-color-scheme: dark) { .menu .ck { color: var(--accent); } }
+.menu .t { font-weight: 600; font-size: 13px; }
+.menu .d { grid-column: 2; color: var(--muted); font-size: 12px; white-space: normal; }
+
+.examples { width: min(780px, 100%); margin-top: 34px; display: grid; gap: 4px; }
+.examples h2 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 6px 6px; }
+.ex { display: grid; grid-template-columns: 132px 1fr; gap: 16px; align-items: center; text-align: left; border: 0; background: none;
+  padding: 8px; border-radius: 14px; color: var(--ink); }
+.ex:hover { background: var(--soft); }
+.ex .art { height: 74px; border-radius: 9px; border: 1px solid var(--line); overflow: hidden; display: flex; background: #0d0e0e; padding: 7px; gap: 3px;
+  align-items: flex-end; }
+.ex .art i { display: block; border-radius: 3px; }
+.ex .t { font-weight: 600; font-size: 14px; display: flex; gap: 7px; align-items: center; }
+.ex .t svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+.ex .d { color: var(--muted); font-size: 13px; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ex .tag { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 1px 8px; }
+.blank { margin-top: 14px; border: 0; background: none; color: var(--muted); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.blank:hover { color: var(--ink); }
+
+/* ------------------------------------------------------------------ all projects */
+.page { padding: 34px 34px 50px; }
+.page h1 { font-size: 30px; margin: 0 0 22px; font-weight: 600; letter-spacing: -.01em; }
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.bar .sp { flex: 1; }
+.tab { border: 0; background: none; padding: 8px 16px; border-radius: 999px; color: var(--muted); font-size: 14px; font-weight: 500; }
+.tab.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 999px; height: 38px; padding: 0 16px; display: inline-flex; gap: 7px;
+  align-items: center; font-size: 13.5px; font-weight: 500; }
+.btn:hover { background: var(--soft); }
+.btn.dark { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn svg.i { width: 15px; height: 15px; }
+#search { height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 0 14px; background: var(--card); width: 220px; outline: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 28px 22px; }
+.card { position: relative; display: grid; gap: 8px; cursor: pointer; min-width: 0; }
+.cover { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #0d0e0e; border: 1px solid var(--line); display: grid; gap: 2px;
+  position: relative; transition: box-shadow .15s; }
+.card:hover .cover { box-shadow: 0 6px 22px rgb(16 24 40 / .14); }
+.cover.n2, .cover.n3, .cover.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.cover.n2 > img { grid-row: span 2; }
+.cover.n3 > img:first-child { grid-row: span 2; }
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 0; }
+.cover .empty { display: grid; place-items: center; align-content: center; gap: 10px; color: #8d9599; font-size: 12px; height: 100%; }
+.strip { display: flex; gap: 3px; width: 62%; height: 8px; }
+.strip i { flex: 1; border-radius: 2px; opacity: .85; }
+.cover .flag { position: absolute; left: 10px; top: 10px; font-size: 11px; font-weight: 600; color: #fff; background: rgb(0 0 0 / .55); padding: 2px 8px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(4px); }
+.card .name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; min-width: 0; }
+.card .meta .m { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.badge { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink); background: var(--soft);
+  border-radius: 999px; padding: 2px 10px; }
+.badge.warn { background: color-mix(in srgb, var(--stale) 22%, var(--card)); }
+.card .more { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 9px; border: 0; background: rgb(0 0 0 / .5); color: #fff;
+  display: grid; place-items: center; opacity: 0; transition: opacity .12s; }
+.card:hover .more, .card .more:focus-visible { opacity: 1; }
+.card .menu { left: auto; right: 8px; top: 44px; min-width: 190px; }
+.card .menu button { grid-template-columns: 1fr; }
+.card.gone { cursor: default; }
+.card.gone .cover { background: var(--soft); }
+.card.gone .name { color: var(--muted); }
+.nothing { border: 1px dashed var(--line); border-radius: 16px; padding: 48px 20px; text-align: center; color: var(--muted); display: grid; gap: 14px; justify-items: center; }
+.nothing b { color: var(--ink); font-size: 16px; }
+
+/* ------------------------------------------------------------------ settings */
+.form { max-width: 720px; display: grid; gap: 22px; }
+.sec { display: grid; gap: 10px; }
+.sec h2 { margin: 0; font-size: 15px; }
+.sec > p { margin: 0; color: var(--muted); font-size: 13px; }
+.opt { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: 12px; cursor: pointer; }
+.opt.on { border-color: var(--ink); }
+.opt input[type=radio] { margin: 3px 0 0; accent-color: var(--ink); }
+.opt .t { font-weight: 600; }
+.opt .d { grid-column: 2; color: var(--muted); font-size: 12.5px; word-break: break-all; }
+.field { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--soft); font-family: var(--mono); font-size: 12.5px; width: 100%; outline: 0; }
+.opt .field { grid-column: 2; margin-top: 8px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 11px; padding: 3px; flex-wrap: wrap; }
+.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 9px; color: var(--muted); font-size: 13px; }
+.seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+.note { color: var(--muted); font-size: 12.5px; }
+.save-row { display: flex; gap: 10px; align-items: center; }
+
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 9px 16px;
+  border-radius: 11px; font-size: 13px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; z-index: 50; }
+#toast.err { background: var(--err); color: #fff; }
+.modal-bg { position: fixed; inset: 0; background: rgb(0 0 0 / .32); display: grid; place-items: center; z-index: 40; }
+.modal { background: var(--card); border-radius: 16px; box-shadow: var(--pop); padding: 20px; width: min(520px, 92vw); display: grid; gap: 12px; }
+.modal h3 { margin: 0; font-size: 16px; }
+.modal .list { display: grid; gap: 4px; max-height: 50vh; overflow-y: auto; }
+.modal .list button { text-align: left; border: 1px solid var(--line); background: none; border-radius: 10px; padding: 9px 12px; display: grid; gap: 2px; }
+.modal .list button:hover { background: var(--soft); }
+.modal .list small { color: var(--muted); font-family: var(--mono); font-size: 11.5px; word-break: break-all; }
+@media (max-width: 860px) { #shell { grid-template-columns: 1fr; } #rail { display: none; } #main { margin: 8px; } .hero h1 { font-size: 32px; } }
+</style>
+</head>
+<body>
+<div id="shell">
+  <nav id="rail" aria-label="navigation">
+    <div class="brand"><span class="logo"><svg viewBox="0 0 24 24"><path d="M4 9V5h4M16 5h4v4M20 15v4h-4M8 19H4v-4"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" style="fill:var(--accent)"/></svg></span>Shotpilot</div>
+    <button class="nav" data-view="home"><svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</button>
+    <button class="nav" data-view="projects"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>すべてのプロジェクト</button>
+    <button class="nav" data-view="settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</button>
+    <div class="rail-sep"></div>
+    <button class="rail-h" id="recent-h">最近のプロジェクト<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div id="recent"></div>
+    <div class="rail-foot">ティザーのショットを AI が組み、1カット直せばそのカットだけ撮り直る。</div>
+  </nav>
+
+  <main id="main">
+    <!-- home: what will you shoot today? -->
+    <section class="view" id="v-home">
+      <div class="hero">
+        <h1>どんな<mark id="kind-word">ティザー</mark>を撮る？</h1>
+        <p>ショットを Claude が組み、気になる1カットだけ直して撮り直す。</p>
+      </div>
+      <div class="cwrap">
+        <div class="composer">
+          <textarea id="prompt" rows="3" placeholder=""></textarea>
+          <div class="crow">
+            <span class="pill-wrap" style="position:relative"><button class="pill accent" id="kind-btn"></button><div class="menu" id="kind-menu" hidden></div></span>
+            <span class="pill-wrap" style="position:relative"><button class="pill" id="engine-btn"></button><div class="menu" id="engine-menu" hidden></div></span>
+            <span class="sp"></span>
+            <button class="model" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="ai-name">Claude</span></button>
+            <button class="round" id="send" title="作る (Ctrl+Enter)"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="tray" id="tray"></div>
+      </div>
+      <div class="hint" id="ai-warn" hidden><span class="dot bad"></span><span id="ai-err">Claude に接続されていません。</span><button data-view="settings">接続を設定する</button></div>
+      <div class="examples">
+        <h2>例から始める…</h2>
+        <div id="examples"></div>
+      </div>
+      <button class="blank" id="sample">…またはサンプルで試す（UE なし・6ショット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
+    </section>
+
+    <!-- all projects -->
+    <section class="view page" id="v-projects" hidden>
+      <h1>すべてのプロジェクト</h1>
+      <div class="bar">
+        <button class="tab on">最近開いた</button>
+        <span class="sp"></span>
+        <input id="search" type="search" placeholder="名前で絞り込む" autocomplete="off">
+        <button class="btn" id="open-btn"><svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>開く…</button>
+        <button class="btn dark" data-view="home"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新しく作る</button>
+      </div>
+      <div id="grid"></div>
+    </section>
+
+    <!-- settings -->
+    <section class="view page" id="v-settings" hidden>
+      <h1>設定</h1>
+      <div class="form">
+        <div class="sec">
+          <h2>Claude への接続</h2>
+          <p>構成を組む（plan）と、直す指示（revise）に使います。</p>
+          <label class="opt" data-p="claude-code"><input type="radio" name="prov" value="claude-code"><span class="t">Claude Code</span>
+            <span class="d" id="s-cc"></span></label>
+          <label class="opt" data-p="api-key"><input type="radio" name="prov" value="api-key"><span class="t">API キー</span>
+            <span class="d" id="s-key"></span>
+            <input type="password" class="field" id="s-keyinput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></label>
+          <label class="opt" data-p="auto"><input type="radio" name="prov" value="auto"><span class="t">自動</span>
+            <span class="d">Claude Code があればそれを、無ければ API キーを使います。</span></label>
+        </div>
+        <div class="sec">
+          <h2>effort</h2>
+          <div><div class="seg" id="s-effort"></div></div>
+          <p class="note" id="s-effort-d"></p>
+        </div>
+        <div class="sec">
+          <h2>ムードボードの画像</h2>
+          <p>Claude は画像を生成できないため、ムードボードは別のモデルで作ります。生成画像は雰囲気の参照だけに使い、ティザーの画はすべてゲームから撮ります。</p>
+          <div><div class="seg" id="s-image"><button type="button" data-img="auto">自動</button><button type="button" data-img="codex">Codex</button><button type="button" data-img="openai-api">OpenAI API キー</button></div></div>
+          <p class="note" id="s-image-d"></p>
+          <input type="password" class="field" id="s-openai" placeholder="sk-...（OpenAI の API キーで生成するときだけ）" autocomplete="off" spellcheck="false">
+          <p class="note" id="s-openai-d"></p>
+        </div>
+        <div class="save-row"><button class="btn dark" id="s-save">保存</button><span class="note" id="s-st"></span></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toast" hidden></div>
+<div class="modal-bg" id="modal" hidden><div class="modal" id="modal-body"></div></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const BEAT = { hook: "var(--hook)", establish: "var(--establish)", escalate: "var(--escalate)", title: "var(--title)" };
+const STORE = "shotpilot.home";
+
+const KINDS = {
+  teaser: { word: "ティザー", label: "ティザー", d: "30〜60秒。hook → establish → escalate → title の型で、見たくさせる" },
+  gameplay: { word: "ゲームプレイ映像", label: "ゲームプレイ", d: "遊びの流れを見せる。操作と手触りが伝わる尺と画角で組む" },
+};
+const ENGINES = {
+  mock: { label: "UE なしで試す", d: "エンジンを起動せず、ワイヤーフレーム（previz）で確かめる" },
+  ue5: { label: "Unreal Engine 5", d: "UE プロジェクトのレベルから撮る。Sequencer と Movie Render Queue を使う" },
+};
+const EXAMPLES = [
+  { kind: "teaser", title: "一人称ホラーのティザー", tag: "30秒", beats: [3, 4, 5, 2],
+    prompt: "シェアハウスの中庭で、住人が一人ずつ消えていく一人称ホラー。静かな夜の中庭から始め、違和感を3回重ねて、最後に閉まる扉とタイトル。30秒。" },
+  { kind: "teaser", title: "アクションの見せ場を詰めたティザー", tag: "45秒", beats: [2, 3, 7, 2],
+    prompt: "崩れかけた塔を登りながら戦うアクション。最初の2秒で最大の見せ場を一瞬だけ見せ、塔の全景で世界を伝え、戦闘を加速させてタイトルへ。45秒、テンポは速め。" },
+  { kind: "teaser", title: "静かなコージーゲームの紹介", tag: "40秒", beats: [3, 6, 4, 3],
+    prompt: "海辺の小さな町で喫茶店を営むコージーゲーム。朝の光、湯気、常連客。カットは長めで、カメラはゆっくり。最後は店の外観とタイトル。40秒。" },
+  { kind: "gameplay", title: "パズルの仕掛けを見せるゲームプレイ映像", tag: "60秒", beats: [2, 5, 6, 2],
+    prompt: "光の反射で扉を開けるパズルゲーム。仕掛けの全体が分かる引きの画と、鏡を回す手元の寄りを交互に見せ、解けた瞬間を気持ちよく。60秒。" },
+];
+const PLACEHOLDERS = [
+  "どんなゲームの、何を見せる映像？ 例: 雨の団地で消えた住人を探す一人称ホラー。30秒",
+  "例: 崩れる塔を登るアクション。最初の2秒に一番の見せ場を",
+  "例: 海辺の喫茶店のコージーゲーム。朝の光と湯気、ゆっくりしたカメラで",
+];
+
+const ui = {
+  view: "home",
+  home: null,            // /api/home
+  kind: "teaser",
+  engine: "mock",
+  location: "",          // where new projects go (mock)
+  name: "",
+  uproject: null,        // {path, name, maps, projects}
+  map: "",
+  railOpen: true,
+  menu: null,            // open card menu path
+  filter: "",
+  busy: false,
+};
+
+// ------------------------------------------------------------------ data
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `${r.status} ${r.statusText}`);
+  return data;
+}
+
+function toast(text, isErr = false) {
+  const t = $("toast");
+  t.textContent = text; t.className = isErr ? "err" : ""; t.hidden = !text;
+  clearTimeout(toast.timer);
+  if (text) toast.timer = setTimeout(() => (t.hidden = true), isErr ? 8000 : 3500);
+}
+
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(STORE) || "{}");
+    if (KINDS[p.kind]) ui.kind = p.kind;
+    if (ENGINES[p.engine]) ui.engine = p.engine;
+    if (p.location) ui.location = p.location;
+    if (p.uproject) ui.uproject = { path: p.uproject, name: baseName(p.uproject).replace(/\.uproject$/i, ""), maps: [], projects: [] };
+    if (p.map) ui.map = p.map;
+    if (p.railOpen === false) ui.railOpen = false;
+  } catch { /* first run */ }
+}
+function savePrefs() {
+  localStorage.setItem(STORE, JSON.stringify({ kind: ui.kind, engine: ui.engine, location: ui.location,
+    uproject: ui.uproject?.path || "", map: ui.map, railOpen: ui.railOpen }));
+}
+
+async function refresh() {
+  try { ui.home = await api("GET", "/api/home"); }
+  catch (e) { toast(e.message, true); return; }
+  if (!ui.location) ui.location = ui.home.location || "";
+  draw();
+}
+
+// ------------------------------------------------------------------ helpers
+
+const baseName = (p) => String(p || "").split(/[\\/]/).filter(Boolean).pop() || "";
+const shortPath = (p) => {
+  const parts = String(p || "").split(/[\\/]/).filter(Boolean);
+  return parts.length > 3 ? "…/" + parts.slice(-3).join("/") : parts.join("/");
+};
+function ago(iso) {
+  if (!iso) return "";
+  const t = Date.parse(iso); if (!t) return "";
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return "たった今";
+  if (s < 3600) return `${Math.floor(s / 60)}分前`;
+  if (s < 86400) return `${Math.floor(s / 3600)}時間前`;
+  if (s < 86400 * 30) return `${Math.floor(s / 86400)}日前`;
+  const d = new Date(t); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+/** A folder-safe name from the prompt's first phrase. */
+function nameFromPrompt(text) {
+  const first = String(text || "").split(/[\n。.!?！？]/)[0].replace(/[<>:"/\\|?*、,]/g, " ").trim();
+  if (first) return [...first].slice(0, 20).join("").trim();
+  const d = new Date(); const p = (n) => String(n).padStart(2, "0");
+  return `teaser-${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+const projName = (p) => p.title || p.name || p.folder || baseName(p.root);
+const strip = (beats) => `<span class="strip">${(beats.length ? beats : ["hook", "establish", "escalate", "title"])
+  .map((b) => `<i style="background:${BEAT[b] || "#555"}"></i>`).join("")}</span>`;
+
+const ICON = {
+  check: '<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m5 12 5 5 9-10"/></svg>',
+  chev: '<svg class="i chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  film: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
+  cube: '<svg class="i" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>',
+  wire: '<svg class="i" viewBox="0 0 24 24"><path d="M4 18 12 4l8 14z"/><path d="M8 11h8"/></svg>',
+  folder: '<svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  map: '<svg class="i" viewBox="0 0 24 24"><path d="m9 4-6 3v13l6-3 6 3 6-3V4l-6 3z"/><path d="M9 4v13M15 7v13"/></svg>',
+  tag: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/></svg>',
+  spark: '<svg viewBox="0 0 24 24"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>',
+  dots: '<svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>',
+};
+
+// ------------------------------------------------------------------ drawing
+
+function draw() {
+  for (const v of ["home", "projects", "settings"]) $(`v-${v}`).hidden = ui.view !== v;
+  for (const b of document.querySelectorAll(".nav")) b.classList.toggle("on", b.dataset.view === ui.view);
+  document.title = ui.view === "projects" ? "Shotpilot — すべてのプロジェクト" : ui.view === "settings" ? "Shotpilot — 設定" : "Shotpilot";
+  drawRail();
+  if (ui.view === "home") drawHome();
+  if (ui.view === "projects") drawGrid();
+}
+
+function drawRail() {
+  const list = ui.home?.projects || [];
+  $("recent-h").classList.toggle("closed", !ui.railOpen);
+  $("recent").hidden = !ui.railOpen;
+  $("recent").innerHTML = list.slice(0, 12).map((p) => `<button class="rec${p.missing || p.error ? " gone" : ""}" data-open="${esc(p.path)}" title="${esc(p.root)}">
+      ${ICON.folder}<span class="n">${esc(projName(p))}</span>${p.current ? '<span class="live" title="開いています"></span>' : ""}</button>`).join("")
+    || `<div class="rail-foot" style="padding:4px 12px">まだありません</div>`;
+}
+
+function drawHome() {
+  const k = KINDS[ui.kind];
+  $("kind-word").textContent = k.word;
+  $("kind-btn").innerHTML = `${ICON.film}${esc(k.label)}${ICON.chev}`;
+  $("kind-menu").innerHTML = Object.entries(KINDS).map(([key, v]) => `<button data-kind="${key}"><span class="ck">${key === ui.kind ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
+  const e = ENGINES[ui.engine];
+  $("engine-btn").innerHTML = `${ui.engine === "ue5" ? ICON.cube : ICON.wire}${esc(e.label)}${ICON.chev}`;
+  $("engine-menu").innerHTML = Object.entries(ENGINES).map(([key, v]) => `<button data-engine="${key}"><span class="ck">${key === ui.engine ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
+  const ai = ui.home?.ai || {};
+  $("ai-dot").className = "dot" + (ai.ready ? "" : " bad");
+  $("ai-name").textContent = ai.ready ? `${ai.active === "api-key" ? "API" : "Claude Code"} · ${ai.model || ""}` : "未接続";
+  $("ai-warn").hidden = !ui.home || !!ai.ready;
+  if (!ai.ready && ai.error) $("ai-err").textContent = `Claude に接続されていません（${ai.error}）。プロジェクトは作れますが、一気に作るには接続が要ります。`;
+  $("send").title = ai.ready ? "作る：プロジェクトを作り、そのまま一気に1本作る (Ctrl+Enter)" : "プロジェクトを作る (Ctrl+Enter)";
+  drawTray();
+  if (!$("examples").childElementCount) {
+    $("examples").innerHTML = EXAMPLES.map((x, i) => {
+      const bars = ["hook", "establish", "escalate", "title"].map((b, j) =>
+        `<i style="flex:${x.beats[j]};height:${30 + (j === 2 ? 60 : j * 14)}%;background:${BEAT[b]}"></i>`).join("");
+      return `<button class="ex" data-ex="${i}"><span class="art">${bars}</span>
+        <span><span class="t">${ICON.spark}${esc(x.title)}<span class="tag">${esc(KINDS[x.kind].label)} · ${esc(x.tag)}</span></span>
+        <span class="d">${esc(x.prompt)}</span></span></button>`;
+    }).join("");
+  }
+}
+
+/** Under the composer: where it goes (like open-design's working directory). */
+function drawTray() {
+  const tray = $("tray");
+  const keep = document.activeElement?.id === "name-in";
+  const nm = `<label class="slot">${ICON.tag}名前 <input id="name-in" value="${esc(ui.name)}" placeholder="${esc(nameFromPrompt($("prompt").value))}" spellcheck="false"></label>`;
+  if (ui.engine === "ue5") {
+    const up = ui.uproject;
+    const maps = up?.maps || [];
+    const mapOpts = [...new Set([...(ui.map ? [ui.map] : []), ...maps, "/Engine/Maps/Entry"])]
+      .map((m) => `<option value="${esc(m)}"${m === ui.map ? " selected" : ""}>${esc(m)}${m === "/Engine/Maps/Entry" ? "（空のマップ）" : ""}</option>`).join("");
+    const others = (up?.projects || []).length;
+    tray.innerHTML = `<button class="slot" id="pick-up" title="${esc(up?.path || "")}">${ICON.cube}UE プロジェクト <span class="v">${esc(up ? up.name + ".uproject" : "選ぶ…")}</span>${ICON.chev}</button>
+      ${up ? `<span class="sep"></span><label class="slot">${ICON.map}マップ <select id="map-sel"><option value="">選ぶ…</option>${mapOpts}</select></label>` : ""}
+      <span class="sep"></span>${nm}
+      ${others ? `<button class="slot" id="up-existing">このプロジェクトに ${others} 本あります <span class="v" style="text-decoration:underline">開く</span></button>` : ""}`;
+  } else {
+    tray.innerHTML = `<button class="slot" id="pick-loc" title="${esc(ui.location)}">${ICON.folder}保存先 <span class="v">${esc(shortPath(ui.location) || "選ぶ…")}</span>${ICON.chev}</button>
+      <span class="sep"></span>${nm}`;
+  }
+  if (keep) { const el = $("name-in"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+function drawGrid() {
+  const all = ui.home?.projects || [];
+  const q = ui.filter.trim().toLowerCase();
+  const list = q ? all.filter((p) => `${projName(p)} ${p.name || ""} ${p.pitch || ""} ${p.root}`.toLowerCase().includes(q)) : all;
+  if (!all.length) {
+    $("grid").innerHTML = `<div class="nothing"><b>まだプロジェクトがありません</b>
+      ホームで作りたい映像を書くか、shots.yaml のあるフォルダを開いてください。
+      <span style="display:flex;gap:8px"><button class="btn dark" data-view="home">新しく作る</button><button class="btn" data-act="open-folder">フォルダを開く…</button></span></div>`;
+    return;
+  }
+  $("grid").innerHTML = `<div class="grid">${list.map(card).join("")}</div>` + (list.length ? "" : `<div class="nothing">「${esc(ui.filter)}」に当たるプロジェクトはありません</div>`);
+}
+
+function card(p) {
+  const gone = p.missing || p.error;
+  const covers = (p.covers || []).slice(0, 4);
+  let cover;
+  if (p.missing) cover = `<div class="empty">${ICON.folder}見つかりません（移動か削除）</div>`;
+  else if (p.error) cover = `<div class="empty" style="padding:0 16px;text-align:center">shots.yaml を読めません<br>${esc(p.error).slice(0, 120)}</div>`;
+  else if (!covers.length) cover = `<div class="empty">${strip(p.beats || [])}${p.shots ? "まだ撮っていません" : "ショットはまだありません"}</div>`;
+  else cover = covers.map((c) => `<img loading="lazy" alt="" src="${esc(c.url)}">`).join("");
+  const flag = p.current ? `<span class="flag"><span class="dot"></span>開いています</span>` : "";
+  const meta = gone ? esc(shortPath(p.root))
+    : [p.shots ? `${p.shots}ショット` : "", p.duration ? `${p.duration}秒` : "", ago(p.opened || p.modified)].filter(Boolean).map(esc).join(" · ");
+  let badge = "";
+  if (!gone) {
+    if (p.cut) badge = `<span class="badge">${ICON.check}Cut あり</span>`;
+    else if (p.shots && p.taken) badge = `<span class="badge${p.fresh < p.shots ? " warn" : ""}">撮影 ${p.fresh}/${p.shots}</span>`;
+    else badge = `<span class="badge">${p.engine === "ue5" ? "UE5" : "previz"}</span>`;
+  }
+  const menu = ui.menu === p.path ? `<div class="menu">${gone ? "" : `<button data-act="reveal" data-path="${esc(p.path)}"><span class="t">フォルダを開く</span></button>`}
+      <button data-act="forget" data-path="${esc(p.path)}"><span class="t">一覧から外す</span><span class="d">フォルダとファイルは消えません</span></button></div>` : "";
+  return `<div class="card${gone ? " gone" : ""}" ${gone ? "" : `data-open="${esc(p.path)}"`} title="${esc(p.pitch || p.root)}">
+    <div class="cover n${gone ? 1 : Math.max(1, covers.length)}">${cover}${flag}</div>
+    <button class="more" data-act="menu" data-path="${esc(p.path)}" title="その他">${ICON.dots}</button>${menu}
+    <div class="name">${esc(projName(p))}</div>
+    <div class="meta"><span class="m">${meta}</span>${badge}</div></div>`;
+}
+
+// ------------------------------------------------------------------ settings
+
+function drawSettings() {
+  const ai = ui.home?.ai || {};
+  const pick = ai.provider || "auto";
+  for (const r of document.querySelectorAll("input[name=prov]")) r.checked = r.value === pick;
+  $("s-cc").textContent = ai.claude_code ? `見つかりました: ${ai.claude_code}。ログイン中のアカウントで動き、API キーは要りません。` : "見つかりません。Claude Code を入れてログインすると、API キーなしで使えます。";
+  $("s-key").textContent = ai.api_key ? `保存済み（${ai.api_key}）。変えるときだけ入力` : ai.env_key ? "環境変数 ANTHROPIC_API_KEY を使います。ここに入れると、こちらを優先します" : "Anthropic Console の API キー。このパソコンの設定フォルダに保存し、画面には戻しません。";
+  $("s-keyinput").value = ""; $("s-openai").value = "";
+  const efforts = ai.efforts || ["low", "medium", "high", "xhigh", "max"];
+  $("s-effort").innerHTML = efforts.map((e) => `<button type="button" data-effort="${esc(e)}" class="${e === ai.effort ? "on" : ""}">${esc(e)}</button>`).join("");
+  $("s-effort").dataset.value = ai.effort || "medium";
+  $("s-effort-d").textContent = ai.effort_env ? `環境変数 SHOTPILOT_EFFORT=${ai.effort_env} が優先されています。`
+    : "Claude がどこまで考えるか。上げるほど丁寧で、時間と使用量が増えます。既定は medium。";
+  $("s-image").dataset.value = ai.image_provider || "auto";
+  for (const b of $("s-image").children) b.classList.toggle("on", b.dataset.img === (ai.image_provider || "auto"));
+  $("s-image-d").textContent = `Codex はログイン中のアカウントで動き、キーは要りません。${ai.codex ? "Codex: 見つかりました。" : "Codex: 見つかりません。"}${ai.image_active ? ` いまは ${ai.image_active === "codex" ? "Codex" : "API キー"} を使います。` : " いまは使えません。"}`;
+  $("s-openai-d").textContent = ai.openai_key ? `保存済み（${ai.openai_key}）。変えるときだけ入力（${ai.image_model}）` : ai.openai_env ? "環境変数 OPENAI_API_KEY を使います" : "";
+  $("s-st").textContent = ai.ready ? "接続済み" : ai.error || "";
+  markOpt();
+}
+function markOpt() {
+  for (const o of document.querySelectorAll(".opt")) o.classList.toggle("on", o.querySelector("input[type=radio]").checked);
+}
+async function saveSettings() {
+  const body = { provider: document.querySelector("input[name=prov]:checked")?.value || "auto",
+    effort: $("s-effort").dataset.value || "", image_provider: $("s-image").dataset.value || "auto" };
+  const key = $("s-keyinput").value.trim(); if (key) body.api_key = key;
+  const okey = $("s-openai").value.trim(); if (okey) body.openai_api_key = okey;
+  $("s-st").textContent = "確認しています…";
+  try {
+    const ai = await api("POST", "/api/settings", body);
+    ui.home.ai = ai; drawSettings();
+    toast(ai.ready ? "保存しました。Claude に接続できます" : "保存しました");
+  } catch (e) { $("s-st").textContent = e.message; }
+}
+
+// ------------------------------------------------------------------ actions
+
+function go(view) {
+  ui.view = view; ui.menu = null; closeMenus();
+  location.hash = view === "home" ? "" : view;
+  if (view === "settings") drawSettings();
+  draw();
+  if (view === "home") $("prompt").focus();
+  $("main").scrollTop = 0;
+}
+
+async function openProject(path) {
+  if (ui.busy) return;
+  ui.busy = true;
+  try { await api("POST", "/api/projects/open", { path }); location.href = "/"; }
+  catch (e) { toast(e.message, true); ui.busy = false; }
+}
+
+/** Ask the app for a native dialog; without one (a plain browser), ask for a path. */
+async function pick(kind, start, ask) {
+  if (!ui.home?.picker) {
+    const p = prompt(ask, start || "");
+    return p ? { path: p.trim() } : null;
+  }
+  const out = await api("POST", "/api/projects/pick", { kind, path: start || "" });
+  return out.cancelled ? null : out;
+}
+
+async function openFolder() {
+  try {
+    const out = await pick("open", "", "shots.yaml のあるフォルダ（または shots.yaml）のパス");
+    if (!out) return;
+    const list = out.projects ?? [out.path];
+    if (list.length === 1) return openProject(list[0]);
+    if (!list.length) return toast("そのフォルダには shots.yaml がありません。ホームから新しく作れます", true);
+    chooser("どのプロジェクトを開きますか？", list);
+  } catch (e) { toast(e.message, true); }
+}
+
+function chooser(title, paths) {
+  $("modal-body").innerHTML = `<h3>${esc(title)}</h3><div class="list">${paths.map((p) =>
+    `<button data-open="${esc(p)}"><b>${esc(baseName(p.replace(/[\\/]shots\.yaml$/i, "")))}</b><small>${esc(p)}</small></button>`).join("")}</div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn" id="modal-close">閉じる</button></div>`;
+  $("modal").hidden = false;
+}
+
+async function pickLocation() {
+  try { const out = await pick("location", ui.location, "新しいプロジェクトを置くフォルダのパス"); if (out) { ui.location = out.path; savePrefs(); drawTray(); } }
+  catch (e) { toast(e.message, true); }
+}
+
+async function pickUproject() {
+  try {
+    const start = ui.uproject?.path ? ui.uproject.path.replace(/[\\/][^\\/]+$/, "") : "";
+    let out = await pick("uproject", start, ".uproject（またはそのフォルダ）のパス");
+    if (!out) return;
+    if (!out.maps) out = await api("POST", "/api/projects/maps", { path: out.path });
+    ui.uproject = out;
+    if (!out.maps.includes(ui.map)) ui.map = out.maps.length === 1 ? out.maps[0] : "";
+    savePrefs(); drawTray();
+  } catch (e) { toast(e.message, true); }
+}
+
+/** Reload the saved .uproject's levels once (prefs keep only its path). */
+async function hydrateUproject() {
+  if (!ui.uproject?.path || ui.uproject.maps.length) return;
+  try { ui.uproject = await api("POST", "/api/projects/maps", { path: ui.uproject.path }); drawTray(); }
+  catch { ui.uproject = null; drawTray(); }
+}
+
+async function create(sample = false) {
+  if (ui.busy) return;
+  const prompt = $("prompt").value.trim();
+  if (!sample && !prompt) { $("prompt").focus(); toast("どんな映像にしたいかを書いてください"); return; }
+  const body = { engine: sample ? "mock" : ui.engine, kind: ui.kind, sample,
+    name: sample ? "サンプル" : (ui.name.trim() || nameFromPrompt(prompt)), pitch: sample ? "" : prompt,
+    location: ui.location };
+  if (!sample && ui.engine === "ue5") {
+    if (!ui.uproject?.path) { toast("UE プロジェクト（.uproject）を選んでください"); return pickUproject(); }
+    if (!ui.map) { toast("撮るマップを選んでください"); $("map-sel")?.focus(); return; }
+    body.uproject = ui.uproject.path; body.map = ui.map;
+  }
+  ui.busy = true; $("send").disabled = true;
+  try {
+    await api("POST", "/api/projects/create", body);
+    // the studio picks this up and runs the first pass in one go (D-28)
+    if (!sample && ui.home?.ai?.ready) sessionStorage.setItem("shotpilot.produce", JSON.stringify({ note: prompt }));
+    location.href = "/";
+  } catch (e) { toast(e.message, true); ui.busy = false; $("send").disabled = false; }
+}
+
+function closeMenus() { for (const m of document.querySelectorAll("#v-home .menu")) m.hidden = true; }
+
+// ------------------------------------------------------------------ events
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  const v = t.closest("[data-view]"); if (v) { go(v.dataset.view); return; }
+  const act = t.closest("[data-act]");
+  if (act) {
+    e.stopPropagation();
+    const a = act.dataset.act, path = act.dataset.path;
+    if (a === "menu") { ui.menu = ui.menu === path ? null : path; drawGrid(); return; }
+    if (a === "open-folder") { openFolder(); return; }
+    ui.menu = null;
+    if (a === "reveal") api("POST", "/api/projects/reveal", { path }).catch((err) => toast(err.message, true));
+    if (a === "forget") api("POST", "/api/projects/forget", { path }).then(refresh).catch((err) => toast(err.message, true));
+    drawGrid(); return;
+  }
+  const o = t.closest("[data-open]"); if (o) { openProject(o.dataset.open); return; }
+  if (ui.menu && !t.closest(".menu")) { ui.menu = null; drawGrid(); }
+  const k = t.closest("[data-kind]");
+  if (k) { ui.kind = k.dataset.kind; savePrefs(); closeMenus(); drawHome(); return; }
+  const en = t.closest("[data-engine]");
+  if (en) { ui.engine = en.dataset.engine; savePrefs(); closeMenus(); drawHome(); hydrateUproject(); return; }
+  if (t.closest("#kind-btn")) { const m = $("kind-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
+  if (t.closest("#engine-btn")) { const m = $("engine-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
+  if (!t.closest(".menu")) closeMenus();
+  const ex = t.closest("[data-ex]");
+  if (ex) {
+    const x = EXAMPLES[+ex.dataset.ex];
+    ui.kind = x.kind; savePrefs(); $("prompt").value = x.prompt; drawHome();
+    $("main").scrollTo({ top: 0, behavior: "smooth" }); $("prompt").focus(); return;
+  }
+  if (t.closest("#pick-loc")) { pickLocation(); return; }
+  if (t.closest("#pick-up")) { pickUproject(); return; }
+  if (t.closest("#up-existing")) { chooser("この UE プロジェクトのティザー", ui.uproject.projects); return; }
+  if (t.id === "modal-close" || t.id === "modal") { $("modal").hidden = true; }
+});
+$("send").addEventListener("click", () => create(false));
+$("sample").addEventListener("click", () => create(true));
+$("model-btn").addEventListener("click", () => go("settings"));
+$("open-btn").addEventListener("click", openFolder);
+$("recent-h").addEventListener("click", () => { ui.railOpen = !ui.railOpen; savePrefs(); drawRail(); });
+$("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); create(false); } });
+$("prompt").addEventListener("input", () => {
+  const el = $("prompt"); el.style.height = "auto"; el.style.height = Math.min(260, el.scrollHeight) + "px";
+  const n = $("name-in"); if (n) n.placeholder = nameFromPrompt(el.value);
+});
+$("tray").addEventListener("input", (e) => { if (e.target.id === "name-in") ui.name = e.target.value; });
+$("tray").addEventListener("change", (e) => { if (e.target.id === "map-sel") { ui.map = e.target.value; savePrefs(); } });
+$("search").addEventListener("input", (e) => { ui.filter = e.target.value; drawGrid(); });
+$("s-save").addEventListener("click", saveSettings);
+$("v-settings").addEventListener("change", markOpt);
+$("s-keyinput").addEventListener("focus", () => { document.querySelector("input[name=prov][value=api-key]").checked = true; markOpt(); });
+$("s-effort").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-effort]"); if (!b) return;
+  $("s-effort").dataset.value = b.dataset.effort;
+  for (const x of $("s-effort").children) x.classList.toggle("on", x === b);
+});
+$("s-image").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-img]"); if (!b) return;
+  $("s-image").dataset.value = b.dataset.img;
+  for (const x of $("s-image").children) x.classList.toggle("on", x === b);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { closeMenus(); ui.menu = null; $("modal").hidden = true; if (ui.view === "projects") drawGrid(); }
+});
+// cards change when a project is edited elsewhere (CLI, another window)
+window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
+
+// the placeholder cycles through examples, like open-design's hero
+let ph = 0;
+const setPh = () => { $("prompt").placeholder = PLACEHOLDERS[ph++ % PLACEHOLDERS.length]; };
+setPh(); setInterval(() => { if (!$("prompt").value) setPh(); }, 6000);
+
+loadPrefs();
+ui.view = ["projects", "settings"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "home";
+draw();
+refresh().then(() => { if (ui.view === "settings") drawSettings(); hydrateUproject(); });
+$("prompt").focus();
+</script>
+</body>
+</html>

@@ -269,6 +269,8 @@ pub struct Definition {
     pub stage: StageCfg,
     /// `finish:`: letterbox, title, end card (burned in at cut; see finish.rs).
     pub finish: crate::finish::FinishCfg,
+    /// `script:`: the teaser's text, cards between shots and captions on them (script.rs).
+    pub script: Vec<crate::script::Line>,
     pub anchors: Vec<(String, Vec3)>,
     /// Anchors whose size is known (`anchors.<name>: {at, size, center}`).
     pub boxes: Vec<(String, AnchorBox)>,
@@ -601,8 +603,10 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
     }
 
     crate::sound::validate(top, &shots, &mut errs);
+    let shot_ids: Vec<String> = shots.iter().map(|s| str_of(&s["id"])).collect();
+    let script = crate::script::parse(top.get("script"), &shot_ids, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, stage, finish, anchors, boxes, props, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, stage, finish, script, anchors, boxes, props, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {

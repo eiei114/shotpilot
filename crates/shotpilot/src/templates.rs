@@ -144,14 +144,14 @@ project:
   isolate_userdir: true
 
 teaser:
-  title: ""
-  pitch: ""
+  title: {title}
+  pitch: {pitch}
   target_duration: 45
   fps: 30
   resolution: [1920, 1080]
 
 brief:
-  kind: teaser      # teaser | gameplay
+  kind: {kind}      # teaser | gameplay
   genre: ""
   audience: ""
   core: ""          # the one experience the viewer must get
@@ -170,8 +170,35 @@ pub const GITIGNORE: &str = "render/\ncut/\n.shotpilot/jobs/\n.shotpilot/logs/\n
 
 /// Fill a template. `uproject` and `map` are YAML scalars (use "null" for none).
 pub fn render(tpl: &str, name: &str, engine: &str, uproject: &str, map: &str) -> String {
+    render_with(tpl, name, engine, uproject, map, &Extra::default())
+}
+
+/// The empty template's optional fields, filled from the app's new-project form.
+#[derive(Debug, Clone, Default)]
+pub struct Extra<'a> {
+    pub title: &'a str,
+    pub pitch: &'a str,
+    /// teaser | gameplay (empty = teaser)
+    pub kind: &'a str,
+}
+
+pub fn render_with(tpl: &str, name: &str, engine: &str, uproject: &str, map: &str, extra: &Extra) -> String {
+    let kind = if extra.kind == "gameplay" { "gameplay" } else { "teaser" };
     tpl.replace("{name}", &crate::yamlio::emit_str(name))
         .replace("{engine}", engine)
         .replace("{uproject}", uproject)
         .replace("{map}", map)
+        .replace("{title}", &quoted(extra.title))
+        .replace("{pitch}", &quoted(extra.pitch))
+        .replace("{kind}", kind)
+}
+
+/// A one-line YAML string; empty stays `""` so the field is visibly blank.
+fn quoted(s: &str) -> String {
+    let one = s.split_whitespace().collect::<Vec<_>>().join(" ");
+    if one.is_empty() {
+        "\"\"".into()
+    } else {
+        crate::yamlio::emit_str(&one)
+    }
 }

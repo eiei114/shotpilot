@@ -35,6 +35,9 @@ button:disabled { opacity: .45; cursor: default; }
 #chat { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
 .proj { display: flex; align-items: center; gap: 10px; padding: 6px 8px 12px; }
 .proj svg { flex: none; }
+.home-btn { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--ink); background: var(--card);
+  border: 1px solid var(--line); box-shadow: var(--shadow); }
+.home-btn:hover { background: var(--soft); }
 .proj .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 #log { scrollbar-width: thin; scrollbar-color: var(--line) transparent; overflow-y: auto; padding: 4px 8px 16px; display: flex; flex-direction: column; gap: 18px; min-height: 0; }
@@ -290,6 +293,10 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .clip.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
 @media (prefers-color-scheme: dark) { .clip.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px #fff; } }
 .clip.reused { filter: saturate(.3) brightness(.7); }
+.clip.slot { background: #0a0a0a; cursor: default; }
+.clip.slot::before { background: none; }
+.clip.slot .top { color: #9aa1a5; font-weight: 600; }
+.clip.slot .bot { white-space: normal; color: #e0dbcf; font-size: 10.5px; line-height: 1.3; overflow: hidden; }
 .tag { position: absolute; right: 6px; top: 22px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; }
 .tag.rendered { background: var(--accent); color: var(--accent-ink); }
 .tag.failed { background: var(--err); color: #fff; }
@@ -411,7 +418,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
   <!-- left: conversation -->
   <section id="chat" aria-label="chat">
     <div class="proj">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <a class="home-btn" href="/home" title="ホーム（ほかのプロジェクト・新しく作る）"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></a>
       <div style="min-width:0"><div class="name" id="title">shotpilot</div><div class="meta" id="subtitle"></div></div>
     </div>
     <div id="log"></div>
@@ -597,6 +604,7 @@ async function refresh() {
   try {
     const [st, log] = await Promise.all([api("GET", "/api/status"), api("GET", "/api/log?n=80")]);
     ui.status = st;
+    document.title = `Shotpilot — ${st.title || st.project}`;
     if (!ui.quality || !st.qualities.includes(ui.quality)) ui.quality = defaultQuality(st);
     if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
     const key = JSON.stringify(log);
@@ -605,7 +613,22 @@ async function refresh() {
     const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
     if (skey !== ui.soundKey) { ui.soundKey = skey; fetchSound(); }
     draw();
-  } catch (e) { toast(e.message, true); }
+    startFromHome();
+  } catch (e) {
+    // the home switched away from (or never opened) a project
+    if (/プロジェクトが開かれていません/.test(e.message)) { location.href = "/home"; return; }
+    toast(e.message, true);
+  }
+}
+
+/** A project made on the home with a prompt: run the first pass right away (D-28). */
+function startFromHome() {
+  const raw = sessionStorage.getItem("shotpilot.produce");
+  if (!raw) return;
+  sessionStorage.removeItem("shotpilot.produce");
+  if (ui.busy || !ui.status?.ai?.ready) return;
+  try { $("note").value = JSON.parse(raw).note || ""; } catch { return; }
+  produceAll();
 }
 
 async function fetchSound() {
@@ -1225,7 +1248,7 @@ function drawTweak() {
 
 function drawTimeline() {
   const st = ui.status;
-  const total = st.shots.reduce((a, s) => a + s.duration, 0);
+  const total = st.total_duration ?? st.shots.reduce((a, s) => a + s.duration, 0);
   const span = Math.max(total, st.target_duration || 0);
   $("tl-total").textContent = `${Math.round(total * 10) / 10}s`;
   $("tl-target").textContent = `${st.target_duration}s`;
@@ -1240,7 +1263,13 @@ function drawTimeline() {
   $("ruler").innerHTML = r;
   // clips
   const qs = st.qualities;
-  $("track").innerHTML = st.shots.map((s) => {
+  const SLOT_JA = { card: "カード", rule: "決まり", title: "タイトル", message: "メッセージ", black: "黒" };
+  const slotHtml = (it) => `<div class="clip slot" data-id="${esc(it.id)}" style="flex:${it.duration} 1 0" title="${esc(`${SLOT_JA[it.kind] || it.kind} ${it.duration}s${it.text ? `: ${it.text}` : ""}`)}">
+      <div class="beat" style="background:#3a3d3f"></div><div class="top"><span class="id">${esc(SLOT_JA[it.kind] || it.kind)}</span></div>
+      <div class="bot">${esc(it.text || "")}</div></div>`;
+  const order = st.timeline || st.shots.map((s) => ({ kind: "shot", id: s.id }));
+  $("track").innerHTML = order.map((it) => it.kind !== "shot" ? slotHtml(it) : clipHtml(st.shots.find((x) => x.id === it.id))).join("");
+  function clipHtml(s) {
     const tk = shownTake(s);
     const o = ui.outcome[s.id];
     const cls = ["clip", s.id === ui.sel ? "sel" : "", o ? o.action : ""].join(" ");
@@ -1261,7 +1290,7 @@ function drawTimeline() {
       ${(s.node.appear || []).map((a) => `<div class="ap" style="left:${Math.min(100, ((a.at || 0) / s.duration) * 100)}%" title="${esc(`${a.at || 0}s で ${a.prop} が出現`)}"><span>${esc(a.prop)}</span></div>`).join("")}
       <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}${okm}${flags}
       <div class="bot"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span><span class="ladder">${ladder}</span></div></div>`;
-  }).join("");
+  }
   // target marker and playhead (target sits past the end when the cut is short)
   const body = $("tl-body");
   body.querySelectorAll(".playhead,.target").forEach((e) => e.remove());
@@ -1273,7 +1302,7 @@ function drawTimeline() {
   }
   const s = shot();
   if (s && ui.tab === "shot") {
-    const start = st.shots.slice(0, s.index).reduce((a, x) => a + x.duration, 0);
+    const start = (st.timeline || []).find((it) => it.id === s.id)?.start ?? st.shots.slice(0, s.index).reduce((a, x) => a + x.duration, 0);
     const tk = shownTake(s);
     const num = tk ? (tk.t.frame_numbers?.[ui.frame] ?? 0) : 0;
     const t = start + Math.min(num / (st.fps || 30), s.duration);
@@ -1308,7 +1337,7 @@ const SND_ROW = 24;
 
 /** Teaser seconds -> x in the timeline body, through the clip boxes (they have gaps). */
 function xOf(t) {
-  const sh = ui.sound?.shots || [];
+  const sh = ui.sound?.timeline || ui.sound?.shots || [];
   if (!sh.length) return 0;
   let k = sh.findIndex((s) => t < s.start + s.duration);
   if (k < 0) k = sh.length - 1;
@@ -1320,7 +1349,7 @@ function xOf(t) {
 
 /** x in the timeline body -> teaser seconds (the inverse of xOf). */
 function tOf(x) {
-  const sh = ui.sound?.shots || [];
+  const sh = ui.sound?.timeline || ui.sound?.shots || [];
   for (let k = 0; k < sh.length; k++) {
     const clip = $("track").querySelector(`.clip[data-id="${CSS.escape(sh[k].id)}"]`);
     if (!clip) continue;
@@ -2023,6 +2052,7 @@ function selectShot(id, frame = 0) {
 
 $("track").addEventListener("click", (e) => {
   const clip = e.target.closest(".clip"); if (!clip) return;
+  if (clip.classList.contains("slot")) { ui.tab = ui.fin = "design"; draw(); return; } // script cards are edited in design
   const s = ui.status.shots.find((x) => x.id === clip.dataset.id);
   const tk = s && shownTake(s);
   let frame = 0;
