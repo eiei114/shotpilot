@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-8EeriuU3IIo",
+  "name": "Get The Artifact: Violent Incursion | Steam Next Fest 2026 Teaser #SteamNextFest #GetTheArtifact",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=8EeriuU3IIo",
+    "channel": "Overpressure Games and Insert Coin Podcast",
+    "uploadDate": null,
+    "viewCount": 114,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

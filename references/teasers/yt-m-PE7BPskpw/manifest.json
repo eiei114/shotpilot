@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-m-PE7BPskpw",
+  "name": "The Wandering Village: The Last Leviathan - Official Announcement Trailer | Wholesome Direct 2026",
+  "category": "cozy",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=m-PE7BPskpw",
+    "channel": "GameTrailers",
+    "uploadDate": null,
+    "viewCount": 134366,
+    "foundBy": "Wholesome Direct teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-LOA65C93_t4",
+  "name": "Modern Warfare 4 South Korea Teaser Trailer! Signal Lost! (COD MW4 Reveal Trailer Teasers)",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=LOA65C93_t4",
+    "channel": "TheGamingRevolution",
+    "uploadDate": null,
+    "viewCount": 111851,
+    "foundBy": "game reveal teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

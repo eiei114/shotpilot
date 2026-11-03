@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-DJVYyV3TViE",
+  "name": "「ノロイカゴ ゲゲゲの夜」ティザートレーラー",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=DJVYyV3TViE",
+    "channel": "東映アニメーション公式YouTubeチャンネル",
+    "uploadDate": null,
+    "viewCount": 345958,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

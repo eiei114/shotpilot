@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NFy41WPiw58",
+  "name": "ゲーム【ウマ娘 プリティーダービー】メインストーリー第2部ティザーPV",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NFy41WPiw58",
+    "channel": "ぱかチューブっ!【ウマ娘公式】",
+    "uploadDate": null,
+    "viewCount": 323881,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

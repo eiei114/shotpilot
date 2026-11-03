@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-m_doOpcfMXo",
+  "name": "HANUMAN — The Game | UE5 Concept Teaser | Coming Fall 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=m_doOpcfMXo",
+    "channel": "Maya Effects",
+    "uploadDate": null,
+    "viewCount": 2194,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

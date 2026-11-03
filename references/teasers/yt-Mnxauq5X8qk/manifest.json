@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Mnxauq5X8qk",
+  "name": "Knight of the Forgotten Realm Alpha 2 Teaser Trailer #UE4 #UE5 #IndieGame #IndieDev",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Mnxauq5X8qk",
+    "channel": "Helthurius Games",
+    "uploadDate": null,
+    "viewCount": 257,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

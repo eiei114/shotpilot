@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-V0xhZUk74e4",
+  "name": "RPGツクール新プロジェクト ティザー映像",
+  "category": "rpg",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=V0xhZUk74e4",
+    "channel": "【RPGツクール公式】Gotcha Gotcha Games",
+    "uploadDate": null,
+    "viewCount": 52236,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

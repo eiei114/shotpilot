@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-47m5CGGno5w",
+  "name": "1666 Amsterdam - Reveal Trailer  | IGN Summer of Gaming",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=47m5CGGno5w",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 399490,
+    "foundBy": "IGN teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

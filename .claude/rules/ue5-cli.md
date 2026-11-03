@@ -37,6 +37,7 @@ paths:
 - 七号室（RoomSeven の作業コピー `Production/RoomSeven-shotpilot`、本体には書かない）も撮れた。`map: /Engine/Maps/Entry`、`game_mode: /Script/RoomSeven.R7CourtyardMode`、`ue_args: [-R7StageOnly]` で、PIE の中で C++ が中庭を建ててから MRQ が撮る。build 7 ショットは約 45 秒、render still 7 ショット×3 フレームは約 75 秒。コピー側で MovieRenderPipeline / SequencerScripting / LevelSequenceEditor を有効にしたが、C++ の再ビルドは要らなかった。
 - 七号室の render final（7 ショット、1920x1080、930 フレーム）は 1 回の起動で約 5 分。1 回目は 4 本目の途中で PIE が終わり（ゲーム側のログなし。PIE ウィンドウへの Esc か、ウィンドウを閉じた可能性が高い）、残り 4 本が失敗した。撮り終えた 3 本は take として残り、再実行では失敗した 4 本だけを撮った。MRQ のジョブが途中で止まったときは、その理由を result の `error` に書く。
 - 七号室の `-R7StageOnly` では、正面玄関は施錠されたまま、七号室の扉は物語で出現するまで壁になっている。撮影の構図はこの状態を前提に決める。
+- 出現（`appear`）も七号室で通った（2026-11-03、テスト用の `teaser-appear-test/`、`content_root: /Game/ShotpilotTest` で本番と分けた）。static mesh（`SM_CY_Observer`）と skeletal mesh（`SK_CY_Businessman`、基準ポーズのまま）を spawnable で置き、Spawn トラックのキーで指定フレームから出る。build 約 51 秒、render still 1 ショット約 69 秒。still の 0 フレーム目には出現前の prop が映らず、59 フレーム目には映った。警告は既知の `add_spawnable_from_class` 非推奨だけ。
 
 ## 検証
 

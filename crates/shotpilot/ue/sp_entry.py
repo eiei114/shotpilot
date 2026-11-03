@@ -297,6 +297,9 @@ def build_shot(item, project, force):
                 if n in sch:
                     set_default(sch[n], v)
 
+    for ap in payload.get("appear") or []:
+        add_prop(seq, ap, frames)
+
     for m in payload.get("markers") or []:
         try:
             tick = seq.get_tick_resolution()
@@ -310,6 +313,50 @@ def build_shot(item, project, force):
 
     EAL.save_loaded_asset(seq)
     return {"status": "built", "engine": readback(seq)}
+
+
+def add_prop(seq, ap, frames):
+    """A prop that pops in at ap["frame"]: a spawnable mesh actor with a constant transform and
+    a spawn track that turns it on at that frame. No animation (skeletal meshes keep their
+    reference pose)."""
+    asset = unreal.load_asset(ap["asset"])
+    if asset is None:
+        raise RuntimeError("prop '%s': asset %s not found" % (ap["prop"], ap["asset"]))
+    skeletal = ap.get("kind") == "skeletal"
+    b = seq.add_spawnable_from_class(unreal.SkeletalMeshActor if skeletal else unreal.StaticMeshActor)
+    b.set_display_name("SP_Prop_" + ap["prop"])
+    t = b.get_object_template()
+    if skeletal:
+        comp = t.get_editor_property("skeletal_mesh_component")
+        _call_first(comp, ["set_skeletal_mesh_asset", "set_skeletal_mesh"], asset)
+    else:
+        comp = t.get_editor_property("static_mesh_component")
+        comp.set_static_mesh(asset)
+
+    tr = b.add_track(unreal.MovieScene3DTransformTrack).add_section()
+    tr.set_range(0, frames)
+    ch = transform_channels(tr)
+    vals = xform_values({"location": ap["location"], "rotation": ap["rotation"]})
+    vals.update({"Scale.X": 1.0, "Scale.Y": 1.0, "Scale.Z": 1.0})
+    for n, v in vals.items():
+        if n in ch:
+            set_default(ch[n], v)
+
+    spawn = next((x for x in b.get_tracks() if isinstance(x, unreal.MovieSceneSpawnTrack)), None)
+    if spawn is None:
+        spawn = b.add_track(unreal.MovieSceneSpawnTrack)
+    secs = spawn.get_sections()
+    sec = secs[0] if secs else spawn.add_section()
+    sec.set_range(0, frames)
+    chan = sec.get_all_channels()[0]
+    start = int(ap.get("frame", 0))
+    if start > 0:
+        chan.set_default(False)
+        chan.add_key(unreal.FrameNumber(0), False)
+        chan.add_key(unreal.FrameNumber(start), True)
+    else:
+        chan.set_default(True)
+        chan.add_key(unreal.FrameNumber(0), True)
 
 
 def same(rb, base, tol_loc=0.5, tol_rot=0.05, tol_lens=0.01):
@@ -393,8 +440,61 @@ def run_scan(job):
         if tagged or label.startswith(prefix):
             loc = a.get_actor_location()
             name = label[len(prefix):] if label.startswith(prefix) else label
-            anchors[name.lower().replace(" ", "_")] = [round(loc.x, 1), round(loc.y, 1), round(loc.z, 1)]
+            at = [round(loc.x, 1), round(loc.y, 1), round(loc.z, 1)]
+            entry = at
+            # the size of what is there, so shots can be framed for it (empty actors have none)
+            try:
+                origin, extent = a.get_actor_bounds(False)
+                size = [round(2 * extent.x, 1), round(2 * extent.y, 1), round(2 * extent.z, 1)]
+                if all(v > 1.0 for v in size):
+                    entry = {"at": at, "size": size, "center": [round(origin.x, 1), round(origin.y, 1), round(origin.z, 1)]}
+            except Exception:  # bounds are optional: keep the point
+                entry = at
+            anchors[name.lower().replace(" ", "_")] = entry
     return {"anchors": anchors}
+
+
+def _bounds_size(asset):
+    for fn in ("get_bounds", "get_imported_bounds"):
+        f = getattr(asset, fn, None)
+        if f is None:
+            continue
+        try:
+            b = f()
+            e = b.box_extent
+            size = [round(2 * e.x, 1), round(2 * e.y, 1), round(2 * e.z, 1)]
+            if all(v > 0.5 for v in size):
+                return size
+        except Exception:
+            continue
+    return None
+
+
+def run_assets(job):
+    """Static and skeletal meshes under /Game with their size, for the props catalogue."""
+    reg = unreal.AssetRegistryHelpers.get_asset_registry()
+    skip = (job["project"].get("content_root") or "/Game/Shotpilot").rstrip("/")
+    limit = int(job.get("limit", 400))
+    out = []
+    for cls, kind in (("StaticMesh", "static"), ("SkeletalMesh", "skeletal")):
+        try:
+            flt = unreal.ARFilter(class_paths=[unreal.TopLevelAssetPath("/Script/Engine", cls)],
+                                  package_paths=["/Game"], recursive_paths=True)
+        except Exception:  # older engines
+            flt = unreal.ARFilter(class_names=[cls], package_paths=["/Game"], recursive_paths=True)
+        for ad in reg.get_assets(flt):
+            path = str(ad.package_name)
+            if path.startswith(skip + "/") or path.startswith("/Game/ShotpilotTest/"):
+                continue
+            entry = {"asset": path, "kind": kind, "size": None}
+            if len(out) < limit:
+                try:
+                    entry["size"] = _bounds_size(unreal.load_asset(path))
+                except Exception as e:
+                    warn("bounds of %s: %s" % (path, e))
+            out.append(entry)
+    log("assets: %d meshes" % len(out))
+    return {"assets": out}
 
 
 # ------------------------------------------------------------------ render (async, full editor)
@@ -559,7 +659,7 @@ def main():
         if kind == "render":
             run_render(job)  # writes its own result asynchronously
             return
-        res = {"build": run_build, "pull": run_pull, "scan": run_scan}[kind](job)
+        res = {"build": run_build, "pull": run_pull, "scan": run_scan, "assets": run_assets}[kind](job)
         write_result(res)
     except Exception:
         write_result({"fatal": traceback.format_exc()})

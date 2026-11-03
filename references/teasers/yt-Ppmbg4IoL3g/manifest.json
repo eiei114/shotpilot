@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Ppmbg4IoL3g",
+  "name": "KAGURABACHI | Official Teaser Trailer（JP）",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Ppmbg4IoL3g",
+    "channel": "SHOCHIKU animeチャンネル【公式】 and 2 more",
+    "uploadDate": null,
+    "viewCount": 1287350,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

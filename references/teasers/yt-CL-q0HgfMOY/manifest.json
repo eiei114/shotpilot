@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-CL-q0HgfMOY",
+  "name": "Persona 6 — Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=CL-q0HgfMOY",
+    "channel": "Official ATLUS West",
+    "uploadDate": null,
+    "viewCount": 1806531,
+    "foundBy": "official teaser trailer game 2026",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

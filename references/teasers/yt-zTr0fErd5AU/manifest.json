@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-zTr0fErd5AU",
+  "name": "新作スマホアプリゲーム『ワールドウィッチーズ UNITED FRONT』ティザーPV",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=zTr0fErd5AU",
+    "channel": "KADOKAWAanime",
+    "uploadDate": null,
+    "viewCount": 39871,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

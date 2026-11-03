@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-mO-xpG7B6Sk",
+  "name": "ART THE CLOWN teaser trailer DBD! Test server: October 27th Release date ￼November 17th ",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=mO-xpG7B6Sk",
+    "channel": "Brady",
+    "uploadDate": null,
+    "viewCount": 489,
+    "foundBy": "survival horror teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

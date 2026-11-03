@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-AZgrzBAsymA",
+  "name": "Astral Sword Online | Official Announcement Teaser (UE5 MMORPG)",
+  "category": "rpg",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=AZgrzBAsymA",
+    "channel": "Onix Astral Studio ",
+    "uploadDate": null,
+    "viewCount": 47,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

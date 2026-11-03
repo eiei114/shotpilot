@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-I0YWGgZBiYc",
+  "name": "The Bluey Movie | Official Teaser Trailer 🎈 | In Theatres 2027",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=I0YWGgZBiYc",
+    "channel": "Bluey - Official Channel and Disney Jr. ",
+    "uploadDate": null,
+    "viewCount": 5655036,
+    "foundBy": "official teaser trailer game 2026",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

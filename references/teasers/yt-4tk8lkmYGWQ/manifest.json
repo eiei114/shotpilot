@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-4tk8lkmYGWQ",
+  "name": "DOOM: The Dark Ages | Official Trailer 1 (4K) | Coming 2025",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=4tk8lkmYGWQ",
+    "channel": "Bethesda Softworks",
+    "uploadDate": null,
+    "viewCount": 10832520,
+    "foundBy": "official teaser trailer game 2025",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

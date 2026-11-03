@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-f0M1I8kqVLY",
+  "name": "【ティザーPV】海琳あおい / Mitama Aoi【ミリプロ】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=f0M1I8kqVLY",
+    "channel": "海琳あおい / Mitama Aoi",
+    "uploadDate": null,
+    "viewCount": 499479,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

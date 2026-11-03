@@ -4,14 +4,20 @@
 
 pub mod ai;
 pub mod connect;
+pub mod craft;
 pub mod cut;
 pub mod engines;
 pub mod error;
+pub mod finish;
 pub mod fingerprint;
 pub mod geometry;
+pub mod library;
 pub mod model;
+pub mod moodboard;
 pub mod previz;
+pub mod scout;
 pub mod server;
+pub mod shotcheck;
 pub mod sound;
 pub mod soundcheck;
 pub mod state;

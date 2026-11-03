@@ -20,14 +20,30 @@ teaser:
   fps: 30
   resolution: [1920, 1080]
 
+# What the trailer is for. Written before any shot; editorial only (never re-renders).
+# kind: teaser (title/IP first) | gameplay (gameplay from the first second)
+brief:
+  kind: teaser
+  genre: 一人称ホラー
+  audience: 静かに怖いホラーが好きなPCプレイヤー
+  core: 見慣れた中庭が、少しずつ見知らぬ場所に変わっていく
+  must_show: [井戸, 2階の窓, 提灯]
+  references: []
+
 # Named points in the level. `shotpilot scan` fills these from actors tagged
-# `shotpilot` (or labelled SP_*). Units: cm, Z up.
+# `shotpilot` (or labelled SP_*), with the size of what is there. Units: cm, Z up.
+# A point alone is fine too: `name: [x, y, z]` (previz then draws a person-sized box).
 anchors:
-  gate: [0, -1500, 100]
-  well: [0, 0, 80]
-  window: [800, 600, 450]
-  door: [-700, 500, 120]
-  lantern: [300, -300, 180]
+  gate: {at: [0, -1500, 100], size: [300, 40, 260], center: [0, -1500, 130]}
+  well: {at: [0, 0, 80], size: [140, 140, 90], center: [0, 0, 45]}
+  window: {at: [800, 600, 450], size: [20, 140, 160]}
+  door: {at: [-700, 500, 120], size: [20, 110, 220], center: [-700, 500, 110]}
+  lantern: {at: [300, -300, 180], size: [30, 30, 45]}
+
+# Things a shot can make appear, with no animation (a character keeps its reference pose).
+# In a shot: appear: [{prop: stranger, at: 1.5, anchor: door, offset: [150, 0, -120]}]
+props:
+  stranger: {asset: /Game/Characters/Mannequins/Meshes/SKM_Manny, kind: skeletal, size: [60, 40, 180]}
 
 defaults:
   lens: {focal_length: 35, aperture: 2.8}
@@ -133,6 +149,14 @@ teaser:
   target_duration: 45
   fps: 30
   resolution: [1920, 1080]
+
+brief:
+  kind: teaser      # teaser | gameplay
+  genre: ""
+  audience: ""
+  core: ""          # the one experience the viewer must get
+  must_show: []
+  references: []
 
 anchors: {}
 

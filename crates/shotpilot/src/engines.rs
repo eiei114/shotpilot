@@ -55,6 +55,8 @@ pub trait Engine {
         -> Result<Value>;
     fn pull(&self, items: &[Value]) -> Result<Value>;
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value>;
+    /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
+    fn assets(&self) -> Result<Value>;
 }
 
 pub fn make_engine(defn: &Definition) -> Result<Box<dyn Engine>> {
@@ -196,7 +198,7 @@ impl Engine for MockEngine {
             // cap mock resolution: it's a stand-in, not a renderer
             let k = (480.0 / w).min(1.0);
             let frames: Vec<i64> = it["frames"].as_array().map(|a| a.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
-            previz::render_shot(&shot, &frames, &self.defn.anchors, Path::new(it["out_dir"].as_str().unwrap_or(".")),
+            previz::render_shot(&shot, &frames, &self.defn.anchor_boxes(), Path::new(it["out_dir"].as_str().unwrap_or(".")),
                                 ((w * k) as u32).max(2), ((h * k) as u32).max(2), 0.0, Some([255, 170, 60]))?;
             renders.insert(key, json!({"status": "ok"}));
         }
@@ -214,13 +216,41 @@ impl Engine for MockEngine {
         Ok(json!({"shots": shots}))
     }
 
+    fn assets(&self) -> Result<Value> {
+        self.launch("assets", json!({}))?;
+        let f = self.store.join("assets.json");
+        if f.exists() {
+            return Ok(json!({"assets": read_json(&f)?}));
+        }
+        let mut list: Vec<Value> = self
+            .defn
+            .props
+            .iter()
+            .map(|(_, p)| json!({"asset": p.asset, "kind": p.kind, "size": p.size}))
+            .collect();
+        list.push(json!({"asset": "/Game/Mock/Props/SM_Crate", "kind": "static", "size": [100, 100, 80]}));
+        list.push(json!({"asset": "/Game/Mock/Characters/SK_Figure", "kind": "skeletal", "size": [60, 40, 180]}));
+        Ok(json!({"assets": list}))
+    }
+
     fn scan(&self, _tag: &str, _prefix: &str) -> Result<Value> {
         self.launch("scan", json!({}))?;
         let level = self.store.join("level.json");
         if level.exists() {
             return Ok(json!({"anchors": read_json(&level)?}));
         }
-        let anchors: Map<String, Value> = self.defn.anchors.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
+        let anchors: Map<String, Value> = self
+            .defn
+            .anchors
+            .iter()
+            .map(|(k, v)| {
+                let entry = match self.defn.known_box(k) {
+                    Some(b) => json!({"at": v, "size": b.size, "center": b.center}),
+                    None => json!(v),
+                };
+                (k.clone(), entry)
+            })
+            .collect();
         Ok(json!({"anchors": anchors}))
     }
 }
@@ -252,6 +282,7 @@ fn shot_from_payload(base: &ResolvedShot, payload: &Value) -> ResolvedShot {
         target: base.target,
         notes: String::new(),
         beat: None,
+        appear: payload["appear"].as_array().map(|a| a.iter().filter_map(crate::model::Appear::from_json).collect()).unwrap_or_default(),
     }
 }
 
@@ -377,6 +408,10 @@ impl Engine for Ue5Engine {
 
     fn pull(&self, items: &[Value]) -> Result<Value> {
         self.run("pull", json!({"pull": items}))
+    }
+
+    fn assets(&self) -> Result<Value> {
+        self.run("assets", json!({}))
     }
 
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value> {

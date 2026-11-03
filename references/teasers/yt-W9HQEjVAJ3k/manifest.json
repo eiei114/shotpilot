@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-W9HQEjVAJ3k",
+  "name": "『ハルカノカナタ』ティザーPV（制作者：そらまめゲームス）【講談社ゲームクリエイターズラボ】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=W9HQEjVAJ3k",
+    "channel": "【公式】講談社ゲームラボ / KODANSHA GAME LAB.",
+    "uploadDate": null,
+    "viewCount": 1412,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -32,7 +32,7 @@ use crate::soundcheck::{self, Cut, CHECK_VERSION};
 pub const SR: u32 = 48_000;
 /// Bump when the mix of the same placements changes.
 pub const MIX_VERSION: i64 = 1;
-pub const AUDIO_EXTS: &[&str] = &["wav", "mp3", "ogg", "flac", "m4a", "aac", "opus"];
+pub const AUDIO_EXTS: &[&str] = &["wav", "mp3", "ogg", "flac", "m4a", "aac", "opus", "aif", "aiff"];
 /// A sound effect may start this many seconds before its shot (a whoosh into the cut).
 pub const LEAD_MAX: f64 = 3.0;
 /// Peaks per second in the lanes the app draws.

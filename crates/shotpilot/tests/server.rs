@@ -380,6 +380,16 @@ fn settings_save_the_key_but_never_send_it_back() {
     let (_, out) = jcall(&s, "POST", "/api/settings", Some(json!({"api_key": ""})));
     assert_eq!(out["ready"], false);
     assert!(out["api_key"].is_null());
+    // effort: one of the levels, saved; empty goes back to the default
+    assert_eq!(out["effort"], "medium");
+    let (code, out) = jcall(&s, "POST", "/api/settings", Some(json!({"effort": "turbo"})));
+    assert_eq!(code, 400, "{out}");
+    let (code, out) = jcall(&s, "POST", "/api/settings", Some(json!({"effort": "high"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["effort"], "high");
+    assert!(std::fs::read_to_string(&path).unwrap().contains("\"high\""));
+    let (_, out) = jcall(&s, "POST", "/api/settings", Some(json!({"effort": ""})));
+    assert_eq!(out["effort"], "medium");
 }
 
 // ------------------------------------------------------------------ sound
@@ -435,4 +445,133 @@ fn a_sound_note_over_http_changes_only_sound() {
     assert!(changes.iter().all(|c| c["path"].as_str().unwrap().starts_with("sfx")), "{changes:?}");
     let req = calls.lock().unwrap()[0].to_string();
     assert!(req.contains("working on the sound") && req.contains("sound check against 7 launch films"), "{req}");
+}
+
+#[test]
+fn brief_checks_and_approval_over_http() {
+    let s = srv();
+    let (code, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(code, 200);
+    assert_eq!(st["brief"]["kind"], json!("teaser"));
+    assert!(st["checks"].is_array());
+    assert_eq!(st["shots"][2]["approval"], json!("none"));
+
+    let (code, b) = jcall(&s, "POST", "/api/brief", Some(json!({"set": {"core": "中庭が少しずつ変わる"}})));
+    assert_eq!(code, 200, "{b}");
+    assert_eq!(b["core"], json!("中庭が少しずつ変わる"));
+
+    let (code, _) = jcall(&s, "POST", "/api/approve", Some(json!({"shots": ["s03_window"], "approved": true})));
+    assert_eq!(code, 200);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["shots"][2]["approval"], json!("approved"));
+
+    // a P0 (opening on the title) is a 400 with the reason, and approves nothing
+    let order = json!({"order": ["s06_title", "s01_gate", "s02_well", "s03_window", "s04_lantern", "s05_door"]});
+    assert_eq!(jcall(&s, "POST", "/api/order", Some(order)).0, 200);
+    let (code, err) = jcall(&s, "POST", "/api/approve", Some(json!({"shots": ["s06_title"]})));
+    assert_eq!(code, 400);
+    assert!(err["error"].as_str().unwrap().contains("open.title"), "{err}");
+}
+
+#[test]
+fn plan_over_http_needs_confirmation_and_logs_the_check() {
+    let shot = |id: &str, beat: &str, anchor: &str| json!({"id": id, "beat": beat, "purpose": "p", "duration": 7,
+        "anchor": anchor, "offset": [-300, 0, 120], "look_at": "", "focal_length": 35, "move": "static",
+        "move_amount": 0, "time_of_day": "default", "notes": ""});
+    let (s, calls) = srv_with_claude(json!({"rationale": "静かに始めて、最後に崩す", "shots": [
+        shot("p_title", "title", "well"), shot("p_hook", "hook", "gate"), shot("p_est", "establish", "well"),
+        shot("p_esc", "escalate", "door")]}));
+    // existing shots are not replaced without confirmation, and Claude is not called
+    let (code, err) = jcall(&s, "POST", "/api/plan", Some(json!({"note": "静かに"})));
+    assert_eq!(code, 400, "{err}");
+    assert!(calls.lock().unwrap().is_empty());
+
+    let (code, out) = jcall(&s, "POST", "/api/plan", Some(json!({"note": "静かに", "replace": true})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["shots"], json!(["p_hook", "p_est", "p_esc", "p_title"])); // code put the beats in order
+    assert!(out["checks"]["P0"].is_number());
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["shots"].as_array().unwrap().len(), 4);
+    let (_, log) = jcall(&s, "GET", "/api/log?n=1", None);
+    assert_eq!(log[0]["action"], json!("plan"));
+    assert_eq!(log[0]["rationale"], json!("静かに始めて、最後に崩す"));
+    assert_eq!(log[0]["note"], json!("静かに"));
+}
+
+struct OnePng;
+impl shotpilot::moodboard::ImageGen for OnePng {
+    fn generate(&self, _job: &shotpilot::moodboard::ImageJob) -> shotpilot::error::Result<Vec<u8>> {
+        Ok(vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3])
+    }
+}
+
+#[test]
+fn mood_board_over_http() {
+    let f = ws();
+    let srv = Server::bind_with(&f.path(), "127.0.0.1", 0, shotpilot::server::default_claude(), None).unwrap()
+        .with_images(Box::new(|_| Ok(Box::new(OnePng) as Box<dyn shotpilot::moodboard::ImageGen>)));
+    let port = srv.port();
+    srv.spawn();
+    let s = Srv { port, f };
+    let (code, out) = jcall(&s, "POST", "/api/moodboard/generate", Some(json!({"direction": "霧", "n": 2})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["added"].as_array().unwrap().len(), 2);
+    let first = out["added"][0].as_str().unwrap().to_string();
+    let r = call(&s, "GET", &format!("/files/{first}"), None, &[]);
+    assert_eq!(r.code, 200);
+    assert_eq!(r.header("content-type"), "image/png");
+
+    let data = format!("data:image/png;base64,{}", shotpilot::ai::base64(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 9]));
+    let (code, out) = jcall(&s, "POST", "/api/moodboard/upload", Some(json!({"name": "ref.png", "data": data})));
+    assert_eq!(code, 200, "{out}");
+    let (code, _) = jcall(&s, "POST", "/api/moodboard/upload", Some(json!({"name": "x.png", "data": "aGVsbG8="})));
+    assert_eq!(code, 400);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["brief"]["images"].as_array().unwrap().len(), 3);
+    let (code, out) = jcall(&s, "POST", "/api/moodboard/remove", Some(json!({"image": first})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["images"].as_array().unwrap().len(), 2);
+    // outside moodboard/ is never served
+    assert_eq!(call(&s, "GET", "/files/moodboard/../shots.yaml", None, &[]).code, 404);
+}
+
+#[test]
+fn library_lists_plays_and_imports_without_rendering() {
+    let f = ws();
+    let lib = tempfile::tempdir().unwrap();
+    let sounds = lib.path().join("sounds");
+    std::fs::create_dir_all(sounds.join("splice/Kit")).unwrap();
+    std::fs::write(sounds.join("splice/Kit/boom.wav"), b"RIFF-boom").unwrap();
+    std::fs::write(sounds.join("splice/Kit/drone.wav"), b"RIFF-drone").unwrap();
+    std::fs::write(sounds.join("library.json"), json!({"sounds": [
+        {"id": "splice:b1", "path": "splice/Kit/boom.wav", "kind": "oneshot", "duration_s": 1.0, "tags": ["impact"], "status": "ok"},
+        {"id": "splice:d1", "path": "splice/Kit/drone.wav", "kind": "loop", "duration_s": 40.0, "tags": ["drones", "horror"], "status": "ok"},
+    ]}).to_string()).unwrap();
+    let srv = Server::bind(&f.path(), "127.0.0.1", 0).unwrap().with_library(Some(lib.path().to_path_buf()));
+    let s = Srv { port: srv.port(), f };
+    srv.spawn();
+
+    let (code, out) = jcall(&s, "GET", "/api/library?q=horror&kind=bgm", None);
+    assert_eq!(code, 200, "{out}");
+    assert_eq!((out["total"].as_u64(), out["bgm"].as_u64()), (Some(2), Some(1)));
+    let items = out["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["id"], "splice:d1");
+    assert_eq!(items[0]["imported"], false);
+    // audition straight from the library
+    let url = items[0]["url"].as_str().unwrap();
+    let r = call(&s, "GET", url, None, &[]);
+    assert_eq!((r.code, r.body.as_slice()), (200, b"RIFF-drone".as_slice()));
+    assert_eq!(call(&s, "GET", "/library/..%2Fsounds%2Flibrary.json", None, &[]).code, 404);
+
+    let before = launches(&s.f.ws).len();
+    let (code, out) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:b1"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["file"], "audio/lib/boom.wav");
+    assert!(out["sound"]["files"].as_array().unwrap().iter().any(|x| x["file"] == "audio/lib/boom.wav"));
+    assert_eq!(launches(&s.f.ws).len(), before);
+    let (_, out) = jcall(&s, "GET", "/api/library?q=impact", None);
+    assert_eq!(out["items"][0]["imported"], true);
+    let (code, _) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:zz"})));
+    assert_eq!(code, 400);
 }

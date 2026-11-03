@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-tSsBvgN0lpo",
+  "name": "SIGNAL BREAK — Announcement Teaser | Music-Driven Bullet Hell (UE5)",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=tSsBvgN0lpo",
+    "channel": "DiGGySpiFF",
+    "uploadDate": null,
+    "viewCount": 42,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

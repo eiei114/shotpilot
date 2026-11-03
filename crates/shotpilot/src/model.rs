@@ -98,12 +98,182 @@ pub struct TeaserCfg {
     pub resolution: (i64, i64),
 }
 
+/// `stage:`: what the level is, read from the scout photos (written by Claude, editable by
+/// hand). Editorial: it feeds the planner and the mood board, never pixels.
+#[derive(Debug, Clone, Default)]
+pub struct StageCfg {
+    pub summary: String,
+    /// anchor -> what is there, light, materials, where a camera has room.
+    pub anchors: Vec<(String, String)>,
+    /// mood-board frame (place, detail, threat, title) -> the anchor whose scout photo it is based on.
+    pub mood: Vec<(String, String)>,
+}
+
+impl StageCfg {
+    pub fn is_empty(&self) -> bool {
+        self.summary.is_empty() && self.anchors.is_empty()
+    }
+
+    pub fn anchor(&self, name: &str) -> Option<&str> {
+        self.anchors.iter().find(|(n, _)| n == name).map(|(_, d)| d.as_str())
+    }
+
+    pub fn mood_base(&self, frame: &str) -> Option<&str> {
+        self.mood.iter().find(|(f, _)| f == frame).map(|(_, a)| a.as_str())
+    }
+}
+
+/// What a trailer is: a teaser (title/IP first) or a gameplay trailer (gameplay first).
+/// Steam treats them as different kinds, and some checks weigh differently for each.
+pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
+
+/// Fields of `brief:` a planner reads. Order is the order the app asks them in.
+pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "audience", "core", "must_show", "references", "notes", "images"];
+
+/// `brief:`: what the trailer is for, written before any shot. Editorial only: it never
+/// affects pixels, so editing it never re-renders anything.
+#[derive(Debug, Clone, Default)]
+pub struct BriefCfg {
+    pub kind: String, // teaser | gameplay
+    pub genre: String,
+    pub audience: String,
+    /// The core experience the viewer must get (one sentence).
+    pub core: String,
+    pub must_show: Vec<String>,
+    /// Trailers to learn from ("Inspired by ...").
+    pub references: Vec<String>,
+    /// Mood-board images (paths under moodboard/): palette, light and tone, not shot designs.
+    pub images: Vec<String>,
+    pub notes: String,
+    /// The raw mapping, for the app's form.
+    pub raw: Map<String, Value>,
+}
+
+impl BriefCfg {
+    pub fn is_gameplay(&self) -> bool {
+        self.kind == "gameplay"
+    }
+
+    /// Fields a planner needs that are still empty.
+    pub fn missing(&self) -> Vec<&'static str> {
+        let mut out = Vec::new();
+        if self.genre.is_empty() {
+            out.push("genre");
+        }
+        if self.core.is_empty() {
+            out.push("core");
+        }
+        out
+    }
+}
+
+/// Size of what sits at an anchor, when known (from `scan`, or written by hand).
+/// Without one, previz draws a person-sized box (120 x 120 x 180 cm) centred on the anchor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AnchorBox {
+    /// World-space centre of the box (cm).
+    pub center: Vec3,
+    /// Extent along X, Y, Z (cm).
+    pub size: Vec3,
+}
+
+pub const DEFAULT_BOX: Vec3 = [120.0, 120.0, 180.0];
+
+/// What a prop is in the engine: a static mesh, or a skeletal mesh (a character, shown in
+/// its reference pose: no animation).
+pub const PROP_KINDS: &[&str] = &["static", "skeletal"];
+
+/// `props.<name>`: something a shot can make appear (an enemy, an object).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Prop {
+    /// UE asset path of the mesh, e.g. /Game/Characters/Mannequins/Meshes/SKM_Manny.
+    pub asset: String,
+    pub kind: String,
+    /// Extent along X, Y, Z (cm), for previz and framing. The prop stands on its location.
+    pub size: Vec3,
+}
+
+/// A prop popping into a shot at a frame (no animation: it is simply there from then on).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Appear {
+    pub prop: String,
+    pub asset: String,
+    pub kind: String,
+    /// First frame it is visible (0 = from the start of the shot).
+    pub frame: i64,
+    /// Where it stands (its feet / base), world cm.
+    pub location: Vec3,
+    /// Facing, degrees (UE yaw).
+    pub yaw: f64,
+    pub size: Vec3,
+}
+
+impl Appear {
+    pub fn to_json(&self) -> Value {
+        json!({"prop": self.prop, "asset": self.asset, "kind": self.kind, "frame": self.frame,
+               "location": self.location, "rotation": [0.0, self.yaw, 0.0], "size": self.size})
+    }
+
+    pub fn from_json(v: &Value) -> Option<Appear> {
+        Some(Appear {
+            prop: v.get("prop")?.as_str()?.to_string(),
+            asset: v.get("asset").map(str_of).unwrap_or_default(),
+            kind: v.get("kind").map(str_of).unwrap_or_else(|| "static".into()),
+            frame: v.get("frame")?.as_i64()?,
+            location: vec3(v.get("location")?)?,
+            yaw: v.get("rotation").and_then(vec3).map(|r| r[1]).unwrap_or(0.0),
+            size: v.get("size").and_then(vec3).unwrap_or(DEFAULT_BOX),
+        })
+    }
+
+    /// The box previz draws (standing on its location).
+    pub fn bbox(&self) -> AnchorBox {
+        AnchorBox { center: [self.location[0], self.location[1], self.location[2] + self.size[2] / 2.0], size: self.size }
+    }
+}
+
+impl AnchorBox {
+    pub fn corners(&self) -> [Vec3; 8] {
+        let mut out = [[0.0; 3]; 8];
+        let mut i = 0;
+        for sz in [-1.0, 1.0] {
+            for sy in [-1.0, 1.0] {
+                for sx in [-1.0, 1.0] {
+                    out[i] = [
+                        self.center[0] + sx * self.size[0] / 2.0,
+                        self.center[1] + sy * self.size[1] / 2.0,
+                        self.center[2] + sz * self.size[2] / 2.0,
+                    ];
+                    i += 1;
+                }
+            }
+        }
+        out
+    }
+
+    pub fn contains(&self, p: Vec3, margin: f64) -> bool {
+        (0..3).all(|k| (p[k] - self.center[k]).abs() <= self.size[k] / 2.0 + margin)
+    }
+
+    pub fn to_json(&self) -> Value {
+        json!({"center": self.center, "size": self.size})
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Definition {
     pub path: PathBuf,
     pub project: ProjectCfg,
     pub teaser: TeaserCfg,
+    pub brief: BriefCfg,
+    pub stage: StageCfg,
+    /// `finish:`: letterbox, title, end card (burned in at cut; see finish.rs).
+    pub finish: crate::finish::FinishCfg,
     pub anchors: Vec<(String, Vec3)>,
+    /// Anchors whose size is known (`anchors.<name>: {at, size, center}`).
+    pub boxes: Vec<(String, AnchorBox)>,
+    /// `props:`: what shots can make appear.
+    pub props: Vec<(String, Prop)>,
     pub defaults: Map<String, Value>,
     pub qualities: Map<String, Value>,
     /// `audio:` (BGM, master gain). Sound effects live on their shots (`sfx:`). See sound.rs.
@@ -134,6 +304,25 @@ impl Definition {
     pub fn anchor(&self, name: &str) -> Option<Vec3> {
         self.anchors.iter().find(|(n, _)| n == name).map(|(_, v)| *v)
     }
+
+    pub fn prop(&self, name: &str) -> Option<&Prop> {
+        self.props.iter().find(|(n, _)| n == name).map(|(_, p)| p)
+    }
+
+    /// The known box of an anchor, if its size was given.
+    pub fn known_box(&self, name: &str) -> Option<AnchorBox> {
+        self.boxes.iter().find(|(n, _)| n == name).map(|(_, b)| *b)
+    }
+
+    /// The box to draw for an anchor: its known size, or a person-sized default.
+    pub fn anchor_box(&self, name: &str) -> Option<AnchorBox> {
+        self.known_box(name).or_else(|| self.anchor(name).map(|at| AnchorBox { center: at, size: DEFAULT_BOX }))
+    }
+
+    /// Every anchor with the box previz draws for it.
+    pub fn anchor_boxes(&self) -> Vec<(String, AnchorBox)> {
+        self.anchors.iter().filter_map(|(n, _)| self.anchor_box(n).map(|b| (n.clone(), b))).collect()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +342,8 @@ pub struct ResolvedShot {
     pub target: Option<Vec3>,
     pub notes: String,
     pub beat: Option<String>,
+    /// Props that pop in during the shot.
+    pub appear: Vec<Appear>,
 }
 
 impl ResolvedShot {
@@ -174,7 +365,7 @@ impl ResolvedShot {
 
     /// Everything that gets written into the engine's shot sequence.
     pub fn engine_payload(&self) -> Value {
-        json!({
+        let mut p = json!({
             "frames": self.frames,
             "fps": self.fps,
             "curve": self.curve,
@@ -183,7 +374,12 @@ impl ResolvedShot {
             "lens": self.lens,
             "environment": self.environment,
             "markers": self.markers,
-        })
+        });
+        // only when used, so fingerprints of shots without props stay as they were
+        if !self.appear.is_empty() {
+            p["appear"] = Value::Array(self.appear.iter().map(Appear::to_json).collect());
+        }
+        p
     }
 }
 
@@ -328,11 +524,38 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         errs.push("teaser.fps: must be 1..120".into());
     }
 
+    let brief = parse_brief(top.get("brief"), &mut errs);
+    let finish = crate::finish::parse(top.get("finish"), &mut errs);
+    let stage = {
+        let st = obj(top.get("stage"));
+        let pairs = |k: &str| -> Vec<(String, String)> {
+            obj(st.get(k)).into_iter().filter(|(_, v)| !v.is_null()).map(|(n, v)| (n, str_of(&v))).collect()
+        };
+        StageCfg { summary: opt_str(st.get("summary")).unwrap_or_default(), anchors: pairs("anchors"), mood: pairs("mood") }
+    };
+
     let mut anchors = Vec::new();
+    let mut boxes = Vec::new();
     for (name, v) in obj(top.get("anchors")) {
-        match vec3(&v) {
-            Some(vec) => anchors.push((name, vec)),
-            None => errs.push(format!("anchors.{name}: must be [x, y, z]")),
+        match parse_anchor(&v) {
+            Ok((at, b)) => {
+                anchors.push((name.clone(), at));
+                if let Some(b) = b {
+                    boxes.push((name, b));
+                }
+            }
+            Err(e) => errs.push(format!("anchors.{name}: {e}")),
+        }
+    }
+
+    let mut props = Vec::new();
+    for (name, v) in obj(top.get("props")) {
+        if v.is_null() {
+            continue; // removed (`shotpilot prop rm` leaves `name: null`)
+        }
+        match parse_prop(&v) {
+            Ok(p) => props.push((name, p)),
+            Err(e) => errs.push(format!("props.{name}: {e}")),
         }
     }
 
@@ -369,6 +592,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         if !s.get("duration").and_then(num).is_some_and(|d| d > 0.0) {
             errs.push(format!("{at}.duration: positive seconds required"));
         }
+        crate::finish::validate_shot(&at, s, &mut errs);
         match s.get("beat") {
             None | Some(Value::Null) => {}
             Some(Value::String(b)) if BEATS.contains(&b.as_str()) => {}
@@ -378,7 +602,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     crate::sound::validate(top, &shots, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, anchors, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, stage, finish, anchors, boxes, props, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {
@@ -390,6 +614,85 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         bail!("{} has {} problem(s):\n  - {}", path.display(), errs.len(), errs.join("\n  - "));
     }
     Ok(defn)
+}
+
+/// `[x, y, z]`, or `{at: [x, y, z], size: [w, d, h], center: [x, y, z]}` (centre defaults to `at`).
+pub fn parse_anchor(v: &Value) -> std::result::Result<(Vec3, Option<AnchorBox>), String> {
+    if let Some(at) = vec3(v) {
+        return Ok((at, None));
+    }
+    let Some(m) = v.as_object() else { return Err("must be [x, y, z] or {at: [x, y, z], size: [w, d, h]}".into()) };
+    let at = m.get("at").and_then(vec3).ok_or("`at` must be [x, y, z]")?;
+    let b = match m.get("size") {
+        None | Some(Value::Null) => None,
+        Some(s) => {
+            let size = vec3(s).filter(|s| s.iter().all(|v| *v > 0.0)).ok_or("`size` must be [w, d, h] in cm, all > 0")?;
+            let center = match m.get("center") {
+                None | Some(Value::Null) => at,
+                Some(c) => vec3(c).ok_or("`center` must be [x, y, z]")?,
+            };
+            Some(AnchorBox { center, size })
+        }
+    };
+    Ok((at, b))
+}
+
+/// `{asset: /Game/..., kind: static|skeletal, size: [w, d, h]}`.
+fn parse_prop(v: &Value) -> std::result::Result<Prop, String> {
+    let m = v.as_object().ok_or("must be {asset: /Game/..., kind: static|skeletal, size: [w, d, h]}")?;
+    let asset = m.get("asset").map(str_of).unwrap_or_default();
+    if !valid_package(&asset) {
+        return Err(format!(
+            "asset: a UE asset path like /Game/Characters/Mannequins/Meshes/SKM_Manny (got '{asset}').              Git Bash rewrites /Game/... arguments into Windows paths; set MSYS_NO_PATHCONV=1"
+        ));
+    }
+    let kind = m.get("kind").map(str_of).unwrap_or_else(|| "static".into());
+    if !PROP_KINDS.contains(&kind.as_str()) {
+        return Err(format!("kind: one of {} (got '{kind}')", PROP_KINDS.join(", ")));
+    }
+    let size = match m.get("size") {
+        None | Some(Value::Null) => if kind == "skeletal" { [60.0, 40.0, 180.0] } else { [100.0, 100.0, 100.0] },
+        Some(s) => vec3(s).filter(|s| s.iter().all(|v| *v > 0.0)).ok_or("size: [w, d, h] in cm, all > 0")?,
+    };
+    Ok(Prop { asset, kind, size })
+}
+
+fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
+    let raw = match v {
+        None | Some(Value::Null) => Map::new(),
+        Some(Value::Object(m)) => m.clone(),
+        Some(_) => {
+            errs.push("brief: must be a mapping".into());
+            Map::new()
+        }
+    };
+    let list = |key: &str, errs: &mut Vec<String>| -> Vec<String> {
+        match raw.get(key) {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::String(s)) if s.is_empty() => Vec::new(),
+            Some(Value::String(s)) => vec![s.clone()],
+            Some(Value::Array(a)) => a.iter().map(str_of).filter(|s| !s.is_empty()).collect(),
+            Some(_) => {
+                errs.push(format!("brief.{key}: a list of strings"));
+                Vec::new()
+            }
+        }
+    };
+    let kind = opt_str(raw.get("kind")).unwrap_or_else(|| "teaser".into());
+    if !TRAILER_KINDS.contains(&kind.as_str()) {
+        errs.push(format!("brief.kind: one of {} (got '{kind}')", TRAILER_KINDS.join(", ")));
+    }
+    BriefCfg {
+        kind,
+        genre: opt_str(raw.get("genre")).unwrap_or_default(),
+        audience: opt_str(raw.get("audience")).unwrap_or_default(),
+        core: opt_str(raw.get("core")).unwrap_or_default(),
+        must_show: list("must_show", errs),
+        references: list("references", errs),
+        images: list("images", errs),
+        notes: opt_str(raw.get("notes")).unwrap_or_default(),
+        raw,
+    }
 }
 
 // --------------------------------------------------------------------------- resolution
@@ -524,7 +827,19 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
         }
     }
 
+    let mut appear = Vec::new();
+    match shot.get("appear") {
+        None | Some(Value::Null) => {}
+        Some(Value::Array(items)) => {
+            for (k, it) in items.iter().enumerate() {
+                appear.push(resolve_appear(defn, it, &format!("{at}.appear[{k}]"), duration, fps, frames, eye)?);
+            }
+        }
+        Some(_) => bail!("{at}.appear: a list of {{prop, at, anchor, offset}}"),
+    }
+
     Ok(ResolvedShot {
+        appear,
         id: str_of(&shot["id"]),
         index,
         purpose: shot.get("purpose").map(str_of).unwrap_or_default(),
@@ -540,6 +855,47 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
         target,
         notes: shot.get("notes").map(str_of).unwrap_or_default(),
         beat: opt_str(shot.get("beat")),
+    })
+}
+
+/// One `appear` item: {prop, at: seconds, anchor (or location), offset, yaw}. It faces the
+/// camera unless `yaw` is given.
+fn resolve_appear(defn: &Definition, it: &Value, at: &str, duration: f64, fps: i64, frames: i64, eye: Vec3)
+    -> Result<Appear> {
+    let name = it.get("prop").map(str_of).unwrap_or_default();
+    let Some(prop) = defn.prop(&name) else {
+        let known: Vec<&str> = defn.props.iter().map(|(n, _)| n.as_str()).collect();
+        bail!("{at}.prop: unknown prop '{name}'. known: {}", if known.is_empty() { "(none; add `props:`)".to_string() } else { known.join(", ") });
+    };
+    let t = it.get("at").and_then(num).unwrap_or(0.0);
+    if !(0.0..duration).contains(&t) {
+        bail!("{at}.at: {}s is outside the shot (0..{}s)", fmt_g(t), fmt_g(duration));
+    }
+    let base = if let Some(l) = it.get("location") {
+        vec3(l).ok_or_else(|| Error::user(format!("{at}.location: must be [x, y, z]")))?
+    } else {
+        let Some(a) = point(defn, it.get("anchor"), &format!("{at}.anchor"))? else {
+            bail!("{at}: needs `anchor` (or `location`)");
+        };
+        a
+    };
+    let off = match it.get("offset") {
+        None | Some(Value::Null) => [0.0; 3],
+        Some(v) => vec3(v).ok_or_else(|| Error::user(format!("{at}.offset: must be [x, y, z]")))?,
+    };
+    let location = g::add(base, off).map(|v| g::round_to(v, 1));
+    let yaw = match it.get("yaw").and_then(num) {
+        Some(y) => y,
+        None => g::round_to(g::look_at(location, [eye[0], eye[1], location[2]], 0.0).yaw, 1), // face the camera
+    };
+    Ok(Appear {
+        prop: name,
+        asset: prop.asset.clone(),
+        kind: prop.kind.clone(),
+        frame: (frames - 1).min(g::round_half_even(t * fps as f64)),
+        location,
+        yaw,
+        size: prop.size,
     })
 }
 
@@ -622,50 +978,4 @@ fn resolve_env(defn: &Definition, shot: &Value, at: &str) -> Result<Map<String, 
     let mut out: Vec<(String, Value)> = env.into_iter().filter(|(_, v)| !v.is_null()).collect();
     out.sort_by(|a, b| a.0.cmp(&b.0));
     Ok(out.into_iter().collect())
-}
-
-/// Advisory checks against the hook -> establish -> escalate -> title shape.
-pub fn structure_warnings(shots: &[ResolvedShot], target_duration: f64) -> Vec<String> {
-    if shots.is_empty() {
-        return Vec::new();
-    }
-    let beats: Vec<Option<&str>> = shots.iter().map(|s| s.beat.as_deref()).collect();
-    if beats.iter().all(Option::is_none) {
-        return vec![
-            "no shot has a `beat`; tag shots with hook / establish / escalate / title to check the teaser shape".into(),
-        ];
-    }
-    let mut out = Vec::new();
-    let untagged: Vec<&str> = shots.iter().filter(|s| s.beat.is_none()).map(|s| s.id.as_str()).collect();
-    if !untagged.is_empty() {
-        out.push(format!("no beat on: {}", untagged.join(", ")));
-    }
-    for b in BEATS {
-        if !beats.contains(&Some(*b)) {
-            out.push(format!("no `{b}` shot ({})", beat_guide(b)));
-        }
-    }
-    if let Some(Some(first)) = beats.first() {
-        if *first != "hook" {
-            out.push(format!("the cut opens on `{first}`; teasers usually open on the hook"));
-        }
-    }
-    if let Some(Some(last)) = beats.last() {
-        if *last != "title" {
-            out.push(format!("the cut ends on `{last}`; end on the title beat"));
-        }
-    }
-    let ranks: Vec<usize> = beats.iter().flatten().filter_map(|b| BEATS.iter().position(|x| x == b)).collect();
-    if ranks.windows(2).any(|w| w[1] < w[0]) {
-        out.push("beats go backwards (e.g. establish after escalate); intentional?".into());
-    }
-    let total: f64 = shots.iter().map(|s| s.duration).sum();
-    let hook: f64 = shots.iter().filter(|s| s.beat.as_deref() == Some("hook")).map(|s| s.duration).sum();
-    if hook > 6.0 {
-        out.push(format!("hook runs {}s; keep it under ~5s", fmt_g(hook)));
-    }
-    if target_duration != 0.0 && (total - target_duration).abs() > 0.1 * target_duration {
-        out.push(format!("runtime {}s is more than 10% off the {}s target", fmt_g(total), fmt_g(target_duration)));
-    }
-    out
 }

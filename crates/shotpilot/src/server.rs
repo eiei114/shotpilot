@@ -23,14 +23,16 @@ use crate::connect::{self, Provider, Settings};
 use crate::bail;
 use crate::error::{Error, Kind, Result};
 use crate::fingerprint as fp;
+use crate::library::{self, Library};
 use crate::sound;
 pub use crate::workspace::field_changes;
 use crate::workspace::Workspace;
 
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio"];
-const MAX_BODY: usize = 1 << 20;
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout"];
+/// Loopback only; large enough for a mood-board image sent as base64.
+const MAX_BODY: usize = 20 << 20;
 
 /// Makes the Claude client for one request from the current settings. Tests pass a
 /// fake; the app uses [`connect::make_claude`] (Claude Code or an API key).
@@ -40,18 +42,25 @@ pub fn default_claude() -> ClaudeFactory {
     Box::new(connect::make_claude)
 }
 
+/// Makes the image model for mood-board frames. Tests pass a fake.
+pub type ImageFactory = Box<dyn Fn(&Settings) -> Result<Box<dyn crate::moodboard::ImageGen>> + Send + Sync>;
+
 pub struct App {
     pub path: PathBuf,
     lock: Mutex<()>,
     claude: ClaudeFactory,
+    images: ImageFactory,
     /// Where the connection settings live; None = read-only defaults.
     settings_path: Option<PathBuf>,
+    /// The global sound library (D-26); its `sounds/` folder sits under this.
+    library_root: Option<PathBuf>,
 }
 
 impl App {
     pub fn new(shots_path: &Path, claude: ClaudeFactory, settings_path: Option<PathBuf>) -> Result<App> {
         let ws = Workspace::open(shots_path)?; // fail fast on a broken definition
-        Ok(App { path: ws.path, lock: Mutex::new(()), claude, settings_path })
+        Ok(App { path: ws.path, lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen), settings_path,
+            library_root: library::default_root() })
     }
 
     fn settings(&self) -> Settings {
@@ -71,6 +80,10 @@ impl App {
         }
         v["model"] = json!(ai::model_name());
         v
+    }
+
+    fn library(&self) -> Result<Library> {
+        Library::open(self.library_root.as_deref())
     }
 
     fn ws(&self) -> Result<Workspace> {
@@ -123,6 +136,22 @@ impl Server {
         let listener = TcpListener::bind((host, port))
             .map_err(|e| Error::user(format!("cannot listen on {host}:{port}: {e}")))?;
         Ok(Server { listener, app, bind_host: host.to_ascii_lowercase() })
+    }
+
+    /// Use another image model (tests).
+    pub fn with_images(mut self, images: ImageFactory) -> Server {
+        if let Some(app) = Arc::get_mut(&mut self.app) {
+            app.images = images;
+        }
+        self
+    }
+
+    /// Use another sound library folder (tests, or a library kept elsewhere).
+    pub fn with_library(mut self, root: Option<PathBuf>) -> Server {
+        if let Some(app) = Arc::get_mut(&mut self.app) {
+            app.library_root = root;
+        }
+        self
     }
 
     pub fn port(&self) -> u16 {
@@ -285,6 +314,12 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).to_string()
 }
 
+/// Encode a value for one URL path segment (library ids hold ':').
+fn percent_encode(s: &str) -> String {
+    s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") })
+        .collect()
+}
+
 fn mime(path: &Path) -> &'static str {
     match path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).as_deref() {
         Some("png") => "image/png",
@@ -295,6 +330,7 @@ fn mime(path: &Path) -> &'static str {
         Some("mp3") => "audio/mpeg",
         Some("ogg" | "opus") => "audio/ogg",
         Some("flac") => "audio/flac",
+        Some("aif" | "aiff") => "audio/aiff",
         Some("m4a" | "aac") => "audio/mp4",
         Some("html") => "text/html; charset=utf-8",
         Some("md" | "txt") => "text/plain; charset=utf-8",
@@ -337,6 +373,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         v["lens"] = s.lens.get("focal_length").cloned().unwrap_or(Value::Null);
         v["thumbs"] = Value::Object(thumbs);
         v["node"] = ws.defn.shots[row.index].clone();
+        v["framing"] = crate::shotcheck::framing(&ws.defn, s).map(|f| f.to_json()).unwrap_or(Value::Null);
         shots.push(v);
     }
     let total: f64 = resolved.iter().map(|s| s.duration).sum();
@@ -349,11 +386,37 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "total_duration": crate::geometry::round_to(total, 3),
         "qualities": qualities,
         "warnings": ws.structure_warnings()?,
+        "checks": ws.check()?.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
+        "brief": brief_json(&ws.defn.brief),
+        "scout": crate::scout::summary(&ws.root),
+        "scout_taken": crate::scout::load_index(&ws.root)["taken"],
+        "finish": {
+            "letterbox": ws.defn.finish.letterbox,
+            "title": ws.defn.finish.title.as_ref().map(|t| json!({"text": t.text, "at": t.at, "duration": t.duration})),
+            "end_card": ws.defn.finish.end_card.as_ref().map(|(l, d)| json!({"lines": l, "duration": d})),
+            "font": crate::finish::font(&ws.defn.finish).map(|p| p.display().to_string()),
+        },
+        "stage": {
+            "summary": ws.defn.stage.summary,
+            "anchors": ws.defn.stage.anchors.iter().map(|(n, d)| json!({"name": n, "description": d})).collect::<Vec<_>>(),
+            "mood": ws.defn.stage.mood.iter().map(|(f, a)| (f.clone(), json!(a))).collect::<Map<String, Value>>(),
+        },
+        "props": ws.defn.props.iter().map(|(n, p)| json!({"name": n, "asset": p.asset, "kind": p.kind, "size": p.size})).collect::<Vec<_>>(),
+        "assets_count": crate::scout::load_assets(&ws.root).len(),
+        "pitch": ws.defn.teaser.pitch,
         "fps": ws.defn.teaser.fps,
         "shots": shots,
         "audio": ws.defn.audio,
         "cut": latest_cut(&ws.root),
     }))
+}
+
+fn brief_json(b: &crate::model::BriefCfg) -> Value {
+    json!({
+        "kind": b.kind, "genre": b.genre, "audience": b.audience, "core": b.core,
+        "must_show": b.must_show, "references": b.references, "notes": b.notes,
+        "missing": b.missing(), "written": !b.raw.is_empty(), "images": b.images,
+    })
 }
 
 /// What the app's sound lanes and sound tab draw: every placement on the teaser's
@@ -505,6 +568,33 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let rep = ws.set_fields(&sid, &assignments)?;
             send_json(stream, false, 200, &rep.to_json()).map_err(io)
         }
+        ("POST", "/api/approve") => {
+            let body = req.json()?;
+            let shots: Vec<String> = match body.get("shots") {
+                Some(Value::Array(a)) => a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
+                _ => bail!("expected {{\"shots\": [\"s01\", ...], \"approved\": true}}"),
+            };
+            let approved = body.get("approved").and_then(Value::as_bool).unwrap_or(true);
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let mut done = Vec::new();
+            for s in ws.select(&shots)? {
+                ws.approve(&s.id, approved)?;
+                done.push(s.id);
+            }
+            send_json(stream, false, 200, &json!({"shots": done, "approved": approved})).map_err(io)
+        }
+        ("POST", "/api/brief") => {
+            let body = req.json()?;
+            let entries: Vec<(String, Value)> = match body.get("set") {
+                Some(Value::Object(m)) if !m.is_empty() => m.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+                _ => bail!("expected {{\"set\": {{\"genre\": \"...\", ...}}}}"),
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.set_brief(&entries)?;
+            send_json(stream, false, 200, &brief_json(&ws.defn.brief)).map_err(io)
+        }
         ("POST", "/api/order") => {
             let body = req.json()?;
             let _guard = app.mutate()?;
@@ -577,6 +667,48 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
         }
+        ("GET" | "HEAD", "/api/library") => {
+            let lib = app.library()?;
+            let arg = |k: &str| {
+                req.query.split('&').find_map(|kv| kv.strip_prefix(k).and_then(|v| v.strip_prefix('=')))
+                    .map(percent_decode).unwrap_or_default()
+            };
+            let limit = arg("limit").parse().unwrap_or(200).min(1000);
+            let root = app.root();
+            let items: Vec<Value> = lib.search(&arg("q"), &arg("kind"), limit).into_iter().map(|s| {
+                let mut v = s.to_json();
+                v["url"] = json!(format!("/library/{}", percent_encode(&s.id)));
+                v["imported"] = json!(lib.imported(s, &root));
+                v
+            }).collect();
+            let out = json!({
+                "available": lib.dir.is_some(),
+                "dir": lib.dir.as_ref().map(|d| d.display().to_string()),
+                "total": lib.sounds.len(),
+                "bgm": lib.sounds.iter().filter(|s| s.is_bgm()).count(),
+                "items": items,
+            });
+            send_json(stream, head, 200, &out).map_err(io)
+        }
+        ("GET" | "HEAD", p) if p.starts_with("/library/") => {
+            let lib = app.library()?;
+            let id = percent_decode(&p["/library/".len()..]);
+            match lib.get(&id).and_then(|s| lib.file(s)) {
+                None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
+                Some(file) => {
+                    let body = std::fs::read(&file)?;
+                    send(stream, head, 200, mime(&file), &body, &[("Cache-Control", "max-age=3600".into())]).map_err(io)
+                }
+            }
+        }
+        ("POST", "/api/library/import") => {
+            let body = req.json()?;
+            let Some(id) = body.get("id").and_then(Value::as_str) else { bail!("id: the library sound to use") };
+            let _guard = app.mutate()?;
+            let file = app.library()?.import(id, &app.root())?;
+            let ws = app.ws()?;
+            send_json(stream, false, 200, &json!({"file": file, "sound": sound_payload(&ws)?})).map_err(io)
+        }
         ("POST", "/api/audio-folder") => {
             let _guard = app.mutate()?;
             let dir = app.root().join("audio");
@@ -594,6 +726,26 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             if let Some(p) = body.get("provider").and_then(Value::as_str) {
                 s.provider = Provider::parse(p)?;
             }
+            if let Some(e) = body.get("effort").and_then(Value::as_str) {
+                let e = e.trim();
+                if !e.is_empty() && !ai::valid_effort(e) {
+                    bail!("effort must be one of {} (got '{e}')", ai::EFFORTS.join(", "));
+                }
+                s.effort = (!e.is_empty()).then(|| e.to_string()); // empty = back to the default
+            }
+            if let Some(p) = body.get("image_provider").and_then(Value::as_str) {
+                if !connect::IMAGE_PROVIDERS.contains(&p) {
+                    bail!("image_provider must be one of {}", connect::IMAGE_PROVIDERS.join(", "));
+                }
+                s.image_provider = p.to_string();
+            }
+            if let Some(k) = body.get("openai_api_key").and_then(Value::as_str) {
+                let k = k.trim();
+                if !k.is_empty() && !k.starts_with("sk-") {
+                    bail!("that does not look like an OpenAI API key (they start with sk-)");
+                }
+                s.openai_api_key = (!k.is_empty()).then(|| k.to_string());
+            }
             if let Some(k) = body.get("api_key").and_then(Value::as_str) {
                 let k = k.trim();
                 if !k.is_empty() && !k.starts_with("sk-") {
@@ -604,6 +756,105 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             s.save(&path)?;
             send_json(stream, false, 200, &app.ai_status()).map_err(io)
         }
+        ("GET" | "HEAD", "/api/assets") => {
+            let ws = app.ws()?;
+            let list: Vec<Value> = crate::scout::load_assets(&ws.root)
+                .iter()
+                .map(|a| {
+                    let mut v = a.to_json();
+                    v["suggested"] = json!(a.suggested_name());
+                    v
+                })
+                .collect();
+            send_json(stream, head, 200, &json!({"assets": list})).map_err(io)
+        }
+        ("POST", "/api/assets/scan") => {
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let list = ws.scan_assets()?;
+            send_json(stream, false, 200, &json!({"count": list.len()})).map_err(io)
+        }
+        ("POST", "/api/props") => {
+            let body = req.json()?;
+            let name = body.get("name").and_then(Value::as_str).unwrap_or("").trim().to_string();
+            let asset = body.get("asset").and_then(Value::as_str).unwrap_or("").trim().to_string();
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.add_prop(&name, &asset, None, None)?;
+            send_json(stream, false, 200, &json!({"added": name})).map_err(io)
+        }
+        ("POST", "/api/props/remove") => {
+            let body = req.json()?;
+            let name = body.get("name").and_then(Value::as_str).unwrap_or("").to_string();
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.remove_prop(&name)?;
+            send_json(stream, false, 200, &json!({"removed": name})).map_err(io)
+        }
+        ("POST", "/api/finish") => {
+            let body = req.json()?;
+            let entries: Vec<(String, Value)> = match body.get("set") {
+                Some(Value::Object(m)) if !m.is_empty() => m.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+                _ => bail!("expected {{\"set\": {{\"letterbox\": 2.39, ...}}}}"),
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.set_finish(&entries)?;
+            send_json(stream, false, 200, &json!({"ok": true})).map_err(io)
+        }
+        ("POST", "/api/stage") => {
+            let claude = (app.claude)(&app.settings())?;
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let st = ai::understand_stage(&ws.defn, claude.as_ref())?;
+            ws.set_stage(&st)?;
+            send_json(stream, false, 200, &json!({"summary": st.summary, "anchors": st.anchors.len()})).map_err(io)
+        }
+        ("POST", "/api/scout") => {
+            let body = req.json()?;
+            let only: Vec<String> = body
+                .get("anchors")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let idx = ws.take_scout(&only)?;
+            send_json(stream, false, 200, &idx).map_err(io)
+        }
+        ("POST", "/api/moodboard/generate") => {
+            let body = req.json()?;
+            let direction = body.get("direction").and_then(Value::as_str).unwrap_or("").to_string();
+            let n = body.get("n").and_then(Value::as_u64).unwrap_or(4).clamp(1, 4) as usize;
+            let gen = (app.images)(&app.settings())?; // say what is missing before taking the lock
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let made = ws.generate_moodboard(gen.as_ref(), &direction, n)?;
+            send_json(stream, false, 200, &json!({"added": made, "images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/moodboard/upload") => {
+            let body = req.json()?;
+            let name = body.get("name").and_then(Value::as_str).unwrap_or("image");
+            let data = body.get("data").and_then(Value::as_str).unwrap_or("");
+            let data = data.split_once("base64,").map(|(_, d)| d).unwrap_or(data); // a data: URL is fine too
+            let bytes = crate::moodboard::base64_decode(data).ok_or_else(|| Error::user("the image data is not base64"))?;
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let rel = ws.add_moodboard_image(name, &bytes)?;
+            send_json(stream, false, 200, &json!({"added": [rel], "images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/moodboard/remove") => {
+            let body = req.json()?;
+            let rel = body.get("image").and_then(Value::as_str).unwrap_or("");
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.remove_moodboard_image(rel)?;
+            send_json(stream, false, 200, &json!({"images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/plan") => {
+            let out = plan(app, &req.json()?)?;
+            send_json(stream, false, 200, &out).map_err(io)
+        }
         ("POST", "/api/revise") => {
             let out = revise(app, &req.json()?)?;
             send_json(stream, false, 200, &out).map_err(io)
@@ -612,6 +863,38 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, head, 404, &json!({"error": format!("no route for {} {}", req.method, req.path)})).map_err(io)
         }
     }
+}
+
+/// The structure stage: Claude writes the whole shot list from the brief, the skeleton and
+/// the craft rules (one pass, no self-review; D-22). Code normalizes it, writes it, and the
+/// shot check result goes to the human. Replacing existing shots needs `replace: true`.
+fn plan(app: &App, body: &Map<String, Value>) -> Result<Value> {
+    let note = body.get("note").and_then(Value::as_str).map(str::trim).unwrap_or("");
+    let replace = body.get("replace").and_then(Value::as_bool).unwrap_or(false);
+    let duration = body.get("duration").and_then(Value::as_f64);
+    let n_shots = body.get("shots").and_then(Value::as_u64).map(|n| n as usize);
+    let _guard = app.mutate()?;
+    let mut ws = app.ws()?;
+    if !ws.defn.shots.is_empty() && !replace {
+        bail!("shots.yaml already has {} shots; replacing them needs confirmation", ws.defn.shots.len());
+    }
+    let claude = (app.claude)(&app.settings())?;
+    let p = ai::plan(&ws.defn, None, duration, n_shots, Some(note).filter(|n| !n.is_empty()), claude.as_ref())?;
+    ws.replace_all_shots(&p.shots)?;
+    let found = ws.check()?;
+    let count = |sev: &str| found.iter().filter(|f| f.severity.as_str() == sev).count();
+    let checks = json!({"P0": count("P0"), "P1": count("P1"), "P2": count("P2")});
+    let mut extra = Map::new();
+    extra.insert("note".into(), json!(note));
+    extra.insert("rationale".into(), json!(p.rationale));
+    extra.insert("adjustments".into(), json!(p.adjustments));
+    extra.insert("checks".into(), checks.clone());
+    ws.state.annotate_last(extra);
+    ws.state.save()?;
+    Ok(json!({
+        "shots": p.shots.iter().map(|s| &s["id"]).collect::<Vec<_>>(), "rationale": p.rationale,
+        "adjustments": p.adjustments, "checks": checks,
+    }))
 }
 
 /// A note from the app's chat: Claude edits the pointed-at shot (or, with no shot, the
@@ -675,6 +958,9 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     }
     if !context.is_empty() {
         pointer.context = Some(context.join("; "));
+    }
+    if pointer.sound {
+        pointer.library = Some(app.library()?);
     }
     let claude = (app.claude)(&app.settings())?;
     let rev = ai::revise_at(&ws.defn, note, scope.as_deref(), &pointer, claude.as_ref())?;

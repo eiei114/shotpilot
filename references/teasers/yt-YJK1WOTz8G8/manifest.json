@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-YJK1WOTz8G8",
+  "name": "アニメ『パンどろぼう』ティザーPV ｜2026年10月放送決定",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=YJK1WOTz8G8",
+    "channel": "パンどろぼう / PANDOROBO【公式】",
+    "uploadDate": null,
+    "viewCount": 914861,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

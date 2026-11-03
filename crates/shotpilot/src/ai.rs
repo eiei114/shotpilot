@@ -15,12 +15,24 @@ use std::time::Duration;
 use serde_json::{json, Map, Value};
 
 use crate::bail;
+use crate::craft;
 use crate::error::{Error, Result};
+use crate::library::Library;
 use crate::model::{self, beat_guide, num, tod_names_sorted, Definition, BEATS, MOVES};
 use crate::sound;
 use crate::yamlio;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5-5";
+
+/// Effort levels, lowest first. The same names work for the Messages API
+/// (`output_config.effort`) and for Claude Code (`claude -p --effort`).
+pub const EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+/// The default when nothing is set (also Claude Opus 5.5's own default).
+pub const DEFAULT_EFFORT: &str = "medium";
+
+pub fn valid_effort(e: &str) -> bool {
+    EFFORTS.contains(&e)
+}
 const API_VERSION: &str = "2026-10-21";
 const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 
@@ -37,7 +49,12 @@ distances: close-up 80-200 cm at 50-85 mm, medium 250-500 cm at 35-50 mm,
 wide 800-3000 cm at 18-28 mm.
 Moves: static, dolly_in/dolly_out (distance cm along view), truck_left/truck_right
 (distance cm sideways, keeps aim on the subject), crane_up/crane_down (distance cm),
-orbit_left/orbit_right (degrees around the subject).";
+orbit_left/orbit_right (degrees around the subject).
+Props (listed under `props`) can pop into a shot with no animation: a shot's `appear` list
+holds {prop, at: seconds from the shot start, anchor, offset [x, y, z] cm, optional yaw}.
+The prop stands on anchor+offset and faces the camera unless yaw is given. Use it for a
+sudden reveal (an enemy that is simply there on the cut or a beat later); one or two per
+teaser land harder than many.";
 
 fn shot_schema() -> Value {
     let mut tod = vec!["default"];
@@ -57,9 +74,20 @@ fn shot_schema() -> Value {
             "move_amount": {"type": "number", "description": "cm for dolly/truck/crane, degrees for orbit, 0 for static"},
             "time_of_day": {"type": "string", "enum": tod},
             "notes": {"type": "string"},
+            "appear": {"type": "array", "description": "props that pop in during this shot (empty for none)", "items": {
+                "type": "object",
+                "properties": {
+                    "prop": {"type": "string"},
+                    "at": {"type": "number", "description": "seconds from the shot start"},
+                    "anchor": {"type": "string"},
+                    "offset": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["prop", "at", "anchor", "offset"],
+                "additionalProperties": false,
+            }},
         },
         "required": ["id", "beat", "purpose", "duration", "anchor", "offset", "look_at", "focal_length", "move",
-                     "move_amount", "time_of_day", "notes"],
+                     "move_amount", "time_of_day", "notes", "appear"],
         "additionalProperties": false,
     })
 }
@@ -115,7 +143,7 @@ fn request_with(system: &str, user: Value, schema: Value) -> Value {
         "max_tokens": 64000,
         "stream": true,
         "thinking": {"type": "adaptive"},
-        "output_config": {"effort": "medium", "format": {"type": "json_schema", "schema": schema}},
+        "output_config": {"effort": DEFAULT_EFFORT, "format": {"type": "json_schema", "schema": schema}},
         // on a policy decline, the API re-runs the request on Anthropic's recommended fallback model
         "fallbacks": "default",
         "system": system,
@@ -265,54 +293,206 @@ pub fn read_stream(reader: impl BufRead) -> Result<String> {
 
 // --------------------------------------------------------------------------- plan
 
-fn anchors_list(defn: &Definition) -> String {
-    defn.anchors
+fn props_list(defn: &Definition) -> String {
+    if defn.props.is_empty() {
+        return "(none: leave `appear` empty)".into();
+    }
+    defn.props
         .iter()
-        .map(|(k, v)| format!("- {k}: [{}]", v.iter().map(|x| yamlio::fmt_float(*x)).collect::<Vec<_>>().join(", ")))
+        .map(|(k, p)| format!("- {k}: {} ({}), {} x {} x {} cm", p.asset, if p.kind == "skeletal" { "a character, no animation" } else { "an object" },
+                              model::fmt_g(p.size[0]), model::fmt_g(p.size[1]), model::fmt_g(p.size[2])))
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>, claude: &dyn Claude)
-    -> Result<(Vec<Value>, String)> {
+fn anchors_list(defn: &Definition) -> String {
+    let sensor = defn.defaults.get("lens").and_then(|l| l.get("sensor_width")).and_then(num).unwrap_or(36.0);
+    let (w, h) = defn.teaser.resolution;
+    let aspect = if h > 0 { w as f64 / h as f64 } else { 16.0 / 9.0 };
+    let xyz = |v: &[f64; 3]| v.iter().map(|x| yamlio::fmt_float(*x)).collect::<Vec<_>>().join(", ");
+    defn.anchors
+        .iter()
+        .map(|(k, v)| match defn.known_box(k) {
+            Some(b) => format!(
+                "- {k}: [{}], {} x {} x {} cm (W x D x H, box centre [{}]); fills the frame height from about {} cm at 35mm",
+                xyz(v), model::fmt_g(b.size[0]), model::fmt_g(b.size[1]), model::fmt_g(b.size[2]), xyz(&b.center),
+                model::fmt_g((craft::distance_for(b.size[2], 35.0, sensor, aspect) / 10.0).round() * 10.0)
+            ),
+            None => format!("- {k}: [{}] (size unknown)", xyz(v)),
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// A planned shot list, before it is written to shots.yaml.
+#[derive(Debug, Clone)]
+pub struct Planned {
+    pub shots: Vec<Value>,
+    pub rationale: String,
+    /// What code changed in Claude's list (beat order, duration range, runtime).
+    pub adjustments: Vec<String>,
+    /// The skeleton Claude was given.
+    pub skeleton: Vec<craft::Slot>,
+}
+
+pub fn stage_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string", "description": "the whole set in 3-5 sentences: layout, scale, light, materials, mood"},
+            "anchors": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string", "description": "what is there, what it is made of, the light on it, where a camera has room and what blocks the view"},
+                },
+                "required": ["name", "description"],
+                "additionalProperties": false,
+            }},
+            "mood": {"type": "object", "description": "for each mood-board frame, the anchor whose scout photo suits it best",
+                     "properties": {"place": {"type": "string"}, "detail": {"type": "string"}, "threat": {"type": "string"}, "title": {"type": "string"}},
+                     "required": ["place", "detail", "threat", "title"], "additionalProperties": false},
+        },
+        "required": ["summary", "anchors", "mood"],
+        "additionalProperties": false,
+    })
+}
+
+/// Read the level from the scout photos: a description of the set and of each anchor, and
+/// which anchor each mood-board frame should start from. One pass, written to `stage:`.
+pub fn understand_stage(defn: &Definition, claude: &dyn Claude) -> Result<model::StageCfg> {
+    let photos = crate::scout::planner_blocks(defn, 12);
+    if photos.is_empty() {
+        bail!("no scout photos yet: take them first (shotpilot scout, or the ロケハン stage in the app)");
+    }
+    let system = "You are the location scout on a game trailer shoot. From photos taken inside the game engine and the \
+                  list of named anchors, describe the set the way a cinematographer needs it before planning shots. \
+                  Describe only what the photos and data show; where something is unclear, say so plainly.";
+    let mut text = format!(
+        "Game pitch: {}\nAnchors (name: position, size):\n{}\n\nProps that can be made to appear:\n{}\n\n\
+         The photos are labelled with their anchor; each looks at that anchor from the side facing the middle of the set.\n\
+         Write `summary` and each anchor's `description` in the same language as the pitch. For `mood`, pick from the \
+         anchor names above: `place` = the widest establishing view, `detail` = a small object with texture, \
+         `threat` = where something unsettling could stand or watch, `title` = a calm wide view with sky or open space.",
+        if defn.teaser.pitch.is_empty() { defn.brief.core.as_str() } else { defn.teaser.pitch.as_str() },
+        anchors_list(defn),
+        props_list(defn)
+    );
+    if !defn.brief.genre.is_empty() {
+        text.push_str(&format!("\nGenre: {}", defn.brief.genre));
+    }
+    let mut content = photos;
+    content.push(json!({"type": "text", "text": text}));
+    let out = ask_json(claude, system, Value::Array(content), stage_schema())?;
+    let names: Vec<String> = defn.anchors.iter().map(|(n, _)| n.clone()).collect();
+    let anchors: Vec<(String, String)> = out["anchors"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|a| {
+            let n = a["name"].as_str()?.to_string();
+            names.contains(&n).then(|| (n, a["description"].as_str().unwrap_or("").to_string()))
+        })
+        .collect();
+    let mood: Vec<(String, String)> = ["place", "detail", "threat", "title"]
+        .iter()
+        .filter_map(|k| out["mood"][k].as_str().filter(|a| names.iter().any(|n| n == a)).map(|a| (k.to_string(), a.to_string())))
+        .collect();
+    Ok(model::StageCfg { summary: out["summary"].as_str().unwrap_or("").to_string(), anchors, mood })
+}
+
+/// The planner's system prompt: role, teaser shape and engine conventions. The brief,
+/// skeleton and craft rules go in the user turn (they change per project).
+pub fn plan_system() -> String {
+    let shape: Vec<String> = BEATS.iter().map(|b| format!("- {b}: {}", beat_guide(b))).collect();
+    format!(
+        "You are a trailer director planning a game teaser shot list for an indie developer. \
+         You plan what to film inside the engine before anything is recorded. Each shot exists \
+         to make the viewer feel one specific thing. Prefer fewer, deliberate shots over many busy ones.\n\n\
+         Write the whole list in one pass. The brief, the skeleton and the craft rules you are given \
+         come from how professional game trailers are cut; follow them as you write each shot.\n\n\
+         Every teaser follows this shape, in order, and each shot carries its beat:\n{}\n\n{CONVENTIONS}",
+        shape.join("\n")
+    )
+}
+
+/// Plan a shot list from the pitch, the brief and the anchors. `direction` is an extra
+/// note from the director (e.g. typed in the app's structure stage).
+pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>,
+            direction: Option<&str>, claude: &dyn Claude) -> Result<Planned> {
     if defn.anchors.is_empty() {
         bail!("no anchors. run `shotpilot scan` (or add `anchors:`) so shots can be placed");
     }
     let pitch = pitch.filter(|p| !p.is_empty()).unwrap_or(&defn.teaser.pitch);
+    let pitch = if pitch.is_empty() { defn.brief.core.as_str() } else { pitch };
     if pitch.is_empty() {
-        bail!("give a pitch: --pitch '...' or teaser.pitch in shots.yaml");
+        bail!("give a pitch: --pitch '...', teaser.pitch in shots.yaml, or brief.core");
     }
     let duration = duration.unwrap_or(defn.teaser.target_duration);
-    let shape: Vec<String> = BEATS.iter().map(|b| format!("- {b}: {}", beat_guide(b))).collect();
-    let system = format!(
-        "You are a trailer director planning a game teaser shot list for an indie developer. \
-         You plan what to film inside the engine before anything is recorded. Each shot exists \
-         to make the viewer feel one specific thing. Prefer fewer, deliberate shots over many busy ones.\n\n\
-         Every teaser follows this shape, in order, and each shot carries its beat:\n{}\n\n{CONVENTIONS}",
-        shape.join("\n")
-    );
+    let slots = craft::skeleton(&defn.brief, duration, n_shots);
     let mut user = format!(
-        "Game pitch: {pitch}\nTarget teaser length: {} seconds (shot durations must sum to within 10% of this).\n",
-        model::fmt_g(duration)
+        "Game pitch: {pitch}\nTarget teaser length: {} seconds.\n\
+         Available anchors (only use these names):\n{}\n\nProps that can appear (only these names):\n{}\n\n{}\n",
+        model::fmt_g(duration),
+        anchors_list(defn),
+        props_list(defn),
+        craft::plan_spec(defn, &slots)
     );
-    if let Some(n) = n_shots {
-        user.push_str(&format!("Number of shots: {n}\n"));
+    if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
+        user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
-    user.push_str(&format!(
-        "Available anchors (only use these names):\n{}\n\n\
-         Write the shot list. Write `purpose` and `notes` in the same language as the pitch.",
-        anchors_list(defn)
-    ));
-    let out = ask_json(claude, &system, json!(user), plan_schema())?;
-    let shots: Vec<Value> = out["shots"]
+    if !defn.stage.is_empty() {
+        let mut st = format!("\n## Stage (from the location scout)\n{}\n", defn.stage.summary);
+        for (n, d) in &defn.stage.anchors {
+            st.push_str(&format!("- {n}: {d}\n"));
+        }
+        user.push_str(&st);
+    }
+    let scout = crate::scout::planner_blocks(defn, 8);
+    if !scout.is_empty() {
+        user.push_str(&format!(
+            "\n## Location scout\nThe attached photos labelled \"Location scout\" show {} anchor(s) as they really look in \
+             the level, one view each. Place cameras where the photos show open space and a clear view; they are the \
+             ground truth for what each anchor is.\n",
+            scout.len() / 2
+        ));
+    }
+    let mood = crate::moodboard::image_blocks(defn, 4);
+    let mut content = scout;
+    let n_mood = mood.len();
+    content.extend(mood);
+    if n_mood > 0 {
+        user.push_str(&format!(
+            "\n## Mood board\nThe {} unlabelled image(s) after the scout photos are the director's mood board: match \
+             their palette, light and atmosphere (time of day, haze, contrast). They are mood, not shot designs: every \
+             shot still has to be filmed from the anchors above.\n",
+            n_mood
+        ));
+    }
+    user.push_str(
+        "\nWrite the shot list. Write `purpose` and `notes` in the same language as the pitch. \
+         `rationale`: two or three sentences on the idea of the cut, in that language too.",
+    );
+    let user = if content.is_empty() {
+        json!(user)
+    } else {
+        content.push(json!({"type": "text", "text": user}));
+        Value::Array(content)
+    };
+    let out = ask_json(claude, &plan_system(), user, plan_schema())?;
+    let mut shots: Vec<Value> = out["shots"]
         .as_array()
         .ok_or_else(|| Error::user("Claude returned no shots"))?
         .iter()
         .enumerate()
         .map(|(i, s)| shot_from_plan(s, i))
         .collect();
+    if shots.is_empty() {
+        bail!("Claude returned no shots");
+    }
+    let adjustments = craft::normalize(&mut shots, duration);
     validate_shots(defn, &shots)?;
-    Ok((shots, out["rationale"].as_str().unwrap_or("").to_string()))
+    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots })
 }
 
 fn r1(v: f64) -> f64 {
@@ -346,6 +526,20 @@ fn shot_from_plan(s: &Value, i: usize) -> Value {
     }
     if let Some(n) = s["notes"].as_str().filter(|n| !n.is_empty()) {
         shot.insert("notes".into(), json!(n));
+    }
+    let appear: Vec<Value> = s["appear"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| {
+            let mut off: Vec<f64> = a["offset"].as_array().map(|o| o.iter().filter_map(num).collect()).unwrap_or_default();
+            off.resize(3, 0.0);
+            json!({"prop": a["prop"], "at": crate::geometry::round_to(num(&a["at"]).unwrap_or(0.0), 2),
+                   "anchor": a["anchor"], "offset": off.iter().take(3).map(|v| r1(*v)).collect::<Vec<_>>()})
+        })
+        .collect();
+    if !appear.is_empty() {
+        shot.insert("appear".into(), Value::Array(appear));
     }
     Value::Object(shot)
 }
@@ -392,6 +586,34 @@ pub struct Pointer {
     /// The director is working on the sound: only `sfx` of the shots in scope and the
     /// teaser's `audio` may change. Anything else Claude returns is dropped.
     pub sound: bool,
+    /// The global sound library. With a sound note, Claude may pick from it by writing
+    /// `file: lib:<id>`; the file is copied into the project before the edit is checked.
+    pub library: Option<Library>,
+}
+
+/// How many library sounds a sound note lists for Claude.
+const LIBRARY_PROMPT_MAX: usize = 300;
+
+/// Replace `lib:<id>` files in the shots' `sfx` and the BGM with copies in `audio/lib/`.
+fn take_from_library(edits: &mut [(String, Value)], audio: Option<&mut Map<String, Value>>, lib: Option<&Library>,
+                     root: &std::path::Path) -> Result<()> {
+    let fix = |f: &mut Value| -> Result<()> {
+        let Some(id) = f.as_str().and_then(|s| s.strip_prefix("lib:")).map(str::to_string) else { return Ok(()) };
+        let Some(lib) = lib else { bail!("Claude used library sound '{id}' but no library is open; nothing applied") };
+        *f = json!(lib.import(&id, root)?);
+        Ok(())
+    };
+    for (_, shot) in edits.iter_mut() {
+        for it in shot.get_mut("sfx").and_then(Value::as_array_mut).into_iter().flatten() {
+            if let Some(f) = it.get_mut("file") {
+                fix(f)?;
+            }
+        }
+    }
+    if let Some(f) = audio.and_then(|a| a.get_mut("bgm")).and_then(|b| b.get_mut("file")) {
+        fix(f)?;
+    }
+    Ok(())
 }
 
 /// Images above this are sent as text only (the API caps one image at 5 MB after base64).
@@ -489,9 +711,11 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          editorial `beat` ({}); keep it unless the note changes the shot's role.\n\n{CONVENTIONS}\n\
          A shot's camera can be either `anchor`+`offset` (+ optional `move`, `look_at`, `lens`), or \
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
-         {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}.
+         {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}. \
+         A shot may carry on-screen text burned in at the cut: `caption` {{text, at, duration}} (short, one line), \
+         and `transition` into the next shot: cut, dip (through black) or flash (through white). They never re-render.
 
-         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Judge the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
+         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );
@@ -506,11 +730,21 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     if !audio_allowed {
         scope_line.push_str("Leave `audio` empty (the background music is out of scope for this note).\n");
     }
-    let files_line = if files.is_empty() {
+    let mut files_line = if files.is_empty() {
         "(none yet: sound files go in the audio/ folder next to shots.yaml)".to_string()
     } else {
         files.join(", ")
     };
+    if let Some(lib) = pointer.library.as_ref().filter(|l| pointer.sound && !l.sounds.is_empty()) {
+        files_line.push_str(&format!(
+            "
+
+Library sounds you may also use: write `file: lib:<id>` and it is copied into the project              (bgm = a loop long enough for background music):
+{}",
+            lib.prompt_list(LIBRARY_PROMPT_MAX)
+        ));
+    }
+    let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
     let user = format!(
         "Anchors:\n{anchors}\n\nCurrent shots:\n{}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
@@ -599,6 +833,7 @@ Where the director is pointing: {c}")).unwrap_or_default();
             order = None;
         }
     }
+    take_from_library(&mut edits, audio.as_mut(), pointer.library.as_ref(), &defn.root())?;
     let trial: Vec<Value> = defn
         .shots
         .iter()

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-_PRaywfa1LE",
+  "name": "『チェンソーマン 刺客篇』ティザーPV／Chainsaw Man –  Assassins Arc Official Teaser",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=_PRaywfa1LE",
+    "channel": "MAPPA CHANNEL",
+    "uploadDate": null,
+    "viewCount": 6235641,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

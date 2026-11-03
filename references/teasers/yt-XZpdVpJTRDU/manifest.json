@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-XZpdVpJTRDU",
+  "name": "【ホロカ】「サマー・ホログラム」🐻💿商品ティザー映像🏴‍☠️🧪",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=XZpdVpJTRDU",
+    "channel": "hololive OFFICIAL CARD GAME【公式】",
+    "uploadDate": null,
+    "viewCount": 16882,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

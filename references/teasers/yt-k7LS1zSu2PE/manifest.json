@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-k7LS1zSu2PE",
+  "name": "Predecessor Reimagined – Fan Made UE5 Cinematic Trailer [FIRST TEASER]",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=k7LS1zSu2PE",
+    "channel": "Shark'ZxD Unreal Artist",
+    "uploadDate": null,
+    "viewCount": 636,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

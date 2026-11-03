@@ -90,6 +90,50 @@ enum Cmd {
         #[arg(long)]
         no_video: bool,
     },
+    /// lint the shot list against trailer craft rules (P0 blocks approval)
+    Check {
+        #[arg(long)]
+        json: bool,
+    },
+    /// sign off a shot's framing; any edit that changes its picture withdraws it
+    Approve {
+        #[arg(required = true)]
+        shots: Vec<String>,
+        /// withdraw the approval
+        #[arg(long)]
+        undo: bool,
+    },
+    /// photograph every anchor from four sides into scout/ (stage 0, location scouting)
+    Scout {
+        anchors: Vec<String>,
+    },
+    /// read the set from the scout photos with Claude and write `stage:` (stage 0)
+    Stage,
+    /// the meshes the project has: assets [filter]  |  assets --scan (asks the engine)
+    Assets {
+        filter: Option<String>,
+        #[arg(long)]
+        scan: bool,
+    },
+    /// props shots may make appear: prop add <name> <asset>  |  prop rm <name>
+    Prop {
+        #[arg(value_parser = ["add", "rm"])]
+        action: String,
+        name: String,
+        asset: Option<String>,
+    },
+    /// generate mood-board images from the brief (Codex, or an OpenAI API key)
+    Moodboard {
+        /// art direction, e.g. "cold blue, red lantern, fog"
+        #[arg(long, default_value = "")]
+        direction: String,
+        #[arg(short, long, default_value_t = 4)]
+        n: usize,
+    },
+    /// what the trailer is for: brief kind=teaser genre=ホラー must_show='[井戸, 窓]'
+    Brief {
+        assignments: Vec<String>,
+    },
     /// edit fields of one shot: set s03 camera.lens.focal_length=50 duration=5
     Set {
         shot: String,
@@ -112,6 +156,12 @@ enum Cmd {
         duration: Option<f64>,
         #[arg(long)]
         shots: Option<usize>,
+        /// extra direction for the cut (e.g. "slow burn, no jump scares")
+        #[arg(long)]
+        note: Option<String>,
+        /// print the brief, skeleton and craft rules Claude would get, without calling it
+        #[arg(long)]
+        spec: bool,
         #[arg(long)]
         write: bool,
         #[arg(long)]
@@ -238,7 +288,7 @@ fn run(cli: Cli) -> Result<u8> {
             let qs = fp::quality_names(&ws.defn);
             let idw = rows.iter().map(|r| r.id.len()).max().unwrap_or(4).max(4);
             let qh: Vec<String> = qs.iter().map(|q| format!("{q:<7}")).collect();
-            println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {}", "#", "shot", "beat", "sec", "engine", qh.join("  "));
+            println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {:<8}  {}", "#", "shot", "beat", "sec", "engine", "framing", qh.join("  "));
             for r in &rows {
                 let marks: Vec<String> = qs
                     .iter()
@@ -251,8 +301,13 @@ fn run(cli: Cli) -> Result<u8> {
                         format!("{m:<7}")
                     })
                     .collect();
-                println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {}", r.index + 1, r.id, r.beat.as_deref().unwrap_or("-"),
-                         fmt_g(r.duration), r.build, marks.join("  "));
+                let framing = match r.approval.as_str() {
+                    "approved" => "ok",
+                    "outdated" => "CHANGED",
+                    _ => "-",
+                };
+                println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {:<8}  {}", r.index + 1, r.id, r.beat.as_deref().unwrap_or("-"),
+                         fmt_g(r.duration), r.build, framing, marks.join("  "));
             }
             let total: f64 = rows.iter().map(|r| r.duration).sum();
             let target = ws.defn.teaser.target_duration;
@@ -260,6 +315,7 @@ fn run(cli: Cli) -> Result<u8> {
             println!("\ntotal {}s / target {}s ({}{}s)", fmt_g(total), fmt_g(target), if diff >= 0.0 { "+" } else { "" }, fmt_g(diff));
             println!("engine: synced = sequence asset matches shots.yaml, dirty = needs build, new = never built");
             println!("takes:  fresh = take exists for the current definition, STALE = only older takes exist");
+            println!("framing: ok = approved, CHANGED = the picture changed after approval (shotpilot approve)");
             for w in ws.structure_warnings()? {
                 println!("note: {w}");
             }
@@ -358,6 +414,111 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("  note:       {n}");
             }
         }
+        Cmd::Check { json } => {
+            let ws = ws(file)?;
+            let found = ws.check()?;
+            if json {
+                let v: Vec<Value> = found.iter().map(|f| f.to_json()).collect();
+                println!("{}", serde_json::to_string_pretty(&v)?);
+                return Ok(0);
+            }
+            for s in ws.resolved()? {
+                if let Some(fr) = shotpilot::shotcheck::framing(&ws.defn, &s) {
+                    let pct = |v: f64| if v.is_finite() { format!("{}%", (v * 100.0).round()) } else { "inside".into() };
+                    println!("  {:<24} {:<10} fills {} -> {} of the frame height ({}{})", s.id, fr.subject, pct(fr.fill.0),
+                             pct(fr.fill.1), shotpilot::shotcheck::size_name(fr.fill.0.min(fr.fill.1)),
+                             if fr.known { "" } else { ", size unknown" });
+                }
+            }
+            if found.is_empty() {
+                println!("ok: no findings");
+            }
+            for f in &found {
+                println!("{}
+      fix: {}", f.line(), f.fix);
+            }
+            let p0 = found.iter().filter(|f| f.severity == shotpilot::shotcheck::Severity::P0).count();
+            return Ok(if p0 > 0 { 1 } else { 0 });
+        }
+        Cmd::Approve { shots, undo } => {
+            let mut ws = ws(file)?;
+            for s in ws.select(&shots)? {
+                ws.approve(&s.id, !undo)?;
+                println!("{} {}", if undo { "withdrawn:" } else { "approved:" }, s.id);
+            }
+        }
+        Cmd::Scout { anchors } => {
+            let mut ws = ws(file)?;
+            let idx = ws.take_scout(&anchors)?;
+            for (name, views) in idx["anchors"].as_object().into_iter().flatten() {
+                let files: Vec<&str> = views.as_array().into_iter().flatten().filter_map(|v| v["file"].as_str()).collect();
+                println!("{name:<16} {}", files.join("  "));
+            }
+        }
+        Cmd::Stage => {
+            let mut ws = ws(file)?;
+            let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
+            let st = ai::understand_stage(&ws.defn, claude.as_ref())?;
+            ws.set_stage(&st)?;
+            println!("{}\n", st.summary);
+            for (n, d) in &st.anchors {
+                println!("- {n}: {d}");
+            }
+            let mood: Vec<String> = st.mood.iter().map(|(f, a)| format!("{f}={a}")).collect();
+            println!("\nmood board bases: {}", mood.join(", "));
+        }
+        Cmd::Assets { filter, scan } => {
+            let mut ws = ws(file)?;
+            let list = if scan { ws.scan_assets()? } else { shotpilot::scout::load_assets(&ws.root) };
+            if list.is_empty() {
+                println!("no inventory yet: run `shotpilot assets --scan`");
+            }
+            let f = filter.unwrap_or_default().to_lowercase();
+            for a in list.iter().filter(|a| a.asset.to_lowercase().contains(&f)) {
+                let size = a.size.map(|s| format!("{} x {} x {} cm", fmt_g(s[0]), fmt_g(s[1]), fmt_g(s[2]))).unwrap_or_else(|| "-".into());
+                println!("{:<9} {:<22} {}   (prop add {} {})", a.kind, size, a.asset, a.suggested_name(), a.asset);
+            }
+        }
+        Cmd::Prop { action, name, asset } => {
+            let mut ws = ws(file)?;
+            if action == "add" {
+                let Some(asset) = asset else { bail!("prop add <name> <asset path>") };
+                ws.add_prop(&name, &asset, None, None)?;
+                println!("added prop {name}: {asset}");
+            } else {
+                ws.remove_prop(&name)?;
+                println!("removed prop {name}");
+            }
+        }
+        Cmd::Moodboard { direction, n } => {
+            let mut ws = ws(file)?;
+            let gen = connect::make_image_gen(&Settings::load(Settings::default_path().as_deref()))?;
+            let made = ws.generate_moodboard(gen.as_ref(), &direction, n.clamp(1, 4))?;
+            for m in &made {
+                println!("added {m}");
+            }
+            println!("mood board: {} image(s); plan shows them to Claude", ws.defn.brief.images.len());
+        }
+        Cmd::Brief { assignments } => {
+            let mut ws = ws(file)?;
+            if !assignments.is_empty() {
+                ws.set_brief(&parse_assignments(&assignments)?)?;
+            }
+            let b = &ws.defn.brief;
+            println!("kind:       {}", b.kind);
+            println!("genre:      {}", b.genre);
+            println!("audience:   {}", b.audience);
+            println!("core:       {}", b.core);
+            println!("must_show:  {}", b.must_show.join(", "));
+            println!("references: {}", b.references.join(", "));
+            if !b.notes.is_empty() {
+                println!("notes:      {}", b.notes);
+            }
+            let missing = b.missing();
+            if !missing.is_empty() {
+                println!("missing:    {} (the planner works better with these)", missing.join(", "));
+            }
+        }
         Cmd::Set { shot, assignments } => {
             let parsed = parse_assignments(&assignments)?;
             let mut ws = ws(file)?;
@@ -385,12 +546,22 @@ fn run(cli: Cli) -> Result<u8> {
             };
             print_edit_report(&ws.edit_definition(&[], Some(&new), "order", "")?);
         }
-        Cmd::Plan { pitch, duration, shots, write, replace } => {
+        Cmd::Plan { pitch, duration, shots, note, spec, write, replace } => {
             let mut ws = ws(file)?;
+            if spec {
+                let target = duration.unwrap_or(ws.defn.teaser.target_duration);
+                let slots = shotpilot::craft::skeleton(&ws.defn.brief, target, shots);
+                println!("{}", shotpilot::craft::plan_spec(&ws.defn, &slots));
+                return Ok(0);
+            }
             let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
-            let (planned, rationale) = ai::plan(&ws.defn, pitch.as_deref(), duration, shots, claude.as_ref())?;
+            let p = ai::plan(&ws.defn, pitch.as_deref(), duration, shots, note.as_deref(), claude.as_ref())?;
+            let planned = p.shots;
             let total: f64 = planned.iter().filter_map(|s| s["duration"].as_f64()).sum();
-            println!("# {} shots, {}s\n# {rationale}\n", planned.len(), fmt_g(total));
+            println!("# {} shots, {}s\n# {}\n", planned.len(), fmt_g(total), p.rationale);
+            for a in &p.adjustments {
+                println!("# adjusted by code: {a}");
+            }
             print!("{}", yamlio::dumps(&json!({"shots": planned})));
             if write {
                 if !ws.defn.shots.is_empty() && !replace {

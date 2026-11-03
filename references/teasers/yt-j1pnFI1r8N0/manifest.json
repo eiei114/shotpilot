@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-j1pnFI1r8N0",
+  "name": "OD - TGA 2023 Teaser Trailer - [CERO] 4K",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=j1pnFI1r8N0",
+    "channel": "KOJIMA PRODUCTIONS",
+    "uploadDate": null,
+    "viewCount": 214380,
+    "foundBy": "first teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

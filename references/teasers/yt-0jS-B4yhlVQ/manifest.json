@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-0jS-B4yhlVQ",
+  "name": "インディーゲーム『欠損失愛』ティザームービー〈Live2D×“パラノマサイト”ライク×サイコホラーロマンスADV〉",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=0jS-B4yhlVQ",
+    "channel": "ザクロスケ",
+    "uploadDate": null,
+    "viewCount": 1578,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

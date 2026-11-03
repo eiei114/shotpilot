@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NV02DHN2ULs",
+  "name": "Three Tricks, Three Treats | Halloween Update | Teaser Trailer | SCP - Containment Breach v1.3.12.7",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NV02DHN2ULs",
+    "channel": "Salvage",
+    "uploadDate": null,
+    "viewCount": 3373,
+    "foundBy": "horror game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

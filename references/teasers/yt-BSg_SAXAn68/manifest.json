@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-BSg_SAXAn68",
+  "name": "【15秒ティザー映像】トー京Xtrip（トーキョー クロス トリップ）【フリーゲーム】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=BSg_SAXAn68",
+    "channel": "あまつ3A",
+    "uploadDate": null,
+    "viewCount": 31,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

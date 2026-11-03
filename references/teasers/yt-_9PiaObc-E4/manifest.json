@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-_9PiaObc-E4",
+  "name": "Mega Man: Dual Override - Gameplay Trailer | gamescom 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=_9PiaObc-E4",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 183573,
+    "foundBy": "IGN teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

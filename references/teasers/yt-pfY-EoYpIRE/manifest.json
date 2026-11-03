@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-pfY-EoYpIRE",
+  "name": "【ティザーPV】『NARUTO-ナルト-』のスマートフォン向け対戦アクションゲーム 全世界配信決定！",
+  "category": "action",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=pfY-EoYpIRE",
+    "channel": "Bandai Namco Entertainment",
+    "uploadDate": null,
+    "viewCount": 148450,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

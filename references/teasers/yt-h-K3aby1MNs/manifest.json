@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-h-K3aby1MNs",
+  "name": "【ゴジバト】映画『ゴジラ-0.0』コラボ開催決定ティザーPV",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=h-K3aby1MNs",
+    "channel": "Godzilla Channel ゴジラ（東宝特撮）チャンネル",
+    "uploadDate": null,
+    "viewCount": 633,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

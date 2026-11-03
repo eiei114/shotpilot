@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-p82vauAdgv8",
+  "name": "Knights of the Old Republic Remake - Cinematic Reveal Teaser Trailer | PlayStation Showcase 2021",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=p82vauAdgv8",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 1296621,
+    "foundBy": "game reveal teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

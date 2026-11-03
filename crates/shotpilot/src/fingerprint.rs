@@ -160,6 +160,17 @@ pub fn build_fingerprint(defn: &Definition, shot: &ResolvedShot) -> String {
     }))
 }
 
+/// What a human approves when signing off a shot's framing: the shot's picture, independent
+/// of quality presets. Any edit that changes pixels changes it (and so drops the approval);
+/// beats, purpose, notes, markers and sound do not.
+pub fn look_fingerprint(defn: &Definition, shot: &ResolvedShot) -> String {
+    let mut payload = shot.engine_payload();
+    if let Some(m) = payload.as_object_mut() {
+        m.remove("markers");
+    }
+    digest(&json!({"shot": payload, "map": defn.project.map}))
+}
+
 pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: &str) -> Result<String> {
     let q = quality(defn, quality_name)?;
     let mut payload = shot.engine_payload();
@@ -180,6 +191,12 @@ pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: 
             a.into_iter().map(|(k, v)| (k, json!(v))).collect()
         };
         body["anchors"] = Value::Object(anchors);
+        // only when sizes are known, so previz takes of projects without them stay valid
+        if !defn.boxes.is_empty() {
+            let mut b = defn.boxes.clone();
+            b.sort_by(|x, y| x.0.cmp(&y.0));
+            body["anchor_boxes"] = Value::Object(b.into_iter().map(|(k, v)| (k, v.to_json())).collect());
+        }
         body["previz"] = json!(PREVIZ_VERSION);
     } else {
         body["map"] = json!(defn.project.map);

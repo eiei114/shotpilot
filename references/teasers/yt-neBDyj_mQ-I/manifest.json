@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-neBDyj_mQ-I",
+  "name": "【ティザー映像】Force of the Horseブースターパック第2弾「英雄VS豪傑」【2025/8/1発売】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=neBDyj_mQ-I",
+    "channel": "【公式】Forse Of The Horse【実名馬レースバトルカードゲーム】",
+    "uploadDate": null,
+    "viewCount": 727,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

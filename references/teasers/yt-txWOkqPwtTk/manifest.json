@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-txWOkqPwtTk",
+  "name": "KONAMI’s PROJECT ZIRCON Official VTuber | Rune Salowa | Teaser PV",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=txWOkqPwtTk",
+    "channel": "ルーネ・サロワ / Rune Salowa",
+    "uploadDate": null,
+    "viewCount": 45624,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

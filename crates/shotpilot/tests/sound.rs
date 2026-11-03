@@ -215,3 +215,54 @@ fn audio_null_entries_survive_a_round_trip() {
     let shots = f.ws.resolved().unwrap();
     assert!(sound::plan(&f.ws.defn, &shots).iter().all(|p| p.role == sound::Role::Sfx));
 }
+
+/// A two-sound library in `dir`: a one-shot hit and a 30 s drone loop.
+fn library_in(dir: &std::path::Path) -> shotpilot::library::Library {
+    let sounds = dir.join("sounds");
+    std::fs::create_dir_all(sounds.join("splice/Kit")).unwrap();
+    let pcm = sound::Pcm { l: vec![0.2; 4800], r: vec![0.2; 4800] };
+    sound::write_wav16(&sounds.join("splice/Kit/lib_hit.wav"), &pcm).unwrap();
+    sound::write_wav16(&sounds.join("splice/Kit/lib_drone.wav"), &pcm).unwrap();
+    let index = json!({"sounds": [
+        {"id": "splice:hit1", "path": "splice/Kit/lib_hit.wav", "kind": "oneshot", "duration_s": 0.1, "tags": ["impact"], "status": "ok"},
+        {"id": "splice:drone1", "path": "splice/Kit/lib_drone.wav", "kind": "loop", "duration_s": 30.0, "tags": ["drones"], "status": "ok"},
+    ]});
+    std::fs::write(sounds.join("library.json"), index.to_string()).unwrap();
+    shotpilot::library::Library::open(Some(dir)).unwrap()
+}
+
+#[test]
+fn a_sound_note_can_take_sounds_from_the_library() {
+    let mut f = rendered();
+    let lib_dir = tempfile::tempdir().unwrap();
+    let pointer = Pointer { sound: true, library: Some(library_in(lib_dir.path())), ..Default::default() };
+    let c = fake(json!({"summary": "x", "edits": [{"id": "s01_gate", "yaml":
+        "id: s01_gate\nduration: 5\ncamera: {anchor: gate, offset: [-300, -250, 70]}\nsfx: [{file: 'lib:splice:hit1', at: 0}]",
+        "reason": "r"}], "order": [], "audio": "bgm: {file: 'lib:splice:drone1', gain: -8}"}));
+    let rev = ai::revise_at(&f.ws.defn, "門にヒット、BGM はドローン", None, &pointer, &c).unwrap();
+    // the library was offered, and what Claude picked was copied in and rewritten to project paths
+    let req = c.calls.borrow()[0].to_string();
+    assert!(req.contains("lib:<id>") && req.contains("splice:drone1"), "{req}");
+    assert_eq!(rev.edits[0].1["sfx"][0]["file"], "audio/lib/lib_hit.wav");
+    assert_eq!(rev.audio.as_ref().unwrap()["bgm"]["file"], "audio/lib/lib_drone.wav");
+    assert!(f.ws.root.join("audio/lib/lib_hit.wav").is_file());
+    let before = launches(&f.ws).len();
+    let rep = f.ws.edit_definition_with(&rev.edits, None, rev.audio.as_ref(), "revise", "n").unwrap();
+    assert!(rep.stale.is_empty());
+    assert_eq!(launches(&f.ws).len(), before, "taking a sound never renders");
+
+    // an id the library does not have is refused
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "audio": "bgm: {file: 'lib:splice:nope'}"}));
+    let e = ai::revise_at(&f.ws.defn, "BGM", None, &pointer, &c).unwrap_err();
+    assert!(e.msg.contains("splice:nope"), "{}", e.msg);
+}
+
+#[test]
+fn a_camera_note_is_not_shown_the_library() {
+    let f = rendered();
+    let lib_dir = tempfile::tempdir().unwrap();
+    let pointer = Pointer { sound: false, library: Some(library_in(lib_dir.path())), ..Default::default() };
+    let c = fake(json!({"summary": "x", "edits": [], "order": [], "audio": ""}));
+    ai::revise_at(&f.ws.defn, "門をもっと寄って", None, &pointer, &c).unwrap();
+    assert!(!c.calls.borrow()[0].to_string().contains("splice:drone1"));
+}

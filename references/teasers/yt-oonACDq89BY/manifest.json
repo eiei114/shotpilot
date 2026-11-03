@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-oonACDq89BY",
+  "name": "Star Wars: Maul - Shadow Lord | Official Teaser Trailer | Streaming April 6 on Disney+",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=oonACDq89BY",
+    "channel": "Star Wars and Disney Plus",
+    "uploadDate": null,
+    "viewCount": 4619980,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

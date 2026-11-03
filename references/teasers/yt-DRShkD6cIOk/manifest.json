@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-DRShkD6cIOk",
+  "name": "Floor Plan: Slap Out Of It! | Announcement Trailer | Day of the Devs Summer Game Fest Edition 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=DRShkD6cIOk",
+    "channel": "Turbo Button | Floor Plan: Slap Out Of It!",
+    "uploadDate": null,
+    "viewCount": 20971,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

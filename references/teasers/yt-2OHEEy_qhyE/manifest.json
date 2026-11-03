@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-2OHEEy_qhyE",
+  "name": "Nayyi Navelli: Official Teaser | Yami, Addinath | Balaji Mohan | Aanand L Rai, Himanshu S | 16th Oct",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=2OHEEy_qhyE",
+    "channel": "Amazon MGM Studios India and 2 more",
+    "uploadDate": null,
+    "viewCount": 28665325,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

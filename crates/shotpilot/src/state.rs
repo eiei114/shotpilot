@@ -179,6 +179,24 @@ impl State {
         self.shot(shot_id).insert("pushed".into(), json!({"fingerprint": fp, "payload": payload, "at": now_iso()}));
     }
 
+    // ----------------------------------------------------------------- approvals
+
+    /// The look fingerprint a human approved for this shot, if any.
+    pub fn approved_fp(&self, shot_id: &str) -> Option<String> {
+        self.data["shots"].get(shot_id)?.get("approved")?.get("fingerprint")?.as_str().map(str::to_string)
+    }
+
+    pub fn set_approved(&mut self, shot_id: &str, fp: Option<&str>) {
+        match fp {
+            Some(fp) => {
+                self.shot(shot_id).insert("approved".into(), json!({"fingerprint": fp, "at": now_iso()}));
+            }
+            None => {
+                self.shot(shot_id).remove("approved");
+            }
+        }
+    }
+
     pub fn forget(&mut self, shot_id: &str) {
         self.shots().remove(shot_id);
     }

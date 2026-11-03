@@ -150,12 +150,38 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
         check: mixed.map(|m| m.check.clone()),
         notes: Vec::new(),
     };
+    // finishing (D-25): what gets burned in, placed on the cut's timeline
+    let placed: Vec<crate::finish::Placed> = picks
+        .iter()
+        .map(|p| {
+            let raw = defn.shots.get(p.shot.index).cloned().unwrap_or(Value::Null);
+            crate::finish::Placed {
+                start: 0.0,
+                duration: p.shot.frames as f64 / fps as f64,
+                beat: p.shot.beat.clone(),
+                caption: crate::finish::caption(&raw),
+                transition: crate::finish::transition(&raw),
+            }
+        })
+        .scan(0.0, |t, mut p| {
+            p.start = *t;
+            *t += p.duration;
+            Some(p)
+        })
+        .collect();
+    let finishing = crate::finish::needed(&defn.finish, &placed);
+
     if video && ffmpeg().is_some() {
         let segs: Vec<PathBuf> = picks.iter().map(|p| segment(&p.take, w, h, fps)).collect::<Result<_>>()?;
         let lst = out_dir.join("segments.txt");
         let body: String = segs.iter().map(|p| format!("file '{}'\n", p.display().to_string().replace('\\', "/"))).collect();
         std::fs::write(&lst, body)?;
         let out = out_dir.join("cut.mp4");
+        if finishing {
+            finish_pass(defn, &placed, &lst, mixed.map(|m| m.wav.as_path()), out_dir, &out, w, h, fps, &mut info.notes)?;
+            info.video = Some(out);
+            return Ok(info);
+        }
         let mut args: Vec<String> =
             ["-f", "concat", "-safe", "0", "-i", &lst.display().to_string()].map(String::from).to_vec();
         match mixed {
@@ -172,6 +198,40 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
         info.video = Some(out);
     }
     Ok(info)
+}
+
+/// Burn in the finish: concat the segments, then one encode with letterbox, dips, captions,
+/// title and end card; the mix (padded with silence over the end card) as the soundtrack.
+#[allow(clippy::too_many_arguments)]
+fn finish_pass(defn: &Definition, placed: &[crate::finish::Placed], segments: &Path, mix: Option<&Path>, out_dir: &Path,
+               out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<()> {
+    let has_text = defn.finish.title.is_some() || defn.finish.end_card.is_some() || placed.iter().any(|p| p.caption.is_some());
+    let font = crate::finish::font(&defn.finish);
+    if has_text && font.is_none() {
+        bail!("no font with Japanese glyphs was found for the titles; set finish.font to a .ttf/.ttc file");
+    }
+    let text_dir = out_dir.join("finish");
+    std::fs::create_dir_all(&text_dir)?;
+    let (graph, total) = crate::finish::filter_graph(&defn.finish, placed, w, h, fps, font.as_deref().unwrap_or(Path::new("")),
+                                                     &text_dir)?;
+    let mut graph = graph;
+    let mut args: Vec<String> = ["-f", "concat", "-safe", "0", "-i", &segments.display().to_string()].map(String::from).to_vec();
+    if let Some(m) = mix {
+        args.extend(["-i".to_string(), m.display().to_string()]);
+        graph.push_str(";[1:a]apad[a]");
+    }
+    args.extend(["-filter_complex".to_string(), graph, "-map".to_string(), "[v]".to_string()]);
+    if mix.is_some() {
+        args.extend(["-map", "[a]", "-c:a", "aac", "-b:a", "192k"].map(String::from));
+    }
+    args.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-r", &fps.to_string(), "-t", &format!("{total:.3}")]
+        .map(String::from));
+    args.push(out.display().to_string());
+    run_ffmpeg(&args)?;
+    if let Some((_, d)) = &defn.finish.end_card {
+        notes.push(format!("end card adds {}s after the last shot", fmt_g(*d)));
+    }
+    Ok(())
 }
 
 fn tc(frame: i64, fps: i64) -> String {

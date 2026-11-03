@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NIykl_I9H9Q",
+  "name": "Switch/PS5 Occult Suspense ADV \"Shikai\" Short Teaser Movie",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NIykl_I9H9Q",
+    "channel": "MAGES. GAME CHANNEL",
+    "uploadDate": null,
+    "viewCount": 7814,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}
