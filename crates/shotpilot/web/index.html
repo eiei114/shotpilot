@@ -100,10 +100,10 @@ button:disabled { opacity: .45; cursor: default; }
 
 /* ------------------------------------------------------------------ canvas card */
 #canvas { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); min-width: 0; min-height: 0;
-  display: grid; grid-template-rows: auto auto 1fr auto; overflow: hidden; border: 1px solid var(--line); }
+  display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); }
+#canvas > * { flex: none; }
+#canvas > .main { flex: 1 1 0; min-height: 0; }
 .tabs { display: flex; align-items: center; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
-.tab { border: 0; background: none; padding: 7px 12px 9px; border-radius: 9px 9px 0 0; color: var(--muted); display: flex; gap: 7px; align-items: center; font-size: 12.5px; }
-.tab.on { background: var(--soft); color: var(--ink); font-weight: 600; }
 .tabs .right { margin-left: auto; display: flex; gap: 8px; align-items: center; padding-bottom: 6px; }
 .btn { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 6px 12px; display: inline-flex; gap: 7px; align-items: center; font-size: 12.5px; font-weight: 500; }
 .btn.dark { background: var(--ink); color: var(--card); border-color: var(--ink); }
@@ -118,6 +118,78 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .toolbar .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 #summary { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 #summary b { color: var(--ink); }
+
+/* ------------------------------------------------------------------ workflow stages */
+.stages { display: flex; align-items: stretch; gap: 2px; }
+.stage-btn { position: relative; border: 0; background: none; padding: 6px 12px 9px 10px; border-radius: 9px 9px 0 0; color: var(--muted);
+  display: grid; grid-template-columns: auto auto; column-gap: 7px; align-items: center; text-align: left; font-size: 12.5px; }
+.stage-btn .no { grid-row: span 2; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center;
+  font-size: 11px; font-weight: 700; color: var(--muted); background: var(--card); }
+.stage-btn .lb { font-weight: 600; white-space: nowrap; }
+.stage-btn .sub { font-size: 10.5px; color: var(--faint); white-space: nowrap; }
+.stage-btn.on { background: var(--soft); color: var(--ink); }
+.stage-btn.on .no { border-color: var(--ink); color: var(--ink); }
+.stage-btn.ok .no { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.stage-btn.warn .no { background: var(--stale); border-color: var(--stale); color: #241900; }
+.stage-btn.bad .no { background: var(--err); border-color: var(--err); color: #fff; }
+
+/* findings (shot check) */
+#findings { border-bottom: 1px solid var(--line); padding: 6px 12px; display: grid; gap: 6px; max-height: 128px; overflow: auto; background: var(--card); }
+.find { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 8px; align-items: start; font-size: 12px; }
+.find .why { color: var(--muted); font-size: 11.5px; grid-column: 2; }
+.find .ops { display: flex; gap: 6px; grid-row: span 2; grid-column: 3; }
+.sev { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; margin-top: 1px; grid-row: span 2; }
+.sev.P0 { background: var(--err); color: #fff; } .sev.P1 { background: var(--stale); color: #241900; } .sev.P2 { background: var(--soft); color: var(--muted); }
+.basis { font-size: 10px; color: var(--faint); margin-left: 6px; font-weight: 500; }
+.mini { border: 1px solid var(--line); background: var(--card); border-radius: 7px; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
+.mini:hover { border-color: var(--ink); }
+.btn.ok { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.warn { background: var(--stale); color: #241900; border-color: var(--stale); }
+
+/* panels: brief / structure / capture */
+.panel { overflow: auto; padding: 16px 20px 24px; background: var(--card); display: grid; gap: 14px; align-content: start; }
+.panel h3 { margin: 0; font-size: 15px; }
+.panel h4.sec { margin: 6px 0 0; font-size: 13px; }
+.panel .lead { color: var(--muted); font-size: 12.5px; max-width: 780px; }
+.form { display: grid; grid-template-columns: minmax(140px, 210px) minmax(0, 620px); gap: 12px 16px; align-items: start; }
+.form > label { font-weight: 600; font-size: 12.5px; padding-top: 6px; }
+.form > label small { display: block; font-weight: 400; color: var(--muted); font-size: 11.5px; line-height: 1.45; margin-top: 2px; }
+.form input[type=text], .form textarea { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; background: var(--soft); outline: 0; resize: vertical; }
+.form input:focus, .form textarea:focus { border-color: var(--ink); background: var(--card); }
+.form .dirty { border-color: var(--ink); }
+.kinds { display: flex; gap: 8px; flex-wrap: wrap; }
+.kinds label { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; cursor: pointer; max-width: 300px; font-size: 12.5px; }
+.kinds label.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.kinds input { display: none; }
+.kinds b { font-size: 13px; } .kinds span { color: var(--muted); font-size: 11.5px; }
+.readonly { padding: 7px 10px; border-radius: 9px; background: var(--soft); color: var(--muted); font-size: 12.5px; }
+.beats { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; }
+.beatcol { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 8px; align-content: start; border-top: 4px solid var(--c); min-width: 0; }
+.beatcol h4 { margin: 0; font-size: 13px; display: flex; justify-content: space-between; gap: 6px; }
+.beatcol h4 small { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.beatcol .guide { color: var(--muted); font-size: 11.5px; }
+.scard { border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; display: grid; gap: 3px; cursor: pointer; background: var(--card); font-size: 12px; text-align: left; }
+.scard:hover { border-color: var(--ink); }
+.scard .id { font-family: var(--mono); font-size: 11px; display: flex; gap: 6px; align-items: center; }
+.scard .meta { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.scard .p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.empty-col { color: var(--faint); font-size: 12px; border: 1px dashed var(--line); border-radius: 9px; padding: 10px; text-align: center; }
+.flist { display: grid; gap: 8px; max-width: 980px; }
+.flist .find { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.cap { width: 100%; max-width: 980px; border-collapse: collapse; font-size: 12.5px; }
+.cap th, .cap td { padding: 6px 8px; border-top: 1px solid var(--line); text-align: left; }
+.cap th { font-size: 11px; color: var(--muted); font-weight: 600; background: var(--soft); }
+.cap td.id { font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.qs { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+.qs.fresh { background: color-mix(in srgb, var(--accent) 35%, var(--card)); } .qs.stale { background: var(--stale); color: #241900; } .qs.none { color: var(--faint); font-weight: 500; }
+.appr { font-size: 11.5px; font-weight: 700; }
+.appr.approved { color: color-mix(in srgb, var(--accent) 55%, var(--ink)); } .appr.outdated { color: var(--stale); } .appr.none { color: var(--faint); font-weight: 500; }
+.capbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.clip .fl { position: absolute; left: 6px; bottom: 21px; display: flex; gap: 3px; }
+.clip .fl i { font-style: normal; font-size: 9.5px; font-weight: 800; padding: 0 4px; border-radius: 3px; line-height: 14px; }
+.clip .fl i.P0 { background: var(--err); color: #fff; } .clip .fl i.P1 { background: var(--stale); color: #241900; }
+.clip .ok-mark { position: absolute; left: 6px; top: 22px; font-size: 10px; font-weight: 800; color: var(--accent-ink); background: var(--accent); border-radius: 4px; padding: 1px 5px; }
+.clip .ok-mark.outdated { background: var(--stale); color: #241900; }
 
 /* ------------------------------------------------------------------ stage */
 #stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
@@ -313,33 +385,46 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
   <!-- right: canvas -->
   <section id="canvas" aria-label="canvas">
     <div class="tabs">
-      <button class="tab on" data-tab="shot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg><span id="tab-shot">ショット</span></button>
-      <button class="tab" data-tab="teaser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg>ティザー</button>
-      <button class="tab" data-tab="sound"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>サウンド<span id="tab-sound-v"></span></button>
+      <div class="stages" id="stages">
+        <button class="stage-btn" data-stage="brief" title="何のための映像か"><span class="no">1</span><span class="lb">ブリーフ</span><span class="sub" id="sg-brief"></span></button>
+        <button class="stage-btn" data-stage="structure" title="ビートの並びとショット検査"><span class="no">2</span><span class="lb">構成</span><span class="sub" id="sg-structure"></span></button>
+        <button class="stage-btn" data-stage="framing" title="安いプレビューで構図を決めて承認する"><span class="no">3</span><span class="lb">構図</span><span class="sub" id="sg-framing"></span></button>
+        <button class="stage-btn" data-stage="capture" title="承認したショットを本番品質で撮る"><span class="no">4</span><span class="lb">撮影</span><span class="sub" id="sg-capture"></span></button>
+        <button class="stage-btn" data-stage="finish" title="つなぐ・音・書き出し"><span class="no">5</span><span class="lb">仕上げ</span><span class="sub" id="sg-finish"></span></button>
+      </div>
       <div class="right">
         <span id="summary"></span>
         <button class="btn" id="cut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Cut</button>
         <button class="btn dark" id="render"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>撮り直す</button>
       </div>
     </div>
-    <div class="toolbar">
+    <div class="toolbar" id="toolbar">
       <button class="icon" id="reload" title="再読み込み"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
       <div class="seg">
         <button class="on" data-mode="preview"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>プレビュー</button>
         <button data-mode="tweak"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>調整</button>
       </div>
       <select class="q" id="quality" title="品質"></select>
+      <div class="seg" id="finish-seg">
+        <button data-fin="teaser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg>映像</button>
+        <button data-fin="sound"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>サウンド<span id="tab-sound-v"></span></button>
+      </div>
       <div class="right">
+        <button class="btn" id="approve" hidden></button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
     </div>
-    <div id="stage">
+    <div id="findings" hidden></div>
+    <div id="briefpanel" class="panel main" hidden></div>
+    <div id="structpanel" class="panel main" hidden></div>
+    <div id="capturepanel" class="panel main" hidden></div>
+    <div id="stage" class="main">
       <div id="view"></div>
       <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
     </div>
-    <div id="tweak" hidden></div>
-    <div id="soundpanel" hidden>
+    <div id="tweak" class="main" hidden></div>
+    <div id="soundpanel" class="main" hidden>
       <div class="sp-col"><div class="sp-box" id="sp-player"></div><div class="sp-box" id="sp-insp"></div></div>
       <div class="sp-col" id="sp-check"></div>
     </div>
@@ -371,11 +456,31 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final: "final" };
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
+// The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
+const STAGE_OF = { brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish" };
+const BEAT_JA = {
+  hook: "最初の 2〜5 秒。スクロールを止める1枚か、問い",
+  establish: "どこで、どんなゲームかを見せる",
+  escalate: "緊張・賭け金・見せ場をショットごとに上げる",
+  title: "落ち着いた最後の1枚。タイトルを載せる余白",
+};
+const RULE_JA = {
+  "open.title": "タイトルで始まっている", "open.hook": "hook で始まっていない", "end.title": "title で終わっていない",
+  "beats.untagged": "ビートが付いていない", "beats.missing": "足りないビートがある", "beats.order": "ビートの順が逆",
+  "cut.jump": "ジャンプカット（30度ルール）", "runtime.target": "尺が目標から外れている", "hook.long": "hook が長い",
+  "camera.inside": "カメラが被写体に近すぎる", "shot.length": "ショットの長さ", "tempo.flat": "テンポが変わらない",
+  "tempo.escalate": "escalate が establish より長い", "repeat.move": "同じ動きが続く", "repeat.lens": "同じレンズが続く",
+  "title.short": "タイトルの尺が短い",
+};
+const BASIS_JA = { sourced: "出典あり", inferred: "推定・要校正" };
+const APPROVAL_JA = { approved: "承認済み", outdated: "変更あり", none: "未承認" };
+
 const ui = {
   status: null, log: [], logKey: "",
   sel: null,            // selected shot id
   frame: 0,             // frame index within the shown take
-  tab: "shot",          // shot | teaser
+  tab: "shot",          // brief | structure | shot | capture | teaser | sound
+  fin: "teaser",        // which finishing view the stage bar reopens
   mode: "preview",      // preview | tweak
   quality: null,
   region: null,         // [x0, y0, x1, y1] normalized to the image
@@ -474,14 +579,19 @@ function draw() {
   if (sel.options.length !== st.qualities.length) sel.innerHTML = st.qualities.map((q) => `<option value="${esc(q)}">${esc(QUALITY_JA[q] || q)}</option>`).join("");
   sel.value = ui.quality;
   $("summary").innerHTML = ui.summary;
-  for (const b of document.querySelectorAll(".tab")) b.classList.toggle("on", b.dataset.tab === ui.tab);
-  for (const b of document.querySelectorAll(".seg button")) b.classList.toggle("on", b.dataset.mode === ui.mode);
-  const s = shot();
-  $("tab-shot").textContent = s ? `${s.index + 1}. ${s.id}` : "ショット";
+  for (const b of document.querySelectorAll(".seg button[data-mode]")) b.classList.toggle("on", b.dataset.mode === ui.mode);
+  for (const b of document.querySelectorAll("#finish-seg button")) b.classList.toggle("on", b.dataset.fin === ui.tab);
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
   const snd = ui.tab === "sound";
-  $("stage").hidden = tweak || snd; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
+  const panel = { brief: "briefpanel", structure: "structpanel", capture: "capturepanel" }[ui.tab];
+  const finishing = ui.tab === "teaser" || snd;
+  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture";
+  $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
+  $("toolbar").hidden = !!panel;
+  for (const el of [$("quality"), $("mark"), document.querySelector(".seg:not(#finish-seg)")]) el.hidden = finishing;
+  $("finish-seg").hidden = !finishing;
   $("mark").disabled = ui.tab !== "shot" || tweak;
+  drawStages(); drawFindings(); drawApprove();
   $("render").disabled = $("cut").disabled = !!ui.busy;
   $("send").disabled = !!ui.busy || !st.ai?.ready;
   $("ai-warn").hidden = !!st.ai?.ready;
@@ -489,7 +599,8 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""}`;
-  if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
+  if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
+  else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
   if (ui.mixing) $("summary").innerHTML = "ミックス中…";
@@ -558,6 +669,190 @@ function drawTeaser() {
     <span class="badge-q">${esc(cut.quality)} · cut.mp4</span>`;
 }
 
+// ------------------------------------------------------------------ workflow: stages, findings, approval
+
+const findings = () => ui.status?.checks || [];
+const findingsFor = (id) => findings().filter((f) => f.shot === id);
+const moveOf = (s) => s.node?.camera?.end ? "keyframed" : s.node?.camera?.move?.type || "static";
+
+function stageState() {
+  const st = ui.status, n = st.shots.length, f = findings();
+  const b = st.brief || {};
+  const count = (sev) => f.filter((x) => x.severity === sev).length;
+  const approved = st.shots.filter((s) => s.approval === "approved").length;
+  const finalFresh = st.shots.filter((s) => s.qualities.final === "fresh").length;
+  const bestQ = [...st.qualities].reverse().find((q) => n && st.shots.every((s) => s.qualities[q] === "fresh"));
+  return {
+    brief: !b.written ? ["", "未記入"] : b.missing?.length ? ["warn", `未記入 ${b.missing.length}`] : ["ok", b.kind === "gameplay" ? "ゲームプレイ" : "ティザー"],
+    structure: count("P0") ? ["bad", `P0 ${count("P0")}`] : count("P1") ? ["warn", `要確認 ${count("P1")}`] : ["ok", n ? "問題なし" : "ショットなし"],
+    framing: f.some((x) => x.severity === "P0" && x.shot) ? ["bad", `承認 ${approved}/${n}`] : n && approved === n ? ["ok", `承認 ${n}/${n}`] : ["", `承認 ${approved}/${n}`],
+    capture: n && finalFresh === n ? ["ok", `final ${n}/${n}`] : ["", bestQ ? `${bestQ} まで済` : `final ${finalFresh}/${n}`],
+    finish: st.cut ? ["ok", `cut · ${st.cut.quality}`] : ["", "未"],
+  };
+}
+
+function drawStages() {
+  const ss = stageState();
+  for (const b of document.querySelectorAll(".stage-btn")) {
+    const [cls, sub] = ss[b.dataset.stage];
+    b.className = `stage-btn ${cls}${STAGE_OF[ui.tab] === b.dataset.stage ? " on" : ""}`;
+    $(`sg-${b.dataset.stage}`).textContent = sub;
+  }
+}
+
+function findingHtml(f, { open = false } = {}) {
+  const fix = `<button class="mini" data-fix="${esc(JSON.stringify([f.rule, f.shot]))}" title="指摘を指示欄に入れます（送信は自分で）">Claude に直させる</button>`;
+  const go = open && f.shot ? `<button class="mini" data-open="${esc(f.shot)}">${esc(f.shot)} を開く</button>` : "";
+  return `<div class="find"><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span>
+    <span><b>${esc(RULE_JA[f.rule] || f.rule)}</b>${f.shot && open ? ` · <span class="mono">${esc(f.shot)}</span>` : ""}<span class="basis">${esc(BASIS_JA[f.basis] || "")}</span></span>
+    <span class="ops">${go}${fix}</span>
+    <span class="why">${esc(f.message)} — ${esc(f.fix)}</span></div>`;
+}
+
+/** The selected shot's findings, above the preview (framing only). */
+function drawFindings() {
+  const el = $("findings");
+  const fs = ui.tab === "shot" && ui.sel ? findingsFor(ui.sel) : [];
+  el.hidden = !fs.length;
+  el.innerHTML = fs.map((f) => findingHtml(f)).join("");
+}
+
+function drawApprove() {
+  const b = $("approve"), s = shot();
+  b.hidden = ui.tab !== "shot" || !s;
+  if (b.hidden) return;
+  const p0 = findingsFor(s.id).find((f) => f.severity === "P0");
+  const a = s.approval;
+  b.className = `btn ${a === "approved" ? "ok" : a === "outdated" ? "warn" : "dark"}`;
+  b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
+  b.title = p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます。画が変わる修正をすると自動で外れます";
+  b.disabled = !!ui.busy || (!!p0 && a !== "approved");
+}
+
+function briefField(key, label, hint, value, { area = false, ph = "" } = {}) {
+  const v = Array.isArray(value) ? value.join(area ? "\n" : ", ") : value ?? "";
+  const input = area ? `<textarea data-bf="${key}" rows="${key === "notes" ? 3 : 2}" placeholder="${esc(ph)}" data-orig="${esc(v)}">${esc(v)}</textarea>`
+    : `<input type="text" data-bf="${key}" placeholder="${esc(ph)}" value="${esc(v)}" data-orig="${esc(v)}">`;
+  return `<label>${esc(label)}<small>${esc(hint)}</small></label><div>${input}</div>`;
+}
+
+function drawBrief() {
+  const st = ui.status, b = st.brief || {};
+  const key = JSON.stringify([b, st.pitch]);
+  if (drawBrief.key === key && $("briefpanel").childElementCount) return; // keep what is being typed
+  drawBrief.key = key;
+  const kind = (k, t, d) => `<label class="${b.kind === k ? "on" : ""}"><input type="radio" name="bkind" value="${k}"${b.kind === k ? " checked" : ""}><b>${t}</b><span>${d}</span></label>`;
+  $("briefpanel").innerHTML = `<h3>ブリーフ</h3>
+    <div class="lead">撮る前に「何のための映像か」を決めます。トレーラー制作では最初の打ち合わせで決める項目で、Claude はショットを組むときにこれを読みます。shots.yaml の <span class="mono">brief:</span> に書かれ、直しても撮り直しは起きません。</div>
+    <div class="form">
+      <label>種類<small>Steam はこの2つを別物として扱います</small></label>
+      <div class="kinds">${kind("teaser", "ティザー", "タイトルや世界観を印象づける。30〜60秒の演出的な映像")}${kind("gameplay", "ゲームプレイトレーラー", "最初の数秒から実際のプレイを見せる。ストアの1本目向き")}</div>
+      <label>ピッチ<small>shots.yaml の teaser.pitch</small></label><div class="readonly">${esc(st.pitch || "（未設定）")}</div>
+      ${briefField("genre", "ジャンル", "最初の数秒で伝わるべきもの", b.genre, { ph: "例: 一人称ホラー" })}
+      ${briefField("core", "コア体験", "見た人に残したい1つの感情や体験。1文で", b.core, { area: true, ph: "例: 見慣れた中庭が、少しずつ見知らぬ場所に変わっていく" })}
+      ${briefField("audience", "誰に向けて", "比較対象のゲームや、遊ぶ人の像", b.audience, { ph: "例: 静かに怖いホラーが好きな PC プレイヤー" })}
+      ${briefField("must_show", "必ず見せるもの", "場所・仕掛け・キャラクター。カンマ区切り", b.must_show, { ph: "例: 井戸, 2階の窓, 提灯" })}
+      ${briefField("references", "参考トレーラー", "お手本にする実在のトレーラー。1行に1本", b.references, { area: true, ph: "例: Inscryption – Announcement Trailer" })}
+      ${briefField("notes", "メモ", "避けたいこと、載せる文字、締切など", b.notes, { area: true })}
+      <span></span><div class="btns"><button class="btn dark" id="brief-save">保存</button><button class="btn" data-goto="structure">構成へ →</button></div>
+    </div>`;
+}
+
+function drawStructure() {
+  const st = ui.status;
+  const key = JSON.stringify([st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.lens, moveOf(s)]), st.checks]);
+  if (drawStructure.key === key && $("structpanel").childElementCount) return;
+  drawStructure.key = key;
+  const beats = ["hook", "establish", "escalate", "title"];
+  const cols = beats.map((b) => {
+    const ss = st.shots.filter((s) => s.beat === b);
+    const sec = Math.round(ss.reduce((a, s) => a + s.duration, 0) * 10) / 10;
+    const cards = ss.map((s) => {
+      const fl = [...new Set(findingsFor(s.id).filter((f) => f.severity !== "P2").map((f) => f.severity))];
+      return `<button class="scard" data-open="${esc(s.id)}"><span class="id">${s.index + 1}. ${esc(s.id)}${fl.map((v) => `<span class="sev ${v}">${v}</span>`).join("")}</span>
+        <span class="p" title="${esc(s.purpose)}">${esc(s.purpose || "（目的なし）")}</span>
+        <span class="meta">${s.duration}s · ${s.lens ?? "?"}mm · ${esc(moveOf(s))} · ${esc(APPROVAL_JA[s.approval])}</span></button>`;
+    }).join("");
+    return `<div class="beatcol" style="--c:var(--${b})"><h4>${b}<small>${ss.length} 本 · ${sec}s</small></h4>
+      <div class="guide">${esc(BEAT_JA[b])}</div>${cards || `<div class="empty-col">まだありません</div>`}</div>`;
+  }).join("");
+  const loose = st.shots.filter((s) => !s.beat);
+  const f = findings();
+  const counts = ["P0", "P1", "P2"].map((v) => [v, f.filter((x) => x.severity === v).length]).filter(([, c]) => c);
+  $("structpanel").innerHTML = `<h3>構成</h3>
+    <div class="lead">ティザーの型 hook → establish → escalate → title に沿って並んでいるかを見ます。カードを押すとそのショットの構図に移ります。並べ替えやビートの付け替えでは撮り直しは起きません。</div>
+    <div class="beats">${cols}</div>
+    ${loose.length ? `<div class="sp-hint">ビートのないショット: ${loose.map((s) => `<button class="mini" data-open="${esc(s.id)}">${esc(s.id)}</button>`).join(" ")}</div>` : ""}
+    <h4 class="sec">ショット検査 ${counts.map(([v, c]) => `<span class="sev ${v}">${v} ${c}</span>`).join(" ") || `<span class="sev P2">問題なし</span>`}</h4>
+    <div class="lead">P0 は直すまで構図を承認できません。P1 は直すべきもの、P2 は助言です。「推定・要校正」の閾値は、実在トレーラーの実測で今後置き換えます。</div>
+    <div class="flist">${f.map((x) => findingHtml(x, { open: true })).join("") || `<div class="sp-hint">指摘はありません。</div>`}</div>`;
+}
+
+function drawCapture() {
+  const st = ui.status;
+  const key = JSON.stringify([st.shots.map((s) => [s.id, s.approval, s.qualities, s.beat]), ui.busy]);
+  if (drawCapture.key === key && $("capturepanel").childElementCount) return;
+  drawCapture.key = key;
+  const approved = st.shots.filter((s) => s.approval === "approved").map((s) => s.id);
+  const unapproved = st.shots.length - approved.length;
+  const qh = st.qualities.map((q) => `<th>${esc(q)}</th>`).join("");
+  const rows = st.shots.map((s) => `<tr><td>${s.index + 1}</td><td class="id" data-open="${esc(s.id)}">${esc(s.id)}</td><td>${esc(s.beat || "-")}</td>
+    <td><span class="appr ${esc(s.approval)}">${esc(APPROVAL_JA[s.approval])}</span></td>
+    ${st.qualities.map((q) => `<td><span class="qs ${esc(s.qualities[q])}">${esc({ fresh: "済", stale: "古い", none: "-" }[s.qualities[q]] || s.qualities[q])}</span></td>`).join("")}</tr>`).join("");
+  const dis = ui.busy || !approved.length ? " disabled" : "";
+  $("capturepanel").innerHTML = `<h3>撮影</h3>
+    <div class="lead">構図を承認したショットを、本番の品質で撮ります。撮るのは定義が変わったショットだけで、ほかは前の take を使い回します。未承認のショットは、構図の段階（previz / still）で確かめてから進めます。</div>
+    <div class="capbar">
+      <button class="btn dark" data-cap="preview"${dis}>承認済み ${approved.length} 本を preview で撮る</button>
+      <button class="btn dark" data-cap="final"${dis}>承認済み ${approved.length} 本を final で撮る</button>
+      <span class="sp-hint">${unapproved ? `未承認 ${unapproved} 本は撮りません` : "全ショット承認済み"}</span>
+    </div>
+    <table class="cap"><thead><tr><th>#</th><th>ショット</th><th>ビート</th><th>構図</th>${qh}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function approve(id, on) {
+  if (ui.busy) return;
+  ui.busy = "approve"; draw();
+  try {
+    await api("POST", "/api/approve", { shots: [id], approved: on });
+    toast(on ? `${id} の構図を承認しました` : `${id} の承認を取り消しました`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+}
+
+async function saveBrief() {
+  const set = {};
+  const box = $("briefpanel");
+  const kind = box.querySelector("input[name=bkind]:checked")?.value;
+  if (kind && kind !== ui.status.brief?.kind) set.kind = kind;
+  for (const el of box.querySelectorAll("[data-bf]")) {
+    if (el.value === el.dataset.orig) continue;
+    const k = el.dataset.bf;
+    set[k] = k === "must_show" ? el.value.split(/[,、\n]/).map((x) => x.trim()).filter(Boolean)
+      : k === "references" ? el.value.split("\n").map((x) => x.trim()).filter(Boolean) : el.value.trim();
+  }
+  if (!ui.status.brief?.written && !Object.keys(set).length) set.kind = kind || "teaser";
+  if (!Object.keys(set).length) { toast("変更はありません"); return; }
+  ui.busy = "save"; draw();
+  try { await api("POST", "/api/brief", { set }); drawBrief.key = ""; toast("ブリーフを保存しました。撮り直しは起きません"); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+}
+
+/** Put a finding into the note box, scoped to its shot (or the whole list). The human sends it. */
+function askFix(rule, shotId) {
+  const f = findings().find((x) => x.rule === rule && (x.shot ?? null) === (shotId ?? null));
+  if (!f) return;
+  if (shotId) { ui.sel = shotId; ui.scopeAll = false; if (ui.tab !== "shot") ui.tab = "shot"; } else ui.scopeAll = true;
+  $("note").value = `ショット検査の指摘を直して: ${RULE_JA[f.rule] || f.rule}。${f.message}（${f.fix}）`;
+  draw(); $("note").focus();
+}
+
+function goStage(stage) {
+  ui.tab = stage === "framing" ? "shot" : stage === "finish" ? ui.fin : stage;
+  draw();
+}
+
 function flatten(node, prefix = "", out = []) {
   for (const [k, v] of Object.entries(node)) {
     const p = prefix ? `${prefix}.${k}` : k;
@@ -618,9 +913,14 @@ function drawTimeline() {
     if (o && o.action === "rendered") tag = `<span class="tag rendered">RENDERED ${o.seconds.toFixed(0)}s</span>`;
     else if (o && o.action === "failed") tag = `<span class="tag failed">FAILED</span>`;
     else if (!o && s.qualities[ui.quality] === "stale") tag = `<span class="tag stale">STALE</span>`;
+    const fs = findingsFor(s.id).filter((f) => f.severity !== "P2");
+    const sevs = [...new Set(fs.map((f) => f.severity))];
+    const flags = sevs.length ? `<span class="fl">${sevs.map((v) => `<i class="${v}">${v}</i>`).join("")}</span>` : "";
+    const okm = s.approval === "approved" ? `<span class="ok-mark" title="構図を承認済み">✓</span>`
+      : s.approval === "outdated" ? `<span class="ok-mark outdated" title="承認の後で画が変わりました">✓?</span>` : "";
     return `<div class="${cls}" data-id="${esc(s.id)}" style="flex:${s.duration} 1 0;--c:var(--${esc(s.beat || "muted")});${bg}" title="${esc(s.purpose)}">
       <div class="beat"></div>
-      <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}
+      <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}${okm}${flags}
       <div class="bot"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span><span class="ladder">${ladder}</span></div></div>`;
   }).join("");
   // target marker and playhead (target sits past the end when the cut is short)
@@ -982,7 +1282,7 @@ function addSfxAt(t) {
   const file = files.find((f) => /hit|impact|boom/i.test(f)) || files[0];
   const list = sfxList(owner.id); list.push({ file, at });
   postSound({ sfx: { [owner.id]: list }, note: `SE を足す @ ${owner.id}` }, () => {
-    ui.snd = { kind: "sfx", shot: owner.id, index: list.length - 1 }; ui.tab = "sound";
+    ui.snd = { kind: "sfx", shot: owner.id, index: list.length - 1 }; ui.tab = ui.fin = "sound";
   });
 }
 
@@ -1148,13 +1448,13 @@ async function sendNote() {
   }
 }
 
-async function render(quality = ui.quality) {
+async function render(quality = ui.quality, shots = []) {
   if (ui.busy) return;
   ui.busy = "render"; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
   if (quality !== ui.quality) ui.quality = quality;
   draw();
   try {
-    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quality }) });
+    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quality, shots }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
@@ -1188,7 +1488,7 @@ async function cut() {
     const info = await api("POST", "/api/cut", { quality: "best" });
     ui.summary = `${info.shots} shots / ${info.seconds}s をつないだ（レンダなし）${info.sound ? ` · 音: ${esc(info.sound.verdict_ja)}` : ""}`;
     for (const n of info.notes || []) toast(n, true);
-    ui.tab = "teaser";
+    ui.tab = ui.fin = "teaser";
   } catch (e) { toast(e.message, true); }
   finally { ui.busy = null; await refresh(); }
 }
@@ -1289,7 +1589,7 @@ $("lanes").addEventListener("pointerup", () => {
   if (!d.moved) {
     ui.snd = d.p.role === "bgm" ? { kind: "bgm" } : { kind: "sfx", shot: d.p.shot, index: d.p.index };
     if (d.p.shot) ui.sel = d.p.shot;
-    ui.tab = "sound"; draw(); return;
+    ui.tab = ui.fin = "sound"; draw(); return;
   }
   // effects belong to a shot: dropping one over another shot hands it over
   const sh = ui.sound.shots;
@@ -1301,12 +1601,12 @@ $("lanes").addEventListener("pointerup", () => {
   if (owner.id === d.p.shot) { list[d.p.index] = it; sfx[owner.id] = list; }
   else { list.splice(d.p.index, 1); const dest = sfxList(owner.id); dest.push(it); sfx[d.p.shot] = list; sfx[owner.id] = dest; }
   const index = owner.id === d.p.shot ? d.p.index : sfx[owner.id].length - 1;
-  postSound({ sfx, note: `${d.p.label} を ${owner.id} +${at}s へ` }, () => { ui.snd = { kind: "sfx", shot: owner.id, index }; ui.sel = owner.id; ui.tab = "sound"; });
+  postSound({ sfx, note: `${d.p.label} を ${owner.id} +${at}s へ` }, () => { ui.snd = { kind: "sfx", shot: owner.id, index }; ui.sel = owner.id; ui.tab = ui.fin = "sound"; });
 });
 $("lanes").addEventListener("click", (e) => {
   const add = e.target.closest("[data-add]");
   if (add) {
-    if (add.dataset.add === "bgm") { ui.snd = { kind: "bgm" }; ui.tab = "sound"; draw(); return; }
+    if (add.dataset.add === "bgm") { ui.snd = { kind: "bgm" }; ui.tab = ui.fin = "sound"; draw(); return; }
     const s = shot(); const tk = s && shownTake(s);
     const start = ui.sound.shots.find((x) => x.id === s?.id)?.start ?? 0;
     const local = tk ? (tk.t.frame_numbers?.[ui.frame] ?? 0) / (ui.status.fps || 30) : 0;
@@ -1317,7 +1617,7 @@ $("lanes").addEventListener("click", (e) => {
   const lane = e.target.closest(".lane"); if (!lane) return;
   // empty lane: move the sound playhead there
   const x = e.clientX - $("tl-body").getBoundingClientRect().left;
-  ui.tab = "sound"; draw(); seek(tOf(x)); drawChips();
+  ui.tab = ui.fin = "sound"; draw(); seek(tOf(x)); drawChips();
 });
 $("lanes").addEventListener("dblclick", (e) => {
   if (e.target.closest(".sblock, [data-add]") || !e.target.closest(".lane.sfx")) return;
@@ -1403,8 +1703,25 @@ $("open-ext").addEventListener("click", async () => {
   if (!cut?.storyboard) { toast("まだ cut がありません"); return; }
   try { await api("POST", "/api/open", { url: cut.storyboard }); } catch (err) { toast(err.message, true); }
 });
-for (const b of document.querySelectorAll(".tab")) b.addEventListener("click", () => { ui.tab = b.dataset.tab; draw(); });
-for (const b of document.querySelectorAll(".seg button")) b.addEventListener("click", () => { ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
+for (const b of document.querySelectorAll(".stage-btn")) b.addEventListener("click", () => goStage(b.dataset.stage));
+for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventListener("click", () => { ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
+for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { ui.tab = ui.fin = b.dataset.fin; draw(); });
+$("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
+// panels and the findings bar: one delegated handler
+for (const id of ["briefpanel", "structpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
+  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],#brief-save,.kinds label");
+  if (!t) return;
+  if (t.matches(".kinds label")) { for (const l of t.parentElement.children) l.classList.toggle("on", l === t); return; }
+  if (t.id === "brief-save") saveBrief();
+  else if (t.dataset.open) selectShot(t.dataset.open);
+  else if (t.dataset.fix) { const [r, sid] = JSON.parse(t.dataset.fix); askFix(r, sid); }
+  else if (t.dataset.goto) goStage(t.dataset.goto);
+  else if (t.dataset.cap) {
+    const ids = ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id);
+    if (ids.length) render(t.dataset.cap, ids);
+  }
+});
+$("briefpanel").addEventListener("input", (e) => { const el = e.target.closest("[data-bf]"); if (el) el.classList.toggle("dirty", el.value !== el.dataset.orig); });
 
 // drag on the frame to mark what the note is about
 let drag = null;
@@ -1453,9 +1770,14 @@ window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 // shots.yaml is the source of truth: pick up edits made from the CLI or a text editor
 setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(); }, 3000);
 // #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
-for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
-  if (part === "teaser" || part === "sound") ui.tab = part; else if (part === "tweak") ui.mode = "tweak"; else ui.sel = decodeURIComponent(part);
+function applyHash() {
+  for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
+    if (["teaser", "sound", "brief", "structure", "capture"].includes(part)) { ui.tab = part; if (part === "teaser" || part === "sound") ui.fin = part; }
+    else if (part === "tweak") { ui.mode = "tweak"; ui.tab = "shot"; } else { ui.sel = decodeURIComponent(part); ui.tab = "shot"; }
+  }
 }
+window.addEventListener("hashchange", () => { applyHash(); draw(); });
+applyHash();
 refresh();
 </script>
 </body>
