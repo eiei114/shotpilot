@@ -60,7 +60,9 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
   src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せ、仕上げがあれば焼き込む）
-  src/finish.rs       仕上げ: 帯・タイトル・エンドカード・字幕・つなぎ（黒/白）を ffmpeg のフィルタにする
+  src/finish.rs       仕上げ: 帯・色調・台本のカードと重ね文字・タイトル・つなぎ（黒/白）を ffmpeg のフィルタにする
+  src/script.rs       台本（D-31）: ショットの間に入るカードと、ショットに重なる文字。Cut の並び（layout）を一か所で計算する
+  src/sounddesign.rs  音の設計: Claude がライブラリから区間ごとの曲とカード・ショットの音を選び、取り込んで書き込む
   src/sound.rs        BGM と SE（`audio:` と各ショットの `sfx:`）の検証・配置・ミックス。cut/sound/ にキャッシュする
   src/soundcheck.rs   ミックスの検証。earshot の critique のうち、モデルを使わない部分の移植（MIT）
   src/library.rs      音源ライブラリ（プロジェクト外、D-26）の検索と、プロジェクトの audio/lib/ への取り込み
@@ -90,6 +92,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
 - ロケハンのカメラはショットではない。shots.yaml にも take の状態にも入れない（UE では content_root/Scout/ にシーケンスを作るだけ）。
 - ムードボードの画像は雰囲気の参照に限る。生成画像をティザーの画として使わない（実際のゲームと違うものを見せない）。`brief.images` は編集的で、撮り直しを起こさない。
+- 台本（`script:`）と、そこに付く音（`audio.music`、行の `sfx`）は編集的で、fingerprint に入れない。位置は必ず `script::layout` / `sound::spans` から出す（カードを足したり並べ替えたりしても音がずれないように）。
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。

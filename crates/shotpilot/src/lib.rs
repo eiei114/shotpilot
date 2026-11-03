@@ -24,6 +24,7 @@ pub mod server;
 pub mod shotcheck;
 pub mod sound;
 pub mod soundcheck;
+pub mod sounddesign;
 pub mod state;
 pub mod sync;
 pub mod templates;

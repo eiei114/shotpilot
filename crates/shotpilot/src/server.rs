@@ -1143,7 +1143,9 @@ fn produce_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()
         quality: body.get("quality").and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or("previz").to_string(),
         direction: body.get("note").and_then(Value::as_str).unwrap_or("").to_string(),
         mood: body.get("mood").and_then(Value::as_bool).unwrap_or(true),
-    };
+        library: None,
+    }
+    .with_user_library();
     let settings = app.settings();
     let claude = (app.claude)(&settings)?; // a plain 400 before streaming when Claude is not connected
     let images = if opts.mood { (app.images)(&settings).ok() } else { None };

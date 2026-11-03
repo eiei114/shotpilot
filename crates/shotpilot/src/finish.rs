@@ -446,7 +446,7 @@ fn slot(ink: &mut Ink, l: &Line, d: f64, w: i64, h: i64, fps: i64) -> crate::Res
 
 fn plain_line(kind: &str, ja: String, dur: f64, at: f64) -> Line {
     Line { id: String::new(), kind: kind.into(), ja, en: String::new(), head: String::new(), from: String::new(), dur,
-           after: None, on: None, at }
+           after: None, on: None, at, sfx: Vec::new() }
 }
 
 /// The ffmpeg filter graph for the finishing pass. Input 0 is the plain concatenation of the

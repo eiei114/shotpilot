@@ -490,7 +490,7 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     assert_eq!(*claude.0.borrow(), vec!["stage".to_string(), "plan".to_string()]); // one call each, no self-review rounds
     let done: Vec<String> = events.iter().filter(|(e, d)| e == "step" && d["status"] != "start")
         .map(|(_, d)| format!("{}:{}", d["key"].as_str().unwrap(), d["status"].as_str().unwrap())).collect();
-    assert_eq!(done, ["scout:done", "stage:done", "mood:done", "plan:done", "render:done", "cut:done"]);
+    assert_eq!(done, ["scout:done", "stage:done", "mood:done", "plan:done", "sound:skipped", "render:done", "cut:done"]);
     assert_eq!(f.ws.defn.shot_ids(), ids(&["h", "e", "x", "x2", "t"]));
     assert_eq!(f.ws.defn.brief.images.len(), 4);
     // the script came with the shots: cards between them, a line over one, a broken line left out
@@ -511,5 +511,89 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on2).unwrap();
     let skipped: Vec<String> = events2.iter().filter(|(e, d)| e == "step" && d["status"] == "skipped")
         .map(|(_, d)| d["key"].as_str().unwrap().to_string()).collect();
-    assert_eq!(skipped, ["scout", "stage", "mood"]);
+    assert_eq!(skipped, ["scout", "stage", "mood", "sound"]);
+}
+
+#[test]
+fn music_cues_and_card_hits_follow_the_script() {
+    let mut f = ws();
+    let mut text = f.text();
+    text.push_str(r#"
+script:
+  - {id: intro, kind: card, ja: 今日から、ここに住む。, dur: 3, after: start, sfx: [{file: audio/boom.wav, at: 0, gain: -6}]}
+  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2, after: s02_well, sfx: [{file: audio/boom.wav, at: 0.1}]}
+  - {id: rooms, kind: caption, ja: 部屋は、六つ。, on: s02_well, at: 0.5, dur: 2, sfx: [{file: audio/tick.wav, at: 0}]}
+"#);
+    f.write(&text.replace("  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}",
+        "  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}\n  loudness: -16\n  music:\n    - {file: audio/tense.wav, from: seven, until: s05_door, gain: -9, label: tension}"));
+    f.ws.reload().unwrap();
+    let shots = f.ws.resolved().unwrap();
+    let plan = shotpilot::sound::plan(&f.ws.defn, &shots);
+    let at = |label: &str| plan.iter().find(|p| p.label == label).map(|p| (p.start, p.until)).unwrap();
+    // intro 0-3, s01 3-8, s02 8-11.5, seven 11.5-13.5, s03 13.5-17.5, s04 17.5-21.5, s05 21.5-26.5
+    let (s, u) = at("tension");
+    assert!((s - 11.5).abs() < 1e-6 && (u.unwrap() - 26.5).abs() < 1e-6, "{s} {u:?}");
+    let booms: Vec<f64> = plan.iter().filter(|p| p.label == "boom").map(|p| p.start).collect();
+    assert!((booms[0] - 0.0).abs() < 1e-6 && (booms[1] - 11.6).abs() < 1e-6, "{booms:?}");
+    assert!((at("tick").0 - 8.5).abs() < 1e-6); // the caption shows 0.5 s into s02
+    // reordering shots moves the hits with their lines
+    let order = ids(&["s01_gate", "s03_window", "s02_well", "s04_lantern", "s05_door", "s06_title"]);
+    f.ws.edit_definition(&[], Some(&order), "order", "").unwrap();
+    let plan = shotpilot::sound::plan(&f.ws.defn, &f.ws.resolved().unwrap());
+    let tick = plan.iter().find(|p| p.label == "tick").unwrap().start;
+    assert!((tick - (3.0 + 5.0 + 4.0 + 0.5)).abs() < 1e-6, "{tick}");
+    // a cue that starts on nothing is refused
+    f.write(&f.text().replace("from: seven", "from: \"\""));
+    assert!(f.ws.reload().unwrap_err().msg.contains("audio.music[0].from"));
+}
+
+#[test]
+fn sound_design_picks_from_the_library_and_lands_on_the_pieces() {
+    use shotpilot::ai::Claude;
+    // a tiny library: a drone loop and an impact
+    let libdir = tempfile::tempdir().unwrap();
+    let sounds = libdir.path().join("sounds");
+    std::fs::create_dir_all(sounds.join("splice/Horror")).unwrap();
+    std::fs::write(sounds.join("splice/Horror/drone.wav"), b"RIFF-drone").unwrap();
+    std::fs::write(sounds.join("splice/Horror/boom.wav"), b"RIFF-boom").unwrap();
+    std::fs::write(sounds.join("library.json"), json!({"sounds": [
+        {"id": "splice:drone", "path": "splice/Horror/drone.wav", "kind": "loop", "duration_s": 64.0, "tags": ["drone"], "status": "ok"},
+        {"id": "splice:boom", "path": "splice/Horror/boom.wav", "kind": "oneshot", "duration_s": 2.0, "tags": ["impact"], "status": "ok"},
+    ]}).to_string()).unwrap();
+    let lib = shotpilot::library::Library::open(Some(libdir.path())).unwrap();
+
+    let mut f = ws();
+    let mut text = f.text();
+    text.push_str("\nscript:\n  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2, after: s02_well}\n");
+    f.write(&text);
+    f.ws.reload().unwrap();
+    struct Designer;
+    impl Claude for Designer {
+        fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
+            let user = request["messages"][0]["content"].as_str().unwrap();
+            assert!(user.contains("card `seven`") && user.contains("splice:drone") && user.contains("Each text card lands"), "{user}");
+            Ok(json!({"rationale": "低いドローンで始め、カードで落とす",
+                      "music": [{"lib": "splice:drone", "from": "start", "until": "seven", "at": 0, "gain": -11, "fade_in": 1.5, "fade_out": 0.5, "label": "drone"}],
+                      "hits": [{"lib": "splice:boom", "on": "seven", "at": 0, "gain": -4, "label": "boom"},
+                               {"lib": "splice:boom", "on": "s05_door", "at": 1.5, "gain": -6, "label": "door"},
+                               {"lib": "splice:nope", "on": "s05_door", "at": 0, "gain": 0, "label": "x"},
+                               {"lib": "splice:boom", "on": "ghost", "at": 0, "gain": 0, "label": "y"}]}).to_string())
+        }
+    }
+    let d = shotpilot::sounddesign::design(&f.ws, &lib, &Designer).unwrap();
+    assert_eq!(d.notes.len(), 2, "{:?}", d.notes); // an unknown sound and an unknown piece were left out
+    shotpilot::sounddesign::apply(&mut f.ws, &d).unwrap();
+    assert!(f.ws.root.join("audio/lib").read_dir().unwrap().count() == 2); // both files copied in
+    let music = f.ws.defn.audio["music"].as_array().unwrap();
+    assert_eq!(music[0]["from"], json!("start"));
+    assert_eq!(music[0]["until"], json!("seven"));
+    assert_eq!(f.ws.defn.script[0].sfx.len(), 1);
+    assert_eq!(f.ws.defn.find("s05_door").unwrap()["sfx"][0]["label"], json!("door"));
+    assert!(f.ws.defn.find("s01_gate").unwrap().get("sfx").is_none()); // a fresh design clears the rest
+    assert_eq!(f.ws.defn.audio["loudness"], json!(-16.0));
+    // nothing re-renders for sound
+    assert!(f.ws.state.history().iter().all(|h| h["action"] != "render" || h["stale"].is_null()));
+    let plan = shotpilot::sound::plan(&f.ws.defn, &f.ws.resolved().unwrap());
+    let boom = plan.iter().find(|p| p.label == "boom").unwrap();
+    assert!((boom.start - 8.5).abs() < 1e-6, "{}", boom.start); // the card starts after s01 (5 s) and s02 (3.5 s)
 }

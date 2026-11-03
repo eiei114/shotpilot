@@ -161,7 +161,7 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
         std::fs::write(&lst, body)?;
         let out = out_dir.join("cut.mp4");
         if finishing {
-            finish_pass(defn, &pieces, &lst, mixed.map(|m| m.wav.as_path()), out_dir, &out, w, h, fps, &mut info.notes)?;
+            info.seconds = finish_pass(defn, &pieces, &lst, mixed.map(|m| m.wav.as_path()), out_dir, &out, w, h, fps, &mut info.notes)?;
             info.video = Some(out);
             return Ok(info);
         }
@@ -170,8 +170,8 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
         match mixed {
             // the picture is stream-copied either way; only the soundtrack is encoded
             Some(m) => args.extend(
-                ["-i", &m.wav.display().to_string(), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
-                 "-b:a", "192k", "-shortest"]
+                ["-i", &m.wav.display().to_string(), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-af", &loudnorm(defn),
+                 "-c:a", "aac", "-b:a", "192k", "-shortest"]
                     .map(String::from),
             ),
             None => args.extend(["-c", "copy"].map(String::from)),
@@ -187,7 +187,7 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
 /// title and end card; the mix (padded with silence over the end card) as the soundtrack.
 #[allow(clippy::too_many_arguments)]
 fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: &Path, mix: Option<&Path>, out_dir: &Path,
-               out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<()> {
+               out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<f64> {
     let fonts = crate::finish::fonts(&defn.finish);
     if fonts.is_none() {
         // the text is left out (cards stay as black, bars and dips still apply) rather than failing the cut
@@ -201,7 +201,7 @@ fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: 
     let mut args: Vec<String> = ["-f", "concat", "-safe", "0", "-i", &segments.display().to_string()].map(String::from).to_vec();
     if let Some(m) = mix {
         args.extend(["-i".to_string(), m.display().to_string()]);
-        graph.push_str(";[1:a]apad[a]");
+        graph.push_str(&format!(";[1:a]{},apad[a]", loudnorm(defn)));
     }
     args.extend(["-filter_complex".to_string(), graph, "-map".to_string(), "[v]".to_string()]);
     if mix.is_some() {
@@ -214,7 +214,13 @@ fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: 
     if let Some((_, d)) = &defn.finish.end_card {
         notes.push(format!("end card adds {}s after the last shot", fmt_g(*d)));
     }
-    Ok(())
+    Ok(crate::geometry::round_to(total, 3))
+}
+
+/// The loudness filter for the cut's soundtrack (`audio.loudness`, default -16 LUFS).
+fn loudnorm(defn: &Definition) -> String {
+    let i = defn.audio.get("loudness").and_then(num).unwrap_or(crate::sound::DEFAULT_LOUDNESS);
+    format!("loudnorm=I={i}:TP=-1.5:LRA=11")
 }
 
 /// The cut as finishing sees it: shots (with their place in the plain concatenation) and

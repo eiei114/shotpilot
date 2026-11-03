@@ -38,7 +38,10 @@ pub const LEAD_MAX: f64 = 3.0;
 /// Peaks per second in the lanes the app draws.
 pub const PEAKS_PER_S: f64 = 50.0;
 
-const AUDIO_KEYS: &[&str] = &["gain", "bgm"];
+const AUDIO_KEYS: &[&str] = &["gain", "bgm", "music", "loudness"];
+const MUSIC_KEYS: &[&str] = &["file", "from", "until", "at", "offset", "gain", "fade_in", "fade_out", "label"];
+/// Integrated loudness the cut is brought to when it carries sound (LUFS).
+pub const DEFAULT_LOUDNESS: f64 = -16.0;
 const BGM_KEYS: &[&str] = &["file", "start", "offset", "gain", "fade_in", "fade_out"];
 const SFX_KEYS: &[&str] = &["file", "at", "gain", "label"];
 
@@ -99,6 +102,30 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
         Some(Value::Object(a)) => {
             check_keys(a, AUDIO_KEYS, "audio", errs);
             check_num(a, "gain", -30.0, 12.0, "audio", errs);
+            check_num(a, "loudness", -30.0, -8.0, "audio", errs);
+            match a.get("music") {
+                None | Some(Value::Null) => {}
+                Some(Value::Array(items)) => {
+                    for (k, it) in items.iter().enumerate() {
+                        let at = format!("audio.music[{k}]");
+                        let Some(m) = it.as_object() else {
+                            errs.push(format!("{at}: a mapping like {{file: audio/cue.wav, from: s02, until: title}}"));
+                            continue;
+                        };
+                        check_keys(m, MUSIC_KEYS, &at, errs);
+                        check_file(m, &at, errs);
+                        if m.get("from").map_or(true, |f| str_of(f).is_empty()) {
+                            errs.push(format!("{at}.from: the shot or script line the cue starts on (or start)"));
+                        }
+                        check_num(m, "at", -30.0, 600.0, &at, errs);
+                        check_num(m, "offset", 0.0, 36000.0, &at, errs);
+                        check_num(m, "gain", -60.0, 12.0, &at, errs);
+                        check_num(m, "fade_in", 0.0, 30.0, &at, errs);
+                        check_num(m, "fade_out", 0.0, 30.0, &at, errs);
+                    }
+                }
+                Some(_) => errs.push("audio.music: a list of cues {file, from, until, at, gain, fade_in, fade_out}".into()),
+            }
             match a.get("bgm") {
                 None | Some(Value::Null) => {}
                 Some(Value::Object(b)) => {
@@ -113,7 +140,7 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
                 Some(_) => errs.push("audio.bgm: a mapping like {file: audio/bgm.wav, gain: -6}".into()),
             }
         }
-        Some(_) => errs.push("audio: a mapping (bgm, gain)".into()),
+        Some(_) => errs.push("audio: a mapping (bgm, music, gain, loudness)".into()),
     }
     for (i, s) in shots.iter().enumerate() {
         let at = format!("shots[{i}]({}).sfx", str_of(&s["id"]));
@@ -145,6 +172,45 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
             Some(_) => errs.push(format!("{at}: a list of {{file, at, gain, label}}")),
         }
     }
+}
+
+/// Sound effects on a script line (`sfx` on a card, a caption...): `at` from the line's start.
+pub fn validate_line_sfx(at: &str, v: Option<&Value>, errs: &mut Vec<String>) {
+    match v {
+        None | Some(Value::Null) => {}
+        Some(Value::Array(items)) => {
+            for (k, it) in items.iter().enumerate() {
+                let at = format!("{at}.sfx[{k}]");
+                let Some(m) = it.as_object() else {
+                    errs.push(format!("{at}: a mapping like {{file: audio/hit.wav, at: 0}}"));
+                    continue;
+                };
+                check_keys(m, SFX_KEYS, &at, errs);
+                check_file(m, &at, errs);
+                check_num(m, "at", -LEAD_MAX, 600.0, &at, errs);
+                check_num(m, "gain", -60.0, 12.0, &at, errs);
+            }
+        }
+        Some(_) => errs.push(format!("{at}.sfx: a list of {{file, at, gain, label}}")),
+    }
+}
+
+/// Where each shot, script slot and overlay sits in the cut: id -> (start, end) seconds.
+pub fn spans(defn: &Definition, shots: &[ResolvedShot]) -> (HashMap<String, (f64, f64)>, f64) {
+    let fps = defn.teaser.fps.max(1) as f64;
+    let items = crate::script::layout(&defn.script, shots, defn.teaser.fps.max(1));
+    let mut m = HashMap::new();
+    for it in &items {
+        m.insert(it.id.clone(), (it.start as f64 / fps, (it.start + it.frames) as f64 / fps));
+    }
+    for l in defn.script.iter().filter(|l| !l.is_slot()) {
+        if let Some(&(s, e)) = l.on.as_ref().and_then(|on| m.get(on)) {
+            let a = (s + l.at).min(e);
+            m.insert(l.id.clone(), (a, (a + l.dur).min(e)));
+        }
+    }
+    let total = items.last().map(|it| (it.start + it.frames) as f64 / fps).unwrap_or(0.0);
+    (m, total)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -229,6 +295,58 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
             fade_in: g("fade_in", 0.0),
             fade_out: g("fade_out", 0.0),
         });
+    }
+    // music cues: each from a piece of the cut until another (or the end)
+    let (spans, _) = spans(defn, shots);
+    if let Some(Value::Array(cues)) = defn.audio.get("music") {
+        for (k, c) in cues.iter().enumerate() {
+            let g = |key: &str, d: f64| c.get(key).and_then(num).unwrap_or(d);
+            let from = c.get("from").map(str_of).unwrap_or_default();
+            let Some(&(s0, _)) = (if from == "start" { Some(&(0.0, 0.0)) } else { spans.get(&from) }) else { continue };
+            let until = c.get("until").map(str_of).unwrap_or_default();
+            let end = if until.is_empty() || until == "end" { total } else { spans.get(&until).map(|v| v.1).unwrap_or(total) };
+            let file = c.get("file").map(str_of).unwrap_or_default().replace('\\', "/");
+            let label = c.get("label").map(str_of).filter(|l| !l.is_empty()).unwrap_or_else(|| {
+                Path::new(&file).file_stem().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()
+            });
+            let start = (s0 + g("at", 0.0)).max(0.0);
+            out.push(Placement {
+                role: Role::Bgm,
+                shot: None,
+                index: k + 1,
+                label,
+                file,
+                start,
+                offset: g("offset", 0.0),
+                until: Some(end.max(start)),
+                gain_db: g("gain", 0.0),
+                fade_in: g("fade_in", 0.0),
+                fade_out: g("fade_out", 0.0),
+            });
+        }
+    }
+    // effects on script lines (a hit on a card, a stinger before the black)
+    for l in &defn.script {
+        let Some(&(s0, _)) = spans.get(&l.id) else { continue };
+        for (k, it) in l.sfx.iter().enumerate() {
+            let file = it.get("file").map(str_of).unwrap_or_default().replace('\\', "/");
+            let label = it.get("label").map(str_of).filter(|x| !x.is_empty()).unwrap_or_else(|| {
+                Path::new(&file).file_stem().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()
+            });
+            out.push(Placement {
+                role: Role::Sfx,
+                shot: Some(l.id.clone()),
+                index: k,
+                label,
+                file,
+                start: s0 + it.get("at").and_then(num).unwrap_or(0.0),
+                offset: 0.0,
+                until: None,
+                gain_db: it.get("gain").and_then(num).unwrap_or(0.0),
+                fade_in: 0.0,
+                fade_out: 0.0,
+            });
+        }
     }
     for (s, start) in shots.iter().zip(&starts) {
         let Some(Value::Array(items)) = defn.shots[s.index].get("sfx") else { continue };

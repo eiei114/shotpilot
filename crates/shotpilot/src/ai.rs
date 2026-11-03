@@ -187,6 +187,11 @@ fn request_with(system: &str, user: Value, schema: Value) -> Value {
     })
 }
 
+/// One structured call (for other modules: sound design).
+pub fn ask_structured(claude: &dyn Claude, system: &str, user: Value, schema: Value) -> Result<Value> {
+    ask_json(claude, system, user, schema)
+}
+
 fn ask_json(claude: &dyn Claude, system: &str, user: Value, schema: Value) -> Result<Value> {
     let text = claude.ask(&request_with(system, user, schema))?;
     serde_json::from_str(&text).map_err(|e| Error::user(format!("Claude returned malformed JSON: {e}")))
@@ -600,6 +605,39 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
         }
         seen.push(id);
         out.push(Value::Object(m));
+    }
+    // one line at a time on a shot: later overlays wait for the one before (0.1 s gap)
+    let dur_of = |id: &str| shots.iter().find(|s| model::str_of(&s["id"]) == id).and_then(|s| num(&s["duration"])).unwrap_or(0.0);
+    let mut free_at: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    let mut order: Vec<usize> = (0..out.len()).collect();
+    order.sort_by(|&a, &b| {
+        let key = |l: &Value| (model::str_of(&l["on"]), num(&l["at"]).unwrap_or(0.0));
+        let (ka, kb) = (key(&out[a]), key(&out[b]));
+        ka.0.cmp(&kb.0).then(ka.1.partial_cmp(&kb.1).unwrap_or(std::cmp::Ordering::Equal))
+    });
+    let mut drop = Vec::new();
+    for i in order {
+        let Some(on) = out[i].get("on").and_then(Value::as_str).map(str::to_string) else { continue };
+        let id = model::str_of(&out[i]["id"]);
+        let d = dur_of(&on);
+        let asked = num(&out[i]["at"]).unwrap_or(0.0);
+        let at = asked.max(free_at.get(&on).copied().unwrap_or(0.0));
+        if at > d - 0.6 {
+            notes.push(format!("left out script line `{id}`: no room left on `{on}` after the line before it"));
+            drop.push(i);
+            continue;
+        }
+        if (at - asked).abs() > 1e-6 {
+            notes.push(format!("moved script line `{id}` to {}s on `{on}` so it does not overlap the line before", model::fmt_g(r1(at))));
+        }
+        let len = num(&out[i]["dur"]).unwrap_or(2.0).min(d - at);
+        out[i]["at"] = json!(r1(at));
+        out[i]["dur"] = json!(r1(len));
+        free_at.insert(on, at + len + 0.1);
+    }
+    drop.sort_unstable();
+    for i in drop.into_iter().rev() {
+        out.remove(i);
     }
     // a slot that follows a dropped or renamed line falls back to following the start
     let ids: Vec<String> = out.iter().map(|l| model::str_of(&l["id"])).collect();
