@@ -1,22 +1,48 @@
 # references/
 
 Reference material for planning teasers, laid out after open-design
-(`design-systems/` + `craft/` + `design-templates/`). Claude reads these before it
-writes a shot list; nothing here is checked at runtime yet.
+(`design-systems/` + `craft/` + `design-templates/`). `craft/` and `genres/` are embedded
+in the binary (`crates/shotpilot/src/refs.rs`) and handed to Claude on every `plan`.
 
 | Axis | open-design | here | holds |
 |---|---|---|---|
+| Universal rules | `craft/*.md` | `craft/` | what holds for any game teaser, measured over every teaser (D-29) |
+| Genre package | `design-systems/<brand>/` | `genres/<id>/` | one genre: prose + measured numbers + aliases (D-29) |
 | Style package | `design-systems/<brand>/` | `teasers/<id>/` | one real teaser: "Inspired by" prose + measured numbers |
-| Universal rules | `craft/*.md` | `craft/` (not yet) | trailer rules true for any title (now in `craft.rs` and `research_notes/`) |
-| Shape | `design-templates/` | `templates.rs` skeletons | `hook → establish → escalate → title` |
+| Shape | `design-templates/` | `craft.rs` skeleton | `hook → establish → escalate → title` |
+
+## How plan uses them
+
+`plan` (and `produce`) always reads `craft/TEASER-CRAFT.md`. When `brief.genre` contains
+one of a genre's aliases (`genres/<id>/manifest.json`, e.g. "一人称ホラー" → horror), it
+also reads that `GENRE.md`. Claude gets the prose below the generated tables plus one
+line of medians from `tokens.json`. Code takes the hook length (median first cut) and the
+title length (median final shot) for the skeleton from the same `tokens.json`.
+`shotpilot plan --spec` prints exactly what Claude reads. Genres are matched in the
+order horror, cozy, rpg, action, adventure ("action RPG" is rpg).
+
+## craft/ and genres/<id>/
+
+```
+craft/TEASER-CRAFT.md   the universal shape. Tables between auto markers are generated;
+                        the prose below them is hand written and goes to the planner
+craft/tokens.json       distributions over every in-scope teaser (also by length, language,
+                        and for gameplay trailers)
+genres/<id>/GENRE.md    same layout for one genre: shape, Do, Avoid, in shotpilot's terms
+genres/<id>/tokens.json distributions, quarter profiles, exemplars (nearest the medians)
+genres/<id>/manifest.json  id, display name, aliases, sample size, member teasers
+genres/_index.json      one line per genre
+```
+
+A genre gets a package once it has 20 teasers. Sci-fi (15, mixed with TV series) has none.
 
 ## teasers/<id>/
 
 ```
-manifest.json        machine entry: id, name, category, language, source, files, status
+manifest.json        machine entry: id, name, category (genre), kind, scope, language, source, files, status
 TEASER.md            read first. "Teaser Inspired by X": tone, beats with timecodes, rhythm,
                      camera, title cards, sound, and Do / Avoid for shotpilot
-tokens.json          measured numbers (ffmpeg): shots, ASL, cuts per quarter, blacks, loudness
+tokens.json          measured numbers (ffmpeg): cuts, edits, picture, loudness
 source/evidence.md   URL, channel, how it was found and measured
 preview/sheet.jpg    8x6 contact sheet. Gitignored (frames of a third-party work)
 ```
@@ -24,25 +50,54 @@ preview/sheet.jpg    8x6 contact sheet. Gitignored (frames of a third-party work
 `status` moves `catalogued → downloaded → measured → analyzed`. A package is
 `analyzed` once the `> 分析: 未` line is gone from `TEASER.md`.
 
+`category` is scored from the title (x3), YouTube tags (x2), description and search query
+(x1); the highest-scoring genre wins, `general` when nothing scores. `scope` is `in`,
+`non-game` (anime PVs, films, TV, VTubers, pachislot) or `out-of-range` (under 10 s or over
+150 s). Only `scope: in` teasers are aggregated. `kind` is `gameplay` when the title says
+so; aggregates use `teaser` only (gameplay trailers are summarised separately in
+`craft/tokens.json`).
+
 Worked example: [`teasers/yt-rsDR9xaPIJE`](teasers/yt-rsDR9xaPIJE/TEASER.md).
 Catalogue: [`teasers/INDEX.md`](teasers/INDEX.md).
+
+## Reading the measurements
+
+- **Cuts** are peaks of ffmpeg's per-frame scene score that are >= 0.1 and at least 3x the
+  median of the 24 surrounding frames. A fixed threshold (0.3) missed most cuts in dark
+  footage, where real cuts score 0.15-0.25. Dissolves are not cuts; flashes are.
+- **Edits** merge cuts closer than 0.25 s into one edit point (a flash is one edit).
+  `edits_per_min`, `median_shot`, `first_cut`, `last_shot` use edits. A **flash burst** is
+  3+ cuts each within 0.35 s.
+- **Quarter profiles** divide each teaser into four equal parts and divide by the teaser's
+  own mean, then take the median over teasers: 1.2 in Q3 means Q3 is 20% denser than average.
+- **Brightness** is signalstats YAVG (16-235); a frame under 40 counts as dark.
+  **Saturation** is SATAVG.
+- **Loudness** is ebur128 integrated LUFS and LRA. "First sound" bottoms out at 0.4 s
+  (the momentary window), so 0.4 s means sound from the first frame.
+- Source videos are YouTube 360p; numbers are roughly +/-20 % per teaser, stable in aggregate.
 
 ## Regenerating
 
 ```bash
 sh research_data/tools/download.sh            # resumable; videos stay in research_data/ (not in git)
-python -I research_data/tools/build_refs.py research_data/teasers references/teasers --measure
+python -I research_data/tools/build_refs.py research_data/teasers references/teasers --measure -j 10
+python -I research_data/tools/aggregate_refs.py references
+cargo test --test ai                          # the embedded references still parse and match
 ```
 
-`build_refs.py` rewrites `manifest.json`, `tokens.json` (only when missing),
-`evidence.md`, the indexes, and the block between `<!-- auto:begin -->` and
-`<!-- auto:end -->` in `TEASER.md`. Everything else in `TEASER.md` is hand
-(or Claude) written and is never overwritten.
+`build_refs.py` rewrites `manifest.json`, `tokens.json` (when missing or from an older
+method; `--remeasure` forces it), `evidence.md`, the indexes, and the block between
+`<!-- auto:begin -->` and `<!-- auto:end -->` in `TEASER.md`. `aggregate_refs.py` rewrites
+`craft/` and `genres/` the same way. Everything outside the auto markers is hand (or
+Claude) written and is never overwritten. Adding a genre: give it aliases in
+`aggregate_refs.py`, write the prose in its `GENRE.md`, and add one `genre!("<id>")` line
+in `refs.rs`.
 
 ## Rules
 
 - Videos and frames stay local and are used for analysis only (Japan Copyright Act
   Art. 30-4). Do not commit them or ship them in the submission.
 - Write what you saw. Mark what you inferred without watching/listening as 推定.
-- Measured cut counts are approximate: the scene detector misses dissolves and
-  counts flashes; check against the contact sheet before quoting a number.
+- Prose that reaches the planner states the shape to write toward. No self-review,
+  checklists or scoring (D-22); `references_never_ask_claude_to_inspect_its_own_output`
+  keeps it that way.
