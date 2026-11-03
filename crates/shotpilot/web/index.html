@@ -6,361 +6,774 @@
 <title>shotpilot</title>
 <style>
 :root {
-  --bg: #f5f5f3; --panel: #ffffff; --ink: #1b1b1a; --muted: #6b6b66; --line: #dcdcd6;
-  --accent: #d9480f; --accent-soft: #fff0e8; --ok: #2b8a3e; --ok-soft: #ebf7ee;
-  --stale: #b08900; --stale-soft: #fff8db; --err: #c92a2a; --shadow: 0 1px 2px rgb(0 0 0 / .06);
+  --app: #dfe7ea; --card: #ffffff; --ink: #111312; --muted: #6b7276; --faint: #9aa1a5; --line: #e4e8ea;
+  --soft: #f3f6f7; --stage: #0d0e0e; --accent: #3be02b; --accent-ink: #0b3d06; --stale: #d99a00;
+  --err: #d92d20; --bubble: #111312; --bubble-ink: #ffffff; --shadow: 0 1px 3px rgb(16 24 40 / .06);
+  --hook: #ff6b3d; --establish: #3d8bff; --escalate: #b45cff; --title: #3be02b;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141413; --panel: #1e1e1c; --ink: #ecebe6; --muted: #9a9a93; --line: #34342f;
-    --accent: #ff7a3d; --accent-soft: #3a2116; --ok: #69db7c; --ok-soft: #1b2e1f;
-    --stale: #f2c94c; --stale-soft: #33290f; --err: #ff6b6b; --shadow: none;
+    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #6b7276; --line: #2a2e30;
+    --soft: #202325; --stage: #050505; --bubble: #ecefef; --bubble-ink: #111312; --shadow: none;
   }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
-header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line);
-  padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
-h1 { font-size: 16px; margin: 0; font-weight: 650; }
-.sub { color: var(--muted); font-size: 12px; }
-.spacer { flex: 1; }
-.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-button, select, input, textarea { font: inherit; color: inherit; }
-button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-button:disabled { opacity: .5; cursor: default; }
-select, input, textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 5px 8px; }
-#summary { font-weight: 650; font-variant-numeric: tabular-nums; }
-#summary .r { color: var(--accent); } #summary .u { color: var(--muted); }
-#msg { width: 100%; font-size: 13px; color: var(--muted); min-height: 0; }
-#msg.err { color: var(--err); }
-#msg:empty { display: none; }
-button.link { border: none; background: none; padding: 0 4px; color: var(--accent); text-decoration: underline; font-weight: 600; }
-main { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.card { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; overflow: hidden;
-  box-shadow: var(--shadow); cursor: pointer; transition: border-color .2s, opacity .2s; position: relative; }
-.card:hover { border-color: var(--muted); }
-.card.sel { border-color: var(--ink); }
-.card.rendered { border-color: var(--accent); }
-.card.reused { opacity: .55; }
-.card.rendering .thumb::after { content: "rendering…"; position: absolute; inset: 0; display: grid; place-items: center;
-  background: rgb(0 0 0 / .45); color: #fff; font-weight: 600; letter-spacing: .04em; }
-.thumb { position: relative; aspect-ratio: 16 / 9; background: var(--line); }
-.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.thumb img.old { filter: grayscale(.8); opacity: .5; }
-.thumb .none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
-.flag { position: absolute; top: 8px; right: 8px; font-size: 11px; font-weight: 700; letter-spacing: .05em;
-  padding: 2px 7px; border-radius: 4px; }
-.flag.rendered { background: var(--accent); color: #fff; }
-.flag.reused { background: var(--panel); color: var(--muted); border: 1px solid var(--line); }
-.flag.failed { background: var(--err); color: #fff; }
-.meta { padding: 10px 12px; display: grid; gap: 4px; }
-.row { display: flex; gap: 8px; align-items: center; }
-.num { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-.id { font-weight: 650; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chip { font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-.badge { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: auto; }
-.badge.fresh { background: var(--ok-soft); color: var(--ok); }
-.badge.stale { background: var(--stale-soft); color: var(--stale); }
-.badge.none { color: var(--muted); }
-.purpose { color: var(--muted); font-size: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.facts { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-aside { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100%); background: var(--panel);
-  border-left: 1px solid var(--line); padding: 20px; overflow: auto; transform: translateX(100%);
-  transition: transform .2s; z-index: 3; display: grid; gap: 12px; align-content: start; }
-aside.open { transform: none; }
-aside h2 { margin: 0; font-size: 15px; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-label input, label textarea { width: 100%; color: var(--ink); }
-textarea { min-height: 84px; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
-.hint { font-size: 12px; color: var(--muted); }
-.actions { display: flex; gap: 8px; }
-pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 11px;
-  overflow: auto; max-height: 260px; margin: 0; }
-@media (max-width: 600px) { header, main { padding-left: 16px; padding-right: 16px; } }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--app); color: var(--ink); overflow: hidden;
+  font: 13.5px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+.mono { font-family: var(--mono); }
+
+/* ------------------------------------------------------------------ shell */
+#app { height: 100vh; display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 10px; padding: 10px; }
+
+/* ------------------------------------------------------------------ chat column */
+#chat { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+.proj { display: flex; align-items: center; gap: 10px; padding: 6px 8px 12px; }
+.proj svg { flex: none; }
+.proj .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+#log { scrollbar-width: thin; scrollbar-color: var(--line) transparent; overflow-y: auto; padding: 4px 8px 16px; display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+.empty-chat { color: var(--muted); padding: 24px 6px; }
+.empty-chat b { color: var(--ink); display: block; font-size: 15px; margin-bottom: 6px; }
+.msg-user { align-self: flex-end; max-width: 88%; display: grid; justify-items: end; gap: 4px; }
+.msg-user .bubble { background: var(--bubble); color: var(--bubble-ink); padding: 9px 14px; border-radius: 14px; white-space: pre-wrap; }
+.msg-user .ctx { color: var(--muted); font-size: 11.5px; }
+.msg-ai { display: grid; gap: 8px; }
+.who { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.who .logo { width: 20px; height: 20px; border-radius: 6px; background: var(--ink); color: var(--card); display: grid; place-items: center; font-size: 11px; }
+.who .state { font-weight: 500; color: var(--muted); font-size: 12px; }
+.changes { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: grid; gap: 3px;
+  font-family: var(--mono); font-size: 11.5px; box-shadow: var(--shadow); }
+.changes .k { color: var(--muted); }
+.changes .b { color: var(--faint); text-decoration: line-through; }
+.done-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.done-row .ok { color: var(--ink); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.dot.warn { background: var(--stale); } .dot.bad { background: var(--err); }
+.done-row .t { margin-left: auto; }
+.suggest { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.suggest button { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; color: var(--ink); font-size: 12.5px; }
+.suggest button + button { border-top: 1px solid var(--line); }
+.suggest button:hover { background: var(--soft); }
+.event { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
+.event b { color: var(--ink); font-weight: 600; }
+.thinking .state::after { content: "…"; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.composer { background: var(--card); border-radius: 16px; padding: 10px 12px 10px; box-shadow: var(--shadow); display: grid; gap: 6px; border: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 8px; border-radius: 999px;
+  background: var(--soft); border: 1px solid var(--line); color: var(--ink); }
+.chip button { border: 0; background: none; padding: 0; color: var(--muted); line-height: 1; }
+.chip.scope { cursor: pointer; }
+#note { border: 0; outline: 0; resize: none; background: transparent; min-height: 64px; max-height: 200px; padding: 4px 2px; }
+#note::placeholder { color: var(--faint); }
+.comp-row { display: flex; align-items: center; gap: 8px; }
+.comp-row .model { margin-left: auto; color: var(--muted); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+.send { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--ink); display: grid; place-items: center; }
+.send svg { stroke: var(--accent); }
+.warn-ai { font-size: 12px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 8px 10px; }
+
+/* ------------------------------------------------------------------ canvas card */
+#canvas { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); min-width: 0; min-height: 0;
+  display: grid; grid-template-rows: auto auto 1fr auto; overflow: hidden; border: 1px solid var(--line); }
+.tabs { display: flex; align-items: center; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
+.tab { border: 0; background: none; padding: 7px 12px 9px; border-radius: 9px 9px 0 0; color: var(--muted); display: flex; gap: 7px; align-items: center; font-size: 12.5px; }
+.tab.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+.tabs .right { margin-left: auto; display: flex; gap: 8px; align-items: center; padding-bottom: 6px; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 6px 12px; display: inline-flex; gap: 7px; align-items: center; font-size: 12.5px; font-weight: 500; }
+.btn.dark { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn svg, .icon svg { width: 15px; height: 15px; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: 8px; color: var(--muted); display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; font-weight: 500; }
+.icon { border: 0; background: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); }
+.icon:hover, .icon.on { background: var(--soft); color: var(--ink); }
+.toolbar .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+#summary { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#summary b { color: var(--ink); }
+
+/* ------------------------------------------------------------------ stage */
+#stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
+#view { position: relative; min-height: 0; overflow: hidden; display: grid; place-items: center; }
+#view img { max-width: 100%; max-height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+#view video { width: 100%; height: 100%; object-fit: contain; display: block; }
+#view.mark { cursor: crosshair; }
+#region { position: absolute; border: 2px solid var(--accent); background: rgb(59 224 43 / .12); border-radius: 3px; pointer-events: none; }
+#region::after { content: attr(data-label); position: absolute; top: -22px; left: -2px; background: var(--accent); color: var(--accent-ink);
+  font: 600 11px/1 system-ui, sans-serif; padding: 4px 6px; border-radius: 4px; white-space: nowrap; }
+.placeholder { color: #8a9094; text-align: center; padding: 24px; }
+.placeholder b { color: #e6e9ea; display: block; font-size: 15px; margin-bottom: 4px; }
+.badge-q { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 600; color: #fff; background: rgb(0 0 0 / .55);
+  padding: 3px 8px; border-radius: 6px; letter-spacing: .02em; }
+.badge-q.stale { background: var(--stale); color: #241900; }
+.scrub { display: flex; align-items: center; gap: 12px; padding: 8px 14px; color: #c9cfd2; font-size: 12px; font-variant-numeric: tabular-nums; background: #141617; }
+.scrub input { flex: 1; accent-color: var(--accent); }
+
+/* tweak (precise edits by hand) */
+#tweak { overflow: auto; padding: 16px 18px; background: var(--card); display: grid; gap: 10px; align-content: start; }
+#tweak h3 { margin: 0; font-size: 14px; }
+#tweak .hint { color: var(--muted); font-size: 12px; }
+.rows { display: grid; grid-template-columns: minmax(160px, max-content) 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.rows > * { padding: 6px 10px; border-top: 1px solid var(--line); }
+.rows > :nth-child(-n+2) { border-top: 0; }
+.rows .key { font-family: var(--mono); font-size: 12px; color: var(--muted); background: var(--soft); }
+.rows input { border: 0; outline: 0; background: transparent; font-family: var(--mono); font-size: 12px; width: 100%; padding: 0; }
+.rows input.dirty { color: var(--ink); font-weight: 700; }
+.rows .new { background: var(--soft); }
+
+/* ------------------------------------------------------------------ timeline */
+#timeline { border-top: 1px solid var(--line); padding: 8px 12px 12px; display: grid; gap: 6px; background: var(--card); user-select: none; }
+.tl-head { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.tl-head b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.tl-head .legend { margin-left: auto; display: flex; gap: 12px; }
+.lg { display: inline-flex; gap: 5px; align-items: center; }
+.lg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.tl-body { position: relative; }
+.ruler { position: relative; height: 16px; font-size: 10px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.ruler span { position: absolute; top: 0; transform: translateX(-50%); }
+.ruler i { position: absolute; bottom: 0; width: 1px; height: 4px; background: var(--line); }
+.track { display: flex; gap: 2px; height: 86px; }
+.clip { position: relative; min-width: 0; border-radius: 8px; overflow: hidden; background: #1c1f20 center / auto 100% repeat-x;
+  border: 2px solid transparent; cursor: pointer; display: flex; flex-direction: column; }
+.clip::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(0 0 0 / .55), transparent 40%, transparent 60%, rgb(0 0 0 / .65)); }
+.clip > * { position: relative; }
+.clip .beat { height: 4px; background: var(--c, var(--muted)); }
+.clip .top { display: flex; gap: 6px; align-items: center; padding: 4px 7px 0; color: #fff; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+.clip .top .n { opacity: .7; }
+.clip .top .id { overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11px; }
+.clip .bot { margin-top: auto; display: flex; gap: 6px; align-items: center; padding: 0 7px 5px; color: #e9eded; font-size: 10.5px; white-space: nowrap; overflow: hidden; }
+.ladder { display: inline-flex; gap: 3px; margin-left: auto; }
+.ladder i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgb(255 255 255 / .55); display: inline-block; }
+.ladder i.fresh { background: var(--accent); border-color: var(--accent); }
+.ladder i.stale { background: var(--stale); border-color: var(--stale); }
+.clip.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+@media (prefers-color-scheme: dark) { .clip.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px #fff; } }
+.clip.reused { filter: saturate(.3) brightness(.7); }
+.tag { position: absolute; right: 6px; top: 22px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; }
+.tag.rendered { background: var(--accent); color: var(--accent-ink); }
+.tag.failed { background: var(--err); color: #fff; }
+.tag.stale { background: var(--stale); color: #241900; }
+.clip.rendering::after { content: "rendering"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 700;
+  font-size: 11px; letter-spacing: .08em; background: rgb(0 0 0 / .5); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { background: rgb(0 0 0 / .25); } }
+.playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; border-radius: 2px; }
+.playhead::before { content: ""; position: absolute; top: 0; left: -4px; border: 5px solid transparent; border-top-color: var(--accent); }
+.target { position: absolute; top: 14px; bottom: -2px; border-left: 1.5px dashed var(--muted); pointer-events: none; }
+.target span { position: absolute; top: -14px; left: 3px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+#toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 8px 14px;
+  border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
+#toast.err { background: var(--err); color: #fff; }
+@media (max-width: 860px) { #app { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } }
 </style>
 </head>
 <body>
-<header>
-  <div>
-    <h1 id="title">shotpilot</h1>
-    <div class="sub" id="subtitle"></div>
-  </div>
-  <div class="spacer"></div>
-  <div id="summary"></div>
-  <div class="controls">
-    <select id="quality" aria-label="quality"></select>
-    <button class="primary" id="render">Render stale</button>
-    <button id="cut">Cut</button>
-  </div>
-  <div id="msg"></div>
-</header>
+<div id="app">
+  <!-- left: conversation -->
+  <section id="chat" aria-label="chat">
+    <div class="proj">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <div style="min-width:0"><div class="name" id="title">shotpilot</div><div class="meta" id="subtitle"></div></div>
+    </div>
+    <div id="log"></div>
+    <div class="composer">
+      <div class="chips" id="chips"></div>
+      <textarea id="note" rows="3" placeholder="どう直す？ 例: もう少し手すりに寄せて"></textarea>
+      <div id="ai-warn" class="warn-ai" hidden>Claude に接続されていません。環境変数 <span class="mono">ANTHROPIC_API_KEY</span> を設定して、アプリを開き直してください。数値を直接直す「調整」はこのままでも使えます。</div>
+      <div class="comp-row">
+        <button class="chip scope" id="scope" title="指示の範囲を切り替える"></button>
+        <span class="model"><span class="dot" id="ai-dot"></span><span id="model"></span></span>
+        <button class="send" id="send" title="送信 (Ctrl+Enter)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      </div>
+    </div>
+  </section>
 
-<main id="grid"></main>
-
-<aside id="panel" aria-label="edit shot">
-  <div class="row"><h2 id="p-id"></h2><span class="spacer"></span><button id="p-close">閉じる</button></div>
-  <label>duration（秒）<input id="f-duration" type="number" step="0.5" min="0.5"></label>
-  <label>焦点距離 camera.lens.focal_length（mm）<input id="f-lens" type="number" step="1" min="8"></label>
-  <label>アンカー camera.anchor<input id="f-anchor" type="text"></label>
-  <label>purpose<input id="f-purpose" type="text"></label>
-  <label>その他（<code>shotpilot set</code> と同じ <code>key=value</code>、1行1件。空の値は削除）
-    <textarea id="f-free" placeholder="camera.offset=[0, -300, 160]&#10;environment.time_of_day=night"></textarea></label>
-  <div class="actions"><button class="primary" id="p-save">保存</button></div>
-  <div class="hint">保存すると shots.yaml だけが書き換わります。レンダは「Render stale」で、古くなったショットだけ。</div>
-  <details><summary class="hint">定義（shots.yaml の該当ノード）</summary><pre id="p-node"></pre></details>
-</aside>
+  <!-- right: canvas -->
+  <section id="canvas" aria-label="canvas">
+    <div class="tabs">
+      <button class="tab on" data-tab="shot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg><span id="tab-shot">ショット</span></button>
+      <button class="tab" data-tab="teaser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg>ティザー</button>
+      <div class="right">
+        <span id="summary"></span>
+        <button class="btn" id="cut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Cut</button>
+        <button class="btn dark" id="render"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>撮り直す</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="icon" id="reload" title="再読み込み"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+      <div class="seg">
+        <button class="on" data-mode="preview"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>プレビュー</button>
+        <button data-mode="tweak"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>調整</button>
+      </div>
+      <select class="q" id="quality" title="品質"></select>
+      <div class="right">
+        <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
+        <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
+      </div>
+    </div>
+    <div id="stage">
+      <div id="view"></div>
+      <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
+    </div>
+    <div id="tweak" hidden></div>
+    <div id="timeline">
+      <div class="tl-head">
+        <span><b id="tl-total">0s</b> / 目標 <span id="tl-target"></span></span>
+        <span id="tl-stale"></span>
+        <span class="legend">
+          <span class="lg"><i style="background:var(--hook)"></i>hook</span>
+          <span class="lg"><i style="background:var(--establish)"></i>establish</span>
+          <span class="lg"><i style="background:var(--escalate)"></i>escalate</span>
+          <span class="lg"><i style="background:var(--title)"></i>title</span>
+        </span>
+      </div>
+      <div class="tl-body" id="tl-body">
+        <div class="ruler" id="ruler"></div>
+        <div class="track" id="track"></div>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="toast" hidden></div>
 
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final: "final" };
 
-let status = null;          // last /api/status
-let selected = null;        // shot id open in the panel
-let busy = false;           // a render/cut/save is running
-const outcome = {};         // shot id -> {action, seconds, thumb} from the last render
-let lastSummary = "";
+const ui = {
+  status: null, log: [], logKey: "",
+  sel: null,            // selected shot id
+  frame: 0,             // frame index within the shown take
+  tab: "shot",          // shot | teaser
+  mode: "preview",      // preview | tweak
+  quality: null,
+  region: null,         // [x0, y0, x1, y1] normalized to the image
+  scopeAll: false,      // note applies to the whole list
+  busy: null,           // "render" | "cut" | "revise" | "save"
+  outcome: {},          // shot id -> {action, seconds}
+  summary: "",
+  pending: null,        // optimistic chat message while Claude works
+  started: 0,
+};
 
-function quality() { return $("quality").value || "previz"; }
-
-function say(text, isErr = false) {
-  $("msg").textContent = text || "";
-  $("msg").className = isErr ? "err" : "";
-}
+// ------------------------------------------------------------------ data
 
 async function api(method, path, body) {
-  const r = await fetch(path, {
-    method, headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || `${r.status} ${r.statusText}`);
   return data;
 }
 
+function toast(text, isErr = false) {
+  const t = $("toast");
+  t.textContent = text; t.className = isErr ? "err" : ""; t.hidden = !text;
+  clearTimeout(toast.timer);
+  if (text) toast.timer = setTimeout(() => (t.hidden = true), isErr ? 8000 : 3500);
+}
+
 async function refresh() {
   try {
-    status = await api("GET", "/api/status");
-    if ($("msg").className === "err" && !busy) say("");
+    const [st, log] = await Promise.all([api("GET", "/api/status"), api("GET", "/api/log?n=80")]);
+    ui.status = st;
+    if (!ui.quality || !st.qualities.includes(ui.quality)) ui.quality = defaultQuality(st);
+    if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
+    const key = JSON.stringify(log);
+    if (key !== ui.logKey) { ui.log = log; ui.logKey = key; drawChat(); }
     draw();
-  } catch (e) {
-    say(e.message, true);
-  }
+  } catch (e) { toast(e.message, true); }
 }
 
-function drawHeader() {
-  const s = status;
-  $("title").textContent = s.title || s.project;
-  $("title").title = s.path || "";
-  const diff = s.total_duration - s.target_duration;
-  $("subtitle").textContent =
-    `${s.project} · engine ${s.engine} · ${s.shots.length} shots · ${s.total_duration}s / 目標 ${s.target_duration}s (${diff >= 0 ? "+" : ""}${Math.round(diff * 10) / 10}s)`
-    + (s.warnings.length ? ` · ${s.warnings.join(" / ")}` : "");
-  const sel = $("quality");
-  if (sel.options.length !== s.qualities.length) {
-    const keep = sel.value || "previz";
-    sel.innerHTML = s.qualities.map((q) => `<option>${esc(q)}</option>`).join("");
-    sel.value = s.qualities.includes(keep) ? keep : s.qualities[0];
-  }
-  $("summary").innerHTML = lastSummary;
+/** The highest quality any shot has a take for, so the app opens on real frames. */
+function defaultQuality(st) {
+  for (const q of [...st.qualities].reverse()) if (st.shots.some((s) => s.thumbs[q]?.url)) return q;
+  return st.qualities[0];
 }
 
-function cardHtml(shot) {
-  const q = quality();
-  const st = shot.qualities[q];
-  const o = outcome[shot.id];
-  const t = shot.thumbs[q];
-  const url = (o && o.thumb) || (t && t.url);
-  const img = url
-    ? `<img src="${esc(url)}" alt="" class="${st === "fresh" || (o && o.thumb) ? "" : "old"}" loading="lazy">`
-    : `<div class="none">まだ撮っていない</div>`;
-  const flag = o && o.action !== "rendering"
-    ? `<span class="flag ${esc(o.action)}">${o.action === "rendered" ? `RENDERED ${o.seconds.toFixed(1)}s` : o.action.toUpperCase()}</span>`
-    : "";
-  const cls = ["card", o ? o.action : "", shot.id === selected ? "sel" : ""].join(" ");
-  const label = { fresh: "fresh", stale: "STALE", none: "—" }[st];
-  return `<article class="${cls}" data-id="${esc(shot.id)}">
-    <div class="thumb">${img}${flag}</div>
-    <div class="meta">
-      <div class="row"><span class="num">${shot.index + 1}</span><span class="id">${esc(shot.id)}</span>
-        <span class="badge ${esc(st)}">${label}</span></div>
-      <div class="row">${shot.beat ? `<span class="chip">${esc(shot.beat)}</span>` : ""}
-        <span class="facts">${shot.duration}s · ${shot.lens}mm · engine ${esc(shot.build)}</span></div>
-      <div class="purpose">${esc(shot.purpose)}</div>
-    </div>
-  </article>`;
+const shot = () => ui.status?.shots.find((s) => s.id === ui.sel);
+
+/** The take shown for a shot: the chosen quality, else the best lower one that exists. */
+function shownTake(s) {
+  const qs = ui.status.qualities;
+  const i = qs.indexOf(ui.quality);
+  for (let j = i; j >= 0; j--) {
+    const t = s.thumbs[qs[j]];
+    if (t && t.frames && t.frames.length) return { q: qs[j], t, exact: j === i };
+  }
+  return null;
 }
+
+// ------------------------------------------------------------------ drawing
 
 function draw() {
-  if (!status) return;
-  drawHeader();
-  $("grid").innerHTML = status.shots.map(cardHtml).join("");
-  if (selected && !status.shots.some((s) => s.id === selected)) closePanel();
+  const st = ui.status; if (!st) return;
+  $("title").textContent = st.title || st.project;
+  $("title").title = st.path || "";
+  $("subtitle").textContent = `${st.project} · ${st.engine} · ${st.shots.length} shots`;
+  const sel = $("quality");
+  if (sel.options.length !== st.qualities.length) sel.innerHTML = st.qualities.map((q) => `<option value="${esc(q)}">${esc(QUALITY_JA[q] || q)}</option>`).join("");
+  sel.value = ui.quality;
+  $("summary").innerHTML = ui.summary;
+  for (const b of document.querySelectorAll(".tab")) b.classList.toggle("on", b.dataset.tab === ui.tab);
+  for (const b of document.querySelectorAll(".seg button")) b.classList.toggle("on", b.dataset.mode === ui.mode);
+  const s = shot();
+  $("tab-shot").textContent = s ? `${s.index + 1}. ${s.id}` : "ショット";
+  const tweak = ui.tab === "shot" && ui.mode === "tweak";
+  $("stage").hidden = tweak; $("tweak").hidden = !tweak;
+  $("mark").disabled = ui.tab !== "shot" || tweak;
+  $("render").disabled = $("cut").disabled = !!ui.busy;
+  $("send").disabled = !!ui.busy || !st.ai?.ready;
+  $("ai-warn").hidden = !!st.ai?.ready;
+  $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
+  $("model").textContent = st.ai?.model || "";
+  if (ui.tab === "teaser") drawTeaser(); else if (tweak) drawTweak(); else drawStage();
+  drawTimeline();
+  drawChips();
 }
 
-// ------------------------------------------------------------------ render (SSE over fetch)
+function drawStage() {
+  const s = shot();
+  const view = $("view");
+  view.classList.toggle("mark", true);
+  const tk = s && shownTake(s);
+  if (!tk) {
+    view.innerHTML = `<div class="placeholder"><b>まだ撮っていません</b>「撮り直す」で ${esc(ui.quality)} を撮ります</div>`;
+    $("scrub").hidden = true; return;
+  }
+  const n = tk.t.frames.length;
+  ui.frame = Math.min(ui.frame, n - 1);
+  const url = tk.t.frames[ui.frame];
+  const img = view.querySelector("img");
+  const fresh = tk.t.fresh && tk.exact;
+  const label = `${tk.q}${tk.exact ? "" : `（${ui.quality} はまだ）`}${tk.t.fresh ? "" : " · 古い take"}`;
+  if (img && view.querySelector(".badge-q")) {
+    if (img.getAttribute("src") !== url) img.src = url;
+    const b = view.querySelector(".badge-q"); b.textContent = label; b.className = "badge-q" + (fresh ? "" : " stale");
+  } else {
+    view.innerHTML = `<img alt="" draggable="false" src="${esc(url)}"><span class="badge-q${fresh ? "" : " stale"}">${esc(label)}</span><div id="region" hidden></div>`;
+    view.querySelector("img").addEventListener("load", drawRegion);
+  }
+  $("scrub").hidden = false;
+  const fr = $("frame"); fr.max = n - 1; fr.value = ui.frame; fr.disabled = n < 2;
+  const num = tk.t.frame_numbers?.[ui.frame] ?? ui.frame;
+  const total = Math.round(s.duration * (ui.status.fps || 30));
+  $("f-label").textContent = `frame ${num + 1} / ${total}`;
+  $("f-time").textContent = `${(num / (ui.status.fps || 30)).toFixed(2)}s / ${s.duration}s`;
+  drawRegion();
+}
 
-async function render() {
-  if (busy) return;
-  busy = true; setButtons();
-  for (const k of Object.keys(outcome)) delete outcome[k];
-  lastSummary = ""; say(`${quality()} を確認中…`);
+function imageBox() {
+  const img = $("view").querySelector("img");
+  if (!img || !img.naturalWidth) return null;
+  const v = $("view").getBoundingClientRect(), r = img.getBoundingClientRect();
+  return { left: r.left - v.left, top: r.top - v.top, width: r.width, height: r.height, abs: r };
+}
+
+function drawRegion() {
+  const el = $("region"); if (!el) return;
+  const box = imageBox();
+  if (!ui.region || !box) { el.hidden = true; return; }
+  const [x0, y0, x1, y1] = ui.region;
+  Object.assign(el.style, { left: `${box.left + x0 * box.width}px`, top: `${box.top + y0 * box.height}px`,
+    width: `${(x1 - x0) * box.width}px`, height: `${(y1 - y0) * box.height}px` });
+  el.dataset.label = "ここを直す";
+  el.hidden = false;
+}
+
+function drawTeaser() {
+  const cut = ui.status.cut;
+  $("scrub").hidden = true;
+  const view = $("view"); view.classList.remove("mark");
+  if (!cut || !cut.video_url) {
+    view.innerHTML = `<div class="placeholder"><b>ティザーはまだありません</b>「Cut」で、いまある take をショット順につなぎます（レンダはしません）</div>`;
+    return;
+  }
+  const cur = view.querySelector("video");
+  if (cur && cur.dataset.src === cut.video_url + cut.stamp) return;
+  view.innerHTML = `<video controls preload="metadata" data-src="${esc(cut.video_url + cut.stamp)}" src="${esc(cut.video_url)}?v=${encodeURIComponent(cut.stamp || "")}"></video>
+    <span class="badge-q">${esc(cut.quality)} · cut.mp4</span>`;
+}
+
+function flatten(node, prefix = "", out = []) {
+  for (const [k, v] of Object.entries(node)) {
+    const p = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) flatten(v, p, out);
+    else out.push([p, v]);
+  }
+  return out;
+}
+
+/** JSON with a space after commas in lists, which reads better for coordinates. */
+const show = (v) => (Array.isArray(v) ? `[${v.map(show).join(", ")}]` : JSON.stringify(v));
+
+function drawTweak() {
+  const s = shot(); if (!s) return;
+  // polling must not wipe values being typed: rebuild only when the shot itself changed
+  const key = JSON.stringify(s.node);
+  if (drawTweak.key === key && $("tweak").childElementCount) return;
+  drawTweak.key = key;
+  const rows = flatten(s.node).filter(([k]) => k !== "id");
+  $("tweak").innerHTML = `<h3>${s.index + 1}. ${esc(s.id)} を手で調整</h3>
+    <div class="hint">Claude に頼まずに、値を直接直します。書き換わるのは shots.yaml のこのショットだけで、ピクセルが変わる値を直したときだけ撮り直しが必要になります。値は JSON（数値、"文字列"、[x, y, z]）。空にすると削除。</div>
+    <div class="rows">${rows.map(([k, v]) => `<div class="key">${esc(k)}</div><div><input data-key="${esc(k)}" data-orig="${esc(show(v))}" value="${esc(show(v))}" spellcheck="false"></div>`).join("")}
+      <div class="key new"><input id="new-key" placeholder="新しいキー（例: camera.lens.aperture）" spellcheck="false"></div><div class="new"><input id="new-val" placeholder="値" spellcheck="false"></div></div>
+    <div><button class="btn dark" id="tweak-save">保存</button></div>`;
+  for (const inp of $("tweak").querySelectorAll("input[data-key]")) inp.addEventListener("input", () => inp.classList.toggle("dirty", inp.value !== inp.dataset.orig));
+  $("tweak-save").addEventListener("click", saveTweak);
+}
+
+function drawTimeline() {
+  const st = ui.status;
+  const total = st.shots.reduce((a, s) => a + s.duration, 0);
+  const span = Math.max(total, st.target_duration || 0);
+  $("tl-total").textContent = `${Math.round(total * 10) / 10}s`;
+  $("tl-target").textContent = `${st.target_duration}s`;
+  const stale = st.shots.filter((s) => s.qualities[ui.quality] === "stale").length;
+  $("tl-stale").innerHTML = stale ? `<span class="dot warn"></span> ${ui.quality} で古いショット ${stale}` : "";
+  // ruler
+  let r = "";
+  for (let t = 0; t <= span; t++) {
+    const x = (t / span) * 100;
+    r += t % 5 === 0 ? `<span style="left:${x}%">${t}s</span>` : `<i style="left:${x}%"></i>`;
+  }
+  $("ruler").innerHTML = r;
+  // clips
+  const qs = st.qualities;
+  $("track").innerHTML = st.shots.map((s) => {
+    const tk = shownTake(s);
+    const o = ui.outcome[s.id];
+    const cls = ["clip", s.id === ui.sel ? "sel" : "", o ? o.action : ""].join(" ");
+    const bg = tk ? `background-image:url('${esc(tk.t.url)}')` : "";
+    const ladder = qs.map((q) => `<i class="${s.qualities[q] === "fresh" ? "fresh" : s.qualities[q] === "stale" ? "stale" : ""}" title="${esc(q)}: ${esc(s.qualities[q])}"></i>`).join("");
+    let tag = "";
+    if (o && o.action === "rendered") tag = `<span class="tag rendered">RENDERED ${o.seconds.toFixed(0)}s</span>`;
+    else if (o && o.action === "failed") tag = `<span class="tag failed">FAILED</span>`;
+    else if (!o && s.qualities[ui.quality] === "stale") tag = `<span class="tag stale">STALE</span>`;
+    return `<div class="${cls}" data-id="${esc(s.id)}" style="flex:${s.duration} 1 0;--c:var(--${esc(s.beat || "muted")});${bg}" title="${esc(s.purpose)}">
+      <div class="beat"></div>
+      <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}
+      <div class="bot"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span><span class="ladder">${ladder}</span></div></div>`;
+  }).join("");
+  // target marker and playhead (target sits past the end when the cut is short)
+  const body = $("tl-body");
+  body.querySelectorAll(".playhead,.target").forEach((e) => e.remove());
+  if (st.target_duration && total !== st.target_duration) {
+    const m = document.createElement("div"); m.className = "target";
+    m.style.left = `${Math.min(st.target_duration / span, 1) * 100}%`;
+    m.innerHTML = `<span>目標</span>`;
+    body.appendChild(m);
+  }
+  const s = shot();
+  if (s && ui.tab === "shot") {
+    const start = st.shots.slice(0, s.index).reduce((a, x) => a + x.duration, 0);
+    const tk = shownTake(s);
+    const num = tk ? (tk.t.frame_numbers?.[ui.frame] ?? 0) : 0;
+    const t = start + Math.min(num / (st.fps || 30), s.duration);
+    const track = $("track");
+    // clips are flex boxes with gaps; place by the clip's own box
+    const clip = track.querySelector(`.clip[data-id="${CSS.escape(s.id)}"]`);
+    if (clip) {
+      const ph = document.createElement("div"); ph.className = "playhead";
+      const frac = s.duration ? (t - start) / s.duration : 0;
+      ph.style.left = `${clip.offsetLeft + frac * clip.offsetWidth - 1}px`;
+      ph.style.top = `${track.offsetTop - 4}px`; ph.style.bottom = "0";
+      body.appendChild(ph);
+    }
+  }
+}
+
+function drawChips() {
+  const s = shot();
+  const chips = [];
+  if (ui.scopeAll) chips.push(`<span class="chip">全体（並べ替えも可）</span>`);
+  else if (s) {
+    chips.push(`<span class="chip">🎯 ${esc(s.index + 1 + ". " + s.id)}</span>`);
+    const tk = ui.tab === "shot" && ui.mode === "preview" && shownTake(s);
+    if (tk) {
+      const num = tk.t.frame_numbers?.[ui.frame] ?? ui.frame;
+      chips.push(`<span class="chip">frame ${num + 1} · ${tk.q}</span>`);
+    }
+    if (ui.region) chips.push(`<span class="chip">範囲を囲み済み <button data-clear="region" title="範囲を消す">✕</button></span>`);
+  }
+  $("chips").innerHTML = chips.join("");
+  $("scope").textContent = ui.scopeAll ? "↔ 全体に指示" : "◎ このショットに指示";
+  $("note").placeholder = ui.scopeAll ? "全体にどう直す？ 例: 30秒に収めて、タイトル前に間を作って"
+    : ui.region ? "囲んだところをどう直す？ 例: この柱が邪魔。避けて" : "このショットをどう直す？ 例: もう少し手すりに寄せて";
+}
+
+// ------------------------------------------------------------------ chat log
+
+function timeOf(at) { return (at || "").slice(11, 16); }
+
+function changesHtml(changes) {
+  const rows = [];
+  for (const [id, list] of Object.entries(changes || {})) {
+    for (const c of list) {
+      rows.push(`<div><span class="k">${esc(id)}.</span>${esc(c.path)}: ${c.before === undefined || c.before === null ? "" : `<span class="b">${esc(show(c.before))}</span> → `}${esc(show(c.after ?? null))}</div>`);
+    }
+  }
+  return rows.length ? `<div class="changes">${rows.join("")}</div>` : "";
+}
+
+function suggestHtml(stale) {
+  if (!stale || !stale.length) return "";
+  const qs = ui.status?.qualities || [];
+  const cheap = qs.includes("still") ? "still" : qs[0];
+  const items = [`<button data-render="${esc(cheap)}">↗ ${esc(cheap)} で ${esc(stale.join(", "))} だけ撮り直して確認</button>`];
+  if (qs.includes("final")) items.push(`<button data-render="final">↗ final で撮り直す</button>`);
+  return `<div class="suggest">${items.join("")}</div>`;
+}
+
+function entryHtml(e, isLast) {
+  if (e.action === "revise") {
+    const ctx = e.pointer ? `<div class="ctx">${esc(e.pointer)}</div>` : "";
+    return `<div class="msg-user"><div class="bubble">${esc(e.note)}</div>${ctx}</div>
+      <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
+        ${e.summary ? `<div>${esc(e.summary)}</div>` : ""}${changesHtml(e.changes)}
+        <div class="done-row"><span class="ok"><span class="dot"></span>shots.yaml に反映</span>
+          <span>${e.stale?.length ? `撮り直しが必要: ${esc(e.stale.join(", "))}` : "撮り直しは不要"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
+        ${isLast ? suggestHtml(e.stale) : ""}</div>`;
+  }
+  if (e.action === "set") {
+    return `<div class="msg-user"><div class="bubble">手で調整: ${esc(e.note)}</div><div class="ctx">${esc((e.edited || []).join(", "))}</div></div>
+      <div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span>${e.stale?.length ? `撮り直しが必要: <b>${esc(e.stale.join(", "))}</b>` : "ピクセルは変わらないので撮り直し不要"} <span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
+      ${isLast ? suggestHtml(e.stale) : ""}`;
+  }
+  if (e.action === "render") {
+    const bad = e.failed?.length;
+    return `<div class="event"><span class="dot${bad ? " bad" : ""}"></span><span><b>${esc(e.quality)}</b>: ${e.rendered.length} rendered / ${e.reused.length} reused${bad ? ` / ${bad} failed` : ""}${e.rendered.length ? `（${esc(e.rendered.join(", "))}）` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
+  if (e.action === "cut") {
+    return `<div class="event"><span class="dot"></span><span><b>cut</b> ${esc(e.quality)}: ${e.order.length} shots をつないだ</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
+  if (e.action === "order") return `<div class="event"><span class="dot"></span><span>並べ替え（撮り直しなし）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  return "";
+}
+
+function drawChat() {
+  const keep = new Set(["revise", "set", "render", "cut", "order"]);
+  const items = ui.log.filter((e) => keep.has(e.action));
+  const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
+    ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
+  // suggestions only while nothing has been rendered since the edit
+  const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
+  let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
+  if (ui.pending) {
+    html += `<div class="msg-user"><div class="bubble">${esc(ui.pending.note)}</div><div class="ctx">${esc(ui.pending.ctx)}</div></div>
+      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="think-state">考えています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div></div>`;
+  }
+  if (!html) {
+    html = `<div class="empty-chat"><b>直したいところを言葉で伝えてください</b>
+      下のタイムラインでショットを選び、プレビューで直したい場所を囲んでから書くと、Claude がそのフレームを見てカメラを直します。
+      直すのは選んだショットだけで、撮り直されるのもそのショットだけです。</div>`;
+  }
+  const log = $("log");
+  const atBottom = !drawChat.seen || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  drawChat.seen = true;
+  log.innerHTML = html;
+  // scroll after layout settles (the composer above can change height in the same frame)
+  if (atBottom || ui.pending) requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
+}
+
+// ------------------------------------------------------------------ actions
+
+async function sendNote() {
+  const note = $("note").value.trim();
+  const s = shot();
+  if (!note || ui.busy || !ui.status?.ai?.ready) return;
+  const body = { note };
+  const ctx = [];
+  if (!ui.scopeAll && s) {
+    body.shot = s.id; ctx.push(s.id);
+    const tk = ui.tab === "shot" && ui.mode === "preview" && shownTake(s);
+    if (tk) {
+      const num = tk.t.frame_numbers?.[ui.frame] ?? ui.frame;
+      body.frame = { url: tk.t.frames[ui.frame], index: num, count: Math.round(s.duration * (ui.status.fps || 30)), time: num / (ui.status.fps || 30) };
+      ctx.push(`frame ${num + 1}`);
+    }
+    if (ui.region) { body.region = ui.region; ctx.push("範囲あり"); }
+  } else ctx.push("全体");
+  ui.busy = "revise"; ui.pending = { note, ctx: ctx.join(" · ") }; ui.started = Date.now();
+  $("note").value = ""; draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `考えています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
   try {
-    const r = await fetch("/api/render", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quality: quality() }),
-    });
+    const out = await api("POST", "/api/revise", body);
+    ui.region = null; ui.outcome = {}; ui.summary = "";
+    if (!out.edited?.length) toast("Claude は何も変えませんでした");
+  } catch (e) {
+    $("note").value = note; toast(e.message, true);
+  } finally {
+    clearInterval(tick); ui.busy = null; ui.pending = null; ui.logKey = "";
+    await refresh();
+  }
+}
+
+async function render(quality = ui.quality) {
+  if (ui.busy) return;
+  ui.busy = "render"; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
+  if (quality !== ui.quality) ui.quality = quality;
+  draw();
+  try {
+    const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quality }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
-    const reader = r.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
+      const { value, done } = await reader.read(); if (done) break;
       buf += dec.decode(value, { stream: true });
       let i;
       while ((i = buf.indexOf("\n\n")) >= 0) {
         const block = buf.slice(0, i); buf = buf.slice(i + 2);
         const ev = /^event: (.*)$/m.exec(block)?.[1];
-        const data = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
-        onEvent(ev, data);
+        const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
+        if (ev === "plan") {
+          for (const id of d.render) ui.outcome[id] = { action: "rendering" };
+          ui.summary = d.render.length ? `<b>${d.render.length}</b> ショットを撮影中…` : "全部 fresh。撮り直しなし";
+        } else if (ev === "shot") {
+          ui.outcome[d.shot_id] = { action: d.action, seconds: d.seconds || 0 };
+          if (d.action === "failed") toast(`${d.shot_id}: ${d.detail}`, true);
+        } else if (ev === "done") {
+          ui.summary = `<b>${d.rendered} rendered</b> / ${d.reused} reused${d.failed ? ` / <span style="color:var(--err)">${d.failed} failed</span>` : ""}`;
+        } else if (ev === "error") toast(d.error, true);
+        draw();
       }
     }
-  } catch (e) {
-    say(e.message, true);
-  } finally {
-    busy = false; setButtons();
-    await refresh();
-  }
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
 }
-
-function onEvent(ev, d) {
-  if (ev === "plan") {
-    for (const id of d.render) outcome[id] = { action: "rendering" };
-    say(d.render.length ? `撮り直し: ${d.render.join(", ")}（他は既存の take を使う）` : "全部 fresh。撮り直すものはありません");
-  } else if (ev === "shot") {
-    outcome[d.shot_id] = { action: d.action, seconds: d.seconds || 0, thumb: d.thumb };
-    if (d.action === "failed") say(`${d.shot_id}: ${d.detail}`, true);
-  } else if (ev === "done") {
-    lastSummary = `<span class="r">${d.rendered} rendered</span> / <span class="u">${d.reused} reused</span>`
-      + (d.failed ? ` / <span style="color:var(--err)">${d.failed} failed</span>` : "");
-    if (!d.failed) say(d.rendered ? "変わったショットだけ撮り直しました。他は触っていません。" : "");
-  } else if (ev === "error") {
-    say(d.error, true);
-  }
-  draw();
-}
-
-// ------------------------------------------------------------------ cut
 
 async function cut() {
-  if (busy) return;
-  busy = true; setButtons(); say("take をつないでいます…");
+  if (ui.busy) return;
+  ui.busy = "cut"; ui.summary = "つないでいます…"; draw();
   try {
     const info = await api("POST", "/api/cut", { quality: "best" });
-    // opened with the OS default app (player / browser), not inside this window
-    const links = [`<button class="link" data-open="${esc(info.storyboard)}">storyboard を開く</button>`];
-    if (info.video_url) links.push(`<button class="link" data-open="${esc(info.video_url)}">cut.mp4 を再生</button>`);
-    $("msg").className = "";
-    $("msg").innerHTML = `${info.shots} shots / ${info.seconds}s をつなぎました（レンダはしていません）: ${links.join(" ")}`;
-  } catch (e) {
-    say(e.message, true);
-  } finally {
-    busy = false; setButtons();
-  }
+    ui.summary = `${info.shots} shots / ${info.seconds}s をつないだ（レンダなし）`;
+    ui.tab = "teaser";
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
 }
 
-// ------------------------------------------------------------------ edit panel
-
-function openPanel(id) {
-  const shot = status.shots.find((s) => s.id === id);
-  if (!shot) return;
-  selected = id;
-  const cam = shot.node.camera || {};
-  $("p-id").textContent = `${shot.index + 1}. ${id}`;
-  $("f-duration").value = shot.duration;
-  $("f-lens").value = shot.lens ?? "";
-  $("f-anchor").value = cam.anchor ?? "";
-  $("f-purpose").value = shot.purpose ?? "";
-  $("f-free").value = "";
-  $("p-node").textContent = JSON.stringify(shot.node, null, 2);
-  $("panel").classList.add("open");
-  draw();
+function parseValue(t) {
+  if (t.trim() === "") return null;
+  try { return JSON.parse(t); } catch { return t.trim(); }
 }
 
-function closePanel() {
-  selected = null;
-  $("panel").classList.remove("open");
-  draw();
-}
-
-function parseValue(v) {
-  const t = v.trim();
-  if (t === "") return null;
-  try { return JSON.parse(t); } catch { return t; }
-}
-
-async function save() {
-  const shot = status.shots.find((s) => s.id === selected);
-  if (!shot || busy) return;
+async function saveTweak() {
+  const s = shot(); if (!s || ui.busy) return;
   const set = {};
-  const num = (el) => (el.value === "" ? null : Number(el.value));
-  if (num($("f-duration")) !== shot.duration && $("f-duration").value !== "") set.duration = num($("f-duration"));
-  if (num($("f-lens")) !== shot.lens && $("f-lens").value !== "") set["camera.lens.focal_length"] = num($("f-lens"));
-  const anchor = $("f-anchor").value.trim();
-  if (anchor !== ((shot.node.camera || {}).anchor ?? "") && anchor !== "") set["camera.anchor"] = anchor;
-  if ($("f-purpose").value !== (shot.purpose ?? "")) set.purpose = $("f-purpose").value;
-  for (const line of $("f-free").value.split("\n")) {
-    if (!line.trim()) continue;
-    const i = line.indexOf("=");
-    if (i < 0) { say(`key=value の形ではありません: ${line}`, true); return; }
-    set[line.slice(0, i).trim()] = parseValue(line.slice(i + 1));
-  }
-  if (!Object.keys(set).length) { say("変更はありません"); return; }
-  busy = true; setButtons();
+  for (const inp of $("tweak").querySelectorAll("input[data-key]")) if (inp.value !== inp.dataset.orig) set[inp.dataset.key] = parseValue(inp.value);
+  const nk = $("new-key").value.trim();
+  if (nk) set[nk] = parseValue($("new-val").value);
+  if (!Object.keys(set).length) { toast("変更はありません"); return; }
+  ui.busy = "save"; draw();
   try {
-    const rep = await api("POST", `/api/shots/${encodeURIComponent(shot.id)}`, { set });
-    for (const k of Object.keys(outcome)) delete outcome[k];
-    lastSummary = "";
-    say(rep.stale.length ? `古くなったショット: ${rep.stale.join(", ")}（「Render stale」で、ここだけ撮り直します）`
-                         : "保存しました。ピクセルが変わらない変更なので、撮り直しは不要です。");
-    $("f-free").value = "";
-  } catch (e) {
-    say(e.message, true);
-  } finally {
-    busy = false; setButtons();
-    await refresh();
-    if (selected) openPanel(selected);
+    const rep = await api("POST", `/api/shots/${encodeURIComponent(s.id)}`, { set });
+    ui.outcome = {}; ui.summary = "";
+    toast(rep.stale.length ? `${rep.stale.join(", ")} が古くなりました。「撮り直す」でここだけ撮ります` : "保存しました。撮り直しは不要です");
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+}
+
+// ------------------------------------------------------------------ input
+
+function selectShot(id, frame = 0) {
+  if (id !== ui.sel) ui.region = null;
+  ui.sel = id; ui.frame = frame;
+  if (ui.tab !== "shot") ui.tab = "shot";
+  draw();
+}
+
+$("track").addEventListener("click", (e) => {
+  const clip = e.target.closest(".clip"); if (!clip) return;
+  const s = ui.status.shots.find((x) => x.id === clip.dataset.id);
+  const tk = s && shownTake(s);
+  let frame = 0;
+  if (tk && tk.t.frames.length > 1) {
+    // clicking inside a clip picks the frame closest to that moment
+    const frac = (e.clientX - clip.getBoundingClientRect().left) / clip.offsetWidth;
+    const want = frac * s.duration * (ui.status.fps || 30);
+    const nums = tk.t.frame_numbers || [];
+    let best = 0;
+    nums.forEach((n, i) => { if (Math.abs(n - want) < Math.abs(nums[best] - want)) best = i; });
+    frame = best;
   }
-}
-
-// ------------------------------------------------------------------ wiring
-
-function setButtons() {
-  for (const id of ["render", "cut", "p-save"]) $(id).disabled = busy;
-}
-
-$("grid").addEventListener("click", (e) => {
-  const card = e.target.closest(".card");
-  if (card) openPanel(card.dataset.id);
+  selectShot(clip.dataset.id, frame);
 });
-$("msg").addEventListener("click", async (e) => {
-  const b = e.target.closest("[data-open]");
-  if (!b) return;
-  try { await api("POST", "/api/open", { url: b.dataset.open }); } catch (err) { say(err.message, true); }
-});
-$("p-close").addEventListener("click", closePanel);
-$("p-save").addEventListener("click", save);
-$("render").addEventListener("click", render);
+
+$("frame").addEventListener("input", (e) => { ui.frame = Number(e.target.value); draw(); });
+$("quality").addEventListener("change", (e) => { ui.quality = e.target.value; ui.outcome = {}; ui.summary = ""; draw(); });
+$("render").addEventListener("click", () => render());
 $("cut").addEventListener("click", cut);
-$("quality").addEventListener("change", () => { for (const k of Object.keys(outcome)) delete outcome[k]; lastSummary = ""; draw(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel(); });
-window.addEventListener("focus", () => { if (!busy) refresh(); });
+$("reload").addEventListener("click", () => { ui.logKey = ""; refresh(); });
+$("send").addEventListener("click", sendNote);
+$("scope").addEventListener("click", () => { ui.scopeAll = !ui.scopeAll; drawChips(); });
+$("note").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendNote(); } });
+$("chips").addEventListener("click", (e) => { if (e.target.closest("[data-clear]")) { ui.region = null; draw(); } });
+$("log").addEventListener("click", (e) => { const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render); });
+$("mark").addEventListener("click", () => toast("プレビューの上をドラッグして、直したいところを囲んでください"));
+$("open-ext").addEventListener("click", async () => {
+  const cut = ui.status?.cut;
+  if (!cut?.storyboard) { toast("まだ cut がありません"); return; }
+  try { await api("POST", "/api/open", { url: cut.storyboard }); } catch (err) { toast(err.message, true); }
+});
+for (const b of document.querySelectorAll(".tab")) b.addEventListener("click", () => { ui.tab = b.dataset.tab; draw(); });
+for (const b of document.querySelectorAll(".seg button")) b.addEventListener("click", () => { ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
+
+// drag on the frame to mark what the note is about
+let drag = null;
+$("view").addEventListener("pointerdown", (e) => {
+  if (ui.tab !== "shot" || ui.mode !== "preview") return;
+  const box = imageBox(); if (!box) return;
+  const p = (ev) => [Math.min(Math.max((ev.clientX - box.abs.left) / box.abs.width, 0), 1), Math.min(Math.max((ev.clientY - box.abs.top) / box.abs.height, 0), 1)];
+  drag = { p, start: p(e) };
+  $("view").setPointerCapture(e.pointerId);
+});
+$("view").addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const [x, y] = drag.p(e), [sx, sy] = drag.start;
+  ui.region = [Math.min(sx, x), Math.min(sy, y), Math.max(sx, x), Math.max(sy, y)];
+  drawRegion();
+});
+$("view").addEventListener("pointerup", () => {
+  if (!drag) return;
+  drag = null;
+  if (ui.region && ((ui.region[2] - ui.region[0]) < 0.02 || (ui.region[3] - ui.region[1]) < 0.02)) ui.region = null;
+  drawRegion(); drawChips();
+  if (ui.region) $("note").focus();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea, select")) return;
+  const st = ui.status; if (!st) return;
+  const i = st.shots.findIndex((s) => s.id === ui.sel);
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    const s = shot(); const tk = s && shownTake(s); const n = tk ? tk.t.frames.length : 1;
+    const d = e.key === "ArrowRight" ? 1 : -1;
+    if (ui.frame + d >= 0 && ui.frame + d < n) ui.frame += d;
+    else if (st.shots[i + d]) { selectShot(st.shots[i + d].id, 0); return; }
+    draw(); e.preventDefault();
+  } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    const t = st.shots[i + (e.key === "ArrowDown" ? 1 : -1)]; if (t) selectShot(t.id); e.preventDefault();
+  } else if (e.key === "Escape") { ui.region = null; draw(); }
+  else if (e.key === "/" ) { $("note").focus(); e.preventDefault(); }
+});
+window.addEventListener("resize", () => { drawRegion(); if (ui.status) drawTimeline(); });
+window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 // shots.yaml is the source of truth: pick up edits made from the CLI or a text editor
-setInterval(() => { if (!busy && document.visibilityState === "visible") refresh(); }, 3000);
+setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(); }, 3000);
+// #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
+for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
+  if (part === "teaser") ui.tab = "teaser"; else if (part === "tweak") ui.mode = "tweak"; else ui.sel = decodeURIComponent(part);
+}
 refresh();
 </script>
 </body>

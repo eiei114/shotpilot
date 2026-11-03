@@ -337,12 +337,14 @@ fn latest_cut(root: &Path) -> Value {
             }
         }
     }
-    let Some((_, dir)) = best else { return Value::Null };
+    let Some((when, dir)) = best else { return Value::Null };
+    let stamp = when.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let video = dir.join("cut.mp4");
     json!({
         "quality": dir.file_name().map(|n| n.to_string_lossy().to_string()),
         "video_url": if video.is_file() { file_url(root, &video) } else { None },
         "storyboard": file_url(root, &dir.join("index.html")),
+        "stamp": stamp.to_string(),
     })
 }
 

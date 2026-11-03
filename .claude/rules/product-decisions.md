@@ -18,6 +18,7 @@
 - D-14: 差別化は3層で置く。①修正ループを製品の中心に置く ②ティザーの型 `hook → establish → escalate → title` を同梱する ③1ビートに3バリアントを出す。汎用の Unreal エージェントとは正面から戦わない。
 - D-15: open-design（nexu-io/open-design）型のローカル daemon と Web UI（`shotpilot serve`）を、標準ライブラリだけで薄く載せる。正本は shots.yaml のまま、リクエストごとに Workspace を開き直す。Next.js / Electron / SQLite は持ち込まない。狙いはデモの「1枚だけ rendered、残りは reused」を画面で見せること。（D-16 でブラウザ表示をやめ、アプリのウィンドウに置き換えた）
 - D-16: 全体を Rust に書き換え、Tauri のデスクトップアプリ（`shotpilot-app`）にする。ブラウザで開く Web UI はやめる。Python は UE の中で動く `sp_entry.py` だけに留める。fingerprint は Python 版と同じバイト列を hash するので、それまでに UE で撮った take はそのまま再利用できる。
+- D-17: アプリの画面は open-design のスタジオ画面（左に会話、右にキャンバス）に倣い、キャンバスの下に動画エディタのタイムラインを置く。直し方は自然言語が主で、人間は「どのショットの、どのフレームの、どこか」をタイムラインとプレビューの範囲選択で指す。Claude にはそのフレーム画像と範囲を渡し、編集範囲はコードで選んだショットに限る。数値の直接編集（調整）は従に置く。
 
 ## デモ（20秒）で見せる主張
 
