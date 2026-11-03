@@ -361,7 +361,7 @@ impl Ue5Engine {
         writeln!(log, "{}\n", shown.join(" "))?;
         let err_log = log.try_clone()?;
         let t0 = Instant::now();
-        let mut child = Command::new(&self.cmd)
+        let mut child = crate::cut::no_window(&mut Command::new(&self.cmd))
             .args(&argv)
             .env("SHOTPILOT_JOB", &job_file)
             .stdin(Stdio::null())
