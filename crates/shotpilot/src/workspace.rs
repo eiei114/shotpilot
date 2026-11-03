@@ -665,6 +665,14 @@ impl Workspace {
     /// [`Self::edit_definition`], optionally replacing the top-level `audio:` mapping too.
     pub fn edit_definition_with(&mut self, edits: &[(String, Value)], order: Option<&[String]>,
                                 audio: Option<&Map<String, Value>>, action: &str, note: &str) -> Result<EditReport> {
+        self.edit_definition_full(edits, &[], order, audio, action, note)
+    }
+
+    /// [`Self::edit_definition_with`], also setting the `sfx` of script lines (`line_sfx`:
+    /// line id -> a list, or null for none). The rest of each line stays as written.
+    pub fn edit_definition_full(&mut self, edits: &[(String, Value)], line_sfx: &[(String, Value)],
+                                order: Option<&[String]>, audio: Option<&Map<String, Value>>, action: &str,
+                                note: &str) -> Result<EditReport> {
         let before = self.render_fps()?;
         let audio_before = self.defn.audio.clone();
         let mut doc = Doc::load(&self.path)?;
@@ -686,6 +694,28 @@ impl Workspace {
         }
         if !replace.is_empty() {
             doc.replace_items("shots", &replace)?;
+        }
+        if !line_sfx.is_empty() {
+            let lines = current["script"].as_array().cloned().unwrap_or_default();
+            let mut replace = Vec::new();
+            for (id, list) in line_sfx {
+                let Some(i) = lines.iter().position(|l| model::str_of(&l["id"]) == *id) else {
+                    bail!("unknown script line '{id}'");
+                };
+                let mut node = lines[i].clone();
+                let Some(m) = node.as_object_mut() else { bail!("script line '{id}' is not a mapping") };
+                match list {
+                    Value::Array(a) if !a.is_empty() => {
+                        m.insert("sfx".into(), list.clone());
+                    }
+                    Value::Null | Value::Array(_) => {
+                        m.remove("sfx");
+                    }
+                    _ => bail!("sfx for script line '{id}' must be a list"),
+                }
+                replace.push((i, node, Vec::new()));
+            }
+            doc.replace_items("script", &replace)?;
         }
         if let Some(order) = order {
             let mut a = order.to_vec();
@@ -728,6 +758,9 @@ impl Workspace {
         let mut entry = json!({"edited": edited, "reordered": order.is_some(), "stale": stale, "note": note});
         if audio_changed {
             entry["audio"] = json!(true);
+        }
+        if !line_sfx.is_empty() {
+            entry["lines"] = json!(line_sfx.iter().map(|(id, _)| id).collect::<Vec<_>>());
         }
         self.state.log(action, entry);
         self.state.save()?;

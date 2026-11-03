@@ -1399,6 +1399,7 @@ function wave(peaks) {
 }
 
 const laneKey = (p) => `${p.role}:${p.shot ?? ""}:${p.index}`;
+const isShotId = (id) => !!ui.status?.shots.some((s) => s.id === id);
 const sfxList = (id) => JSON.parse(JSON.stringify(ui.status?.shots.find((s) => s.id === id)?.node?.sfx || []));
 
 /** The placement (with its mixed lane, when there is one) of a selection. */
@@ -1426,7 +1427,7 @@ function drawLanes() {
     const s = span(p);
     const left = xOf(s.from), w = Math.max(xOf(s.to) - left, 8);
     // music cues and effects on script lines are set in shots.yaml (or by Claude), not dragged here
-    const ro = (p.role === "bgm" && p.index > 0) || (p.role === "sfx" && !ui.status.shots.some((x) => x.id === p.shot));
+    const ro = (p.role === "bgm" && p.index > 0) || (p.role === "sfx" && !isShotId(p.shot));
     const cls = ["sblock", p.role, isSel(p) ? "sel" : "", p.missing ? "missing" : "", ro ? "ro" : ""].join(" ");
     const title = `${p.label} · ${p.file}${p.missing ? "（ファイルがありません）" : ""} · ${p.gain} dB${p.shot ? ` · ${p.shot}` : ""}`;
     return `<div class="${cls}" data-k="${esc(laneKey(p))}" style="left:${left}px;width:${w}px;${top != null ? `top:${top}px` : ""}" title="${esc(title)}">${wave(s.peaks)}<span>${esc(p.label)}</span></div>`;
@@ -1598,6 +1599,20 @@ function drawInspector() {
       </div>${noFiles}
       <div class="btns">${b.file ? `<button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button>` : ""}<button class="btn" data-act="desel">閉じる</button></div>`;
     box.dataset.kind = "bgm";
+    return;
+  }
+  if (!isShotId(ui.snd.shot)) {
+    const line = (ui.status.script || []).find((l) => l.id === ui.snd.shot);
+    box.innerHTML = `<h3>SE <small>${esc(sel.p.label)} · 台本 ${esc(ui.snd.shot)}</small></h3>
+      <div class="fields">
+        <label>台本</label><div>${esc(line ? `${line.kind}: ${line.ja}` : ui.snd.shot)}</div>
+        <label>ファイル</label><div>${esc(sel.p.file)}</div>
+        <label>位置</label><div>${esc(fmtT(sel.p.start))}</div>
+        <label>音量</label><div>${esc(sel.p.gain)} dB</div>
+      </div>
+      <div class="sp-hint">台本の行に付いた SE です。下の入力欄から Claude に直し方を伝えてください（例: もう少し小さく / 別の衝撃音に）。</div>
+      <div class="btns"><button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button><button class="btn" data-act="desel">閉じる</button></div>`;
+    box.dataset.kind = "line-sfx";
     return;
   }
   const it = sfxList(ui.snd.shot)[ui.snd.index] || {};
@@ -1981,7 +1996,11 @@ async function sendNote() {
   if (ui.tab === "sound") {
     body.sound = true; ctx.push("🔊 音だけ");
     const it = ui.snd && soundItem(ui.snd);
-    if (it?.p.role === "sfx") { body.shot = it.p.shot; body.sfx_index = it.p.index; ctx.push(`${it.p.shot} の ${it.p.label}`); }
+    if (it?.p.role === "sfx") {
+      // an effect sits on a shot or on a script line (a card, a caption)
+      if (isShotId(it.p.shot)) body.shot = it.p.shot; else body.line = it.p.shot;
+      body.sfx_index = it.p.index; ctx.push(`${it.p.shot} の ${it.p.label}`);
+    }
     else if (it) ctx.push("BGM");
     if (ui.playT) { body.time = ui.playT; ctx.push(fmtT(ui.playT)); }
   } else if (!ui.scopeAll && s) {
@@ -2000,7 +2019,7 @@ async function sendNote() {
   try {
     const out = await api("POST", "/api/revise", body);
     ui.region = null; ui.outcome = {}; ui.summary = "";
-    if (!out.edited?.length) toast("Claude は何も変えませんでした");
+    if (!out.edited?.length && !out.audio && !Object.keys(out.changes || {}).length) toast("Claude は何も変えませんでした");
   } catch (e) {
     $("note").value = note; toast(e.message, true);
   } finally {
@@ -2116,13 +2135,15 @@ $("scope").addEventListener("click", () => {
 // sound lanes: click selects, drag moves a sound effect, double-click adds one
 let sdrag = null;
 $("lanes").addEventListener("pointerdown", (e) => {
-  const b = e.target.closest(".sblock"); if (!b || e.button !== 0 || b.classList.contains("ro")) return;
+  const b = e.target.closest(".sblock"); if (!b || e.button !== 0) return;
   const p = ui.sound.placements.find((x) => laneKey(x) === b.dataset.k); if (!p) return;
-  sdrag = { b, p, x0: e.clientX, moved: false, left0: xOf(p.start), t: p.start };
-  if (p.role === "sfx") b.setPointerCapture(e.pointerId);
+  const ro = b.classList.contains("ro");
+  if (ro && p.role !== "sfx") return; // music cues are set in shots.yaml or by Claude
+  sdrag = { b, p, ro, x0: e.clientX, moved: false, left0: xOf(p.start), t: p.start };
+  if (p.role === "sfx" && !ro) b.setPointerCapture(e.pointerId);
 });
 $("lanes").addEventListener("pointermove", (e) => {
-  if (!sdrag || sdrag.p.role !== "sfx") return;
+  if (!sdrag || sdrag.ro || sdrag.p.role !== "sfx") return;
   const dx = e.clientX - sdrag.x0;
   if (!sdrag.moved && Math.abs(dx) < 4) return;
   sdrag.moved = true; sdrag.b.classList.add("dragging");
@@ -2150,7 +2171,7 @@ $("lanes").addEventListener("pointerup", () => {
   $("lanes").querySelector(".drag-t")?.remove();
   if (!d.moved) {
     ui.snd = d.p.role === "bgm" ? { kind: "bgm" } : { kind: "sfx", shot: d.p.shot, index: d.p.index };
-    if (d.p.shot) ui.sel = d.p.shot;
+    if (d.p.shot && isShotId(d.p.shot)) ui.sel = d.p.shot;
     ui.tab = ui.fin = "sound"; draw(); return;
   }
   // effects belong to a shot: dropping one over another shot hands it over

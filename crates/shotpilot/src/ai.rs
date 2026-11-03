@@ -155,9 +155,19 @@ pub fn revise_schema() -> Value {
             "order": {"type": "array", "items": {"type": "string"},
                       "description": "full list of shot ids in the new order, or empty to keep the order"},
             "audio": {"type": "string",
-                      "description": "the complete replacement YAML mapping for the top-level `audio` (bgm, gain), or empty to keep it"},
+                      "description": "the complete replacement YAML mapping for the top-level `audio` (music, bgm, gain, loudness), or empty to keep it"},
+            "lines": {"type": "array", "description": "script lines whose `sfx` changes (sound notes only), or empty",
+                      "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "sfx": {"type": "string", "description": "the complete replacement YAML list for the line's `sfx` (empty = none)"},
+                },
+                "required": ["id", "sfx"],
+                "additionalProperties": false,
+            }},
         },
-        "required": ["summary", "edits", "order", "audio"],
+        "required": ["summary", "edits", "order", "audio", "lines"],
         "additionalProperties": false,
     })
 }
@@ -751,29 +761,40 @@ pub struct Pointer {
     /// The global sound library. With a sound note, Claude may pick from it by writing
     /// `file: lib:<id>`; the file is copied into the project before the edit is checked.
     pub library: Option<Library>,
+    /// A sound note about one script line's effects: only that line's `sfx` may change.
+    pub line: Option<String>,
 }
 
 /// How many library sounds a sound note lists for Claude.
 const LIBRARY_PROMPT_MAX: usize = 300;
 
-/// Replace `lib:<id>` files in the shots' `sfx` and the BGM with copies in `audio/lib/`.
-fn take_from_library(edits: &mut [(String, Value)], audio: Option<&mut Map<String, Value>>, lib: Option<&Library>,
-                     root: &std::path::Path) -> Result<()> {
+/// Replace `lib:<id>` files in the shots' and script lines' `sfx`, the BGM and the music
+/// cues with copies in `audio/lib/`.
+fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)], audio: Option<&mut Map<String, Value>>,
+                     lib: Option<&Library>, root: &std::path::Path) -> Result<()> {
     let fix = |f: &mut Value| -> Result<()> {
         let Some(id) = f.as_str().and_then(|s| s.strip_prefix("lib:")).map(str::to_string) else { return Ok(()) };
         let Some(lib) = lib else { bail!("Claude used library sound '{id}' but no library is open; nothing applied") };
         *f = json!(lib.import(&id, root)?);
         Ok(())
     };
-    for (_, shot) in edits.iter_mut() {
-        for it in shot.get_mut("sfx").and_then(Value::as_array_mut).into_iter().flatten() {
+    let lists = edits.iter_mut().filter_map(|(_, shot)| shot.get_mut("sfx")).chain(lines.iter_mut().map(|(_, l)| l));
+    for list in lists {
+        for it in list.as_array_mut().into_iter().flatten() {
             if let Some(f) = it.get_mut("file") {
                 fix(f)?;
             }
         }
     }
-    if let Some(f) = audio.and_then(|a| a.get_mut("bgm")).and_then(|b| b.get_mut("file")) {
-        fix(f)?;
+    if let Some(a) = audio {
+        if let Some(f) = a.get_mut("bgm").and_then(|b| b.get_mut("file")) {
+            fix(f)?;
+        }
+        for c in a.get_mut("music").and_then(Value::as_array_mut).into_iter().flatten() {
+            if let Some(f) = c.get_mut("file") {
+                fix(f)?;
+            }
+        }
     }
     Ok(())
 }
@@ -804,34 +825,34 @@ pub struct Revision {
     pub order: Option<Vec<String>>,
     /// Replacement for the top-level `audio:` mapping, when it changed.
     pub audio: Option<Map<String, Value>>,
+    /// New `sfx` of script lines (a list, or null for none), sound notes only.
+    pub lines: Vec<(String, Value)>,
     pub summary: String,
 }
 
 const SOUND_GUIDE: &str = "\
 Sound never re-renders a shot: it is mixed when the cut is assembled.
-- The teaser's background music lives in the top-level `audio` mapping:
-  {gain: master dB, bgm: {file, gain dB, start: teaser seconds, offset: seconds into the file,
-  fade_in, fade_out}}.
-- A sound effect belongs to a shot, in that shot's `sfx` list:
-  {file, at: seconds from the shot's start (negative up to -3 leads into the cut, e.g. a whoosh),
-  gain dB, label}. It moves with its shot when the cut is reordered.
-- Hits, whooshes and risers usually land on a cut (at: 0) or on a marker inside the shot.
-  Typical gains: BGM -12..-4 dB, effects -6..0 dB.";
+- The top-level `audio` mapping holds the music and the level:
+  {loudness: LUFS the whole cut is brought to (-30..-8, default -16; this, not gain, sets how loud
+  the teaser is), gain: master dB, music: [cues], bgm: {file, gain, start, offset, fade_in, fade_out}}.
+  A music cue is {file, from: the shot or script line id it starts on (or start), until: the id it
+  stops after (or end), at: seconds after that start, offset: seconds into the file, gain dB,
+  fade_in, fade_out, label}. `from` and `until` must name pieces that are in the cut now.
+- A sound effect is {file, at, gain dB, label} in the `sfx` list of a shot (at: seconds from the
+  shot's start, negative up to -3 leads into the cut, e.g. a whoosh) or of a script line (at:
+  seconds from when the card or text appears). It moves with its shot or line when the cut is reordered.
+- Hits, whooshes and risers usually land on a cut (at: 0), a card, or a marker inside the shot.
+  Typical gains: music -14..-9 dB, effects -8..-1 dB.";
 
-/// Every audio file the definition refers to (sfx and BGM).
-fn audio_files(audio: &Map<String, Value>, shots: &[Value]) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    if let Some(f) = audio.get("bgm").and_then(|b| b.get("file")).and_then(Value::as_str) {
-        out.push(f.replace('\\', "/"));
-    }
-    for s in shots {
-        for it in s.get("sfx").and_then(Value::as_array).into_iter().flatten() {
-            if let Some(f) = it.get("file").and_then(Value::as_str) {
-                out.push(f.replace('\\', "/"));
-            }
-        }
-    }
-    out
+/// Every audio file the definition refers to (BGM, music cues, and the `sfx` lists of
+/// shots and script lines).
+fn audio_files<'a>(audio: &'a Map<String, Value>, sfx_lists: impl Iterator<Item = &'a Value>) -> Vec<String> {
+    let files = audio
+        .get("bgm")
+        .into_iter()
+        .chain(audio.get("music").and_then(Value::as_array).into_iter().flatten())
+        .chain(sfx_lists.filter_map(Value::as_array).flatten());
+    files.filter_map(|it| it.get("file")).filter_map(Value::as_str).map(|f| f.replace('\\', "/")).collect()
 }
 
 /// Nothing is written here; the caller applies the revision through the workspace.
@@ -865,7 +886,29 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     } else {
         yamlio::dumps(&Value::Object(defn.audio.clone())).trim_end().to_string()
     };
-    let audio_allowed = scope.is_none() || pointer.sound;
+    let audio_allowed = (scope.is_none() || pointer.sound) && pointer.line.is_none();
+    if let Some(l) = &pointer.line {
+        if !pointer.sound || !defn.script.iter().any(|x| &x.id == l) {
+            bail!("unknown script line '{l}'");
+        }
+    }
+    // the script, with where each line sits in the cut, so effects can go on cards
+    let script_now = if pointer.sound && !defn.script.is_empty() {
+        let (spans, _) = sound::spans(defn, &resolved);
+        let rows: Vec<String> = defn
+            .script
+            .iter()
+            .map(|l| {
+                let at = spans.get(&l.id).map(|(a, b)| format!("{a:.2}-{b:.2}s")).unwrap_or_else(|| "not in the cut".into());
+                let place = l.on.as_ref().map(|o| format!("over {o}")).or(l.after.as_ref().map(|a| format!("after {a}"))).unwrap_or_default();
+                let sfx = if l.sfx.is_empty() { String::new() } else { format!("\n    sfx: {}", yamlio::emit_flow(&Value::Array(l.sfx.clone()))) };
+                format!("- {} ({}, {place}, {at}): {}{sfx}", l.id, l.kind, l.ja)
+            })
+            .collect();
+        format!("\n\nScript lines (cards between shots and text over shots; a line's `sfx` plays from when it appears):\n{}", rows.join("\n"))
+    } else {
+        String::new()
+    };
     let system = format!(
         "You revise a game teaser shot list defined in YAML. You change as little as possible: \
          only the shots the note is about, only the fields that need to change. You never rename ids. \
@@ -885,9 +928,18 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
         Some(s) => format!("You may only edit these shots: {}. Leave `order` empty.\n", s.join(", ")),
         None => "Only reorder if the note asks for it.\n".to_string(),
     };
-    if pointer.sound {
-        scope_line.push_str("This note is about the sound: change only `sfx` of shots and the top-level `audio`; \
-                             leave cameras, durations and everything else as they are.\n");
+    if let Some(l) = &pointer.line {
+        scope_line = format!("This note is about the sound effects of script line {l} only: return its new `sfx` in \
+                              `lines`; leave `edits`, `order` and `audio` empty.\n");
+    } else if pointer.sound && scope.is_some() {
+        scope_line.push_str("This note is about the sound: change only `sfx` of those shots and the top-level `audio`; \
+                             leave cameras, durations and everything else as they are. Leave `lines` empty.\n");
+    } else if pointer.sound {
+        scope_line.push_str("This note is about the sound: change only `sfx` of shots (in `edits`), `sfx` of script \
+                             lines (in `lines`) and the top-level `audio`; leave cameras, durations and everything \
+                             else as they are.\n");
+    } else {
+        scope_line.push_str("Leave `lines` empty.\n");
     }
     if !audio_allowed {
         scope_line.push_str("Leave `audio` empty (the background music is out of scope for this note).\n");
@@ -908,7 +960,7 @@ Library sounds you may also use: write `file: lib:<id>` and it is copied into th
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
     let user = format!(
-        "Anchors:\n{anchors}\n\nCurrent shots:\n{}\n\nCurrent audio:\n{audio_now}\n\n\
+        "Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
          Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
@@ -955,9 +1007,38 @@ Where the director is pointing: {c}")).unwrap_or_default();
                 };
             }
             new = kept;
+            if &new == defn.find(&sid)? {
+                continue; // the shot came back as it was
+            }
+        }
+        if let Some(l) = &pointer.line {
+            bail!("Claude edited shot '{sid}' in a note about the sound of script line '{l}'; nothing applied");
         }
         edits.retain(|(k, _)| k != &sid);
         edits.push((sid, new));
+    }
+    let mut line_edits: Vec<(String, Value)> = Vec::new();
+    for e in out["lines"].as_array().into_iter().flatten() {
+        let lid = e["id"].as_str().unwrap_or("").to_string();
+        let Some(cur) = defn.script.iter().find(|l| l.id == lid) else {
+            bail!("Claude edited an unknown script line '{lid}'");
+        };
+        if !pointer.sound || scope.is_some() || pointer.line.as_ref().is_some_and(|l| *l != lid) {
+            bail!("Claude tried to change the sound of script line '{lid}' outside this note's scope; nothing applied");
+        }
+        let yaml = e["sfx"].as_str().unwrap_or("").trim();
+        let list = if yaml.is_empty() { Value::Null } else { yamlio::parse_str(yaml, &format!("Claude's sfx for '{lid}'"))? };
+        let list = match list {
+            Value::Array(a) if !a.is_empty() => Value::Array(a),
+            Value::Object(m) => Value::Array(vec![Value::Object(m)]),
+            Value::Null | Value::Array(_) => Value::Null,
+            _ => bail!("Claude's sfx for script line '{lid}' is not a list"),
+        };
+        let before = if cur.sfx.is_empty() { Value::Null } else { Value::Array(cur.sfx.clone()) };
+        if list != before {
+            line_edits.retain(|(k, _)| *k != lid);
+            line_edits.push((lid, list));
+        }
     }
     let audio_yaml = out["audio"].as_str().unwrap_or("").trim();
     let mut audio: Option<Map<String, Value>> = None;
@@ -995,7 +1076,25 @@ Where the director is pointing: {c}")).unwrap_or_default();
             order = None;
         }
     }
-    take_from_library(&mut edits, audio.as_mut(), pointer.library.as_ref(), &defn.root())?;
+    // a music cue Claude points somewhere new must point at a piece of the cut
+    if let Some(Value::Array(cues)) = audio.as_ref().and_then(|a| a.get("music")) {
+        let refs = |a: &Map<String, Value>| -> Vec<String> {
+            a.get("music").and_then(Value::as_array).into_iter().flatten()
+                .flat_map(|c| ["from", "until"].map(|k| c.get(k).map(model::str_of).unwrap_or_default()))
+                .collect()
+        };
+        let old_refs = refs(&defn.audio);
+        for c in cues {
+            for k in ["from", "until"] {
+                let r = c.get(k).map(model::str_of).unwrap_or_default();
+                let known = r.is_empty() || r == "start" || r == "end" || ids.contains(&r) || defn.script.iter().any(|l| l.id == r);
+                if !known && !old_refs.contains(&r) {
+                    bail!("Claude's music cue has {k}: '{r}', which is not a shot or script line; nothing applied");
+                }
+            }
+        }
+    }
+    take_from_library(&mut edits, &mut line_edits, audio.as_mut(), pointer.library.as_ref(), &defn.root())?;
     let trial: Vec<Value> = defn
         .shots
         .iter()
@@ -1010,20 +1109,24 @@ Where the director is pointing: {c}")).unwrap_or_default();
     top.insert("audio".into(), Value::Object(new_audio.clone()));
     let mut errs = Vec::new();
     sound::validate(&top, &trial, &mut errs);
+    for (lid, list) in &line_edits {
+        sound::validate_line_sfx(&format!("script line {lid}"), Some(list), &mut errs);
+    }
     if !errs.is_empty() {
         bail!("Claude's sound edit is invalid: {}", errs.join("; "));
     }
     // a file Claude brings in must exist; files already in the definition are the director's business
-    let known = audio_files(&defn.audio, &defn.shots);
+    let old_lines: Vec<Value> = defn.script.iter().map(|l| Value::Array(l.sfx.clone())).collect();
+    let known = audio_files(&defn.audio, defn.shots.iter().filter_map(|s| s.get("sfx")).chain(&old_lines));
     let root = defn.root();
-    let missing: Vec<String> = audio_files(&new_audio, &trial)
+    let missing: Vec<String> = audio_files(&new_audio, trial.iter().filter_map(|s| s.get("sfx")).chain(line_edits.iter().map(|(_, l)| l)))
         .into_iter()
         .filter(|f| !known.contains(f) && !root.join(f).is_file())
         .collect();
     if !missing.is_empty() {
         bail!("Claude used audio file(s) that do not exist: {}; nothing applied", missing.join(", "));
     }
-    Ok(Revision { edits, order, audio, summary: out["summary"].as_str().unwrap_or("").to_string() })
+    Ok(Revision { edits, order, audio, lines: line_edits, summary: out["summary"].as_str().unwrap_or("").to_string() })
 }
 
 #[cfg(test)]
