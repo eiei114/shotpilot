@@ -534,3 +534,44 @@ fn mood_board_over_http() {
     // outside moodboard/ is never served
     assert_eq!(call(&s, "GET", "/files/moodboard/../shots.yaml", None, &[]).code, 404);
 }
+
+#[test]
+fn library_lists_plays_and_imports_without_rendering() {
+    let f = ws();
+    let lib = tempfile::tempdir().unwrap();
+    let sounds = lib.path().join("sounds");
+    std::fs::create_dir_all(sounds.join("splice/Kit")).unwrap();
+    std::fs::write(sounds.join("splice/Kit/boom.wav"), b"RIFF-boom").unwrap();
+    std::fs::write(sounds.join("splice/Kit/drone.wav"), b"RIFF-drone").unwrap();
+    std::fs::write(sounds.join("library.json"), json!({"sounds": [
+        {"id": "splice:b1", "path": "splice/Kit/boom.wav", "kind": "oneshot", "duration_s": 1.0, "tags": ["impact"], "status": "ok"},
+        {"id": "splice:d1", "path": "splice/Kit/drone.wav", "kind": "loop", "duration_s": 40.0, "tags": ["drones", "horror"], "status": "ok"},
+    ]}).to_string()).unwrap();
+    let srv = Server::bind(&f.path(), "127.0.0.1", 0).unwrap().with_library(Some(lib.path().to_path_buf()));
+    let s = Srv { port: srv.port(), f };
+    srv.spawn();
+
+    let (code, out) = jcall(&s, "GET", "/api/library?q=horror&kind=bgm", None);
+    assert_eq!(code, 200, "{out}");
+    assert_eq!((out["total"].as_u64(), out["bgm"].as_u64()), (Some(2), Some(1)));
+    let items = out["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["id"], "splice:d1");
+    assert_eq!(items[0]["imported"], false);
+    // audition straight from the library
+    let url = items[0]["url"].as_str().unwrap();
+    let r = call(&s, "GET", url, None, &[]);
+    assert_eq!((r.code, r.body.as_slice()), (200, b"RIFF-drone".as_slice()));
+    assert_eq!(call(&s, "GET", "/library/..%2Fsounds%2Flibrary.json", None, &[]).code, 404);
+
+    let before = launches(&s.f.ws).len();
+    let (code, out) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:b1"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["file"], "audio/lib/boom.wav");
+    assert!(out["sound"]["files"].as_array().unwrap().iter().any(|x| x["file"] == "audio/lib/boom.wav"));
+    assert_eq!(launches(&s.f.ws).len(), before);
+    let (_, out) = jcall(&s, "GET", "/api/library?q=impact", None);
+    assert_eq!(out["items"][0]["imported"], true);
+    let (code, _) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:zz"})));
+    assert_eq!(code, 400);
+}

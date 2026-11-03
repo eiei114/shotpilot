@@ -11,6 +11,7 @@ pub mod error;
 pub mod finish;
 pub mod fingerprint;
 pub mod geometry;
+pub mod library;
 pub mod model;
 pub mod moodboard;
 pub mod previz;

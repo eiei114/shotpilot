@@ -23,6 +23,7 @@ use crate::connect::{self, Provider, Settings};
 use crate::bail;
 use crate::error::{Error, Kind, Result};
 use crate::fingerprint as fp;
+use crate::library::{self, Library};
 use crate::sound;
 pub use crate::workspace::field_changes;
 use crate::workspace::Workspace;
@@ -51,12 +52,15 @@ pub struct App {
     images: ImageFactory,
     /// Where the connection settings live; None = read-only defaults.
     settings_path: Option<PathBuf>,
+    /// The global sound library (D-25); its `sounds/` folder sits under this.
+    library_root: Option<PathBuf>,
 }
 
 impl App {
     pub fn new(shots_path: &Path, claude: ClaudeFactory, settings_path: Option<PathBuf>) -> Result<App> {
         let ws = Workspace::open(shots_path)?; // fail fast on a broken definition
-        Ok(App { path: ws.path, lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen), settings_path })
+        Ok(App { path: ws.path, lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen), settings_path,
+            library_root: library::default_root() })
     }
 
     fn settings(&self) -> Settings {
@@ -76,6 +80,10 @@ impl App {
         }
         v["model"] = json!(ai::model_name());
         v
+    }
+
+    fn library(&self) -> Result<Library> {
+        Library::open(self.library_root.as_deref())
     }
 
     fn ws(&self) -> Result<Workspace> {
@@ -134,6 +142,14 @@ impl Server {
     pub fn with_images(mut self, images: ImageFactory) -> Server {
         if let Some(app) = Arc::get_mut(&mut self.app) {
             app.images = images;
+        }
+        self
+    }
+
+    /// Use another sound library folder (tests, or a library kept elsewhere).
+    pub fn with_library(mut self, root: Option<PathBuf>) -> Server {
+        if let Some(app) = Arc::get_mut(&mut self.app) {
+            app.library_root = root;
         }
         self
     }
@@ -298,6 +314,12 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).to_string()
 }
 
+/// Encode a value for one URL path segment (library ids hold ':').
+fn percent_encode(s: &str) -> String {
+    s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") })
+        .collect()
+}
+
 fn mime(path: &Path) -> &'static str {
     match path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).as_deref() {
         Some("png") => "image/png",
@@ -308,6 +330,7 @@ fn mime(path: &Path) -> &'static str {
         Some("mp3") => "audio/mpeg",
         Some("ogg" | "opus") => "audio/ogg",
         Some("flac") => "audio/flac",
+        Some("aif" | "aiff") => "audio/aiff",
         Some("m4a" | "aac") => "audio/mp4",
         Some("html") => "text/html; charset=utf-8",
         Some("md" | "txt") => "text/plain; charset=utf-8",
@@ -644,6 +667,48 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
         }
+        ("GET" | "HEAD", "/api/library") => {
+            let lib = app.library()?;
+            let arg = |k: &str| {
+                req.query.split('&').find_map(|kv| kv.strip_prefix(k).and_then(|v| v.strip_prefix('=')))
+                    .map(percent_decode).unwrap_or_default()
+            };
+            let limit = arg("limit").parse().unwrap_or(200).min(1000);
+            let root = app.root();
+            let items: Vec<Value> = lib.search(&arg("q"), &arg("kind"), limit).into_iter().map(|s| {
+                let mut v = s.to_json();
+                v["url"] = json!(format!("/library/{}", percent_encode(&s.id)));
+                v["imported"] = json!(lib.imported(s, &root));
+                v
+            }).collect();
+            let out = json!({
+                "available": lib.dir.is_some(),
+                "dir": lib.dir.as_ref().map(|d| d.display().to_string()),
+                "total": lib.sounds.len(),
+                "bgm": lib.sounds.iter().filter(|s| s.is_bgm()).count(),
+                "items": items,
+            });
+            send_json(stream, head, 200, &out).map_err(io)
+        }
+        ("GET" | "HEAD", p) if p.starts_with("/library/") => {
+            let lib = app.library()?;
+            let id = percent_decode(&p["/library/".len()..]);
+            match lib.get(&id).and_then(|s| lib.file(s)) {
+                None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
+                Some(file) => {
+                    let body = std::fs::read(&file)?;
+                    send(stream, head, 200, mime(&file), &body, &[("Cache-Control", "max-age=3600".into())]).map_err(io)
+                }
+            }
+        }
+        ("POST", "/api/library/import") => {
+            let body = req.json()?;
+            let Some(id) = body.get("id").and_then(Value::as_str) else { bail!("id: the library sound to use") };
+            let _guard = app.mutate()?;
+            let file = app.library()?.import(id, &app.root())?;
+            let ws = app.ws()?;
+            send_json(stream, false, 200, &json!({"file": file, "sound": sound_payload(&ws)?})).map_err(io)
+        }
         ("POST", "/api/audio-folder") => {
             let _guard = app.mutate()?;
             let dir = app.root().join("audio");
@@ -893,6 +958,9 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     }
     if !context.is_empty() {
         pointer.context = Some(context.join("; "));
+    }
+    if pointer.sound {
+        pointer.library = Some(app.library()?);
     }
     let claude = (app.claude)(&app.settings())?;
     let rev = ai::revise_at(&ws.defn, note, scope.as_deref(), &pointer, claude.as_ref())?;

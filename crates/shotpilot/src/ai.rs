@@ -17,6 +17,7 @@ use serde_json::{json, Map, Value};
 use crate::bail;
 use crate::craft;
 use crate::error::{Error, Result};
+use crate::library::Library;
 use crate::model::{self, beat_guide, num, tod_names_sorted, Definition, BEATS, MOVES};
 use crate::sound;
 use crate::yamlio;
@@ -585,6 +586,34 @@ pub struct Pointer {
     /// The director is working on the sound: only `sfx` of the shots in scope and the
     /// teaser's `audio` may change. Anything else Claude returns is dropped.
     pub sound: bool,
+    /// The global sound library. With a sound note, Claude may pick from it by writing
+    /// `file: lib:<id>`; the file is copied into the project before the edit is checked.
+    pub library: Option<Library>,
+}
+
+/// How many library sounds a sound note lists for Claude.
+const LIBRARY_PROMPT_MAX: usize = 300;
+
+/// Replace `lib:<id>` files in the shots' `sfx` and the BGM with copies in `audio/lib/`.
+fn take_from_library(edits: &mut [(String, Value)], audio: Option<&mut Map<String, Value>>, lib: Option<&Library>,
+                     root: &std::path::Path) -> Result<()> {
+    let fix = |f: &mut Value| -> Result<()> {
+        let Some(id) = f.as_str().and_then(|s| s.strip_prefix("lib:")).map(str::to_string) else { return Ok(()) };
+        let Some(lib) = lib else { bail!("Claude used library sound '{id}' but no library is open; nothing applied") };
+        *f = json!(lib.import(&id, root)?);
+        Ok(())
+    };
+    for (_, shot) in edits.iter_mut() {
+        for it in shot.get_mut("sfx").and_then(Value::as_array_mut).into_iter().flatten() {
+            if let Some(f) = it.get_mut("file") {
+                fix(f)?;
+            }
+        }
+    }
+    if let Some(f) = audio.and_then(|a| a.get_mut("bgm")).and_then(|b| b.get_mut("file")) {
+        fix(f)?;
+    }
+    Ok(())
 }
 
 /// Images above this are sent as text only (the API caps one image at 5 MB after base64).
@@ -701,11 +730,20 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     if !audio_allowed {
         scope_line.push_str("Leave `audio` empty (the background music is out of scope for this note).\n");
     }
-    let files_line = if files.is_empty() {
+    let mut files_line = if files.is_empty() {
         "(none yet: sound files go in the audio/ folder next to shots.yaml)".to_string()
     } else {
         files.join(", ")
     };
+    if let Some(lib) = pointer.library.as_ref().filter(|l| pointer.sound && !l.sounds.is_empty()) {
+        files_line.push_str(&format!(
+            "
+
+Library sounds you may also use: write `file: lib:<id>` and it is copied into the project              (bgm = a loop long enough for background music):
+{}",
+            lib.prompt_list(LIBRARY_PROMPT_MAX)
+        ));
+    }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
     let user = format!(
         "Anchors:\n{anchors}\n\nCurrent shots:\n{}\n\nCurrent audio:\n{audio_now}\n\n\
@@ -795,6 +833,7 @@ Where the director is pointing: {c}")).unwrap_or_default();
             order = None;
         }
     }
+    take_from_library(&mut edits, audio.as_mut(), pointer.library.as_ref(), &defn.root())?;
     let trial: Vec<Value> = defn
         .shots
         .iter()
