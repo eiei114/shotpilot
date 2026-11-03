@@ -267,6 +267,8 @@ pub struct Definition {
     pub teaser: TeaserCfg,
     pub brief: BriefCfg,
     pub stage: StageCfg,
+    /// `finish:`: letterbox, title, end card (burned in at cut; see finish.rs).
+    pub finish: crate::finish::FinishCfg,
     pub anchors: Vec<(String, Vec3)>,
     /// Anchors whose size is known (`anchors.<name>: {at, size, center}`).
     pub boxes: Vec<(String, AnchorBox)>,
@@ -523,6 +525,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
     }
 
     let brief = parse_brief(top.get("brief"), &mut errs);
+    let finish = crate::finish::parse(top.get("finish"), &mut errs);
     let stage = {
         let st = obj(top.get("stage"));
         let pairs = |k: &str| -> Vec<(String, String)> {
@@ -589,6 +592,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         if !s.get("duration").and_then(num).is_some_and(|d| d > 0.0) {
             errs.push(format!("{at}.duration: positive seconds required"));
         }
+        crate::finish::validate_shot(&at, s, &mut errs);
         match s.get("beat") {
             None | Some(Value::Null) => {}
             Some(Value::String(b)) if BEATS.contains(&b.as_str()) => {}
@@ -598,7 +602,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     crate::sound::validate(top, &shots, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, stage, anchors, boxes, props, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, stage, finish, anchors, boxes, props, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {

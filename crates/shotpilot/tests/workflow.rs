@@ -364,3 +364,48 @@ fn the_stage_is_read_from_scout_photos_and_grounds_the_mood_board() {
     assert!(p[1].ends_with("[base lantern-front.png]"));
     assert!(!p[3].contains("[base")); // title had no valid anchor: plain generation
 }
+
+#[test]
+fn the_finish_is_definition_and_never_rerenders() {
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    f.ws.set_finish(&set(&[
+        ("letterbox", json!(2.39)),
+        ("title", json!({"text": "夜の中庭", "at": 1, "duration": 4})),
+        ("end_card", json!({"lines": ["Steam でウィッシュリスト登録受付中"], "duration": 3})),
+    ]))
+    .unwrap();
+    let rep = f.ws.set_fields("s02_well", &set(&[("caption", json!("住人が、一人ずつ消えていく")), ("transition", json!("dip"))])).unwrap();
+    assert!(rep.stale.is_empty());
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+    assert_eq!(f.ws.defn.finish.letterbox, Some(2.39));
+    assert!(f.text().contains("# Shotpilot shot definition"));
+
+    // bad values are refused before anything is written
+    assert!(f.ws.set_finish(&set(&[("letterbox", json!(9))])).unwrap_err().msg.contains("letterbox"));
+    assert!(f.ws.set_finish(&set(&[("logo", json!("x"))])).unwrap_err().msg.contains("unknown finish field"));
+    assert!(f.ws.set_fields("s03_window", &set(&[("transition", json!("wipe"))])).unwrap_err().msg.contains("transition"));
+    assert!(f.ws.set_fields("s03_window", &set(&[("caption", json!({"text": "x", "at": 9}))])).unwrap_err().msg.contains("caption.at"));
+
+    // the burn-in graph: dip as per-shot fades, bars, caption, title on the title shot, end card after
+    use shotpilot::finish::{self, Placed};
+    let shots = f.ws.resolved().unwrap();
+    let mut t = 0.0;
+    let placed: Vec<Placed> = shots.iter().map(|s| {
+        let raw = &f.ws.defn.shots[s.index];
+        let p = Placed { start: t, duration: s.duration, beat: s.beat.clone(), caption: finish::caption(raw), transition: finish::transition(raw) };
+        t += s.duration;
+        p
+    }).collect();
+    let dir = tempfile::tempdir().unwrap();
+    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &placed, 1280, 720, 30, std::path::Path::new("C:/Windows/Fonts/x.ttf"), dir.path()).unwrap();
+    assert!((total - (27.5 + 3.0)).abs() < 1e-6);
+    assert!(g.contains("split=6") && g.contains("fade=t=out") && g.contains("fade=t=in"), "{g}");
+    assert!(g.contains("drawbox=x=0:y=0:w=iw:h=92"), "{g}"); // (720 - 1280/2.39) / 2
+    assert!(g.contains(r"fontfile='C\:/Windows/Fonts/x.ttf'"));
+    assert!(g.contains("color=c=black:s=1280x720") && g.contains("concat=n=2"));
+    let texts: Vec<String> = (1..=3).map(|i| std::fs::read_to_string(dir.path().join(format!("text{i}.txt"))).unwrap()).collect();
+    assert!(texts.contains(&"住人が、一人ずつ消えていく".to_string()) && texts.contains(&"夜の中庭".to_string()));
+    // the title sits on the title shot (s06 starts at 21.5 s)
+    assert!(g.contains("between(t,22.500,26.500)"), "{g}");
+}

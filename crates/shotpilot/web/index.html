@@ -456,6 +456,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       <select class="q" id="quality" title="品質"></select>
       <div class="seg" id="finish-seg">
         <button data-fin="teaser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg>映像</button>
+        <button data-fin="design"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>デザイン</button>
         <button data-fin="sound"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>サウンド<span id="tab-sound-v"></span></button>
       </div>
       <div class="right">
@@ -468,6 +469,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div id="findings" hidden></div>
     <div id="scoutpanel" class="panel main" hidden></div>
     <div id="briefpanel" class="panel main" hidden></div>
+    <div id="designpanel" class="panel main" hidden></div>
     <div id="structpanel" class="panel main" hidden></div>
     <div id="capturepanel" class="panel main" hidden></div>
     <div id="stage" class="main">
@@ -508,7 +510,7 @@ const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 // The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
-const STAGE_OF = { scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish" };
+const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish" };
 const BEAT_JA = {
   hook: "最初の 2〜5 秒。スクロールを止める1枚か、問い",
   establish: "どこで、どんなゲームかを見せる",
@@ -642,12 +644,13 @@ function draw() {
   for (const b of document.querySelectorAll("#finish-seg button")) b.classList.toggle("on", b.dataset.fin === ui.tab);
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
   const snd = ui.tab === "sound";
-  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel" }[ui.tab];
+  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel" }[ui.tab];
   $("scoutpanel").hidden = ui.tab !== "scout";
-  const finishing = ui.tab === "teaser" || snd;
+  $("designpanel").hidden = ui.tab !== "design";
+  const finishing = ui.tab === "teaser" || snd || ui.tab === "design";
   $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
-  $("toolbar").hidden = !!panel;
+  $("toolbar").hidden = !!panel && ui.tab !== "design";
   for (const el of [$("quality"), $("mark"), document.querySelector(".seg:not(#finish-seg)")]) el.hidden = finishing;
   $("finish-seg").hidden = !finishing;
   $("mark").disabled = ui.tab !== "shot" || tweak;
@@ -659,7 +662,7 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""} · ${st.ai?.effort || ""}`;
-  if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
+  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
   else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
@@ -790,6 +793,75 @@ function drawApprove() {
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
   b.title = p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます。画が変わる修正をすると自動で外れます";
   b.disabled = !!ui.busy || (!!p0 && a !== "approved");
+}
+
+// ------------------------------------------------------------------ finish: design burned in at the cut
+
+function drawDesign() {
+  const st = ui.status, f = st.finish || {};
+  const key = JSON.stringify([f, st.shots.map((s) => [s.id, s.node.caption, s.node.transition, s.duration])]);
+  if (drawDesign.key === key && $("designpanel").childElementCount) return; // keep what is being typed
+  drawDesign.key = key;
+  const lb = f.letterbox ?? "";
+  const opt = (v, t) => `<option value="${v}"${String(lb) === String(v) ? " selected" : ""}>${t}</option>`;
+  const t = f.title || {}, e = f.end_card || {};
+  const capOf = (s) => typeof s.node.caption === "string" ? { text: s.node.caption } : s.node.caption || {};
+  const rows = st.shots.map((s, i) => {
+    const c = capOf(s), tr = s.node.transition || "cut";
+    const last = i === st.shots.length - 1;
+    return `<tr data-shot="${esc(s.id)}"><td class="id">${s.index + 1}. ${esc(s.id)}<br><small style="color:var(--muted)">${esc(s.beat || "-")} · ${s.duration}s</small></td>
+      <td><input data-k="cap" value="${esc(c.text || "")}" placeholder="字幕（任意）"></td>
+      <td><input data-k="at" type="number" step="0.1" min="0" value="${esc(c.at ?? "")}" placeholder="0.3" style="width:70px"></td>
+      <td>${last ? `<span class="sp-hint">最後</span>` : `<select data-k="tr">${["cut", "dip", "flash"].map((x) => `<option value="${x}"${x === tr ? " selected" : ""}>${{ cut: "カット", dip: "黒をはさむ", flash: "白をはさむ" }[x]}</option>`).join("")}</select>`}</td></tr>`;
+  }).join("");
+  $("designpanel").innerHTML = `<h3>デザイン</h3>
+    <div class="lead">帯・タイトル・字幕・エンドカード・カットのつなぎ方を決めます。どれも shots.yaml に書かれ、Cut のときに焼き込まれます。直しても撮り直しは起きません（Cut をやり直すだけ）。クロスフェードは尺が縮んで SE がずれるので、つなぎは黒か白をはさむ形だけです。${f.font ? "" : " <b style='color:var(--err)'>日本語フォントが見つかりません。finish.font にフォントのパスを書いてください。</b>"}</div>
+    <div class="form">
+      <label>帯<small>映画の上下の黒帯。画面比で指定</small></label>
+      <div><select id="d-lb">${opt("", "なし")}${opt(1.85, "1.85（ビスタ）")}${opt(2, "2.00")}${opt(2.39, "2.39（シネスコ）")}</select></div>
+      <label>タイトル<small>title ビートのショット（無ければ最後）に重ねる。秒はそのショットの頭から</small></label>
+      <div class="mood-bar"><input type="text" id="d-title" value="${esc(t.text || st.title || "")}" placeholder="タイトル"><input type="number" id="d-title-at" step="0.1" min="0" value="${esc(t.at ?? 0.5)}" style="width:80px" title="開始（秒）"><input type="number" id="d-title-d" step="0.1" min="0.5" value="${esc(t.duration ?? 3)}" style="width:80px" title="長さ（秒）"></div>
+      <label>エンドカード<small>最後のショットの後ろに付く黒い画面。1行に1つ（発売日、プラットフォーム、ウィッシュリスト）</small></label>
+      <div><textarea id="d-end" rows="3" placeholder="Steam でウィッシュリスト登録受付中&#10;2026年 冬">${esc((e.lines || []).join("\n"))}</textarea>
+        <input type="number" id="d-end-d" step="0.5" min="0.5" max="10" value="${esc(e.duration ?? 3)}" style="width:80px;margin-top:6px" title="長さ（秒）"> 秒</div>
+    </div>
+    <h4 class="sec">ショットごと</h4>
+    <div class="assets-wrap" style="max-height:none"><table class="assets"><thead><tr><th>ショット</th><th>字幕</th><th>開始(秒)</th><th>次へのつなぎ</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="btns"><button class="btn dark" id="d-save">保存</button><button class="btn" id="d-cut">保存して Cut で焼き込む</button></div>`;
+}
+
+async function saveDesign(thenCut) {
+  if (ui.busy) return;
+  const st = ui.status, f = st.finish || {};
+  const set = {};
+  const lb = $("d-lb").value; set.letterbox = lb ? Number(lb) : null;
+  const tt = $("d-title").value.trim();
+  set.title = tt ? { text: tt, at: Number($("d-title-at").value) || 0, duration: Number($("d-title-d").value) || 3 } : null;
+  const lines = $("d-end").value.split("\n").map((x) => x.trim()).filter(Boolean);
+  set.end_card = lines.length ? { lines, duration: Number($("d-end-d").value) || 3 } : null;
+  ui.busy = "save"; draw();
+  try {
+    await api("POST", "/api/finish", { set });
+    for (const tr of $("designpanel").querySelectorAll("tr[data-shot]")) {
+      const s = st.shots.find((x) => x.id === tr.dataset.shot);
+      const cap = tr.querySelector("[data-k=cap]").value.trim(), at = tr.querySelector("[data-k=at]").value;
+      const trn = tr.querySelector("[data-k=tr]")?.value || "cut";
+      const oldCap = typeof s.node.caption === "string" ? { text: s.node.caption } : s.node.caption || null;
+      // keep what the form does not show (duration); the form owns text and at
+      let newCap = null;
+      if (cap) {
+        newCap = { ...(oldCap || {}), text: cap };
+        if (at !== "") newCap.at = Number(at); else delete newCap.at;
+      }
+      const change = {};
+      if (JSON.stringify(newCap) !== JSON.stringify(oldCap)) change.caption = newCap;
+      if (trn !== (s.node.transition || "cut")) change.transition = trn === "cut" ? null : trn;
+      if (Object.keys(change).length) await api("POST", `/api/shots/${encodeURIComponent(s.id)}`, { set: change });
+    }
+    toast(thenCut ? "保存しました。Cut で焼き込みます" : "保存しました。Cut で焼き込まれます（撮り直しなし）");
+  } catch (err) { toast(err.message, true); ui.busy = null; await refresh(); return; }
+  ui.busy = null; drawDesign.key = ""; await refresh();
+  if (thenCut) cut();
 }
 
 // ------------------------------------------------------------------ the next step
@@ -2025,6 +2097,10 @@ for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventL
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { ui.tab = ui.fin = b.dataset.fin; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
+$("designpanel").addEventListener("click", (e) => {
+  if (e.target.closest("#d-save")) saveDesign(false);
+  else if (e.target.closest("#d-cut")) saveDesign(true);
+});
 $("next").addEventListener("click", (e) => {
   if (e.target.closest("[data-next]")) runNext();
   const sk = e.target.closest("[data-next-skip]");
@@ -2119,7 +2195,7 @@ setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refr
 // #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
 function applyHash() {
   for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
-    if (["teaser", "sound", "scout", "brief", "structure", "capture"].includes(part)) { ui.tab = part; if (part === "teaser" || part === "sound") ui.fin = part; }
+    if (["teaser", "sound", "design", "scout", "brief", "structure", "capture"].includes(part)) { ui.tab = part; if (["teaser", "sound", "design"].includes(part)) ui.fin = part; }
     else if (part === "tweak") { ui.mode = "tweak"; ui.tab = "shot"; } else { ui.sel = decodeURIComponent(part); ui.tab = "shot"; }
   }
 }

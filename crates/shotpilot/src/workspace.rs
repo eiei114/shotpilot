@@ -960,6 +960,25 @@ impl Workspace {
         Ok(idx)
     }
 
+    /// Set fields under `finish:` (letterbox, title, end_card, font; null clears one).
+    /// Editorial: it is burned in at the next cut, nothing re-renders.
+    pub fn set_finish(&mut self, entries: &[(String, Value)]) -> Result<()> {
+        const KEYS: &[&str] = &["letterbox", "title", "end_card", "font"];
+        for (k, _) in entries {
+            if !KEYS.contains(&k.as_str()) {
+                bail!("unknown finish field '{k}'. known: {}", KEYS.join(", "));
+            }
+        }
+        let mut doc = Doc::load(&self.path)?;
+        doc.upsert_entries("finish", entries)?;
+        model::parse(&doc.value()?, &self.path)?;
+        doc.save(&self.path)?;
+        self.reload()?;
+        let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+        self.state.log("finish", json!({"fields": keys}));
+        self.state.save()
+    }
+
     /// Write `stage:` (the set as read from the scout photos). Editorial: nothing re-renders.
     pub fn set_stage(&mut self, stage: &model::StageCfg) -> Result<()> {
         let to_map = |v: &[(String, String)]| Value::Object(v.iter().map(|(k, d)| (k.clone(), json!(d))).collect());

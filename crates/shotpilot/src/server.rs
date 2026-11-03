@@ -367,6 +367,12 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "brief": brief_json(&ws.defn.brief),
         "scout": crate::scout::summary(&ws.root),
         "scout_taken": crate::scout::load_index(&ws.root)["taken"],
+        "finish": {
+            "letterbox": ws.defn.finish.letterbox,
+            "title": ws.defn.finish.title.as_ref().map(|t| json!({"text": t.text, "at": t.at, "duration": t.duration})),
+            "end_card": ws.defn.finish.end_card.as_ref().map(|(l, d)| json!({"lines": l, "duration": d})),
+            "font": crate::finish::font(&ws.defn.finish).map(|p| p.display().to_string()),
+        },
         "stage": {
             "summary": ws.defn.stage.summary,
             "anchors": ws.defn.stage.anchors.iter().map(|(n, d)| json!({"name": n, "description": d})).collect::<Vec<_>>(),
@@ -719,6 +725,17 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut ws = app.ws()?;
             ws.remove_prop(&name)?;
             send_json(stream, false, 200, &json!({"removed": name})).map_err(io)
+        }
+        ("POST", "/api/finish") => {
+            let body = req.json()?;
+            let entries: Vec<(String, Value)> = match body.get("set") {
+                Some(Value::Object(m)) if !m.is_empty() => m.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+                _ => bail!("expected {{\"set\": {{\"letterbox\": 2.39, ...}}}}"),
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.set_finish(&entries)?;
+            send_json(stream, false, 200, &json!({"ok": true})).map_err(io)
         }
         ("POST", "/api/stage") => {
             let claude = (app.claude)(&app.settings())?;

@@ -56,7 +56,8 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
-  src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せる）
+  src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せ、仕上げがあれば焼き込む）
+  src/finish.rs       仕上げ: 帯・タイトル・エンドカード・字幕・つなぎ（黒/白）を ffmpeg のフィルタにする
   src/sound.rs        BGM と SE（`audio:` と各ショットの `sfx:`）の検証・配置・ミックス。cut/sound/ にキャッシュする
   src/soundcheck.rs   ミックスの検証。earshot の critique のうち、モデルを使わない部分の移植（MIT）
   src/ai.rs           Claude によるショットリスト作成（plan）と部分修正（revise）。Messages API を直接呼ぶ
@@ -74,7 +75,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 
 ## 守ること（不変条件）
 
-- **fingerprint にはピクセルを変えるものだけを入れる。** 並び順、`purpose`、メモ、音（`audio`、`sfx`）、`brief:` は入れない。並べ替えやメモ、音の修正で再レンダが起きてはいけない。
+- **fingerprint にはピクセルを変えるものだけを入れる。** 並び順、`purpose`、メモ、音（`audio`、`sfx`）、`brief:`、仕上げ（`finish:`、`caption`、`transition`）は入れない。仕上げは take のピクセルではなく Cut の出力を変える。並べ替えやメモ、音の修正で再レンダが起きてはいけない。
 - エンジン側スクリプトが、同じ入力に対して違う出力を出すように変わったら `fingerprint::RENDERER_VERSION` を上げる。previz の描画を変えたら `PREVIZ_VERSION` を上げる（エンジンの take は無効にしない）。
 - fingerprint は Python 版と同じ正規化 JSON（キー整列・区切り `,` `:`）の SHA-256。`fingerprints_match_the_python_version` を落とさない（落ちると UE で撮った take が全部撮り直しになる）。
 - **take は fingerprint で管理し、上書きしない。** 定義を元に戻したら、古い take を再利用する。`render/` 以下を手で編集しない。
@@ -102,9 +103,10 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - やる: UE5 のティザー映像1本。ティザーの型（`hook → establish → escalate → title`）を同梱する。1ビートに3バリアントを出すのは余力があればやる。
 - やる: デスクトップアプリ（`shotpilot-app`、Tauri）。ブラウザは使わない。中身はコアを組み込んだ loopback サーバーと、ビルド不要の HTML 1枚。
 - やる: BGM と SE（D-19）。`shots.yaml` に書き、cut のときにミックスして載せる。映像は撮り直さない。検証は earshot 式のサウンドチェック。
-- やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺、複数尺への展開、Electron、Web 公開する UI、GUI での録画後の映像編集（トリム、エフェクト、テロップ）。
+- やる: 仕上げ（D-25）。帯・タイトル・エンドカード・字幕・カットのつなぎ（黒/白をはさむ）を shots.yaml に書き、Cut で焼き込む。撮り直しは起きない。
+- やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺、複数尺への展開、Electron、Web 公開する UI、GUI での録画後の自由な映像編集（トリム、エフェクト、クロスフェード）。
 - mock エンジンはテストとデモ用で、別エンジン対応の足場ではない。抽象化を先回りして作らない。
-- 録画後の映像編集は作らない（差別化にならない）。差別化できるのは録画の前だけ。音は例外で、定義の一部として扱う（D-19）。
+- 録画後の映像編集は作らない（差別化にならない）。差別化できるのは録画の前だけ。音（D-19）と仕上げ（D-25）は例外で、定義の一部として扱い Cut で適用する。
 
 ## スタイル
 

@@ -8,6 +8,7 @@ pub mod craft;
 pub mod cut;
 pub mod engines;
 pub mod error;
+pub mod finish;
 pub mod fingerprint;
 pub mod geometry;
 pub mod model;

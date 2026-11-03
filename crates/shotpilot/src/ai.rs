@@ -682,7 +682,9 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          editorial `beat` ({}); keep it unless the note changes the shot's role.\n\n{CONVENTIONS}\n\
          A shot's camera can be either `anchor`+`offset` (+ optional `move`, `look_at`, `lens`), or \
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
-         {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}.
+         {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}. \
+         A shot may carry on-screen text burned in at the cut: `caption` {{text, at, duration}} (short, one line), \
+         and `transition` into the next shot: cut, dip (through black) or flash (through white). They never re-render.
 
          When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
