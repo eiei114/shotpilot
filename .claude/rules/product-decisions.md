@@ -32,6 +32,7 @@
 - D-26: 音素材はプロジェクトの外のグローバルな音源ライブラリ（`~/Documents/ShotpilotLibrary/sounds/`、目録は `library.json`、`$SHOTPILOT_LIBRARY` で変えられる）に集め、そこから取ってくる。中身は Splice の購入済みサンプル（spliceclaw で `--confirm` なしで取得）。使うときはプロジェクトの `audio/lib/` にコピーし、shots.yaml には相対パスで書く（参照にしないのは、shots.yaml を唯一の正本に保ち、ライブラリの無い PC でもミックスできるようにするため）。アプリは音のパネルで検索・試聴・取り込みができ、音だけの指示では Claude が `lib:<id>` で選べる。
 - D-27: リファレンスは open-design の `design-systems/` に倣い、実在ティザー1本を1パッケージ（`references/teasers/<id>/`：`TEASER.md` + `tokens.json` + `manifest.json` + `source/`）にする。動画とフレーム画像はリポジトリに入れない。
 - D-28: 初回は「一気に作る」（open-design の production ターンに倣う）。制約（ブリーフ、ステージ、骨格、規則、ロケハン写真、ムードボード、仕上げの指針）を全部渡して plan を1回呼び、構成と仕上げを同時に出させ、最安の品質で撮って仕上げ込みで Cut まで通す。足りない下ごしらえ（ロケハン、ステージ、ムードボード）は先に埋め、2回目以降は使い回す。そのあとが検証の段で、人間が1カットずつ承認し、指して直す（D-13 の部分修正ループ）。エンドカードはブリーフにある事実だけを書かせ、日付やプラットフォームを作らせない。
+- D-29: 集めたティザー（ゲームのみ 701 本）を ffmpeg で実測し、open-design の `craft/` と `design-systems/` に倣って、全ジャンル共通の型（`references/craft/`）とジャンル別パッケージ（`references/genres/<id>/`、horror / cozy / rpg / action / adventure）にまとめる。plan はブリーフの `genre` に合うパッケージを読み、骨格の hook と title の長さも同じ実測値から取る。分かったこと: 編集の山は第3四半分で、最後の四半分は最も遅い（単調な加速ではない）。shotpilot の既定のショット数（4.5 秒に1つ）は実測の下位4分の1に近い。
 
 ## デモ（20秒）で見せる主張
 
