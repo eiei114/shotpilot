@@ -521,6 +521,8 @@ def run_render(job):
             k = index.get(name)
             if k and result["renders"][k]["status"] != "error":
                 result["renders"][k]["status"] = "ok" if params.success else "error"
+                if not params.success:
+                    result["renders"][k]["error"] = "MRQ reported this job as failed (see the UE log)"
         except Exception:
             warn(traceback.format_exc())
 
@@ -528,6 +530,9 @@ def run_render(job):
         for k, r in result["renders"].items():
             if r["status"] == "pending":
                 r["status"] = "ok" if success else "error"
+                if not success:
+                    r["error"] = ("render stopped before this shot finished (PIE ended or MRQ aborted); "
+                                  "rerun to render only the missing shots")
         result["seconds"] = round(time.time() - started, 1)
         write_result(result)
         finish_render_process()
