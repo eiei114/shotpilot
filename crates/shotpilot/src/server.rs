@@ -349,11 +349,22 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "total_duration": crate::geometry::round_to(total, 3),
         "qualities": qualities,
         "warnings": ws.structure_warnings()?,
+        "checks": ws.check()?.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
+        "brief": brief_json(&ws.defn.brief),
+        "pitch": ws.defn.teaser.pitch,
         "fps": ws.defn.teaser.fps,
         "shots": shots,
         "audio": ws.defn.audio,
         "cut": latest_cut(&ws.root),
     }))
+}
+
+fn brief_json(b: &crate::model::BriefCfg) -> Value {
+    json!({
+        "kind": b.kind, "genre": b.genre, "audience": b.audience, "core": b.core,
+        "must_show": b.must_show, "references": b.references, "notes": b.notes,
+        "missing": b.missing(), "written": !b.raw.is_empty(),
+    })
 }
 
 /// What the app's sound lanes and sound tab draw: every placement on the teaser's
@@ -504,6 +515,33 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let sid = ws.select_one(&percent_decode(&p["/api/shots/".len()..]))?.id;
             let rep = ws.set_fields(&sid, &assignments)?;
             send_json(stream, false, 200, &rep.to_json()).map_err(io)
+        }
+        ("POST", "/api/approve") => {
+            let body = req.json()?;
+            let shots: Vec<String> = match body.get("shots") {
+                Some(Value::Array(a)) => a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
+                _ => bail!("expected {{\"shots\": [\"s01\", ...], \"approved\": true}}"),
+            };
+            let approved = body.get("approved").and_then(Value::as_bool).unwrap_or(true);
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let mut done = Vec::new();
+            for s in ws.select(&shots)? {
+                ws.approve(&s.id, approved)?;
+                done.push(s.id);
+            }
+            send_json(stream, false, 200, &json!({"shots": done, "approved": approved})).map_err(io)
+        }
+        ("POST", "/api/brief") => {
+            let body = req.json()?;
+            let entries: Vec<(String, Value)> = match body.get("set") {
+                Some(Value::Object(m)) if !m.is_empty() => m.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+                _ => bail!("expected {{\"set\": {{\"genre\": \"...\", ...}}}}"),
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            ws.set_brief(&entries)?;
+            send_json(stream, false, 200, &brief_json(&ws.defn.brief)).map_err(io)
         }
         ("POST", "/api/order") => {
             let body = req.json()?;

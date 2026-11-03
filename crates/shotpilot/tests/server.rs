@@ -436,3 +436,29 @@ fn a_sound_note_over_http_changes_only_sound() {
     let req = calls.lock().unwrap()[0].to_string();
     assert!(req.contains("working on the sound") && req.contains("sound check against 7 launch films"), "{req}");
 }
+
+#[test]
+fn brief_checks_and_approval_over_http() {
+    let s = srv();
+    let (code, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(code, 200);
+    assert_eq!(st["brief"]["kind"], json!("teaser"));
+    assert!(st["checks"].is_array());
+    assert_eq!(st["shots"][2]["approval"], json!("none"));
+
+    let (code, b) = jcall(&s, "POST", "/api/brief", Some(json!({"set": {"core": "中庭が少しずつ変わる"}})));
+    assert_eq!(code, 200, "{b}");
+    assert_eq!(b["core"], json!("中庭が少しずつ変わる"));
+
+    let (code, _) = jcall(&s, "POST", "/api/approve", Some(json!({"shots": ["s03_window"], "approved": true})));
+    assert_eq!(code, 200);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["shots"][2]["approval"], json!("approved"));
+
+    // a P0 (opening on the title) is a 400 with the reason, and approves nothing
+    let order = json!({"order": ["s06_title", "s01_gate", "s02_well", "s03_window", "s04_lantern", "s05_door"]});
+    assert_eq!(jcall(&s, "POST", "/api/order", Some(order)).0, 200);
+    let (code, err) = jcall(&s, "POST", "/api/approve", Some(json!({"shots": ["s06_title"]})));
+    assert_eq!(code, 400);
+    assert!(err["error"].as_str().unwrap().contains("open.title"), "{err}");
+}
