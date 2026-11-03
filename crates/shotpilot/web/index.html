@@ -346,6 +346,20 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .fields .pair input[type=number] { width: 74px; flex: none; }
 .btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn.danger { color: var(--err); }
+.lib-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lib-head input { flex: 1; min-width: 140px; border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; background: var(--soft); font-size: 12.5px; }
+.lib-head .seg button { padding: 3px 10px; font-size: 12px; }
+.lib-list { display: grid; gap: 1px; max-height: 340px; overflow: auto; margin: 0 -6px; }
+.lib-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px; }
+.lib-row:hover { background: var(--soft); }
+.lib-row .play { width: 24px; height: 24px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 10px; padding: 0; }
+.lib-row .play.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.lib-row .nm { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-row .meta { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-row .meta b { font-weight: 600; color: var(--establish); }
+.lib-row .use { display: flex; gap: 4px; }
+.lib-row .use button { border: 1px solid var(--line); background: var(--card); border-radius: 7px; padding: 2px 8px; font-size: 11.5px; white-space: nowrap; }
+.lib-row .use button:hover { border-color: var(--ink); }
 .verdict { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .vbadge { font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
 .vbadge.launch-grade { background: var(--accent); color: var(--accent-ink); }
@@ -479,7 +493,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     </div>
     <div id="tweak" class="main" hidden></div>
     <div id="soundpanel" class="main" hidden>
-      <div class="sp-col"><div class="sp-box" id="sp-player"></div><div class="sp-box" id="sp-insp"></div></div>
+      <div class="sp-col"><div class="sp-box" id="sp-player"></div><div class="sp-box" id="sp-insp"></div><div class="sp-box" id="sp-lib"></div></div>
       <div class="sp-col" id="sp-check"></div>
     </div>
     <div id="timeline">
@@ -557,6 +571,9 @@ const ui = {
   snd: null,            // selected sound: {kind: "bgm"} | {kind: "sfx", shot, index}
   playT: null,          // teaser seconds of the sound player
   mixing: false,
+  lib: null,            // /api/library: the global sound library (search results)
+  libQ: "",             // library search words
+  libKind: "",          // "" | "bgm" | "oneshot"
 };
 
 // ------------------------------------------------------------------ data
@@ -1386,7 +1403,69 @@ function drawLanes() {
 // ------------------------------------------------------------------ sound: the sound tab
 
 function drawSoundPanel() {
-  drawPlayer(); drawInspector(); drawCheck();
+  drawPlayer(); drawInspector(); drawCheck(); drawLibrary();
+}
+
+// ------------------------------------------------------------------ sound: the global library
+
+let libTimer = 0, libPlaying = "";
+async function fetchLibrary() {
+  const q = new URLSearchParams({ q: ui.libQ, kind: ui.libKind, limit: "200" });
+  try { ui.lib = await api("GET", `/api/library?${q}`); } catch (e) { ui.lib = { error: e.message }; }
+  drawLibList();
+}
+
+function drawLibrary() {
+  const box = $("sp-lib");
+  if (!box.dataset.ready) {
+    box.dataset.ready = "1";
+    box.innerHTML = `<h3>音源ライブラリ <small id="lib-count"></small></h3>
+      <div class="lib-head"><input id="lib-q" type="search" placeholder="探す（例: whoosh, horror drone, impact）" autocomplete="off">
+        <div class="seg" id="lib-kind"><button data-k="" class="on">すべて</button><button data-k="bgm">BGM</button><button data-k="oneshot">SE</button></div></div>
+      <div class="sp-hint" id="lib-target"></div>
+      <div class="lib-list" id="lib-list"></div>`;
+    fetchLibrary();
+  }
+  const s = shot();
+  $("lib-target").textContent = `使うとプロジェクトの audio/lib/ にコピーされます。SE の追加先: ${s ? s.id : "（ショットを選んでください）"}`;
+}
+
+function drawLibList() {
+  const L = ui.lib, list = $("lib-list"); if (!list) return;
+  if (L?.error) { list.innerHTML = `<div class="err-box">${esc(L.error)}</div>`; return; }
+  if (!L.available || !L.total) {
+    $("lib-count").textContent = "";
+    list.innerHTML = `<div class="sp-hint" style="padding:0 6px">ライブラリがありません。<b>Documents/ShotpilotLibrary/sounds/library.json</b> を置くと、ここから BGM と SE を選べます。</div>`;
+    return;
+  }
+  $("lib-count").textContent = `${L.total} 本（BGM 向き ${L.bgm}）`;
+  if (!L.items.length) { list.innerHTML = `<div class="sp-hint" style="padding:0 6px">見つかりません。</div>`; return; }
+  list.innerHTML = L.items.map((it) => {
+    const dur = it.duration_s == null ? "" : `${it.duration_s < 10 ? it.duration_s.toFixed(1) : Math.round(it.duration_s)}s`;
+    const meta = [it.bgm ? "<b>BGM</b>" : "", esc(dur), it.bpm ? `${esc(it.bpm)} BPM` : "", esc(it.tags.slice(0, 4).join(", ")), esc(it.pack || ""), it.imported ? "取り込み済み" : ""]
+      .filter(Boolean).join(" · ");
+    return `<div class="lib-row"><button class="play${libPlaying === it.url ? " on" : ""}" data-lplay="${esc(it.url)}" title="試聴">${libPlaying === it.url ? "■" : "▶"}</button>
+      <div style="min-width:0"><div class="nm" title="${esc(it.name)}">${esc(it.name)}</div><div class="meta">${meta}</div></div>
+      <div class="use">${it.kind === "loop" ? `<button data-luse="${esc(it.id)}" data-as="bgm">BGM にする</button>` : ""}<button data-luse="${esc(it.id)}" data-as="sfx" title="選んでいるショットの頭に足す">＋ SE</button></div></div>`;
+  }).join("");
+}
+
+async function useLibrary(id, as) {
+  if (ui.busy) return;
+  const target = shot();
+  if (as === "sfx" && !target) { toast("SE を足すショットを選んでください"); return; }
+  let file;
+  try { file = (await api("POST", "/api/library/import", { id })).file; } catch (e) { toast(e.message, true); return; }
+  const it = ui.lib?.items?.find((x) => x.id === id); if (it) it.imported = true;
+  drawLibList();
+  if (as === "bgm") {
+    const a = JSON.parse(JSON.stringify(ui.status.audio || {}));
+    a.bgm = { ...(a.bgm || { gain: -8 }), file };
+    postSound({ audio: a, note: `BGM ${file}` }, () => (ui.snd = { kind: "bgm" }));
+  } else {
+    const list = sfxList(target.id); list.push({ file, at: 0 });
+    postSound({ sfx: { [target.id]: list }, note: `SE を足す @ ${target.id}` }, () => (ui.snd = { kind: "sfx", shot: target.id, index: list.length - 1 }));
+  }
 }
 
 function drawPlayer() {
@@ -2003,8 +2082,32 @@ $("sp-insp").addEventListener("click", async (e) => {
   else if (act === "sel-bgm") { ui.snd = { kind: "bgm" }; drawSoundBits(); drawChips(); }
   else if (act === "del-sfx") deleteSfx();
   else if (act === "add-sfx") $("lanes").querySelector('[data-add="sfx"]')?.click();
-  else if (act === "preview" && b.dataset.url) { previewAudio?.pause(); previewAudio = new Audio(b.dataset.url); previewAudio.play().catch((err) => toast(err.message, true)); }
+  else if (act === "preview" && b.dataset.url) { previewAudio?.pause(); if (libPlaying) { libPlaying = ""; drawLibList(); } previewAudio = new Audio(b.dataset.url); previewAudio.play().catch((err) => toast(err.message, true)); }
   else if (act === "folder") { try { await api("POST", "/api/audio-folder"); } catch (err) { toast(err.message, true); } }
+});
+$("sp-lib").addEventListener("input", (e) => {
+  if (e.target.id !== "lib-q") return;
+  ui.libQ = e.target.value; clearTimeout(libTimer); libTimer = setTimeout(fetchLibrary, 200);
+});
+$("sp-lib").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-k]");
+  if (k) {
+    ui.libKind = k.dataset.k;
+    for (const b of $("lib-kind").querySelectorAll("button")) b.classList.toggle("on", b === k);
+    fetchLibrary(); return;
+  }
+  const pl = e.target.closest("[data-lplay]");
+  if (pl) {
+    previewAudio?.pause();
+    if (libPlaying === pl.dataset.lplay) { libPlaying = ""; drawLibList(); return; }
+    libPlaying = pl.dataset.lplay;
+    previewAudio = new Audio(libPlaying);
+    previewAudio.addEventListener("ended", () => { libPlaying = ""; drawLibList(); });
+    previewAudio.play().catch((err) => { libPlaying = ""; toast(err.message, true); drawLibList(); });
+    drawLibList(); return;
+  }
+  const u = e.target.closest("[data-luse]");
+  if (u) useLibrary(u.dataset.luse, u.dataset.as);
 });
 $("sp-check").addEventListener("click", (e) => {
   const s = e.target.closest("[data-seek]");
