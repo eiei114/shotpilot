@@ -152,6 +152,59 @@ pub struct AnchorBox {
 
 pub const DEFAULT_BOX: Vec3 = [120.0, 120.0, 180.0];
 
+/// What a prop is in the engine: a static mesh, or a skeletal mesh (a character, shown in
+/// its reference pose: no animation).
+pub const PROP_KINDS: &[&str] = &["static", "skeletal"];
+
+/// `props.<name>`: something a shot can make appear (an enemy, an object).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Prop {
+    /// UE asset path of the mesh, e.g. /Game/Characters/Mannequins/Meshes/SKM_Manny.
+    pub asset: String,
+    pub kind: String,
+    /// Extent along X, Y, Z (cm), for previz and framing. The prop stands on its location.
+    pub size: Vec3,
+}
+
+/// A prop popping into a shot at a frame (no animation: it is simply there from then on).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Appear {
+    pub prop: String,
+    pub asset: String,
+    pub kind: String,
+    /// First frame it is visible (0 = from the start of the shot).
+    pub frame: i64,
+    /// Where it stands (its feet / base), world cm.
+    pub location: Vec3,
+    /// Facing, degrees (UE yaw).
+    pub yaw: f64,
+    pub size: Vec3,
+}
+
+impl Appear {
+    pub fn to_json(&self) -> Value {
+        json!({"prop": self.prop, "asset": self.asset, "kind": self.kind, "frame": self.frame,
+               "location": self.location, "rotation": [0.0, self.yaw, 0.0], "size": self.size})
+    }
+
+    pub fn from_json(v: &Value) -> Option<Appear> {
+        Some(Appear {
+            prop: v.get("prop")?.as_str()?.to_string(),
+            asset: v.get("asset").map(str_of).unwrap_or_default(),
+            kind: v.get("kind").map(str_of).unwrap_or_else(|| "static".into()),
+            frame: v.get("frame")?.as_i64()?,
+            location: vec3(v.get("location")?)?,
+            yaw: v.get("rotation").and_then(vec3).map(|r| r[1]).unwrap_or(0.0),
+            size: v.get("size").and_then(vec3).unwrap_or(DEFAULT_BOX),
+        })
+    }
+
+    /// The box previz draws (standing on its location).
+    pub fn bbox(&self) -> AnchorBox {
+        AnchorBox { center: [self.location[0], self.location[1], self.location[2] + self.size[2] / 2.0], size: self.size }
+    }
+}
+
 impl AnchorBox {
     pub fn corners(&self) -> [Vec3; 8] {
         let mut out = [[0.0; 3]; 8];
@@ -189,6 +242,8 @@ pub struct Definition {
     pub anchors: Vec<(String, Vec3)>,
     /// Anchors whose size is known (`anchors.<name>: {at, size, center}`).
     pub boxes: Vec<(String, AnchorBox)>,
+    /// `props:`: what shots can make appear.
+    pub props: Vec<(String, Prop)>,
     pub defaults: Map<String, Value>,
     pub qualities: Map<String, Value>,
     /// `audio:` (BGM, master gain). Sound effects live on their shots (`sfx:`). See sound.rs.
@@ -218,6 +273,10 @@ impl Definition {
 
     pub fn anchor(&self, name: &str) -> Option<Vec3> {
         self.anchors.iter().find(|(n, _)| n == name).map(|(_, v)| *v)
+    }
+
+    pub fn prop(&self, name: &str) -> Option<&Prop> {
+        self.props.iter().find(|(n, _)| n == name).map(|(_, p)| p)
     }
 
     /// The known box of an anchor, if its size was given.
@@ -253,6 +312,8 @@ pub struct ResolvedShot {
     pub target: Option<Vec3>,
     pub notes: String,
     pub beat: Option<String>,
+    /// Props that pop in during the shot.
+    pub appear: Vec<Appear>,
 }
 
 impl ResolvedShot {
@@ -274,7 +335,7 @@ impl ResolvedShot {
 
     /// Everything that gets written into the engine's shot sequence.
     pub fn engine_payload(&self) -> Value {
-        json!({
+        let mut p = json!({
             "frames": self.frames,
             "fps": self.fps,
             "curve": self.curve,
@@ -283,7 +344,12 @@ impl ResolvedShot {
             "lens": self.lens,
             "environment": self.environment,
             "markers": self.markers,
-        })
+        });
+        // only when used, so fingerprints of shots without props stay as they were
+        if !self.appear.is_empty() {
+            p["appear"] = Value::Array(self.appear.iter().map(Appear::to_json).collect());
+        }
+        p
     }
 }
 
@@ -444,6 +510,14 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         }
     }
 
+    let mut props = Vec::new();
+    for (name, v) in obj(top.get("props")) {
+        match parse_prop(&v) {
+            Ok(p) => props.push((name, p)),
+            Err(e) => errs.push(format!("props.{name}: {e}")),
+        }
+    }
+
     let defaults = obj(top.get("defaults"));
     let qualities = obj(top.get("qualities"));
     let audio = obj(top.get("audio"));
@@ -486,7 +560,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     crate::sound::validate(top, &shots, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, anchors, boxes, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, anchors, boxes, props, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {
@@ -519,6 +593,24 @@ pub fn parse_anchor(v: &Value) -> std::result::Result<(Vec3, Option<AnchorBox>),
         }
     };
     Ok((at, b))
+}
+
+/// `{asset: /Game/..., kind: static|skeletal, size: [w, d, h]}`.
+fn parse_prop(v: &Value) -> std::result::Result<Prop, String> {
+    let m = v.as_object().ok_or("must be {asset: /Game/..., kind: static|skeletal, size: [w, d, h]}")?;
+    let asset = m.get("asset").map(str_of).unwrap_or_default();
+    if !valid_package(&asset) {
+        return Err(format!("asset: a UE asset path like /Game/Characters/Mannequins/Meshes/SKM_Manny (got '{asset}')"));
+    }
+    let kind = m.get("kind").map(str_of).unwrap_or_else(|| "static".into());
+    if !PROP_KINDS.contains(&kind.as_str()) {
+        return Err(format!("kind: one of {} (got '{kind}')", PROP_KINDS.join(", ")));
+    }
+    let size = match m.get("size") {
+        None | Some(Value::Null) => if kind == "skeletal" { [60.0, 40.0, 180.0] } else { [100.0, 100.0, 100.0] },
+        Some(s) => vec3(s).filter(|s| s.iter().all(|v| *v > 0.0)).ok_or("size: [w, d, h] in cm, all > 0")?,
+    };
+    Ok(Prop { asset, kind, size })
 }
 
 fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
@@ -690,7 +782,19 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
         }
     }
 
+    let mut appear = Vec::new();
+    match shot.get("appear") {
+        None | Some(Value::Null) => {}
+        Some(Value::Array(items)) => {
+            for (k, it) in items.iter().enumerate() {
+                appear.push(resolve_appear(defn, it, &format!("{at}.appear[{k}]"), duration, fps, frames, eye)?);
+            }
+        }
+        Some(_) => bail!("{at}.appear: a list of {{prop, at, anchor, offset}}"),
+    }
+
     Ok(ResolvedShot {
+        appear,
         id: str_of(&shot["id"]),
         index,
         purpose: shot.get("purpose").map(str_of).unwrap_or_default(),
@@ -706,6 +810,47 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
         target,
         notes: shot.get("notes").map(str_of).unwrap_or_default(),
         beat: opt_str(shot.get("beat")),
+    })
+}
+
+/// One `appear` item: {prop, at: seconds, anchor (or location), offset, yaw}. It faces the
+/// camera unless `yaw` is given.
+fn resolve_appear(defn: &Definition, it: &Value, at: &str, duration: f64, fps: i64, frames: i64, eye: Vec3)
+    -> Result<Appear> {
+    let name = it.get("prop").map(str_of).unwrap_or_default();
+    let Some(prop) = defn.prop(&name) else {
+        let known: Vec<&str> = defn.props.iter().map(|(n, _)| n.as_str()).collect();
+        bail!("{at}.prop: unknown prop '{name}'. known: {}", if known.is_empty() { "(none; add `props:`)".to_string() } else { known.join(", ") });
+    };
+    let t = it.get("at").and_then(num).unwrap_or(0.0);
+    if !(0.0..duration).contains(&t) {
+        bail!("{at}.at: {}s is outside the shot (0..{}s)", fmt_g(t), fmt_g(duration));
+    }
+    let base = if let Some(l) = it.get("location") {
+        vec3(l).ok_or_else(|| Error::user(format!("{at}.location: must be [x, y, z]")))?
+    } else {
+        let Some(a) = point(defn, it.get("anchor"), &format!("{at}.anchor"))? else {
+            bail!("{at}: needs `anchor` (or `location`)");
+        };
+        a
+    };
+    let off = match it.get("offset") {
+        None | Some(Value::Null) => [0.0; 3],
+        Some(v) => vec3(v).ok_or_else(|| Error::user(format!("{at}.offset: must be [x, y, z]")))?,
+    };
+    let location = g::add(base, off).map(|v| g::round_to(v, 1));
+    let yaw = match it.get("yaw").and_then(num) {
+        Some(y) => y,
+        None => g::round_to(g::look_at(location, [eye[0], eye[1], location[2]], 0.0).yaw, 1), // face the camera
+    };
+    Ok(Appear {
+        prop: name,
+        asset: prop.asset.clone(),
+        kind: prop.kind.clone(),
+        frame: (frames - 1).min(g::round_half_even(t * fps as f64)),
+        location,
+        yaw,
+        size: prop.size,
     })
 }
 

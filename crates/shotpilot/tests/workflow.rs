@@ -151,3 +151,58 @@ fn scan_brings_sizes_from_the_level() {
     assert!(f.ws.defn.known_box("marker").is_none());
     assert!(f.text().contains("# Named points in the level"));
 }
+
+#[test]
+fn a_prop_popping_in_rerenders_only_its_shot() {
+    let mut f = ws();
+    f.ws.render(&[], "still", false, None).unwrap();
+    let before = launches(&f.ws).len();
+    let ap = json!([{"prop": "stranger", "at": 1.5, "anchor": "door", "offset": [150, 0, -120]}]);
+    let rep = f.ws.set_fields("s05_door", &set(&[("appear", ap)])).unwrap();
+    assert_eq!(rep.stale, ids(&["s05_door"]));
+    let out = f.ws.render(&[], "still", false, None).unwrap();
+    let acts = common::actions(&out);
+    assert_eq!(acts["s05_door"], "rendered");
+    assert!(acts.iter().filter(|(k, _)| *k != "s05_door").all(|(_, v)| v == "reused"), "{acts:?}");
+    assert_eq!(launches(&f.ws).len(), before + 1);
+
+    let s = f.ws.select_one("s05_door").unwrap();
+    let a = &s.appear[0];
+    assert_eq!(a.frame, 45); // 1.5 s at 30 fps
+    assert_eq!(a.location, [-550.0, 500.0, 0.0]);
+    assert_eq!(a.kind, "skeletal");
+    // faces the camera: the camera is to the -x/-y side of the door
+    let to_cam = (s.start.location[1] - a.location[1]).atan2(s.start.location[0] - a.location[0]).to_degrees();
+    assert!((a.yaw - to_cam).abs() < 1.0, "{} vs {to_cam}", a.yaw);
+    assert!(s.engine_payload()["appear"].is_array());
+    // shots without props keep their payload (and fingerprints) as they were
+    assert!(f.ws.select_one("s04_lantern").unwrap().engine_payload().get("appear").is_none());
+}
+
+#[test]
+fn appear_is_validated() {
+    let mut f = ws();
+    let bad_time = json!([{"prop": "stranger", "at": 9, "anchor": "door"}]);
+    let err = f.ws.set_fields("s05_door", &set(&[("appear", bad_time)])).unwrap_err();
+    assert!(err.msg.contains("outside the shot"), "{}", err.msg);
+    let unknown = json!([{"prop": "ghost", "at": 1, "anchor": "door"}]);
+    let err = f.ws.set_fields("s05_door", &set(&[("appear", unknown)])).unwrap_err();
+    assert!(err.msg.contains("unknown prop 'ghost'"), "{}", err.msg);
+    f.write(&f.text().replace("kind: skeletal", "kind: rigged"));
+    let err = f.ws.reload().unwrap_err();
+    assert!(err.msg.contains("props.stranger"), "{}", err.msg);
+}
+
+#[test]
+fn previz_shows_the_prop_only_from_its_frame() {
+    let mut f = ws();
+    let ap = json!([{"prop": "stranger", "at": 2, "anchor": "door", "offset": [150, 0, -120]}]);
+    f.ws.set_fields("s05_door", &set(&[("appear", ap)])).unwrap();
+    let s = f.ws.select_one("s05_door").unwrap();
+    let boxes = f.ws.defn.anchor_boxes();
+    let png = |shot: &shotpilot::model::ResolvedShot, frame| shotpilot::previz::render_frame(shot, frame, &boxes, 320, 180, 0.0, None).png();
+    let mut without = s.clone();
+    without.appear.clear();
+    assert_eq!(png(&s, 30), png(&without, 30)); // 1 s: not there yet
+    assert_ne!(png(&s, 90), png(&without, 90)); // 3 s: there
+}

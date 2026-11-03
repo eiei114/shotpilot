@@ -102,7 +102,7 @@ fn plan_builds_valid_shots() {
 fn plan_shot(id: &str, beat: &str, duration: f64, anchor: &str) -> Value {
     json!({"id": id, "beat": beat, "purpose": "p", "duration": duration, "anchor": anchor,
            "offset": [-300, 0, 120], "look_at": "", "focal_length": 35, "move": "static",
-           "move_amount": 0, "time_of_day": "default", "notes": ""})
+           "move_amount": 0, "time_of_day": "default", "notes": "", "appear": []})
 }
 
 #[test]
@@ -182,4 +182,16 @@ fn skeleton_follows_the_craft() {
     }
     let gameplay = BriefCfg { kind: "gameplay".into(), ..Default::default() };
     assert!(skeleton(&gameplay, 60.0, None)[0].duration <= 3.0);
+}
+
+#[test]
+fn plan_can_make_a_prop_appear() {
+    let f = ws();
+    let mut hook = plan_shot("h", "hook", 4.0, "door");
+    hook["appear"] = json!([{"prop": "stranger", "at": 1.2, "anchor": "door", "offset": [150, 0, -120]}]);
+    let fake = FakeClaude::new(json!({"rationale": "r", "shots": [hook]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    assert_eq!(p.shots[0]["appear"][0]["prop"], "stranger");
+    let user = fake.calls.borrow()[0]["messages"][0]["content"].as_str().unwrap().to_string();
+    assert!(user.contains("- stranger: /Game/Characters/Mannequins/Meshes/SKM_Manny (a character, no animation)"), "{user}");
 }

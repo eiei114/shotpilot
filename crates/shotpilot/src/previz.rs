@@ -283,6 +283,24 @@ pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, AnchorB
         }
     }
 
+    // props that have appeared by this frame, as solid red boxes
+    for ap in shot.appear.iter().filter(|a| frame >= a.frame) {
+        let corners: Vec<Option<(f64, f64, f64)>> = ap.bbox().corners().iter().map(|p| g::project(*p, &cam, fl, w, h, sensor)).collect();
+        let col = [255, 70, 70];
+        for (a, b) in EDGES {
+            if let (Some(p), Some(q)) = (corners[a], corners[b]) {
+                cv.line(p.0, p.1, q.0, q.1, col);
+            }
+        }
+        let tops: Vec<(f64, f64, f64)> = corners[4..].iter().flatten().copied().collect();
+        if !tops.is_empty() {
+            let lx = tops.iter().map(|p| p.0).fold(f64::INFINITY, f64::min) as i64;
+            let ly = tops.iter().map(|p| p.1).fold(f64::INFINITY, f64::min) as i64 - 9 * size;
+            let label: String = ap.prop.to_uppercase().chars().take(16).collect();
+            cv.text(lx.max(0), ly.max(10 * size), &label, col, size);
+        }
+    }
+
     if let Some(target) = shot.target {
         if let Some(t) = g::project(target, &cam, fl, w, h, sensor) {
             let r = 4.0 * size as f64;

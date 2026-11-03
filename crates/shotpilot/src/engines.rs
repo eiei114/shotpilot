@@ -263,6 +263,7 @@ fn shot_from_payload(base: &ResolvedShot, payload: &Value) -> ResolvedShot {
         target: base.target,
         notes: String::new(),
         beat: None,
+        appear: payload["appear"].as_array().map(|a| a.iter().filter_map(crate::model::Appear::from_json).collect()).unwrap_or_default(),
     }
 }
 

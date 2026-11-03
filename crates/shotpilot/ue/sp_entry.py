@@ -297,6 +297,9 @@ def build_shot(item, project, force):
                 if n in sch:
                     set_default(sch[n], v)
 
+    for ap in payload.get("appear") or []:
+        add_prop(seq, ap, frames)
+
     for m in payload.get("markers") or []:
         try:
             tick = seq.get_tick_resolution()
@@ -310,6 +313,50 @@ def build_shot(item, project, force):
 
     EAL.save_loaded_asset(seq)
     return {"status": "built", "engine": readback(seq)}
+
+
+def add_prop(seq, ap, frames):
+    """A prop that pops in at ap["frame"]: a spawnable mesh actor with a constant transform and
+    a spawn track that turns it on at that frame. No animation (skeletal meshes keep their
+    reference pose)."""
+    asset = unreal.load_asset(ap["asset"])
+    if asset is None:
+        raise RuntimeError("prop '%s': asset %s not found" % (ap["prop"], ap["asset"]))
+    skeletal = ap.get("kind") == "skeletal"
+    b = seq.add_spawnable_from_class(unreal.SkeletalMeshActor if skeletal else unreal.StaticMeshActor)
+    b.set_display_name("SP_Prop_" + ap["prop"])
+    t = b.get_object_template()
+    if skeletal:
+        comp = t.get_editor_property("skeletal_mesh_component")
+        _call_first(comp, ["set_skeletal_mesh_asset", "set_skeletal_mesh"], asset)
+    else:
+        comp = t.get_editor_property("static_mesh_component")
+        comp.set_static_mesh(asset)
+
+    tr = b.add_track(unreal.MovieScene3DTransformTrack).add_section()
+    tr.set_range(0, frames)
+    ch = transform_channels(tr)
+    vals = xform_values({"location": ap["location"], "rotation": ap["rotation"]})
+    vals.update({"Scale.X": 1.0, "Scale.Y": 1.0, "Scale.Z": 1.0})
+    for n, v in vals.items():
+        if n in ch:
+            set_default(ch[n], v)
+
+    spawn = next((x for x in b.get_tracks() if isinstance(x, unreal.MovieSceneSpawnTrack)), None)
+    if spawn is None:
+        spawn = b.add_track(unreal.MovieSceneSpawnTrack)
+    secs = spawn.get_sections()
+    sec = secs[0] if secs else spawn.add_section()
+    sec.set_range(0, frames)
+    chan = sec.get_all_channels()[0]
+    start = int(ap.get("frame", 0))
+    if start > 0:
+        chan.set_default(False)
+        chan.add_key(unreal.FrameNumber(0), False)
+        chan.add_key(unreal.FrameNumber(start), True)
+    else:
+        chan.set_default(True)
+        chan.add_key(unreal.FrameNumber(0), True)
 
 
 def same(rb, base, tol_loc=0.5, tol_rot=0.05, tol_lens=0.01):

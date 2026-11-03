@@ -40,6 +40,11 @@ anchors:
   door: {at: [-700, 500, 120], size: [20, 110, 220], center: [-700, 500, 110]}
   lantern: {at: [300, -300, 180], size: [30, 30, 45]}
 
+# Things a shot can make appear, with no animation (a character keeps its reference pose).
+# In a shot: appear: [{prop: stranger, at: 1.5, anchor: door, offset: [150, 0, -120]}]
+props:
+  stranger: {asset: /Game/Characters/Mannequins/Meshes/SKM_Manny, kind: skeletal, size: [60, 40, 180]}
+
 defaults:
   lens: {focal_length: 35, aperture: 2.8}
   environment: {time_of_day: dusk}

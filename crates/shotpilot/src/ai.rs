@@ -38,7 +38,12 @@ distances: close-up 80-200 cm at 50-85 mm, medium 250-500 cm at 35-50 mm,
 wide 800-3000 cm at 18-28 mm.
 Moves: static, dolly_in/dolly_out (distance cm along view), truck_left/truck_right
 (distance cm sideways, keeps aim on the subject), crane_up/crane_down (distance cm),
-orbit_left/orbit_right (degrees around the subject).";
+orbit_left/orbit_right (degrees around the subject).
+Props (listed under `props`) can pop into a shot with no animation: a shot's `appear` list
+holds {prop, at: seconds from the shot start, anchor, offset [x, y, z] cm, optional yaw}.
+The prop stands on anchor+offset and faces the camera unless yaw is given. Use it for a
+sudden reveal (an enemy that is simply there on the cut or a beat later); one or two per
+teaser land harder than many.";
 
 fn shot_schema() -> Value {
     let mut tod = vec!["default"];
@@ -58,9 +63,20 @@ fn shot_schema() -> Value {
             "move_amount": {"type": "number", "description": "cm for dolly/truck/crane, degrees for orbit, 0 for static"},
             "time_of_day": {"type": "string", "enum": tod},
             "notes": {"type": "string"},
+            "appear": {"type": "array", "description": "props that pop in during this shot (empty for none)", "items": {
+                "type": "object",
+                "properties": {
+                    "prop": {"type": "string"},
+                    "at": {"type": "number", "description": "seconds from the shot start"},
+                    "anchor": {"type": "string"},
+                    "offset": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["prop", "at", "anchor", "offset"],
+                "additionalProperties": false,
+            }},
         },
         "required": ["id", "beat", "purpose", "duration", "anchor", "offset", "look_at", "focal_length", "move",
-                     "move_amount", "time_of_day", "notes"],
+                     "move_amount", "time_of_day", "notes", "appear"],
         "additionalProperties": false,
     })
 }
@@ -266,6 +282,18 @@ pub fn read_stream(reader: impl BufRead) -> Result<String> {
 
 // --------------------------------------------------------------------------- plan
 
+fn props_list(defn: &Definition) -> String {
+    if defn.props.is_empty() {
+        return "(none: leave `appear` empty)".into();
+    }
+    defn.props
+        .iter()
+        .map(|(k, p)| format!("- {k}: {} ({}), {} x {} x {} cm", p.asset, if p.kind == "skeletal" { "a character, no animation" } else { "an object" },
+                              model::fmt_g(p.size[0]), model::fmt_g(p.size[1]), model::fmt_g(p.size[2])))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn anchors_list(defn: &Definition) -> String {
     let sensor = defn.defaults.get("lens").and_then(|l| l.get("sensor_width")).and_then(num).unwrap_or(36.0);
     let (w, h) = defn.teaser.resolution;
@@ -327,9 +355,10 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     let slots = craft::skeleton(&defn.brief, duration, n_shots);
     let mut user = format!(
         "Game pitch: {pitch}\nTarget teaser length: {} seconds.\n\
-         Available anchors (only use these names):\n{}\n\n{}\n",
+         Available anchors (only use these names):\n{}\n\nProps that can appear (only these names):\n{}\n\n{}\n",
         model::fmt_g(duration),
         anchors_list(defn),
+        props_list(defn),
         craft::plan_spec(defn, &slots)
     );
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
@@ -386,6 +415,20 @@ fn shot_from_plan(s: &Value, i: usize) -> Value {
     }
     if let Some(n) = s["notes"].as_str().filter(|n| !n.is_empty()) {
         shot.insert("notes".into(), json!(n));
+    }
+    let appear: Vec<Value> = s["appear"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| {
+            let mut off: Vec<f64> = a["offset"].as_array().map(|o| o.iter().filter_map(num).collect()).unwrap_or_default();
+            off.resize(3, 0.0);
+            json!({"prop": a["prop"], "at": crate::geometry::round_to(num(&a["at"]).unwrap_or(0.0), 2),
+                   "anchor": a["anchor"], "offset": off.iter().take(3).map(|v| r1(*v)).collect::<Vec<_>>()})
+        })
+        .collect();
+    if !appear.is_empty() {
+        shot.insert("appear".into(), Value::Array(appear));
     }
     Value::Object(shot)
 }
@@ -551,6 +594,7 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     } else {
         files.join(", ")
     };
+    let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
     let user = format!(
         "Anchors:\n{anchors}\n\nCurrent shots:\n{}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\

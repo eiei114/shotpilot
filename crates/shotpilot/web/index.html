@@ -190,6 +190,9 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .clip .fl i.P0 { background: var(--err); color: #fff; } .clip .fl i.P1 { background: var(--stale); color: #241900; }
 .clip .ok-mark { position: absolute; left: 6px; top: 22px; font-size: 10px; font-weight: 800; color: var(--accent-ink); background: var(--accent); border-radius: 4px; padding: 1px 5px; }
 .clip .ok-mark.outdated { background: var(--stale); color: #241900; }
+.clip .ap { position: absolute; top: 4px; bottom: 18px; width: 2px; margin-left: -1px; background: #ff4646; z-index: 1; }
+.clip .ap span { position: absolute; top: 14px; left: 3px; font-size: 9.5px; font-weight: 800; color: #fff; background: #d92d20;
+  padding: 0 4px; border-radius: 3px; white-space: nowrap; }
 
 /* ------------------------------------------------------------------ stage */
 #stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
@@ -933,6 +936,7 @@ function drawTimeline() {
     return `<div class="${cls}" data-id="${esc(s.id)}" style="flex:${s.duration} 1 0;--c:var(--${esc(s.beat || "muted")});${bg}" title="${esc(s.purpose + (s.framing ? `
 被写体: ${framingText(s)}` : ""))}">
       <div class="beat"></div>
+      ${(s.node.appear || []).map((a) => `<div class="ap" style="left:${Math.min(100, ((a.at || 0) / s.duration) * 100)}%" title="${esc(`${a.at || 0}s で ${a.prop} が出現`)}"><span>${esc(a.prop)}</span></div>`).join("")}
       <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}${okm}${flags}
       <div class="bot"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span><span class="ladder">${ladder}</span></div></div>`;
   }).join("");

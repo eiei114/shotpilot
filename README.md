@@ -125,6 +125,8 @@ shotpilot cut final
 anchors:                      # レベル内の名前付きの点（cm、Z が上）
   well: {at: [0, 0, 80], size: [140, 140, 90], center: [0, 0, 45]}   # 大きさ付き（scan が UE の外形から入れる）
   marker: [500, 0, 0]         # 点だけでもよい（previz は人の大きさの箱で描く）
+props:                        # ショットに出現させられるもの（アニメーションなし。キャラは基準ポーズのまま）
+  stranger: {asset: /Game/Characters/Mannequins/Meshes/SKM_Manny, kind: skeletal, size: [60, 40, 180]}
 shots:
   - id: s02_well
     beat: establish           # hook → establish → escalate → title
@@ -169,6 +171,7 @@ shotpilot revise "タイトルカットを最初に持ってきて"
 ```
 
 - `plan`: pitch・ブリーフ・anchors から、hook → establish → escalate → title の型でショットリストを作る。Claude には書く前に、骨格（ショット数・ビート・尺・ショットサイズ）、トレーラーの規則、画角の距離表、各アンカーの大きさを渡し、1回で組ませる。自分の出力を見直させることはしない（D-22）。ビート順・尺の範囲・総尺はコードが整え、整えた点を表示する。`plan --spec` で、渡す内容だけを表示できる。
+- `appear`: ショットの途中で prop をいきなり出す。`appear: [{prop: stranger, at: 1.5, anchor: door, offset: [150, 0, -120]}]` と書くと、1.5 秒の時点から扉の脇に立つ（向きは既定でカメラの方、`yaw` で指定もできる）。UE では Sequencer の spawnable と Spawn トラックで出し、previz では赤い箱で描く。fingerprint に入るのは使ったショットだけで、出現を足すとそのショットだけが撮り直しになる。Claude も plan / revise で使える。
 - ショット検査は、被写体（`look_at` のアンカー、無ければ `anchor`）の箱を画面に投影し、画面の高さの何割を占めるかを測る（`check` とアプリで表示）。カメラが箱の中にある、小さすぎる、大きすぎて切れている、を指摘する。
 - `revise`: 指示に関係するショットだけを書き換える（並べ替えと、SE・BGM も含む）。返ってきた編集は、適用する前に resolve して検証する。`--shot` を付けると、編集できる範囲をコードで制限する（このとき BGM は変えられない）。Claude が `audio/` に無いファイルを使おうとしたら、何も適用しない。
 - モデルの既定は `claude-opus-5-5`。`SHOTPILOT_MODEL` で上書きできる。Messages API を直接呼ぶ（ストリーミング、構造化出力、拒否されたときはサーバー側で既定のモデルに切り替える `fallbacks: "default"`）。
