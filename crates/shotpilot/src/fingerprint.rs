@@ -160,6 +160,17 @@ pub fn build_fingerprint(defn: &Definition, shot: &ResolvedShot) -> String {
     }))
 }
 
+/// What a human approves when signing off a shot's framing: the shot's picture, independent
+/// of quality presets. Any edit that changes pixels changes it (and so drops the approval);
+/// beats, purpose, notes, markers and sound do not.
+pub fn look_fingerprint(defn: &Definition, shot: &ResolvedShot) -> String {
+    let mut payload = shot.engine_payload();
+    if let Some(m) = payload.as_object_mut() {
+        m.remove("markers");
+    }
+    digest(&json!({"shot": payload, "map": defn.project.map}))
+}
+
 pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: &str) -> Result<String> {
     let q = quality(defn, quality_name)?;
     let mut payload = shot.engine_payload();

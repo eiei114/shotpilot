@@ -17,6 +17,7 @@ use crate::fingerprint as fp;
 use crate::geometry::round_to;
 use crate::model::{self, num, Definition, ResolvedShot};
 use crate::previz;
+use crate::shotcheck::{self, Finding, Severity};
 use crate::sound::{self, Mixed};
 use crate::state::{State, Take};
 use crate::sync::{self, PullDecision, PullKind};
@@ -61,6 +62,8 @@ pub struct ShotStatus {
     pub beat: Option<String>,
     pub build: String,                    // synced | dirty | new
     pub qualities: Vec<(String, String)>, // fresh | stale | none
+    /// approved | outdated (approved, then the picture changed) | none
+    pub approval: String,
 }
 
 impl ShotStatus {
@@ -72,7 +75,7 @@ impl ShotStatus {
         let qs: Map<String, Value> = self.qualities.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
         json!({
             "index": self.index, "id": self.id, "duration": self.duration, "purpose": self.purpose,
-            "beat": self.beat, "build": self.build, "qualities": qs,
+            "beat": self.beat, "build": self.build, "qualities": qs, "approval": self.approval,
         })
     }
 }
@@ -138,8 +141,14 @@ impl Workspace {
         model::resolve_all(&self.defn)
     }
 
+    /// The shot check (see shotcheck.rs), most severe first.
+    pub fn check(&self) -> Result<Vec<Finding>> {
+        Ok(shotcheck::check(&self.defn, &self.resolved()?))
+    }
+
+    /// P0 and P1 findings as one-line notes (the CLI's `note:` lines).
     pub fn structure_warnings(&self) -> Result<Vec<String>> {
-        Ok(model::structure_warnings(&self.resolved()?, self.defn.teaser.target_duration))
+        Ok(self.check()?.iter().filter(|f| f.severity <= Severity::P1).map(Finding::line).collect())
     }
 
     /// Shots by id, or by 1-based position ("3" = third shot). Empty = all.
@@ -189,7 +198,13 @@ impl Workspace {
                 };
                 qualities.push((q, st.to_string()));
             }
+            let approval = match self.state.approved_fp(&s.id) {
+                None => "none",
+                Some(a) if a == fp::look_fingerprint(&self.defn, &s) => "approved",
+                Some(_) => "outdated",
+            };
             rows.push(ShotStatus {
+                approval: approval.into(),
                 index: s.index,
                 id: s.id.clone(),
                 duration: s.duration,
@@ -743,6 +758,53 @@ impl Workspace {
         }
         let note: Vec<&str> = assignments.iter().map(|(k, _)| k.as_str()).collect();
         self.edit_definition(&[(shot_id.to_string(), node)], None, "set", &note.join(", "))
+    }
+
+    // ------------------------------------------------------------------ approval
+
+    /// Sign off (or withdraw) a shot's framing. Approval is tied to the shot's picture:
+    /// any edit that changes pixels drops it, editorial edits keep it. A shot with an
+    /// open P0 finding cannot be approved.
+    pub fn approve(&mut self, shot_id: &str, approved: bool) -> Result<()> {
+        let s = self.select_one(shot_id)?;
+        if approved {
+            let blocking: Vec<String> = self
+                .check()?
+                .into_iter()
+                .filter(|f| f.severity == Severity::P0 && f.shot.as_deref().map_or(true, |x| x == s.id))
+                .map(|f| f.line())
+                .collect();
+            if !blocking.is_empty() {
+                bail!("cannot approve {} while P0 problems are open:
+  - {}", s.id, blocking.join("
+  - "));
+            }
+            let look = fp::look_fingerprint(&self.defn, &s);
+            self.state.set_approved(&s.id, Some(&look));
+        } else {
+            self.state.set_approved(&s.id, None);
+        }
+        self.state.log("approve", json!({"shot": s.id, "approved": approved}));
+        self.state.save()
+    }
+
+    // ------------------------------------------------------------------ brief
+
+    /// Set fields under `brief:` (null removes the value). Editorial: nothing goes stale.
+    pub fn set_brief(&mut self, entries: &[(String, Value)]) -> Result<()> {
+        for (k, _) in entries {
+            if !model::BRIEF_FIELDS.contains(&k.as_str()) {
+                bail!("unknown brief field '{k}'. known: {}", model::BRIEF_FIELDS.join(", "));
+            }
+        }
+        let mut doc = Doc::load(&self.path)?;
+        doc.upsert_entries("brief", entries)?;
+        model::parse(&doc.value()?, &self.path)?;
+        doc.save(&self.path)?;
+        self.reload()?;
+        let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+        self.state.log("brief", json!({"fields": keys}));
+        self.state.save()
     }
 
     // ------------------------------------------------------------------ sound

@@ -20,6 +20,16 @@ teaser:
   fps: 30
   resolution: [1920, 1080]
 
+# What the trailer is for. Written before any shot; editorial only (never re-renders).
+# kind: teaser (title/IP first) | gameplay (gameplay from the first second)
+brief:
+  kind: teaser
+  genre: 一人称ホラー
+  audience: 静かに怖いホラーが好きなPCプレイヤー
+  core: 見慣れた中庭が、少しずつ見知らぬ場所に変わっていく
+  must_show: [井戸, 2階の窓, 提灯]
+  references: []
+
 # Named points in the level. `shotpilot scan` fills these from actors tagged
 # `shotpilot` (or labelled SP_*). Units: cm, Z up.
 anchors:
@@ -133,6 +143,14 @@ teaser:
   target_duration: 45
   fps: 30
   resolution: [1920, 1080]
+
+brief:
+  kind: teaser      # teaser | gameplay
+  genre: ""
+  audience: ""
+  core: ""          # the one experience the viewer must get
+  must_show: []
+  references: []
 
 anchors: {}
 

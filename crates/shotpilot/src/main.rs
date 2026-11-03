@@ -90,6 +90,23 @@ enum Cmd {
         #[arg(long)]
         no_video: bool,
     },
+    /// lint the shot list against trailer craft rules (P0 blocks approval)
+    Check {
+        #[arg(long)]
+        json: bool,
+    },
+    /// sign off a shot's framing; any edit that changes its picture withdraws it
+    Approve {
+        #[arg(required = true)]
+        shots: Vec<String>,
+        /// withdraw the approval
+        #[arg(long)]
+        undo: bool,
+    },
+    /// what the trailer is for: brief kind=teaser genre=ホラー must_show='[井戸, 窓]'
+    Brief {
+        assignments: Vec<String>,
+    },
     /// edit fields of one shot: set s03 camera.lens.focal_length=50 duration=5
     Set {
         shot: String,
@@ -238,7 +255,7 @@ fn run(cli: Cli) -> Result<u8> {
             let qs = fp::quality_names(&ws.defn);
             let idw = rows.iter().map(|r| r.id.len()).max().unwrap_or(4).max(4);
             let qh: Vec<String> = qs.iter().map(|q| format!("{q:<7}")).collect();
-            println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {}", "#", "shot", "beat", "sec", "engine", qh.join("  "));
+            println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {:<8}  {}", "#", "shot", "beat", "sec", "engine", "framing", qh.join("  "));
             for r in &rows {
                 let marks: Vec<String> = qs
                     .iter()
@@ -251,8 +268,13 @@ fn run(cli: Cli) -> Result<u8> {
                         format!("{m:<7}")
                     })
                     .collect();
-                println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {}", r.index + 1, r.id, r.beat.as_deref().unwrap_or("-"),
-                         fmt_g(r.duration), r.build, marks.join("  "));
+                let framing = match r.approval.as_str() {
+                    "approved" => "ok",
+                    "outdated" => "CHANGED",
+                    _ => "-",
+                };
+                println!("{:>2}  {:<idw$}  {:<9}  {:>5}  {:<6}  {:<8}  {}", r.index + 1, r.id, r.beat.as_deref().unwrap_or("-"),
+                         fmt_g(r.duration), r.build, framing, marks.join("  "));
             }
             let total: f64 = rows.iter().map(|r| r.duration).sum();
             let target = ws.defn.teaser.target_duration;
@@ -260,6 +282,7 @@ fn run(cli: Cli) -> Result<u8> {
             println!("\ntotal {}s / target {}s ({}{}s)", fmt_g(total), fmt_g(target), if diff >= 0.0 { "+" } else { "" }, fmt_g(diff));
             println!("engine: synced = sequence asset matches shots.yaml, dirty = needs build, new = never built");
             println!("takes:  fresh = take exists for the current definition, STALE = only older takes exist");
+            println!("framing: ok = approved, CHANGED = the picture changed after approval (shotpilot approve)");
             for w in ws.structure_warnings()? {
                 println!("note: {w}");
             }
@@ -356,6 +379,51 @@ fn run(cli: Cli) -> Result<u8> {
             }
             for n in &info.notes {
                 println!("  note:       {n}");
+            }
+        }
+        Cmd::Check { json } => {
+            let ws = ws(file)?;
+            let found = ws.check()?;
+            if json {
+                let v: Vec<Value> = found.iter().map(|f| f.to_json()).collect();
+                println!("{}", serde_json::to_string_pretty(&v)?);
+                return Ok(0);
+            }
+            if found.is_empty() {
+                println!("ok: no findings");
+            }
+            for f in &found {
+                println!("{}
+      fix: {}", f.line(), f.fix);
+            }
+            let p0 = found.iter().filter(|f| f.severity == shotpilot::shotcheck::Severity::P0).count();
+            return Ok(if p0 > 0 { 1 } else { 0 });
+        }
+        Cmd::Approve { shots, undo } => {
+            let mut ws = ws(file)?;
+            for s in ws.select(&shots)? {
+                ws.approve(&s.id, !undo)?;
+                println!("{} {}", if undo { "withdrawn:" } else { "approved:" }, s.id);
+            }
+        }
+        Cmd::Brief { assignments } => {
+            let mut ws = ws(file)?;
+            if !assignments.is_empty() {
+                ws.set_brief(&parse_assignments(&assignments)?)?;
+            }
+            let b = &ws.defn.brief;
+            println!("kind:       {}", b.kind);
+            println!("genre:      {}", b.genre);
+            println!("audience:   {}", b.audience);
+            println!("core:       {}", b.core);
+            println!("must_show:  {}", b.must_show.join(", "));
+            println!("references: {}", b.references.join(", "));
+            if !b.notes.is_empty() {
+                println!("notes:      {}", b.notes);
+            }
+            let missing = b.missing();
+            if !missing.is_empty() {
+                println!("missing:    {} (the planner works better with these)", missing.join(", "));
             }
         }
         Cmd::Set { shot, assignments } => {

@@ -98,11 +98,54 @@ pub struct TeaserCfg {
     pub resolution: (i64, i64),
 }
 
+/// What a trailer is: a teaser (title/IP first) or a gameplay trailer (gameplay first).
+/// Steam treats them as different kinds, and some checks weigh differently for each.
+pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
+
+/// Fields of `brief:` a planner reads. Order is the order the app asks them in.
+pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "audience", "core", "must_show", "references", "notes"];
+
+/// `brief:`: what the trailer is for, written before any shot. Editorial only: it never
+/// affects pixels, so editing it never re-renders anything.
+#[derive(Debug, Clone, Default)]
+pub struct BriefCfg {
+    pub kind: String, // teaser | gameplay
+    pub genre: String,
+    pub audience: String,
+    /// The core experience the viewer must get (one sentence).
+    pub core: String,
+    pub must_show: Vec<String>,
+    /// Trailers to learn from ("Inspired by ...").
+    pub references: Vec<String>,
+    pub notes: String,
+    /// The raw mapping, for the app's form.
+    pub raw: Map<String, Value>,
+}
+
+impl BriefCfg {
+    pub fn is_gameplay(&self) -> bool {
+        self.kind == "gameplay"
+    }
+
+    /// Fields a planner needs that are still empty.
+    pub fn missing(&self) -> Vec<&'static str> {
+        let mut out = Vec::new();
+        if self.genre.is_empty() {
+            out.push("genre");
+        }
+        if self.core.is_empty() {
+            out.push("core");
+        }
+        out
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Definition {
     pub path: PathBuf,
     pub project: ProjectCfg,
     pub teaser: TeaserCfg,
+    pub brief: BriefCfg,
     pub anchors: Vec<(String, Vec3)>,
     pub defaults: Map<String, Value>,
     pub qualities: Map<String, Value>,
@@ -328,6 +371,8 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         errs.push("teaser.fps: must be 1..120".into());
     }
 
+    let brief = parse_brief(top.get("brief"), &mut errs);
+
     let mut anchors = Vec::new();
     for (name, v) in obj(top.get("anchors")) {
         match vec3(&v) {
@@ -378,7 +423,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     crate::sound::validate(top, &shots, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, anchors, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, anchors, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {
@@ -390,6 +435,43 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         bail!("{} has {} problem(s):\n  - {}", path.display(), errs.len(), errs.join("\n  - "));
     }
     Ok(defn)
+}
+
+fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
+    let raw = match v {
+        None | Some(Value::Null) => Map::new(),
+        Some(Value::Object(m)) => m.clone(),
+        Some(_) => {
+            errs.push("brief: must be a mapping".into());
+            Map::new()
+        }
+    };
+    let list = |key: &str, errs: &mut Vec<String>| -> Vec<String> {
+        match raw.get(key) {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::String(s)) if s.is_empty() => Vec::new(),
+            Some(Value::String(s)) => vec![s.clone()],
+            Some(Value::Array(a)) => a.iter().map(str_of).filter(|s| !s.is_empty()).collect(),
+            Some(_) => {
+                errs.push(format!("brief.{key}: a list of strings"));
+                Vec::new()
+            }
+        }
+    };
+    let kind = opt_str(raw.get("kind")).unwrap_or_else(|| "teaser".into());
+    if !TRAILER_KINDS.contains(&kind.as_str()) {
+        errs.push(format!("brief.kind: one of {} (got '{kind}')", TRAILER_KINDS.join(", ")));
+    }
+    BriefCfg {
+        kind,
+        genre: opt_str(raw.get("genre")).unwrap_or_default(),
+        audience: opt_str(raw.get("audience")).unwrap_or_default(),
+        core: opt_str(raw.get("core")).unwrap_or_default(),
+        must_show: list("must_show", errs),
+        references: list("references", errs),
+        notes: opt_str(raw.get("notes")).unwrap_or_default(),
+        raw,
+    }
 }
 
 // --------------------------------------------------------------------------- resolution
@@ -622,50 +704,4 @@ fn resolve_env(defn: &Definition, shot: &Value, at: &str) -> Result<Map<String, 
     let mut out: Vec<(String, Value)> = env.into_iter().filter(|(_, v)| !v.is_null()).collect();
     out.sort_by(|a, b| a.0.cmp(&b.0));
     Ok(out.into_iter().collect())
-}
-
-/// Advisory checks against the hook -> establish -> escalate -> title shape.
-pub fn structure_warnings(shots: &[ResolvedShot], target_duration: f64) -> Vec<String> {
-    if shots.is_empty() {
-        return Vec::new();
-    }
-    let beats: Vec<Option<&str>> = shots.iter().map(|s| s.beat.as_deref()).collect();
-    if beats.iter().all(Option::is_none) {
-        return vec![
-            "no shot has a `beat`; tag shots with hook / establish / escalate / title to check the teaser shape".into(),
-        ];
-    }
-    let mut out = Vec::new();
-    let untagged: Vec<&str> = shots.iter().filter(|s| s.beat.is_none()).map(|s| s.id.as_str()).collect();
-    if !untagged.is_empty() {
-        out.push(format!("no beat on: {}", untagged.join(", ")));
-    }
-    for b in BEATS {
-        if !beats.contains(&Some(*b)) {
-            out.push(format!("no `{b}` shot ({})", beat_guide(b)));
-        }
-    }
-    if let Some(Some(first)) = beats.first() {
-        if *first != "hook" {
-            out.push(format!("the cut opens on `{first}`; teasers usually open on the hook"));
-        }
-    }
-    if let Some(Some(last)) = beats.last() {
-        if *last != "title" {
-            out.push(format!("the cut ends on `{last}`; end on the title beat"));
-        }
-    }
-    let ranks: Vec<usize> = beats.iter().flatten().filter_map(|b| BEATS.iter().position(|x| x == b)).collect();
-    if ranks.windows(2).any(|w| w[1] < w[0]) {
-        out.push("beats go backwards (e.g. establish after escalate); intentional?".into());
-    }
-    let total: f64 = shots.iter().map(|s| s.duration).sum();
-    let hook: f64 = shots.iter().filter(|s| s.beat.as_deref() == Some("hook")).map(|s| s.duration).sum();
-    if hook > 6.0 {
-        out.push(format!("hook runs {}s; keep it under ~5s", fmt_g(hook)));
-    }
-    if target_duration != 0.0 && (total - target_duration).abs() > 0.1 * target_duration {
-        out.push(format!("runtime {}s is more than 10% off the {}s target", fmt_g(total), fmt_g(target_duration)));
-    }
-    out
 }
