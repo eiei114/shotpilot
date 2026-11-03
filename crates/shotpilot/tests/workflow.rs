@@ -253,3 +253,22 @@ fn base64_round_trips() {
         assert_eq!(shotpilot::moodboard::base64_decode(&enc).unwrap(), data);
     }
 }
+
+#[test]
+fn codex_output_is_read_back_from_its_image_folder() {
+    let out = "{\"type\":\"thread.started\",\"thread_id\":\"01ab\"}\n{\"type\":\"turn.started\"}\n";
+    assert_eq!(shotpilot::moodboard::codex_thread_id(out).as_deref(), Some("01ab"));
+    assert!(shotpilot::moodboard::codex_thread_id("garbage").is_none());
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.png"), PNG).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    let mut second = PNG.to_vec();
+    second.push(7);
+    std::fs::write(dir.path().join("b.png"), &second).unwrap();
+    std::fs::write(dir.path().join("notes.txt"), "x").unwrap();
+    let imgs = shotpilot::moodboard::codex_images(dir.path());
+    assert_eq!(imgs.len(), 2);
+    assert_eq!(imgs[1], second); // oldest first: the order they were asked for
+    let ins = shotpilot::moodboard::CodexImages::instruction(&["one".into(), "two".into()]);
+    assert!(ins.contains("exactly 2 image(s)") && ins.contains("--- Image 2 ---\ntwo") && ins.contains("Do not write"));
+}

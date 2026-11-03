@@ -103,6 +103,14 @@ enum Cmd {
         #[arg(long)]
         undo: bool,
     },
+    /// generate mood-board images from the brief (Codex, or an OpenAI API key)
+    Moodboard {
+        /// art direction, e.g. "cold blue, red lantern, fog"
+        #[arg(long, default_value = "")]
+        direction: String,
+        #[arg(short, long, default_value_t = 4)]
+        n: usize,
+    },
     /// what the trailer is for: brief kind=teaser genre=ホラー must_show='[井戸, 窓]'
     Brief {
         assignments: Vec<String>,
@@ -419,6 +427,15 @@ fn run(cli: Cli) -> Result<u8> {
                 ws.approve(&s.id, !undo)?;
                 println!("{} {}", if undo { "withdrawn:" } else { "approved:" }, s.id);
             }
+        }
+        Cmd::Moodboard { direction, n } => {
+            let mut ws = ws(file)?;
+            let gen = connect::make_image_gen(&Settings::load(Settings::default_path().as_deref()))?;
+            let made = ws.generate_moodboard(gen.as_ref(), &direction, n.clamp(1, 4))?;
+            for m in &made {
+                println!("added {m}");
+            }
+            println!("mood board: {} image(s); plan shows them to Claude", ws.defn.brief.images.len());
         }
         Cmd::Brief { assignments } => {
             let mut ws = ws(file)?;

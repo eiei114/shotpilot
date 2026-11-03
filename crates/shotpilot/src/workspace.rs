@@ -824,16 +824,18 @@ impl Workspace {
     /// `brief.images`. A failed frame stops the run; the ones already made are kept.
     pub fn generate_moodboard(&mut self, gen: &dyn crate::moodboard::ImageGen, direction: &str, n: usize)
         -> Result<Vec<String>> {
+        let frames: Vec<(String, String)> = crate::moodboard::prompts(&self.defn, direction).into_iter().take(n.max(1)).collect();
+        let prompts: Vec<String> = frames.iter().map(|(_, p)| p.clone()).collect();
         let mut made = Vec::new();
         let mut err = None;
-        for (key, prompt) in crate::moodboard::prompts(&self.defn, direction).into_iter().take(n.max(1)) {
-            match gen.generate(&prompt) {
-                Ok(bytes) => made.push(crate::moodboard::store(&self.root, &format!("gen-{key}"), &bytes)?),
-                Err(e) => {
-                    err = Some(e);
-                    break;
+        match gen.generate_many(&prompts) {
+            Ok(images) => {
+                for (i, bytes) in images.iter().enumerate() {
+                    let key = frames.get(i).map(|(k, _)| k.as_str()).unwrap_or("extra");
+                    made.push(crate::moodboard::store(&self.root, &format!("gen-{key}"), bytes)?);
                 }
             }
+            Err(e) => err = Some(e),
         }
         if !made.is_empty() {
             let mut all = self.defn.brief.images.clone();

@@ -388,8 +388,11 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
           <input type="password" id="conn-keyinput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></label>
         <label class="opt" data-p="auto"><input type="radio" name="prov" value="auto"><span class="t">自動</span>
           <span class="d">Claude Code があればそれを、無ければ API キーを使います。</span></label>
-        <div class="effort-row"><span class="t">OpenAI</span><input type="password" id="conn-openai" placeholder="sk-...（ムードボードの画像生成用）" autocomplete="off" spellcheck="false">
-          <span class="d" id="conn-openai-d">ブリーフのムードボードを生成するときだけ使います。Claude は画像を生成できないためです。</span></div>
+        <div class="effort-row"><span class="t">画像</span><div class="seg" id="conn-image">
+            <button type="button" data-img="auto">自動</button><button type="button" data-img="codex">Codex</button><button type="button" data-img="openai-api">OpenAI API キー</button></div>
+          <span class="d" id="conn-image-d"></span>
+          <span class="t">キー</span><input type="password" id="conn-openai" placeholder="sk-...（API キーで生成するときだけ）" autocomplete="off" spellcheck="false">
+          <span class="d" id="conn-openai-d"></span></div>
         <div class="effort-row"><span class="t">effort</span><div class="seg" id="conn-effort"></div>
           <span class="d" id="conn-effort-d">Claude がどこまで考えるか。上げるほど丁寧で、時間と使用量が増えます。</span></div>
         <div class="conn-row"><button class="btn dark" id="conn-save">保存</button><button class="btn" id="conn-close">閉じる</button><span class="st" id="conn-st"></span></div>
@@ -797,16 +800,17 @@ function drawBrief() {
 function drawMood() {
   const el = $("mood"); if (!el) return;
   const st = ui.status, b = st.brief || {}, ai = st.ai || {};
-  const canGen = !!(ai.openai_key || ai.openai_env);
-  const key = JSON.stringify([b.images, canGen, ui.busy, ai.image_model]);
+  const canGen = !!ai.image_active;
+  const via = ai.image_active === "codex" ? "Codex" : `OpenAI（${ai.image_model || ""}）`;
+  const key = JSON.stringify([b.images, canGen, ui.busy, via]);
   if (drawMood.key === key && el.childElementCount) return;
   const keepDir = $("mood-dir")?.value || "";
   drawMood.key = key;
   const imgs = (b.images || []).map((rel) => `<div class="mood-item"><img alt="" src="/files/${esc(rel)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'missing',textContent:'見つかりません: ${esc(rel)}'}))">
     <button data-mood-rm="${esc(rel)}" title="ムードボードから外す（ファイルも消します）">✕</button></div>`).join("");
   const gen = canGen
-    ? `<button class="btn dark" data-mood-gen${ui.busy ? " disabled" : ""}>${ui.busy === "mood" ? "生成中…" : `OpenAI で 4 枚生成（${esc(ai.image_model || "")}）`}</button>`
-    : `<button class="btn" data-mood-key title="接続設定で OpenAI の API キーを入れると生成できます">OpenAI のキーを設定して生成</button>`;
+    ? `<button class="btn dark" data-mood-gen${ui.busy ? " disabled" : ""}>${ui.busy === "mood" ? "生成中…" : `${esc(via)} で 4 枚生成`}</button>`
+    : `<button class="btn" data-mood-key title="Codex を入れてログインするか、接続設定で OpenAI の API キーを入れると生成できます">画像の生成先を設定</button>`;
   el.innerHTML = `<div class="mood-bar"><input type="text" id="mood-dir" placeholder="画づくりの指示（任意） 例: 冷たい青と提灯の赤、霧、低いコントラスト" value="${esc(keepDir)}">${gen}
       <label class="btn" style="cursor:pointer">画像を追加<input type="file" id="mood-file" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
     ${imgs ? `<div class="mood-grid">${imgs}</div>` : `<div class="mood-empty" id="mood-drop">まだありません。ブリーフから生成するか、手持ちのスクリーンショットやコンセプトアートをドロップしてください。</div>`}`;
@@ -815,7 +819,7 @@ function drawMood() {
 async function generateMood() {
   if (ui.busy) return;
   ui.busy = "mood"; drawMood();
-  toast("ムードボードを生成しています（1 枚ずつ。数十秒〜数分）");
+  toast("ムードボードを生成しています（4 枚で数分かかります）");
   try {
     const out = await api("POST", "/api/moodboard/generate", { direction: $("mood-dir")?.value || "", n: 4 });
     toast(`${out.added.length} 枚を追加しました`);
@@ -1807,15 +1811,23 @@ function openConn() {
   $("conn-effort").innerHTML = efforts.map((e) => `<button type="button" data-effort="${esc(e)}" class="${e === ai.effort ? "on" : ""}">${esc(e)}</button>`).join("");
   $("conn-effort").dataset.value = ai.effort || "medium";
   $("conn-openai").value = "";
-  $("conn-openai-d").textContent = ai.openai_key ? `保存済み（${ai.openai_key}）。変えるときだけ入力。ムードボードの生成に使います（${ai.image_model}）`
-    : ai.openai_env ? "環境変数 OPENAI_API_KEY を使います。ムードボードの生成に使います"
-    : "ブリーフのムードボードを生成するときだけ使います。Claude は画像を生成できないためです。";
+  $("conn-image").dataset.value = ai.image_provider || "auto";
+  for (const b of $("conn-image").children) b.classList.toggle("on", b.dataset.img === (ai.image_provider || "auto"));
+  $("conn-image-d").textContent = `ムードボードの画像を作る先（Claude は画像を生成できないため）。Codex はログイン中のアカウントで動き、キーは要りません。${ai.codex ? "Codex: 見つかりました。" : "Codex: 見つかりません。"}${ai.image_active ? ` いまは ${ai.image_active === "codex" ? "Codex" : "API キー"} を使います。` : " いまは使えません。"}`;
+  $("conn-openai-d").textContent = ai.openai_key ? `保存済み（${ai.openai_key}）。変えるときだけ入力（${ai.image_model}）`
+    : ai.openai_env ? "環境変数 OPENAI_API_KEY を使います"
+    : "OpenAI の API キーで生成するときだけ入れます。";
   $("conn-effort-d").textContent = ai.effort_env
     ? `環境変数 SHOTPILOT_EFFORT=${ai.effort_env} が優先されています。`
     : "Claude がどこまで考えるか。plan（構成を組む）と直す指示の両方に効きます。上げるほど丁寧で、時間と使用量が増えます。既定は medium。";
   markConn();
   $("conn").hidden = false;
 }
+$("conn-image").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-img]"); if (!b) return;
+  $("conn-image").dataset.value = b.dataset.img;
+  for (const x of $("conn-image").children) x.classList.toggle("on", x === b);
+});
 $("conn-effort").addEventListener("click", (e) => {
   const b = e.target.closest("[data-effort]"); if (!b) return;
   $("conn-effort").dataset.value = b.dataset.effort;
@@ -1826,7 +1838,7 @@ function markConn() {
 }
 async function saveConn() {
   const provider = document.querySelector("input[name=prov]:checked")?.value || "auto";
-  const body = { provider, effort: $("conn-effort").dataset.value || "" };
+  const body = { provider, effort: $("conn-effort").dataset.value || "", image_provider: $("conn-image").dataset.value || "auto" };
   const key = $("conn-keyinput").value.trim();
   if (key) body.api_key = key;
   const okey = $("conn-openai").value.trim();

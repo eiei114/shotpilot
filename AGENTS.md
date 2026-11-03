@@ -31,6 +31,7 @@ shotpilot set s03 camera.lens.focal_length=50
 shotpilot check                   # ショット検査（P0 は承認を止める）
 shotpilot approve s03             # 構図を承認（画が変わると外れる）
 shotpilot brief genre=ホラー       # brief: を見る・書く
+shotpilot moodboard               # ブリーフからムードボードを4枚生成（Codex か OpenAI キー）
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければフォルダを選ぶ

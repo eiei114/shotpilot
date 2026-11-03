@@ -24,9 +24,133 @@ pub fn image_model() -> String {
     std::env::var("SHOTPILOT_IMAGE_MODEL").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| DEFAULT_IMAGE_MODEL.into())
 }
 
-/// Makes images from a prompt. Tests swap in a fake; the real one is [`OpenAiImages`].
+/// Makes images from prompts. Tests swap in a fake; the real ones are [`CodexImages`]
+/// (the user's logged-in Codex CLI) and [`OpenAiImages`] (an API key).
 pub trait ImageGen {
     fn generate(&self, prompt: &str) -> Result<Vec<u8>>;
+
+    /// Several images; backends with a high per-call cost make them in one go.
+    /// Returns the images made so far if one fails after the first.
+    fn generate_many(&self, prompts: &[String]) -> Result<Vec<Vec<u8>>> {
+        let mut out = Vec::new();
+        for p in prompts {
+            match self.generate(p) {
+                Ok(b) => out.push(b),
+                Err(e) if out.is_empty() => return Err(e),
+                Err(_) => break,
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// Generates through the user's Codex CLI (`codex exec`), which has an image generation
+/// tool and uses the account already logged in to Codex: no API key. Codex keeps what it
+/// makes in `$CODEX_HOME/generated_images/<thread id>/`; we read the files from there, so
+/// Codex runs read-only and never writes into the project.
+pub struct CodexImages {
+    exe: PathBuf,
+    home: PathBuf,
+}
+
+impl CodexImages {
+    pub fn new(exe: PathBuf) -> Option<CodexImages> {
+        let home = std::env::var_os("CODEX_HOME").map(PathBuf::from).or_else(|| {
+            std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(|h| PathBuf::from(h).join(".codex"))
+        })?;
+        Some(CodexImages { exe, home })
+    }
+
+    /// The instruction Codex gets (on stdin).
+    pub fn instruction(prompts: &[String]) -> String {
+        let mut s = format!(
+            "Use your image generation tool to generate exactly {} image(s), one per prompt below, in this order. \
+             Landscape 16:9. Do not write, copy or save any files and do not run commands: generating the images is the \
+             whole task. When done, reply with just the number of images generated.\n",
+            prompts.len()
+        );
+        for (i, p) in prompts.iter().enumerate() {
+            s.push_str(&format!("\n--- Image {} ---\n{p}\n", i + 1));
+        }
+        s
+    }
+}
+
+/// The thread id from `codex exec --json` output.
+pub fn codex_thread_id(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .filter_map(|l| serde_json::from_str::<Value>(l.trim()).ok())
+        .find(|v| v["type"] == "thread.started")
+        .and_then(|v| v["thread_id"].as_str().map(str::to_string))
+}
+
+/// Images in a Codex generated_images folder, oldest first.
+pub fn codex_images(dir: &Path) -> Vec<Vec<u8>> {
+    let mut files: Vec<(std::time::SystemTime, PathBuf)> = std::fs::read_dir(dir)
+        .map(|rd| {
+            rd.flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_file())
+                .map(|p| (std::fs::metadata(&p).and_then(|m| m.modified()).unwrap_or(std::time::UNIX_EPOCH), p))
+                .collect()
+        })
+        .unwrap_or_default();
+    files.sort();
+    files.into_iter().filter_map(|(_, p)| std::fs::read(p).ok()).filter(|b| image_type(b).is_some()).collect()
+}
+
+impl ImageGen for CodexImages {
+    fn generate(&self, prompt: &str) -> Result<Vec<u8>> {
+        self.generate_many(&[prompt.to_string()])?.into_iter().next().ok_or_else(|| Error::user("Codex made no image"))
+    }
+
+    fn generate_many(&self, prompts: &[String]) -> Result<Vec<Vec<u8>>> {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let cwd = std::env::temp_dir();
+        let mut cmd = Command::new(&self.exe);
+        cmd.args(["exec", "--json", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-C"])
+            .arg(&cwd)
+            .arg("-")
+            .current_dir(&cwd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        }
+        let mut child = cmd.spawn().map_err(|e| Error::user(format!("cannot start Codex ({}): {e}", self.exe.display())))?;
+        let text = CodexImages::instruction(prompts);
+        let mut stdin = child.stdin.take().expect("piped");
+        let writer = std::thread::spawn(move || {
+            let r = stdin.write_all(text.as_bytes());
+            drop(stdin); // EOF: codex reads the prompt until stdin closes
+            r
+        });
+        let out = child.wait_with_output().map_err(|e| Error::user(format!("Codex: {e}")))?;
+        let _ = writer.join();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        let Some(thread) = codex_thread_id(&stdout) else {
+            let err = String::from_utf8_lossy(&out.stderr);
+            let tail = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("").trim();
+            bail!("Codex did not start a session{}", if tail.is_empty() { String::new() } else { format!(": {tail}") });
+        };
+        let images = codex_images(&self.home.join("generated_images").join(&thread));
+        if images.is_empty() {
+            let said = stdout
+                .lines()
+                .rev()
+                .filter_map(|l| serde_json::from_str::<Value>(l.trim()).ok())
+                .filter(|v| v["item"]["type"] == "agent_message")
+                .find_map(|v| v["item"]["text"].as_str().map(str::to_string))
+                .unwrap_or_default();
+            bail!("Codex made no image{}", if said.is_empty() { String::new() } else { format!(" ({})", said.trim()) });
+        }
+        Ok(images)
+    }
 }
 
 pub struct OpenAiImages {

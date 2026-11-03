@@ -56,6 +56,15 @@ pub struct Settings {
     pub effort: Option<String>,
     /// OpenAI API key, for mood-board images (Claude does not make images).
     pub openai_api_key: Option<String>,
+    /// How mood-board images are made: auto (Codex if installed, else the key), codex, openai-api.
+    pub image_provider: String,
+}
+
+pub const IMAGE_PROVIDERS: &[&str] = &["auto", "codex", "openai-api"];
+
+/// The `codex` command, when installed.
+pub fn codex_cli() -> Option<PathBuf> {
+    find_on_path("codex")
 }
 
 fn env_openai() -> Option<String> {
@@ -64,9 +73,37 @@ fn env_openai() -> Option<String> {
 
 /// The image model for the mood board, or a message saying what is missing.
 pub fn make_image_gen(settings: &Settings) -> Result<Box<dyn crate::moodboard::ImageGen>> {
-    match settings.openai_api_key.clone().or_else(env_openai) {
-        Some(k) => Ok(Box::new(crate::moodboard::OpenAiImages::new(k))),
-        None => bail!("no OpenAI API key yet: enter one in the connection settings (or set OPENAI_API_KEY) to generate mood-board images"),
+    let key = settings.openai_api_key.clone().or_else(env_openai);
+    let codex = || codex_cli().and_then(crate::moodboard::CodexImages::new);
+    match settings.image_provider.as_str() {
+        "codex" => match codex() {
+            Some(c) => Ok(Box::new(c)),
+            None => bail!("Codex (the `codex` command) was not found; install it and log in, or use an OpenAI API key"),
+        },
+        "openai-api" => match key {
+            Some(k) => Ok(Box::new(crate::moodboard::OpenAiImages::new(k))),
+            None => bail!("no OpenAI API key yet: enter one in the connection settings (or set OPENAI_API_KEY)"),
+        },
+        _ => {
+            if let Some(c) = codex() {
+                Ok(Box::new(c))
+            } else if let Some(k) = key {
+                Ok(Box::new(crate::moodboard::OpenAiImages::new(k)))
+            } else {
+                bail!("no image model: install Codex and log in, or enter an OpenAI API key in the connection settings")
+            }
+        }
+    }
+}
+
+/// Which image backend the settings resolve to right now (for the UI).
+pub fn active_image_provider(settings: &Settings) -> Option<&'static str> {
+    let key = settings.openai_api_key.is_some() || env_openai().is_some();
+    let codex = codex_cli().is_some();
+    match settings.image_provider.as_str() {
+        "codex" => codex.then_some("codex"),
+        "openai-api" => key.then_some("openai-api"),
+        _ => if codex { Some("codex") } else if key { Some("openai-api") } else { None },
     }
 }
 
@@ -102,12 +139,13 @@ impl Settings {
             api_key: v["api_key"].as_str().filter(|s| !s.is_empty()).map(str::to_string),
             effort: v["effort"].as_str().filter(|e| crate::ai::valid_effort(e)).map(str::to_string),
             openai_api_key: v["openai_api_key"].as_str().filter(|s| !s.is_empty()).map(str::to_string),
+            image_provider: v["image_provider"].as_str().filter(|s| IMAGE_PROVIDERS.contains(s)).unwrap_or("auto").to_string(),
         }
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
         let v = json!({"provider": self.provider.name(), "api_key": self.api_key, "effort": self.effort,
-                       "openai_api_key": self.openai_api_key});
+                       "openai_api_key": self.openai_api_key, "image_provider": self.image_provider});
         let io = |e: std::io::Error| Error::user(format!("cannot write {}: {e}", path.display()));
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(io)?;
@@ -202,6 +240,9 @@ pub fn describe(settings: &Settings) -> Value {
         "openai_key": settings.openai_api_key.as_deref().map(|k| format!("…{}", &k[k.len().saturating_sub(4)..])),
         "openai_env": env_openai().is_some(),
         "image_model": crate::moodboard::image_model(),
+        "image_provider": if settings.image_provider.is_empty() { "auto" } else { settings.image_provider.as_str() },
+        "image_active": active_image_provider(settings),
+        "codex": codex_cli().map(|p| p.display().to_string()),
     })
 }
 

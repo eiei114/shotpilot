@@ -653,6 +653,12 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 }
                 s.effort = (!e.is_empty()).then(|| e.to_string()); // empty = back to the default
             }
+            if let Some(p) = body.get("image_provider").and_then(Value::as_str) {
+                if !connect::IMAGE_PROVIDERS.contains(&p) {
+                    bail!("image_provider must be one of {}", connect::IMAGE_PROVIDERS.join(", "));
+                }
+                s.image_provider = p.to_string();
+            }
             if let Some(k) = body.get("openai_api_key").and_then(Value::as_str) {
                 let k = k.trim();
                 if !k.is_empty() && !k.starts_with("sk-") {
