@@ -128,6 +128,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     entry.insert("note".into(), json!(opts.direction));
     entry.insert("rationale".into(), json!(p.rationale));
     entry.insert("adjustments".into(), json!(p.adjustments));
+    entry.insert("references".into(), json!(p.references));
     entry.insert("checks".into(), checks.clone());
     entry.insert("steps".into(), json!(steps));
     entry.insert("shots".into(), json!(p.shots.iter().map(|s| &s["id"]).collect::<Vec<_>>()));

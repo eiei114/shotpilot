@@ -889,12 +889,13 @@ fn plan(app: &App, body: &Map<String, Value>) -> Result<Value> {
     extra.insert("note".into(), json!(note));
     extra.insert("rationale".into(), json!(p.rationale));
     extra.insert("adjustments".into(), json!(p.adjustments));
+    extra.insert("references".into(), json!(p.references));
     extra.insert("checks".into(), checks.clone());
     ws.state.annotate_last(extra);
     ws.state.save()?;
     Ok(json!({
         "shots": p.shots.iter().map(|s| &s["id"]).collect::<Vec<_>>(), "rationale": p.rationale,
-        "adjustments": p.adjustments, "checks": checks,
+        "adjustments": p.adjustments, "references": p.references, "checks": checks,
     }))
 }
 

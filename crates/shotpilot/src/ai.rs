@@ -348,6 +348,8 @@ pub struct Planned {
     pub skeleton: Vec<craft::Slot>,
     /// `finish:` entries (title, end_card) Claude proposed; captions and transitions are on the shots.
     pub finish: Vec<(String, Value)>,
+    /// The measured references the planner read, e.g. "horror (158 teasers)" (refs.rs).
+    pub references: Vec<String>,
 }
 
 pub fn stage_schema() -> Value {
@@ -517,7 +519,11 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     let lines: Vec<String> = out["end_card"].as_array().into_iter().flatten().filter_map(|l| l.as_str())
         .map(str::trim).filter(|l| !l.is_empty()).map(str::to_string).collect();
     finish.push(("end_card".to_string(), if lines.is_empty() { Value::Null } else { json!({"lines": lines, "duration": 3}) }));
-    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish })
+    let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
+    if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
+        references.push(format!("{} ({} teasers)", r.id, r.n));
+    }
+    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references })
 }
 
 fn r1(v: f64) -> f64 {

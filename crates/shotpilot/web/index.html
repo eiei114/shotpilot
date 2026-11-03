@@ -1807,7 +1807,8 @@ function entryHtml(e, isLast) {
   if (e.action === "plan") {
     const c = e.checks || {};
     const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
-    const adj = (e.adjustments || []).length ? `<div class="changes">${e.adjustments.map((a) => `<div><span class="k">コードが整えた:</span> ${esc(a)}</div>`).join("")}</div>` : "";
+    const refs = (e.references || []).length ? `<div><span class="k">参照した実測:</span> ${esc(e.references.join(" / "))}</div>` : "";
+    const adj = (e.adjustments || []).length || refs ? `<div class="changes">${refs}${(e.adjustments || []).map((a) => `<div><span class="k">コードが整えた:</span> ${esc(a)}</div>`).join("")}</div>` : "";
     return `<div class="msg-user"><div class="bubble">${esc(e.note || "ブリーフから組む")}</div><div class="ctx">📐 構成を組む</div></div>
       <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
         ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}${adj}

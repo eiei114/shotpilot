@@ -595,6 +595,7 @@ fn run(cli: Cli) -> Result<u8> {
             let planned = p.shots;
             let total: f64 = planned.iter().filter_map(|s| s["duration"].as_f64()).sum();
             println!("# {} shots, {}s\n# {}\n", planned.len(), fmt_g(total), p.rationale);
+            println!("# references: {}", p.references.join(", "));
             for a in &p.adjustments {
                 println!("# adjusted by code: {a}");
             }

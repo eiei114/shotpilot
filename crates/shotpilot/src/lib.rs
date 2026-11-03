@@ -16,6 +16,7 @@ pub mod model;
 pub mod moodboard;
 pub mod previz;
 pub mod produce;
+pub mod refs;
 pub mod scout;
 pub mod server;
 pub mod shotcheck;
