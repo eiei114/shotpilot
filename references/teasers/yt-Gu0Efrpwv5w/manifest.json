@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Gu0Efrpwv5w",
+  "name": "『ChillDotTalk』ティザーPV｜消えた町にも、消えなかった想いがある。",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Gu0Efrpwv5w",
+    "channel": "荒国 陣(個人ゲーム制作)",
+    "uploadDate": null,
+    "viewCount": 40,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

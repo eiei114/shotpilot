@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NntYlJM67ME",
+  "name": "TRAILER Hell is Us | Official Teaser Unreal Engine 5 HD 4K 2022",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NntYlJM67ME",
+    "channel": "ENFANT TERRIBLE",
+    "uploadDate": null,
+    "viewCount": 20617,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

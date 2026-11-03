@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-n4RiVblVQ90",
+  "name": "BELTFED – Official Announcement Trailer | Roguelike Factory Defense",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=n4RiVblVQ90",
+    "channel": "BELTFED",
+    "uploadDate": null,
+    "viewCount": 1832647,
+    "foundBy": "announcement trailer indie game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

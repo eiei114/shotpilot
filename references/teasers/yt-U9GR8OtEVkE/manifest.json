@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-U9GR8OtEVkE",
+  "name": "RESIDENT EVIL | Teaser Trailer | In Cinemas September 17, 2026",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=U9GR8OtEVkE",
+    "channel": "Sony Pictures Releasing Australia",
+    "uploadDate": null,
+    "viewCount": 1819161,
+    "foundBy": "survival horror teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

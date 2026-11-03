@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Ihm8cY7_-2Y",
+  "name": "Pax Astra - Steam Next Fest Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Ihm8cY7_-2Y",
+    "channel": "Pax Astra",
+    "uploadDate": null,
+    "viewCount": 501,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

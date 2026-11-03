@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-WS0vTRl_2PQ",
+  "name": "Subnautica 2 | Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=WS0vTRl_2PQ",
+    "channel": "Subnautica",
+    "uploadDate": "20241017",
+    "viewCount": 7832478,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "measured"
+}

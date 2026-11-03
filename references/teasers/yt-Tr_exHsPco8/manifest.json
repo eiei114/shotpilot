@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Tr_exHsPco8",
+  "name": "【公式】遊戯王デュエルリンクス ゴーラッシュ!! ワールド追加 ティザー映像",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Tr_exHsPco8",
+    "channel": "【公式】遊戯王ラッシュデュエルTV",
+    "uploadDate": null,
+    "viewCount": 6508,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

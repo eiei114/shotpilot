@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-jiNcZfGQu6g",
+  "name": "Romancelvania | Teaser Trailer | Steam Next Fest 2022",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=jiNcZfGQu6g",
+    "channel": "The Deep End Games",
+    "uploadDate": null,
+    "viewCount": 400465,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

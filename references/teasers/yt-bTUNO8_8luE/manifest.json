@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-bTUNO8_8luE",
+  "name": "Destiny 2 | Showcase Teaser Trailer",
+  "category": "action",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=bTUNO8_8luE",
+    "channel": "Destiny 2",
+    "uploadDate": null,
+    "viewCount": 1069141,
+    "foundBy": "action game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-vgmmBponowM",
+  "name": "Bait Garden | ティザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=vgmmBponowM",
+    "channel": "Yamei Games",
+    "uploadDate": null,
+    "viewCount": 141,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

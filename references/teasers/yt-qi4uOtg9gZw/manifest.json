@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-qi4uOtg9gZw",
+  "name": "The Twilight Project - Official Teaser Trailer | The Horror Game Awards Showcase 2026",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=qi4uOtg9gZw",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 349214,
+    "foundBy": "horror game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

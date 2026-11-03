@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-i9UMZCfKWi4",
+  "name": "World of Horror - Launch Trailer | PS4 Games",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=i9UMZCfKWi4",
+    "channel": "PlayStation",
+    "uploadDate": null,
+    "viewCount": 2421128,
+    "foundBy": "horror game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

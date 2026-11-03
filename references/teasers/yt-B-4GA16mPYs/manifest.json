@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-B-4GA16mPYs",
+  "name": "【Steam】孤独なインディーゲーム開発者の一生 - 公式ゲームティザー【Mac, Windows】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=B-4GA16mPYs",
+    "channel": "Kan Kikuchi",
+    "uploadDate": null,
+    "viewCount": 2753,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

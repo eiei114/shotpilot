@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-ti-ls5oPzE8",
+  "name": "【ティザーPV / TeaserPV】鐘咲ユーリ / Yuri Kanesaki【Vtuber】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=ti-ls5oPzE8",
+    "channel": "鐘咲ユーリ // Kanesaki Yuri //",
+    "uploadDate": null,
+    "viewCount": 1964,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

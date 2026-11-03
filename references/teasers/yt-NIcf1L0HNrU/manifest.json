@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NIcf1L0HNrU",
+  "name": "Forest 3 - Official Announcement Trailer | The Game Awards 2025",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NIcf1L0HNrU",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 2357260,
+    "foundBy": "official teaser trailer game 2025",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

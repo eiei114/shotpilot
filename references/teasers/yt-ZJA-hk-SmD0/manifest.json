@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-ZJA-hk-SmD0",
+  "name": "『ストリートファイター6』エド（Ed）ティザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=ZJA-hk-SmD0",
+    "channel": "CapcomChannel",
+    "uploadDate": null,
+    "viewCount": 435893,
+    "foundBy": "ティザートレーラー ゲーム",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

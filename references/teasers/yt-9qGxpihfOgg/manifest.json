@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-9qGxpihfOgg",
+  "name": "TV Animation \"SHIBOYUGI: Playing Death Games to Put Food on the Table\" Official Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=9qGxpihfOgg",
+    "channel": "KADOKAWAanime",
+    "uploadDate": null,
+    "viewCount": 322501,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

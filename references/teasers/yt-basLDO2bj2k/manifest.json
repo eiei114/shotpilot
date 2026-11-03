@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-basLDO2bj2k",
+  "name": "Marvel’s Blade | Announcement Trailer | The Game Awards 2023",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=basLDO2bj2k",
+    "channel": "Marvel Entertainment",
+    "uploadDate": null,
+    "viewCount": 11995095,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

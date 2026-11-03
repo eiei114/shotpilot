@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-SkmC_VmaZj8",
+  "name": "1666 Amsterdam - Official Launch Trailer | gamescom 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=SkmC_VmaZj8",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 160945,
+    "foundBy": "IGN teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

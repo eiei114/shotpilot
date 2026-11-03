@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-oaSSPuMH8uE",
+  "name": "『DEATH STRANDING ISOLATIONS』｜ティザー映像｜ゲームクリエイター・小島秀夫が手掛けた大ヒットゲームがアニメーション・シリーズとして始動｜Disney+ (ディズニープラス）",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=oaSSPuMH8uE",
+    "channel": "ディズニープラス",
+    "uploadDate": null,
+    "viewCount": 110814,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

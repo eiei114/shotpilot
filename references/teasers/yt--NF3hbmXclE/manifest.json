@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt--NF3hbmXclE",
+  "name": "『ディズニー ツイステッドワンダーランド ザ アニメーション ～エピソード オブ サバナクロー～』｜ティザーPV｜サバナクロー寮が企てる不穏な“計画”に波乱の予感｜Disney+ (ディズニープラス）",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=-NF3hbmXclE",
+    "channel": "ディズニープラス",
+    "uploadDate": null,
+    "viewCount": 892717,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

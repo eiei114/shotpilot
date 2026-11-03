@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-pL5c8WYfqv8",
+  "name": "メルクリウスの青い砂 ReCollection ティザーPV【インディーゲーム / SFアドベンチャーRPG】",
+  "category": "rpg",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=pL5c8WYfqv8",
+    "channel": "FaSPel",
+    "uploadDate": null,
+    "viewCount": 189,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

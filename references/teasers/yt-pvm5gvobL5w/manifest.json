@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-pvm5gvobL5w",
+  "name": "Transformers: Rise of Unicron - New Official Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=pvm5gvobL5w",
+    "channel": "Transformers: Rise of Unicron and Manolikas Studios",
+    "uploadDate": null,
+    "viewCount": 11185359,
+    "foundBy": "official teaser trailer game 2026",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

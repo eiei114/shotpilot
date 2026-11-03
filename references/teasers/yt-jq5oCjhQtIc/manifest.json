@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-jq5oCjhQtIc",
+  "name": "I Play Rocky | Official Trailer 2",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=jq5oCjhQtIc",
+    "channel": "Amazon MGM Studios and IMDb",
+    "uploadDate": null,
+    "viewCount": 6757027,
+    "foundBy": "game teaser 30 seconds",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

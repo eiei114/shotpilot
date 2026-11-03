@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Z1L3JNpq7Oc",
+  "name": "Constance - Official Gameplay Trailer | Guerrilla Collective 2024",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Z1L3JNpq7Oc",
+    "channel": "GameTrailers",
+    "uploadDate": null,
+    "viewCount": 286296,
+    "foundBy": "indie game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

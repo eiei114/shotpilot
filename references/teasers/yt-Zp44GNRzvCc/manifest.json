@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Zp44GNRzvCc",
+  "name": "Warhammer 40,000: Darktide - Official Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Zp44GNRzvCc",
+    "channel": "Fatshark",
+    "uploadDate": null,
+    "viewCount": 2263505,
+    "foundBy": "first teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

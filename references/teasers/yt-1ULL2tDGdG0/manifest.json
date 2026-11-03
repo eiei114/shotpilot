@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-1ULL2tDGdG0",
+  "name": "Holy Horror Mansion – Trailer (LEVEL5 VISION 2026 Ver.)",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=1ULL2tDGdG0",
+    "channel": "LEVEL5ch【公式】",
+    "uploadDate": null,
+    "viewCount": 118190,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

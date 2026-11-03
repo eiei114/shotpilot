@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-BSidBxjNP_8",
+  "name": "Steam Next Fest demo teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=BSidBxjNP_8",
+    "channel": "SGO Studios",
+    "uploadDate": null,
+    "viewCount": 443,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

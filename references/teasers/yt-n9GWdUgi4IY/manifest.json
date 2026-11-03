@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-n9GWdUgi4IY",
+  "name": "Loftia Release Window Trailer | Wholesome Direct 2026",
+  "category": "cozy",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=n9GWdUgi4IY",
+    "channel": "Wholesome Games",
+    "uploadDate": null,
+    "viewCount": 1371,
+    "foundBy": "Wholesome Direct teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-ZSA22LSU8HY",
+  "name": "『ストリートファイター6』テリー（Terry）ティザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=ZSA22LSU8HY",
+    "channel": "CapcomChannel",
+    "uploadDate": null,
+    "viewCount": 699330,
+    "foundBy": "ティザートレーラー ゲーム",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

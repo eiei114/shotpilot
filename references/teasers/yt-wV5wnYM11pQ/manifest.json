@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-wV5wnYM11pQ",
+  "name": "Sonic Racing: CrossWorlds - Cinematic Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=wV5wnYM11pQ",
+    "channel": "Sonic the Hedgehog",
+    "uploadDate": null,
+    "viewCount": 687045,
+    "foundBy": "cinematic teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-LiyJLlOyDhU",
+  "name": "Harold Halibut - Steam Next Fest Demo Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=LiyJLlOyDhU",
+    "channel": "Harold Halibut",
+    "uploadDate": null,
+    "viewCount": 7432,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

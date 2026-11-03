@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-dY8AVTFbR9o",
+  "name": "Visage — Release Gameplay Trailer",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=dY8AVTFbR9o",
+    "channel": "SadSquare Studio",
+    "uploadDate": null,
+    "viewCount": 865616,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

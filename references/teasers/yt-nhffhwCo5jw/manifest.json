@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-nhffhwCo5jw",
+  "name": "Destiny 2: The Final Shape - Teaser Trailer | PS5 & PS4 Games",
+  "category": "action",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=nhffhwCo5jw",
+    "channel": "PlayStation",
+    "uploadDate": null,
+    "viewCount": 149623,
+    "foundBy": "action game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-pWw-UENvdTw",
+  "name": "Forza Horizon 6 - Official Gameplay Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=pWw-UENvdTw",
+    "channel": "Forza",
+    "uploadDate": null,
+    "viewCount": 4169898,
+    "foundBy": "game reveal teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

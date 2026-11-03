@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Fo9Ly2Xr-_c",
+  "name": "Return Alive - Steam Next Fest Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Fo9Ly2Xr-_c",
+    "channel": "Return Alive",
+    "uploadDate": null,
+    "viewCount": 1699,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-nq1M_Wc4FIc",
+  "name": "Marvel's Spider-Man 2 - Be Greater. Together. Trailer I PS5 Games",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=nq1M_Wc4FIc",
+    "channel": "PlayStation",
+    "uploadDate": null,
+    "viewCount": 24729340,
+    "foundBy": "cinematic teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

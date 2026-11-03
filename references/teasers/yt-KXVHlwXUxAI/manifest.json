@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-KXVHlwXUxAI",
+  "name": "Finding Frankie 2 - Official Game Trailer",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=KXVHlwXUxAI",
+    "channel": "SUPERLOU GAMES ",
+    "uploadDate": null,
+    "viewCount": 2025614,
+    "foundBy": "horror game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

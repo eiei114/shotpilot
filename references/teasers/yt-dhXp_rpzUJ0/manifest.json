@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-dhXp_rpzUJ0",
+  "name": "Percy Jackson & the Olympians Season 3 | Teaser Trailer | Disney+",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=dhXp_rpzUJ0",
+    "channel": "Disney Plus",
+    "uploadDate": null,
+    "viewCount": 9712829,
+    "foundBy": "game teaser 30 seconds",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

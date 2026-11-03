@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-fazTs-BZn7U",
+  "name": "Tenebris Somnia | Harvest of Terror: A Horror Game Awards Halloween Showcase 2026 Trailer",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=fazTs-BZn7U",
+    "channel": "The Horror Game Awards",
+    "uploadDate": null,
+    "viewCount": 116,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

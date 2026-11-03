@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-pWJjYoqVSjQ",
+  "name": "GODZILLA MINUS ZERO | Official Trailer 2",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=pWJjYoqVSjQ",
+    "channel": "GODZILLA OFFICIAL by TOHO and 2 more",
+    "uploadDate": null,
+    "viewCount": 7889020,
+    "foundBy": "game teaser 30 seconds",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-zxgBkQcOv7I",
+  "name": "アニメ『PSYREN -サイレン-』ティザーPV第2弾",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=zxgBkQcOv7I",
+    "channel": "It's Anime powered by REMOW",
+    "uploadDate": null,
+    "viewCount": 610746,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

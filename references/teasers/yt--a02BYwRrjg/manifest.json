@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt--a02BYwRrjg",
+  "name": "ホラーゲーム『夢見る脳髄 -Fragments of an eternal illusion-』ティザー映像",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=-a02BYwRrjg",
+    "channel": "新約荒神製作所: Team Shinyaku Aragami",
+    "uploadDate": null,
+    "viewCount": 95,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

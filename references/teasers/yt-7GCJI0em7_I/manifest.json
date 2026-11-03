@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-7GCJI0em7_I",
+  "name": "【僕のヒーローアカデミア UNITED SURVIVAL/ヒロサバ】ティザーPV",
+  "category": "survival",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=7GCJI0em7_I",
+    "channel": "チャンネルKLabGames",
+    "uploadDate": null,
+    "viewCount": 50737,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

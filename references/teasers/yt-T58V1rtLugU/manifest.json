@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-T58V1rtLugU",
+  "name": "Thief: The Dark Project Remastered | The Tarnished Mirror Reveal Trailer and Physical Announcement",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=T58V1rtLugU",
+    "channel": "Atari and Nightdive Studios",
+    "uploadDate": null,
+    "viewCount": 62925,
+    "foundBy": "announcement trailer indie game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

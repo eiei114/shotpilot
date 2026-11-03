@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-nhYi-NTSavg",
+  "name": "Unleash the Avatar | Cinematic Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=nhYi-NTSavg",
+    "channel": "Unleash the Avatar Game",
+    "uploadDate": null,
+    "viewCount": 253012,
+    "foundBy": "cinematic teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

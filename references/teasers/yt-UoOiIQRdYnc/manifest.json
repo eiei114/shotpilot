@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-UoOiIQRdYnc",
+  "name": "Quatiica Motorsports | Official Cinematic Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=UoOiIQRdYnc",
+    "channel": "Quatiica Motorsports",
+    "uploadDate": null,
+    "viewCount": 604784,
+    "foundBy": "cinematic teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

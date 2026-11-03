@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-WKTOfvqL-bc",
+  "name": "Fortnite Treasure Hunters | Live Action Trailer",
+  "category": "action",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=WKTOfvqL-bc",
+    "channel": "Fortnite",
+    "uploadDate": null,
+    "viewCount": 1519628,
+    "foundBy": "game teaser 30 seconds",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

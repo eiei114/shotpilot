@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-EzMxyEKB0cg",
+  "name": "DISCO Official Teaser | Ullas Chemban | Antony Pepe | Chemban Vinod | Arjun Asokan | Dev | Lukman",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=EzMxyEKB0cg",
+    "channel": "Chembosky Motion Pictures",
+    "uploadDate": null,
+    "viewCount": 3955208,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

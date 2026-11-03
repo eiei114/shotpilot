@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-IJYBFchze_I",
+  "name": "Queen Must Die - Official Announcement Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=IJYBFchze_I",
+    "channel": "Indie Games Hub",
+    "uploadDate": null,
+    "viewCount": 180265,
+    "foundBy": "announcement trailer indie game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

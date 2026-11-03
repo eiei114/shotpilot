@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-SizD56s6guU",
+  "name": "TV Anime \"Skip and Loafer 2nd Season\" Teaser PV | Airing April 2027!",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=SizD56s6guU",
+    "channel": "DMM pictures",
+    "uploadDate": null,
+    "viewCount": 298340,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-lN_OLbagA6w",
+  "name": "Thekku Island Official Cinematic Teaser (4K) | Psychological Horror Game",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=lN_OLbagA6w",
+    "channel": "Ales Devs Games and RedWills Interactive",
+    "uploadDate": null,
+    "viewCount": 62811,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

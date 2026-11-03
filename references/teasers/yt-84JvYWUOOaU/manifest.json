@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-84JvYWUOOaU",
+  "name": "TVアニメ『シャングリラ・フロンティア』3rd seasonティザーPV｜2027年1月から日5枠にて放送開始",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=84JvYWUOOaU",
+    "channel": "TVアニメ「シャングリラ・フロンティア」公式 and MBS animation 公式チャンネル",
+    "uploadDate": null,
+    "viewCount": 1035093,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

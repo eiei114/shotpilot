@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-7VjaX6s79Zw",
+  "name": "Psycho Dead - Official Release Window Trailer | The Horror Game Awards Showcase 2026",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=7VjaX6s79Zw",
+    "channel": "GameTrailers",
+    "uploadDate": null,
+    "viewCount": 101586,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

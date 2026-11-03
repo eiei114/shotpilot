@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Up1otP8qc8s",
+  "name": "FAITH - Pixel Horror Indie Game Teaser Trailer",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Up1otP8qc8s",
+    "channel": "Airdorf",
+    "uploadDate": null,
+    "viewCount": 306672,
+    "foundBy": "indie game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

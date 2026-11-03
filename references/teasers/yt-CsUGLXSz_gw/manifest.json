@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-CsUGLXSz_gw",
+  "name": "Graft - Official Extended Gameplay Trailer | The Horror Game Awards Showcase 2026",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=CsUGLXSz_gw",
+    "channel": "GameTrailers",
+    "uploadDate": null,
+    "viewCount": 155288,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

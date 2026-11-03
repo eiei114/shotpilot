@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-_XTTw5Mmngc",
+  "name": "RESIDENT EVIL – Official Teaser Trailer (4K)",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=_XTTw5Mmngc",
+    "channel": "Sony Pictures Canada",
+    "uploadDate": null,
+    "viewCount": 3247813,
+    "foundBy": "survival horror teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

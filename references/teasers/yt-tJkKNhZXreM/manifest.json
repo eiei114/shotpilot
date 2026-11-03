@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-tJkKNhZXreM",
+  "name": "Unpacking | Wholesome Direct 2023 Trailer",
+  "category": "cozy",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=tJkKNhZXreM",
+    "channel": "Wholesome Games",
+    "uploadDate": null,
+    "viewCount": 1488,
+    "foundBy": "Wholesome Direct teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-HIHduZ8-Jx0",
+  "name": "“Fool Night”｜Teaser Trailer｜Only on Netflix in 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=HIHduZ8-Jx0",
+    "channel": "バンダイナムコフィルムワークス チャンネル and サンライズ  SUNRISE Official ",
+    "uploadDate": null,
+    "viewCount": 832495,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

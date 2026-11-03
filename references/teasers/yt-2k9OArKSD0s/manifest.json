@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-2k9OArKSD0s",
+  "name": "【新ブランド】『アイドルマスター』シリーズ　新ブランドアプリゲーム　ティザーPV【アイドルマスター】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=2k9OArKSD0s",
+    "channel": "アイドルマスターチャンネル",
+    "uploadDate": null,
+    "viewCount": 283717,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

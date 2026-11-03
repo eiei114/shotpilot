@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-uNVs2VQs-HA",
+  "name": "Silent Hill HD Collection '30 Seconds' Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=uNVs2VQs-HA",
+    "channel": "vgZeroNetwork",
+    "uploadDate": null,
+    "viewCount": 50,
+    "foundBy": "game teaser 30 seconds",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

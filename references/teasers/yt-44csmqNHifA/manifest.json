@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-44csmqNHifA",
+  "name": "映画『クレイフェイス』ティザー予告 | 2026年10月30日(金) 日本公開決定",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=44csmqNHifA",
+    "channel": "ワーナー ブラザース 公式チャンネル",
+    "uploadDate": null,
+    "viewCount": 3245488,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

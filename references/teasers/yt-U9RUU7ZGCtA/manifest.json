@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-U9RUU7ZGCtA",
+  "name": "[Hold My Mind] | Teaser TrailerA psychological horror game. Don't touch the dial. 📼Coming soon.",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=U9RUU7ZGCtA",
+    "channel": "AqooyeMoradi-GameDev ",
+    "uploadDate": null,
+    "viewCount": 5,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

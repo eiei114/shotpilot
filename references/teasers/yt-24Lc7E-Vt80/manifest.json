@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-24Lc7E-Vt80",
+  "name": "Avatar: Frontiers of Pandora – From the Ashes: EXPANSION REVEAL TEASER",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=24Lc7E-Vt80",
+    "channel": "Ubisoft",
+    "uploadDate": null,
+    "viewCount": 249065,
+    "foundBy": "game reveal teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

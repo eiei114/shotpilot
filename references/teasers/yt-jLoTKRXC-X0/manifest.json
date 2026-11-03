@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-jLoTKRXC-X0",
+  "name": "【公式】ゲーム『れーぞく！ネクロマンスちゃん』ティザーPV Necromance-chan",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=jLoTKRXC-X0",
+    "channel": "マチコー",
+    "uploadDate": null,
+    "viewCount": 965,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

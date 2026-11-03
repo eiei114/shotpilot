@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-evU8B13S9T8",
+  "name": "【公式】岩井俊二×ポケモンカードゲーム～ドキュメンタリー：ティザー映像",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=evU8B13S9T8",
+    "channel": "ポケモン公式YouTubeチャンネル",
+    "uploadDate": null,
+    "viewCount": 42949,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

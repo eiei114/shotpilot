@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-CslH_nwqIxo",
+  "name": "Super Yooka-Laylee Kart | Announcement Trailer Summer Games Fest - Day of the Devs",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=CslH_nwqIxo",
+    "channel": "Playtonic",
+    "uploadDate": null,
+    "viewCount": 65664,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

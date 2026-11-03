@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Lg-Ctg6k_Ao",
+  "name": "The Next Mass Effect - Official Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Lg-Ctg6k_Ao",
+    "channel": "Mass Effect",
+    "uploadDate": null,
+    "viewCount": 6657892,
+    "foundBy": "game reveal teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

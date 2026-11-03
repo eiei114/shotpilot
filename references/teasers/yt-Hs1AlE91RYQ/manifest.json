@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Hs1AlE91RYQ",
+  "name": "TVアニメ『新 美味しんぼ』ティザーPV | 美味しんぼ",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Hs1AlE91RYQ",
+    "channel": "美味しんぼ 公式チャンネル【デジタルリマスター版】 and シンエイアニメーション【公式】",
+    "uploadDate": null,
+    "viewCount": 1200532,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

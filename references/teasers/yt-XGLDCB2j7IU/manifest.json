@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-XGLDCB2j7IU",
+  "name": "AaaaaAAaaaAAAaaAAAAaAAAAA!!! Remastered - Steam Next Fest Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=XGLDCB2j7IU",
+    "channel": "Dejobaan Games",
+    "uploadDate": null,
+    "viewCount": 5375,
+    "foundBy": "steam next fest teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-J2NkYisEl74",
+  "name": "インディーライブエキスポ 2024.5.25 ティザー映像",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=J2NkYisEl74",
+    "channel": "INDIELiveExpo",
+    "uploadDate": null,
+    "viewCount": 90597,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

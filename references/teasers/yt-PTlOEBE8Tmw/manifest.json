@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-PTlOEBE8Tmw",
+  "name": "【自作アニメーションティザーPV】虹深°ぬふ 新衣装🧪 / Nijipuka Nuhu【ミリプロ】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=PTlOEBE8Tmw",
+    "channel": "虹深°ぬふ / Nijipuka Nuhu",
+    "uploadDate": null,
+    "viewCount": 127955,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

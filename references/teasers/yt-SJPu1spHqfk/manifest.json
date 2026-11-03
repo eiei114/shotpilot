@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-SJPu1spHqfk",
+  "name": "RESIDENT EVIL – Official Teaser Trailer (4K)",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=SJPu1spHqfk",
+    "channel": "Sony Pictures Entertainment and 2 more",
+    "uploadDate": null,
+    "viewCount": 7335525,
+    "foundBy": "official teaser trailer game 2025",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

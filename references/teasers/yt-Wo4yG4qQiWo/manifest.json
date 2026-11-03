@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Wo4yG4qQiWo",
+  "name": "【和風ホラー】『禁域団地』公式ティザームービー | 新作インディーゲーム[godot]",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Wo4yG4qQiWo",
+    "channel": "satodk",
+    "uploadDate": null,
+    "viewCount": 157,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

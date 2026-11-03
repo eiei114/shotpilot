@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-GbCWYL-KJBM",
+  "name": "eFootball 2026 Nintendo Switch 2 30 Second Kick-Off Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=GbCWYL-KJBM",
+    "channel": "Jonathan Jr. Sports 🅥",
+    "uploadDate": null,
+    "viewCount": 30,
+    "foundBy": "game teaser 30 seconds",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

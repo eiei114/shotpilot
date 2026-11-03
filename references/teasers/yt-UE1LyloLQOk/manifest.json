@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-UE1LyloLQOk",
+  "name": "Tribute: An Assassin's Creed Fan Game Announcement - Environment Teaser",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=UE1LyloLQOk",
+    "channel": "Erudito Entertainment",
+    "uploadDate": null,
+    "viewCount": 9240,
+    "foundBy": "UE5 game announcement teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

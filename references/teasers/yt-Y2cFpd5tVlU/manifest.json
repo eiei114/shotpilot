@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Y2cFpd5tVlU",
+  "name": "【新作カードゲーム】パルワールド オフィシャルカードゲーム ティザーPV",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Y2cFpd5tVlU",
+    "channel": "パルワールド オフィシャルカードゲーム公式",
+    "uploadDate": null,
+    "viewCount": 7069,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

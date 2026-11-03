@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-i7jVfG-wB78",
+  "name": "Garten of Banban: Last Ticket to the Abyss - Official Teaser Trailer (Delvers)",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=i7jVfG-wB78",
+    "channel": "Euphoric Brothers",
+    "uploadDate": null,
+    "viewCount": 3731750,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

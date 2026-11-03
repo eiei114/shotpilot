@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt--tvKGk0FemE",
+  "name": "【デビューティザーPV】夕霧レイ / Yugiri Ray【ミリプロ】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=-tvKGk0FemE",
+    "channel": "夕霧レイ / YugiriRay",
+    "uploadDate": null,
+    "viewCount": 230758,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

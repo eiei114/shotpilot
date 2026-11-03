@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-DyPB5mfRjQc",
+  "name": "夜茶会にあつまるみんなへ │ インディーゲームティザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=DyPB5mfRjQc",
+    "channel": "追求型モノ語リ劇場【Lyco】",
+    "uploadDate": null,
+    "viewCount": 281,
+    "foundBy": "インディーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

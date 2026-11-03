@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-sBVjIlTjoIk",
+  "name": "Marvel Television’s Daredevil: Born Again Season 2 | Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=sBVjIlTjoIk",
+    "channel": "Marvel Entertainment and Disney Plus",
+    "uploadDate": null,
+    "viewCount": 9091546,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

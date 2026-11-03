@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Ne2326XMcuo",
+  "name": "MITTI DE BAWAY | Teaser 2 | Ft. Wahaj Ali - Mahira Khan | Green TV Entertainment",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Ne2326XMcuo",
+    "channel": "Green TV Entertainment",
+    "uploadDate": null,
+    "viewCount": 1880639,
+    "foundBy": "Day of the Devs teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

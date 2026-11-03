@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-7naiEFFSjcI",
+  "name": "2Dアクション！双子で挑むゴシックホラー｜ティザーPV「HOTEL MIROIR」｜（TWINLIGHT: THE LAST BULB） #indiedev #twinlight #インディーゲーム",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=7naiEFFSjcI",
+    "channel": "みのん",
+    "uploadDate": null,
+    "viewCount": 67,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

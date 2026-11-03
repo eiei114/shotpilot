@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NIKfR_uF_d0",
+  "name": "Gatto | Teaser Trailer | In Theaters March 5, 2027",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NIKfR_uF_d0",
+    "channel": "Pixar",
+    "uploadDate": null,
+    "viewCount": 4677511,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

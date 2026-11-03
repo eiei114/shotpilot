@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-49j3iPLw17Q",
+  "name": "Deadwood PHOBIA - Teaser Trailer | Sandbox VR",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=49j3iPLw17Q",
+    "channel": "Sandbox VR",
+    "uploadDate": null,
+    "viewCount": 796458,
+    "foundBy": "horror game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

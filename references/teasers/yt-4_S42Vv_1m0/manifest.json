@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-4_S42Vv_1m0",
+  "name": "TVアニメ『悪役令嬢の中の人』ティザーPV | 2027年TVアニメ化決定",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=4_S42Vv_1m0",
+    "channel": "KADOKAWAanime",
+    "uploadDate": null,
+    "viewCount": 1764598,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

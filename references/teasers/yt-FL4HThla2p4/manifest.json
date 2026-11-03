@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-FL4HThla2p4",
+  "name": "Tower Tanks - Official Announcement Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=FL4HThla2p4",
+    "channel": "Indie Games Hub",
+    "uploadDate": null,
+    "viewCount": 149006,
+    "foundBy": "announcement trailer indie game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Ak8DnZUIPSk",
+  "name": "【第3期ティザーPV】TVアニメ「マッシュル-MASHLE- 三魔対争神覚者最終試験編」2027年1月放送決定！",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Ak8DnZUIPSk",
+    "channel": "アニプレックス チャンネル",
+    "uploadDate": null,
+    "viewCount": 635607,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

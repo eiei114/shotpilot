@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-DH3O9ouf5Yo",
+  "name": "Mobile Suit Gundam Battle Operation 3 - Announcement Trailer | PS5 Games",
+  "category": "action",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=DH3O9ouf5Yo",
+    "channel": "PlayStation",
+    "uploadDate": null,
+    "viewCount": 85320,
+    "foundBy": "action game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

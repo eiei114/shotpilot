@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-4r1hl2nvAEY",
+  "name": "Black Myth: Zhong Kui - Official Reveal Trailer | gamescom 2025",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=4r1hl2nvAEY",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 4760463,
+    "foundBy": "official teaser trailer game 2025",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

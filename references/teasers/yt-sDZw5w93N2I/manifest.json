@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-sDZw5w93N2I",
+  "name": "Sleepover at Sam’s – Terrifying New Indie Horror Game | Teaser Trailer | 2025",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=sDZw5w93N2I",
+    "channel": "0xp Game Studios",
+    "uploadDate": null,
+    "viewCount": 102,
+    "foundBy": "psychological horror game teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

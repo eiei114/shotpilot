@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-4JDH0HKPOP8",
+  "name": "The Blood of Dawnwalker - Official 'The Dawnwalker Saga' Trailer | IGN Summer of Gaming 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=4JDH0HKPOP8",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 311845,
+    "foundBy": "IGN teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

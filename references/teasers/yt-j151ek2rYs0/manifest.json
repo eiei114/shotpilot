@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-j151ek2rYs0",
+  "name": "KINGDOM HEARTS IV Teaser Trailer | June 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=j151ek2rYs0",
+    "channel": "KINGDOM HEARTS",
+    "uploadDate": null,
+    "viewCount": 1562881,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-mi2dJHeCAh0",
+  "name": "Alien Isolation 2 - Official Reveal Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=mi2dJHeCAh0",
+    "channel": "GameSpot",
+    "uploadDate": null,
+    "viewCount": 1350034,
+    "foundBy": "official teaser trailer game 2026",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

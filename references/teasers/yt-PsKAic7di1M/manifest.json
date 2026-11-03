@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-PsKAic7di1M",
+  "name": "Warhammer Age of Sigmar: Deathmaster – Reveal Teaser | Warhammer Skulls 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=PsKAic7di1M",
+    "channel": "Warhammer",
+    "uploadDate": null,
+    "viewCount": 217526,
+    "foundBy": "game reveal teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-ruIT6Xez6tw",
+  "name": "DEATH STRANDING ISOLATIONS | Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=ruIT6Xez6tw",
+    "channel": "KOJIMA PRODUCTIONS",
+    "uploadDate": "20261030",
+    "viewCount": 2167992,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "measured"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-wBAB9bIHm8Q",
+  "name": "Vampires vs Mechas - Official Teaser Trailer | Nuntius Games Showcase 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=wBAB9bIHm8Q",
+    "channel": "Indie Games Hub",
+    "uploadDate": null,
+    "viewCount": 168451,
+    "foundBy": "indie game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

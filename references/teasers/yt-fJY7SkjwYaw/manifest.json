@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-fJY7SkjwYaw",
+  "name": "Garten of Banban 9 TEASER TRAILER 4 will Arrive This MONTH? The Situation (New Theories)",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=fJY7SkjwYaw",
+    "channel": "PaninoTUBE International",
+    "uploadDate": null,
+    "viewCount": 4384,
+    "foundBy": "indie game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

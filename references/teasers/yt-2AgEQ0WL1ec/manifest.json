@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-2AgEQ0WL1ec",
+  "name": "【ティザーPV】ミリプロUNI、本格始動のお知らせ【眠雲ツクリ / 雨夜リズ】",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=2AgEQ0WL1ec",
+    "channel": "ミリプロ - MillionProduction -",
+    "uploadDate": null,
+    "viewCount": 176685,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

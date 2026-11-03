@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-wZk8WgJ6N_4",
+  "name": "Rocket League x Unreal Engine 6 - A New Era | Reveal Teaser | GameStop",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=wZk8WgJ6N_4",
+    "channel": "GameStop",
+    "uploadDate": null,
+    "viewCount": 5364,
+    "foundBy": "unreal engine 5 teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

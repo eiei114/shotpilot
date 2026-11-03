@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-WpeSQgQgwSg",
+  "name": "Persona 6 - Official Teaser Trailer | Xbox Games Showcase 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=WpeSQgQgwSg",
+    "channel": "IGN",
+    "uploadDate": null,
+    "viewCount": 127169,
+    "foundBy": "official teaser trailer game 2026",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

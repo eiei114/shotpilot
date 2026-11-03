@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-qj3h3Bs5-2s",
+  "name": "Batman Fan Made Trailer | Unreal Engine 5 Cinematic",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=qj3h3Bs5-2s",
+    "channel": "HidCG",
+    "uploadDate": null,
+    "viewCount": 222,
+    "foundBy": "unreal engine 5 teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-E9v3nzNVXPI",
+  "name": "Virtual Production on Patrick Mahomes’ Fortnite Teaser | Spotlight | Unreal Engine",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=E9v3nzNVXPI",
+    "channel": "Unreal Engine",
+    "uploadDate": null,
+    "viewCount": 5780,
+    "foundBy": "unreal engine 5 teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

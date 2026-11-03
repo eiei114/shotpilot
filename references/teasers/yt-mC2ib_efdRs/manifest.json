@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-mC2ib_efdRs",
+  "name": "Mass Effect | N7 Day 2023 Official Teaser Trailer",
+  "category": "action",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=mC2ib_efdRs",
+    "channel": "GameSpot",
+    "uploadDate": null,
+    "viewCount": 383739,
+    "foundBy": "action game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

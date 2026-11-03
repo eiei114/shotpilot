@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-iiA4Et4yiWM",
+  "name": "Ondeh Ondeh Kaya's Tasty Tale – Announcement Trailer – Nintendo Switch 2",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=iiA4Et4yiWM",
+    "channel": "Nintendo of America",
+    "uploadDate": null,
+    "viewCount": 489970,
+    "foundBy": "indie game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

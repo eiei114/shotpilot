@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-LuxdTZWwm38",
+  "name": "フリーホラーゲーム【キレイ】ティザーPV",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=LuxdTZWwm38",
+    "channel": "柿田こう",
+    "uploadDate": null,
+    "viewCount": 49,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

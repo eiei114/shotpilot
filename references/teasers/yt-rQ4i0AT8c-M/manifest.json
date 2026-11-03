@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-rQ4i0AT8c-M",
+  "name": "Destiny 2 – “Last Call” Teaser",
+  "category": "action",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=rQ4i0AT8c-M",
+    "channel": "Destiny 2",
+    "uploadDate": null,
+    "viewCount": 6199555,
+    "foundBy": "action game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

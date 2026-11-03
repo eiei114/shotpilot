@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-Hddr8xUDhJQ",
+  "name": "【湾曲世界】ティザートレヱラーI｜自主制作ホラーゲーム",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=Hddr8xUDhJQ",
+    "channel": "蝦名　樹《Itsuki Ebina》",
+    "uploadDate": null,
+    "viewCount": 408,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

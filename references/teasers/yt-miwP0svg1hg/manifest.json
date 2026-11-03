@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-miwP0svg1hg",
+  "name": "『Forza Horizon 6』 - ゲームプレイ ティーザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=miwP0svg1hg",
+    "channel": "XBOX Japan",
+    "uploadDate": null,
+    "viewCount": 1217995,
+    "foundBy": "ティザートレーラー ゲーム",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

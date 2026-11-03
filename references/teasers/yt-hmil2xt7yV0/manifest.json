@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-hmil2xt7yV0",
+  "name": "MISTWATER | Teaser",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=hmil2xt7yV0",
+    "channel": "Rinat Mirzasalikhov",
+    "uploadDate": null,
+    "viewCount": 256,
+    "foundBy": "survival horror teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

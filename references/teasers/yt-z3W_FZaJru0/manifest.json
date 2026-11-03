@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-z3W_FZaJru0",
+  "name": "Neuromancer - Official Teaser Trailer (Callum Turner, Mark Strong) | Comic Con 2026",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=z3W_FZaJru0",
+    "channel": "IGN Movie Trailers",
+    "uploadDate": null,
+    "viewCount": 8168,
+    "foundBy": "IGN teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

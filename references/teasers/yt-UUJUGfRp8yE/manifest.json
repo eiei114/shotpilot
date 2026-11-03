@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-UUJUGfRp8yE",
+  "name": "Descent: Into the Abyss | Teaser #2 “Nothing guarantees your return” | Unreal Engine 5",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=UUJUGfRp8yE",
+    "channel": "Ravix Games Studio",
+    "uploadDate": null,
+    "viewCount": 18,
+    "foundBy": "unreal engine 5 teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

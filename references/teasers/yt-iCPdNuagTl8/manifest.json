@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-iCPdNuagTl8",
+  "name": "【カプセルメイツ】歩いて育て、盤上で闘え。｜ティザーPV（2026年冬 公開予定）",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=iCPdNuagTl8",
+    "channel": "AiGENT & Co. 公式",
+    "uploadDate": null,
+    "viewCount": 32,
+    "foundBy": "ゲーム ティザー映像",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

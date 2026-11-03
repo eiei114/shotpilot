@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-NIWn4bb0E7g",
+  "name": "Company of Heroes 3: Operation Torch Teaser Trailer",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=NIWn4bb0E7g",
+    "channel": "Company of Heroes",
+    "uploadDate": "20261028",
+    "viewCount": 85188,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "measured"
+}

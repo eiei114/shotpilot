@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-9ZewA8-kFC8",
+  "name": "Sally - Wholesome Direct 2024 Trailer",
+  "category": "cozy",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=9ZewA8-kFC8",
+    "channel": "Lucid Tales",
+    "uploadDate": null,
+    "viewCount": 1735,
+    "foundBy": "Wholesome Direct teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

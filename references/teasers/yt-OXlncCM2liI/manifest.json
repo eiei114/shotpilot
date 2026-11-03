@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-OXlncCM2liI",
+  "name": "初音ミク 新作ゲーム ティザーPV「初音ミク スターリーパーティ」",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=OXlncCM2liI",
+    "channel": "GOOD SMILE CHANNEL",
+    "uploadDate": null,
+    "viewCount": 310826,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

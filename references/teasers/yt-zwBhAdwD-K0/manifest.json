@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-zwBhAdwD-K0",
+  "name": "Dark of the Depths | Ambient Horror official teaser",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=zwBhAdwD-K0",
+    "channel": "GhastlyVastly",
+    "uploadDate": null,
+    "viewCount": 34,
+    "foundBy": "survival horror teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

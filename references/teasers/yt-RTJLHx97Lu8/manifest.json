@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-RTJLHx97Lu8",
+  "name": "TVアニメ『SAKAMOTO DAYS』第2期 超ティザーPV│SEASON2│OFFICIAL TEASER TRAILER",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=RTJLHx97Lu8",
+    "channel": "ジャンプチャンネル",
+    "uploadDate": null,
+    "viewCount": 821499,
+    "foundBy": "新作ゲーム ティザーPV",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

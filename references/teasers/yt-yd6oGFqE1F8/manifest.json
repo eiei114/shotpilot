@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-yd6oGFqE1F8",
+  "name": "THE CAT AND THE HATCHET (a short horror tail) - Teaser Trailer ",
+  "category": "horror",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=yd6oGFqE1F8",
+    "channel": "The Cat and The Hatchet and 3 more",
+    "uploadDate": null,
+    "viewCount": 2227737,
+    "foundBy": "horror game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

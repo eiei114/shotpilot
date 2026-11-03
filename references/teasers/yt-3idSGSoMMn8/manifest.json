@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-3idSGSoMMn8",
+  "name": "HD-2D版『ドラゴンクエストI＆II』ティザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=3idSGSoMMn8",
+    "channel": "スクウェア・エニックス",
+    "uploadDate": null,
+    "viewCount": 1011083,
+    "foundBy": "ティザートレーラー ゲーム",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

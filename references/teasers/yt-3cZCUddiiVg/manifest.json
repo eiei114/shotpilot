@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-3cZCUddiiVg",
+  "name": "【ティザー/Fortnite】恐怖の森 -Liar In The Dark-【迫りくる恐怖と心理戦が蠢く】",
+  "category": "horror",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=3cZCUddiiVg",
+    "channel": "BEverse -ビーヴァース-",
+    "uploadDate": null,
+    "viewCount": 4606,
+    "foundBy": "ホラーゲーム ティザー",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

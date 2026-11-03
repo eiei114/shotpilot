@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-lwlw0ChiSR0",
+  "name": "Forza Horizon 6 - Official Teaser Trailer | Tokyo Game Show 2025",
+  "category": "general",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=lwlw0ChiSR0",
+    "channel": "Forza",
+    "uploadDate": "20250925",
+    "viewCount": 3083283,
+    "foundBy": "game teaser trailer",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md",
+    "tokens": "tokens.json"
+  },
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/sheet.jpg",
+        "role": "contact-sheet"
+      }
+    ]
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "measured"
+}

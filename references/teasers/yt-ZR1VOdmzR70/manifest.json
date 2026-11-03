@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-ZR1VOdmzR70",
+  "name": "『ソニックフロンティア』ティザートレーラー",
+  "category": "general",
+  "language": "ja",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=ZR1VOdmzR70",
+    "channel": "PlayStation Japan",
+    "uploadDate": null,
+    "viewCount": 421634,
+    "foundBy": "ティザートレーラー ゲーム",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

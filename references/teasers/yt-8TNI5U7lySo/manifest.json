@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-8TNI5U7lySo",
+  "name": "MENACE - Cinematic Teaser / Sci-Fi Tactical RPG",
+  "category": "rpg",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=8TNI5U7lySo",
+    "channel": "Overhype Studios",
+    "uploadDate": null,
+    "viewCount": 56677,
+    "foundBy": "cinematic teaser trailer game",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "shotpilot-teaser-reference/v1",
+  "id": "yt-HXbbCCWig-Q",
+  "name": "Heidi's Legacy: Mountains Calling - Reveal Trailer | Wholesome Direct 2025",
+  "category": "cozy",
+  "language": "en",
+  "kind": "teaser",
+  "source": {
+    "platform": "youtube",
+    "url": "https://www.youtube.com/watch?v=HXbbCCWig-Q",
+    "channel": "NobleGames",
+    "uploadDate": null,
+    "viewCount": 22,
+    "foundBy": "Wholesome Direct teaser",
+    "retrieved": "2026-11-03"
+  },
+  "files": {
+    "teaser": "TEASER.md"
+  },
+  "sourceFiles": {
+    "evidence": "source/evidence.md"
+  },
+  "status": "catalogued"
+}
