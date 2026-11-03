@@ -397,7 +397,8 @@ function nameFromPrompt(text) {
   const d = new Date(); const p = (n) => String(n).padStart(2, "0");
   return `teaser-${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
 }
-const projName = (p) => p.title || p.name || p.folder || baseName(p.root);
+// the project name is what the user typed when making it; the teaser title is shown under it
+const projName = (p) => p.name || p.title || p.folder || baseName(p.root);
 const strip = (beats) => `<span class="strip">${(beats.length ? beats : ["hook", "establish", "escalate", "title"])
   .map((b) => `<i style="background:${BEAT[b] || "#555"}"></i>`).join("")}</span>`;
 
@@ -505,12 +506,12 @@ function card(p) {
   else cover = covers.map((c) => `<img loading="lazy" alt="" src="${esc(c.url)}">`).join("");
   const flag = p.current ? `<span class="flag"><span class="dot"></span>開いています</span>` : "";
   const meta = gone ? esc(shortPath(p.root))
-    : [p.shots ? `${p.shots}ショット` : "", p.duration ? `${p.duration}秒` : "", ago(p.opened || p.modified)].filter(Boolean).map(esc).join(" · ");
+    : [p.title && p.title !== p.name ? `「${p.title}」` : "", p.shots ? `${p.shots}ショット` : "", p.duration ? `${p.duration}秒` : "", ago(p.opened || p.modified)].filter(Boolean).map(esc).join(" · ");
   let badge = "";
   if (!gone) {
     if (p.cut) badge = `<span class="badge">${ICON.check}Cut あり</span>`;
     else if (p.shots && p.taken) badge = `<span class="badge${p.fresh < p.shots ? " warn" : ""}">撮影 ${p.fresh}/${p.shots}</span>`;
-    else badge = `<span class="badge">${p.engine === "ue5" ? "UE5" : "previz"}</span>`;
+    else badge = `<span class="badge">${p.engine === "ue5" ? "UE5" : "UE なし"}</span>`;
   }
   const menu = ui.menu === p.path ? `<div class="menu">${gone ? "" : `<button data-act="reveal" data-path="${esc(p.path)}"><span class="t">フォルダを開く</span></button>`}
       <button data-act="forget" data-path="${esc(p.path)}"><span class="t">一覧から外す</span><span class="d">フォルダとファイルは消えません</span></button></div>` : "";

@@ -37,7 +37,7 @@ shotpilot scout                   # 工程0: 各アンカーを4方向から撮�
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
-shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければフォルダを選ぶ
+shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければホーム（最近のプロジェクト・新規作成）を開く
 ```
 
 `cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は、ログイン済みの Claude Code（`claude` コマンド）か API キー（アプリの設定、または `ANTHROPIC_API_KEY`）で Claude を呼ぶ（モデルは `SHOTPILOT_MODEL` で上書きできる。effort は `low`〜`max` をアプリの接続設定か `SHOTPILOT_EFFORT` で変えられ、既定は `medium`。Claude Code 経由でも API 経由でも同じ値が効く）。
@@ -70,8 +70,10 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/yamlio.rs       コメントを保持する YAML 編集（行単位の差し替え + 再パースで検証）
   src/templates.rs    shots.yaml の雛形
   src/main.rs         clap の CLI
+  src/projects.rs     ホーム画面の裏側（D-30）。最近のプロジェクトの一覧、プロジェクトのカード、新規作成（mock / UE5）
   src/server.rs       アプリの裏側。Workspace の上に載る薄い HTTP + SSE 層（loopback 限定）
-  web/index.html      アプリの画面（ビルドなし、依存なし。バイナリに埋め込む）
+  web/index.html      アプリの studio 画面（ビルドなし、依存なし。バイナリに埋め込む）
+  web/home.html       アプリのホーム画面（D-30。最近のプロジェクト、プロンプトからの新規作成、設定）
   ue/sp_entry.py      Unreal の中で動くスクリプト。唯一の Python（別ルールあり。バイナリに埋め込む）
   tests/              mock エンジンでループ全体を検証する
 crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組み込み、ウィンドウ1枚で開く
