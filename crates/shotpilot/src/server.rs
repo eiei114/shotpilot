@@ -642,6 +642,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
         }
         ("POST", "/api/render") => render_stream(stream, app, req),
+        ("POST", "/api/produce") => produce_stream(stream, app, req),
         ("GET" | "HEAD", "/api/sound") => send_json(stream, head, 200, &sound_payload(&app.ws()?)?).map_err(io),
         ("POST", "/api/sound") => {
             let body = req.json()?;
@@ -983,6 +984,40 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     out["summary"] = json!(rev.summary);
     out["changes"] = Value::Object(changes);
     Ok(out)
+}
+
+/// The first pass in one go, streamed as server-sent events (one per step and per shot).
+fn produce_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
+    let body = req.json()?;
+    let opts = crate::produce::ProduceOpts {
+        quality: body.get("quality").and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or("previz").to_string(),
+        direction: body.get("note").and_then(Value::as_str).unwrap_or("").to_string(),
+        mood: body.get("mood").and_then(Value::as_bool).unwrap_or(true),
+    };
+    let settings = app.settings();
+    let claude = (app.claude)(&settings)?; // a plain 400 before streaming when Claude is not connected
+    let images = if opts.mood { (app.images)(&settings).ok() } else { None };
+    let _guard = app.mutate()?;
+    let mut ws = app.ws()?;
+    fp::quality(&ws.defn, &opts.quality)?;
+    let head = "HTTP/1.1 200 OK\r\nServer: shotpilot\r\nConnection: close\r\n\
+                Content-Type: text/event-stream; charset=utf-8\r\nCache-Control: no-cache, no-transform\r\n\
+                X-Accel-Buffering: no\r\n\r\n";
+    // the run must finish even if the window goes away, so write errors only stop the stream
+    let mut alive = stream.write_all(head.as_bytes()).is_ok();
+    let mut send_event = |event: &str, data: &Value, alive: &mut bool| {
+        if *alive {
+            let msg = format!("event: {event}\ndata: {data}\n\n");
+            *alive = stream.write_all(msg.as_bytes()).and_then(|_| stream.flush()).is_ok();
+        }
+    };
+    let mut on = |event: &str, data: &Value| send_event(event, data, &mut alive);
+    let result = crate::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut on);
+    match result {
+        Ok(out) => send_event("done", &out, &mut alive),
+        Err(e) => send_event("error", &json!({"error": e.msg}), &mut alive),
+    }
+    Ok(())
 }
 
 fn render_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {

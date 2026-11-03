@@ -207,12 +207,19 @@ fn finish_pass(defn: &Definition, placed: &[crate::finish::Placed], segments: &P
                out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<()> {
     let has_text = defn.finish.title.is_some() || defn.finish.end_card.is_some() || placed.iter().any(|p| p.caption.is_some());
     let font = crate::finish::font(&defn.finish);
-    if has_text && font.is_none() {
-        bail!("no font with Japanese glyphs was found for the titles; set finish.font to a .ttf/.ttc file");
-    }
+    // without a usable font the text is left out (bars and dips still apply) rather than failing the cut
+    let (cfg, placed): (crate::finish::FinishCfg, Vec<crate::finish::Placed>) = if has_text && font.is_none() {
+        notes.push("no font with Japanese glyphs was found; titles and captions were left out (set finish.font)".into());
+        let mut c = defn.finish.clone();
+        c.title = None;
+        c.end_card = None;
+        (c, placed.iter().cloned().map(|mut p| { p.caption = None; p }).collect())
+    } else {
+        (defn.finish.clone(), placed.to_vec())
+    };
     let text_dir = out_dir.join("finish");
     std::fs::create_dir_all(&text_dir)?;
-    let (graph, total) = crate::finish::filter_graph(&defn.finish, placed, w, h, fps, font.as_deref().unwrap_or(Path::new("")),
+    let (graph, total) = crate::finish::filter_graph(&cfg, &placed, w, h, fps, font.as_deref().unwrap_or(Path::new("")),
                                                      &text_dir)?;
     let mut graph = graph;
     let mut args: Vec<String> = ["-f", "concat", "-safe", "0", "-i", &segments.display().to_string()].map(String::from).to_vec();

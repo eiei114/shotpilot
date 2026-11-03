@@ -409,3 +409,58 @@ fn the_finish_is_definition_and_never_rerenders() {
     // the title sits on the title shot (s06 starts at 21.5 s)
     assert!(g.contains("between(t,22.500,26.500)"), "{g}");
 }
+
+#[test]
+fn the_first_pass_goes_all_the_way_in_one_go() {
+    use shotpilot::ai::Claude;
+    struct Director(std::cell::RefCell<Vec<String>>);
+    impl Claude for Director {
+        fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
+            let props = &request["output_config"]["format"]["schema"]["properties"];
+            if props.get("summary").is_some() {
+                self.0.borrow_mut().push("stage".into());
+                return Ok(json!({"summary": "中庭", "anchors": [{"name": "well", "description": "井戸"}],
+                                 "mood": {"place": "gate", "detail": "lantern", "threat": "window", "title": "well"}}).to_string());
+            }
+            self.0.borrow_mut().push("plan".into());
+            let user = request["messages"][0]["content"].to_string();
+            assert!(user.contains("## Finish") && user.contains("## Stage") && user.contains("Location scout"), "{user}");
+            let shot = |id: &str, beat: &str, d: f64, anchor: &str, cap: &str, tr: &str| json!({
+                "id": id, "beat": beat, "purpose": "p", "duration": d, "anchor": anchor, "offset": [-400, -300, 100],
+                "look_at": "", "focal_length": 35, "move": "static", "move_amount": 0, "time_of_day": "default",
+                "notes": "", "appear": [], "caption": cap, "transition": tr});
+            Ok(json!({"rationale": "静かに始める", "title_card": "夜の中庭", "end_card": [],
+                      "shots": [shot("h", "hook", 4.0, "lantern", "", "cut"), shot("e", "establish", 8.0, "gate", "住人が消える", "dip"),
+                                shot("x", "escalate", 6.0, "window", "", "flash"), shot("x2", "escalate", 5.0, "door", "", "cut"),
+                                shot("t", "title", 6.0, "well", "", "cut")]}).to_string())
+        }
+    }
+    let mut f = ws();
+    let claude = Director(Default::default());
+    let gen = FakeImages(Default::default());
+    let mut events = Vec::new();
+    let mut on = |e: &str, d: &serde_json::Value| events.push((e.to_string(), d.clone()));
+    let out = shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on).unwrap();
+
+    assert_eq!(*claude.0.borrow(), vec!["stage".to_string(), "plan".to_string()]); // one call each, no self-review rounds
+    let done: Vec<String> = events.iter().filter(|(e, d)| e == "step" && d["status"] != "start")
+        .map(|(_, d)| format!("{}:{}", d["key"].as_str().unwrap(), d["status"].as_str().unwrap())).collect();
+    assert_eq!(done, ["scout:done", "stage:done", "mood:done", "plan:done", "render:done", "cut:done"]);
+    assert_eq!(f.ws.defn.shot_ids(), ids(&["h", "e", "x", "x2", "t"]));
+    assert_eq!(f.ws.defn.brief.images.len(), 4);
+    assert_eq!(f.ws.defn.finish.title.as_ref().unwrap().text, "夜の中庭");
+    assert!(f.ws.defn.finish.end_card.is_none()); // nothing invented
+    assert_eq!(f.ws.defn.find("e").unwrap()["caption"], json!("住人が消える"));
+    assert_eq!(f.ws.defn.find("x").unwrap()["transition"], json!("flash"));
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+    assert_eq!(out["shots"].as_array().unwrap().len(), 5);
+    assert_eq!(f.ws.state.history().last().unwrap()["action"], json!("produce"));
+
+    // a second pass reuses the scout, the stage and the mood board
+    let mut events2 = Vec::new();
+    let mut on2 = |e: &str, d: &serde_json::Value| events2.push((e.to_string(), d.clone()));
+    shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on2).unwrap();
+    let skipped: Vec<String> = events2.iter().filter(|(e, d)| e == "step" && d["status"] == "skipped")
+        .map(|(_, d)| d["key"].as_str().unwrap().to_string()).collect();
+    assert_eq!(skipped, ["scout", "stage", "mood"]);
+}

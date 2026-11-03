@@ -163,6 +163,21 @@ pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     )
 }
 
+/// What the planner is told about the text and cuts burned in at the cut (D-25).
+pub fn finish_text(defn: &Definition) -> String {
+    format!(
+        "\n## Finish (burned in when the cut is assembled; never re-renders)\n\
+         - `caption`: at most 3 in the whole teaser, each short (Japanese up to ~15 characters, English up to ~6 words), \
+           so the teaser reads with the sound off. Leave it empty on the hook and the title shot.\n\
+         - `transition`: mostly `cut`. `dip` (through black) before the title or for a jump in time; `flash` (through \
+           white) only for one jolt at most.\n\
+         - `title_card`: the game's title{}.\n\
+         - `end_card`: only facts the brief states (platforms, release window, a call to action written there). \
+           Never invent a date or a platform; with none given, leave it empty.\n",
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
+    )
+}
+
 /// Code-side shaping of a planned list: beats in order, durations in 1..8 s, runtime
 /// within 10% of the target. Returns what was changed, for the human to see.
 pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {

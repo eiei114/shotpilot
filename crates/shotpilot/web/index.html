@@ -898,6 +898,8 @@ function nextStep() {
   const base = st.qualities[0];
   const unapproved = shots.filter((x) => x.approval !== "approved");
   const approved = shots.filter((x) => x.approval === "approved");
+  const produced = (ui.log || []).some((e) => e.action === "produce");
+  if (!produced && !skipped("produce")) return { stage: "structure", what: "一気に作る", why: "ロケハン → ステージ → ムードボード → 構成と仕上げ → 撮影 → Cut まで、制約を全部渡して1本出します。そのあと1カットずつ確かめて直します", act: "produce", skip: "produce", need: ai.ready ? null : "Claude が未接続です" };
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
   if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
@@ -937,6 +939,7 @@ async function runNext() {
   else if (n.act === "stage") scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
   else if (n.act === "mood") generateMood();
   else if (n.act === "plan") planShots();
+  else if (n.act === "produce") produceAll();
   else if (n.act === "render") render(n.quality);
   else if (n.act === "final") render("final", ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id));
   else if (n.act === "cut") cut();
@@ -1789,6 +1792,18 @@ function entryHtml(e, isLast) {
       ${changesHtml(e.changes)}
       <div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span>${e.stale?.length ? `撮り直しが必要: <b>${esc(e.stale.join(", "))}</b>` : "映像はそのまま。撮り直しなし（Cut で音が載ります）"} <span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   }
+  if (e.action === "produce") {
+    const c = e.checks || {};
+    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
+    const steps = (e.steps || []).map((s) => `<div><span class="k">${esc(STEP_ICON[s.status] || "")} ${esc(s.label)}</span> ${esc(s.detail || "")}</div>`).join("");
+    const notes = (e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`).join("");
+    return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
+      <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
+        ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}<div class="changes">${steps}</div>${notes}
+        <div class="done-row"><span class="ok"><span class="dot"></span>${(e.shots || []).length} ショット · ${esc(e.quality || "")} で撮って Cut 済み</span>
+          <span>ショット検査: ${sev || "指摘なし"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
+        ${(ui.log || []).filter((x) => x.action === "produce").pop() === e ? `<div class="suggest"><button data-goto-stage="finish">↗ できた1本を見る</button><button data-goto-stage="framing">↗ 1カットずつ確かめて直す（構図の承認）</button></div>` : ""}</div>`;
+  }
   if (e.action === "plan") {
     const c = e.checks || {};
     const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
@@ -1805,13 +1820,24 @@ function entryHtml(e, isLast) {
 }
 
 function drawChat() {
-  const keep = new Set(["plan", "revise", "set", "render", "cut", "order", "sound"]);
+  const keep = new Set(["produce", "plan", "revise", "set", "render", "cut", "order", "sound"]);
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
     ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
   // suggestions only while nothing has been rendered since the edit
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
+  if (ui.produce) {
+    const order = ["scout", "stage", "mood", "plan", "render", "cut"];
+    const names = { scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "構成と仕上げ", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
+    const rows = order.map((k) => {
+      const d = ui.produce.steps[k];
+      const icon = d ? STEP_ICON[d.status] : "　";
+      return `<div><span class="k">${icon} ${esc(names[k])}</span> ${esc(d?.status === "start" ? "実行中…" : d?.detail || "")}</div>`;
+    }).join("");
+    html += `<div class="msg-user"><div class="bubble">${esc(ui.produce.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
+      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state">作っています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div><div class="changes">${rows}</div></div>`;
+  }
   if (ui.pending) {
     html += `<div class="msg-user"><div class="bubble">${esc(ui.pending.note)}</div><div class="ctx">${esc(ui.pending.ctx)}</div></div>
       <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="think-state">考えています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div></div>`;
@@ -1826,7 +1852,7 @@ function drawChat() {
   drawChat.seen = true;
   log.innerHTML = html;
   // scroll after layout settles (the composer above can change height in the same frame)
-  if (atBottom || ui.pending) requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
+  if (atBottom || ui.pending || ui.produce) requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
 }
 
 // ------------------------------------------------------------------ actions
@@ -1849,6 +1875,36 @@ async function planShots() {
     clearInterval(tick); ui.busy = null; ui.pending = null; ui.logKey = "";
     await refresh();
   }
+}
+
+const STEP_ICON = { start: "…", done: "✓", skipped: "–", failed: "✕" };
+
+async function produceAll() {
+  const st = ui.status; if (ui.busy || !st?.ai?.ready) return;
+  const note = $("note").value.trim();
+  if (st.shots.length && !confirm(`いまの ${st.shots.length} ショットを置き換えて、一気に作ります（撮った take は消えません）。`)) return;
+  ui.busy = "produce"; ui.produce = { steps: {}, note }; ui.pending = null; $("note").value = "";
+  ui.started = Date.now(); draw(); drawChat();
+  try {
+    const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note, quality: "previz", mood: true }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = /^event: (.*)$/m.exec(block)?.[1];
+        const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
+        if (ev === "step") ui.produce.steps[d.key] = d;
+        else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); ui.tab = ui.fin = "teaser"; }
+        else if (ev === "error") toast(d.error, true);
+        drawChat();
+      }
+    }
+  } catch (e) { $("note").value = note; toast(e.message, true); }
+  finally { ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
 }
 
 async function sendNote() {
