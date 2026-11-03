@@ -327,6 +327,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
   text-shadow: 0 0 3px var(--card), 0 0 3px var(--card); pointer-events: none; }
 .sblock.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; }
 .sblock.missing { border-style: dashed; border-color: var(--err); --c: var(--err); }
+.sblock.ro { cursor: default; opacity: .85; border-style: dotted; }
 .sblock.dragging { cursor: grabbing; opacity: .85; z-index: 4; box-shadow: 0 4px 14px rgb(0 0 0 / .2); }
 .cutmark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; pointer-events: auto; z-index: 1; }
 .cutmark.ok { background: color-mix(in srgb, var(--accent) 70%, transparent); }
@@ -1402,13 +1403,15 @@ function drawLanes() {
   const block = (p, top) => {
     const s = span(p);
     const left = xOf(s.from), w = Math.max(xOf(s.to) - left, 8);
-    const cls = ["sblock", p.role, isSel(p) ? "sel" : "", p.missing ? "missing" : ""].join(" ");
+    // music cues and effects on script lines are set in shots.yaml (or by Claude), not dragged here
+    const ro = (p.role === "bgm" && p.index > 0) || (p.role === "sfx" && !ui.status.shots.some((x) => x.id === p.shot));
+    const cls = ["sblock", p.role, isSel(p) ? "sel" : "", p.missing ? "missing" : "", ro ? "ro" : ""].join(" ");
     const title = `${p.label} · ${p.file}${p.missing ? "（ファイルがありません）" : ""} · ${p.gain} dB${p.shot ? ` · ${p.shot}` : ""}`;
     return `<div class="${cls}" data-k="${esc(laneKey(p))}" style="left:${left}px;width:${w}px;${top != null ? `top:${top}px` : ""}" title="${esc(title)}">${wave(s.peaks)}<span>${esc(p.label)}</span></div>`;
   };
   // BGM lane
-  const bgm = snd.placements.find((p) => p.role === "bgm");
-  const bgmHtml = bgm ? block(bgm) : `<button class="add" data-add="bgm">＋ BGM</button>`;
+  const bgms = snd.placements.filter((p) => p.role === "bgm");
+  const bgmHtml = bgms.length ? bgms.map((p) => block(p)).join("") : `<button class="add" data-add="bgm">＋ BGM</button>`;
   // SE lane: overlapping effects stack into rows
   const fx = snd.placements.filter((p) => p.role === "sfx").map((p) => ({ p, s: span(p) })).sort((a, b) => a.s.from - b.s.from);
   const ends = [];
@@ -2082,7 +2085,7 @@ $("scope").addEventListener("click", () => {
 // sound lanes: click selects, drag moves a sound effect, double-click adds one
 let sdrag = null;
 $("lanes").addEventListener("pointerdown", (e) => {
-  const b = e.target.closest(".sblock"); if (!b || e.button !== 0) return;
+  const b = e.target.closest(".sblock"); if (!b || e.button !== 0 || b.classList.contains("ro")) return;
   const p = ui.sound.placements.find((x) => laneKey(x) === b.dataset.k); if (!p) return;
   sdrag = { b, p, x0: e.clientX, moved: false, left0: xOf(p.start), t: p.start };
   if (p.role === "sfx") b.setPointerCapture(e.pointerId);

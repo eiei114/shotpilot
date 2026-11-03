@@ -513,3 +513,36 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
         .map(|(_, d)| d["key"].as_str().unwrap().to_string()).collect();
     assert_eq!(skipped, ["scout", "stage", "mood"]);
 }
+
+#[test]
+fn music_cues_and_card_hits_follow_the_script() {
+    let mut f = ws();
+    let mut text = f.text();
+    text.push_str(r#"
+script:
+  - {id: intro, kind: card, ja: 今日から、ここに住む。, dur: 3, after: start, sfx: [{file: audio/boom.wav, at: 0, gain: -6}]}
+  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2, after: s02_well, sfx: [{file: audio/boom.wav, at: 0.1}]}
+  - {id: rooms, kind: caption, ja: 部屋は、六つ。, on: s02_well, at: 0.5, dur: 2, sfx: [{file: audio/tick.wav, at: 0}]}
+"#);
+    f.write(&text.replace("  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}",
+        "  bgm: {file: audio/drone.wav, gain: -6, fade_in: 1.5, fade_out: 2}\n  loudness: -16\n  music:\n    - {file: audio/tense.wav, from: seven, until: s05_door, gain: -9, label: tension}"));
+    f.ws.reload().unwrap();
+    let shots = f.ws.resolved().unwrap();
+    let plan = shotpilot::sound::plan(&f.ws.defn, &shots);
+    let at = |label: &str| plan.iter().find(|p| p.label == label).map(|p| (p.start, p.until)).unwrap();
+    // intro 0-3, s01 3-8, s02 8-11.5, seven 11.5-13.5, s03 13.5-17.5, s04 17.5-21.5, s05 21.5-26.5
+    let (s, u) = at("tension");
+    assert!((s - 11.5).abs() < 1e-6 && (u.unwrap() - 26.5).abs() < 1e-6, "{s} {u:?}");
+    let booms: Vec<f64> = plan.iter().filter(|p| p.label == "boom").map(|p| p.start).collect();
+    assert!((booms[0] - 0.0).abs() < 1e-6 && (booms[1] - 11.6).abs() < 1e-6, "{booms:?}");
+    assert!((at("tick").0 - 8.5).abs() < 1e-6); // the caption shows 0.5 s into s02
+    // reordering shots moves the hits with their lines
+    let order = ids(&["s01_gate", "s03_window", "s02_well", "s04_lantern", "s05_door", "s06_title"]);
+    f.ws.edit_definition(&[], Some(&order), "order", "").unwrap();
+    let plan = shotpilot::sound::plan(&f.ws.defn, &f.ws.resolved().unwrap());
+    let tick = plan.iter().find(|p| p.label == "tick").unwrap().start;
+    assert!((tick - (3.0 + 5.0 + 4.0 + 0.5)).abs() < 1e-6, "{tick}");
+    // a cue that starts on nothing is refused
+    f.write(&f.text().replace("from: seven", "from: \"\""));
+    assert!(f.ws.reload().unwrap_err().msg.contains("audio.music[0].from"));
+}

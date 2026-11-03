@@ -37,6 +37,8 @@ pub struct Line {
     /// Overlays: the shot they sit on, and when (seconds into it).
     pub on: Option<String>,
     pub at: f64,
+    /// Sound effects on this line (`at` from the line's start), mixed at the cut.
+    pub sfx: Vec<Value>,
 }
 
 impl Line {
@@ -101,8 +103,10 @@ pub fn parse(v: Option<&Value>, shot_ids: &[String], errs: &mut Vec<String>) -> 
             after: m.get("after").map(str_of).filter(|s| !s.is_empty()),
             on: m.get("on").map(str_of).filter(|s| !s.is_empty()),
             at: m.get("at").and_then(num).unwrap_or(0.3),
+            sfx: m.get("sfx").and_then(Value::as_array).cloned().unwrap_or_default(),
             kind,
         };
+        crate::sound::validate_line_sfx(&at, m.get("sfx"), errs);
         if line.is_slot() && line.after.is_none() {
             errs.push(format!("{at}.after: a {} needs `after: <shot id | line id | start>`", line.kind));
         }
