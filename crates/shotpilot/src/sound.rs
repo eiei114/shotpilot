@@ -530,7 +530,7 @@ pub fn decode(path: &Path) -> Result<Pcm> {
     let Some(exe) = ffmpeg() else {
         bail!("{shown}: reading .{ext} needs ffmpeg on PATH (or convert it to .wav)");
     };
-    let out = Command::new(exe)
+    let out = crate::cut::no_window(&mut Command::new(exe))
         .args(["-hide_banner", "-loglevel", "error", "-i"])
         .arg(path)
         .args(["-vn", "-f", "f32le", "-acodec", "pcm_f32le", "-ac", "2", "-ar", &SR.to_string(), "-"])

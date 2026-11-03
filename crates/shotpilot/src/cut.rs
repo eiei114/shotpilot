@@ -27,9 +27,20 @@ pub fn ffmpeg() -> Option<PathBuf> {
     find_on_path("ffmpeg")
 }
 
+/// Keep a console child (ffmpeg, UnrealEditor-Cmd) from opening its own window.
+/// The desktop app has no console, so Windows would otherwise pop one up per call.
+pub fn no_window(cmd: &mut Command) -> &mut Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    cmd
+}
+
 pub fn run_ffmpeg(args: &[String]) -> Result<()> {
     let Some(exe) = ffmpeg() else { bail!("ffmpeg not found on PATH") };
-    let out = Command::new(exe).args(["-hide_banner", "-loglevel", "error", "-y"]).args(args).output()?;
+    let out = no_window(&mut Command::new(exe)).args(["-hide_banner", "-loglevel", "error", "-y"]).args(args).output()?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
         bail!("ffmpeg failed: {}", err.trim().chars().take(2000).collect::<String>());
