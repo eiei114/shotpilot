@@ -794,7 +794,7 @@ async function fetchAssets() {
 function drawScout() {
   const st = ui.status;
   if (ui.assetsCount !== st.assets_count) { ui.assetsCount = st.assets_count; fetchAssets(); }
-  const key = JSON.stringify([st.scout, st.props, ui.busy, (ui.assets || []).length, st.engine]);
+  const key = JSON.stringify([st.scout, st.props, ui.busy, (ui.assets || []).length, st.engine, st.stage, st.ai?.ready]);
   if (drawScout.key === key && $("scoutpanel").childElementCount) return;
   drawScout.key = key;
   const ue = st.engine === "ue5";
@@ -820,6 +820,13 @@ function drawScout() {
     <div class="capbar"><button class="btn dark" data-scout${ui.busy ? " disabled" : ""}>${ui.busy === "scout" ? "撮影中…" : "ロケハン写真を撮る"}</button>
       <span class="sp-hint">${ue ? "UE を起動して still で撮ります（アンカー×4方向。数分）" : "mock エンジン: previz で数秒"}。アンカーは shots.yaml の anchors（scan で UE から取り込めます）。</span></div>
     ${rows || `<div class="mood-empty">まだありません。「ロケハン写真を撮る」で、各アンカーを4方向から撮ります。</div>`}
+    <h4 class="sec">ステージの理解</h4>
+    <div class="lead">Claude がロケハン写真を見て、このステージが何か（全体の空間、各アンカーに何があるか、カメラを置ける向き、光）を書きます。ムードボードの生成と「構成を組む」の両方がこれを読み、ムードボードはここで選んだ写真を下敷きにします。shots.yaml の stage: に入るので、手で直せます。</div>
+    <div class="capbar"><button class="btn dark" data-stage-read${ui.busy || !anchors.length || !st.ai?.ready ? " disabled" : ""}>${ui.busy === "stage" ? "読み取り中…" : st.stage?.summary ? "読み直す" : "Claude にステージを読ませる"}</button>
+      <span class="sp-hint">${anchors.length ? "写真を Claude に見せます（数十秒）" : "先にロケハン写真を撮ります"}</span></div>
+    ${st.stage?.summary ? `<div class="flist"><div class="find" style="display:block"><b>全体</b><div class="why" style="margin-top:4px">${esc(st.stage.summary)}</div></div>
+      ${(st.stage.anchors || []).map((a) => `<div class="find" style="display:block"><b class="mono">${esc(a.name)}</b><div class="why" style="margin-top:4px">${esc(a.description)}</div></div>`).join("")}
+      <div class="sp-hint">ムードボードの下敷き: ${Object.entries(st.stage.mood || {}).map(([f, a]) => `${esc({ place: "場所", detail: "ディテール", threat: "不穏", title: "タイトル" }[f] || f)} = ${esc(a)}`).join(" · ")}</div></div>` : ""}
     <h4 class="sec">出せるもの（props）</h4>
     <div class="lead">ショットの途中でいきなり出現させられるもの（アニメーションなし）。Claude は構成を組むとき、この中から使います。</div>
     <div class="props-list">${props || `<span class="sp-hint">まだありません。下のアセット一覧から追加します。</span>`}</div>
@@ -1951,9 +1958,10 @@ for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListe
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
 $("scoutpanel").addEventListener("click", (e) => {
-  const t = e.target.closest("[data-scout],[data-assets-scan],[data-prop-add],[data-prop-rm]");
+  const t = e.target.closest("[data-scout],[data-stage-read],[data-assets-scan],[data-prop-add],[data-prop-rm]");
   if (!t) return;
   if (t.matches("[data-scout]")) scoutAction("scout", {}, "/api/scout", "scout", (idx) => toast(`${Object.keys(idx.anchors || {}).length} か所を撮りました`));
+  else if (t.matches("[data-stage-read]")) scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
   else if (t.matches("[data-assets-scan]")) scoutAction("assets", {}, "/api/assets/scan", "assets", (o) => { toast(`${o.count} 件のアセット`); ui.assetsCount = -1; });
   else if (t.dataset.propAdd) {
     const a = ui.assets[Number(t.dataset.propAdd)];

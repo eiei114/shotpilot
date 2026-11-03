@@ -107,6 +107,8 @@ enum Cmd {
     Scout {
         anchors: Vec<String>,
     },
+    /// read the set from the scout photos with Claude and write `stage:` (stage 0)
+    Stage,
     /// the meshes the project has: assets [filter]  |  assets --scan (asks the engine)
     Assets {
         filter: Option<String>,
@@ -452,6 +454,18 @@ fn run(cli: Cli) -> Result<u8> {
                 let files: Vec<&str> = views.as_array().into_iter().flatten().filter_map(|v| v["file"].as_str()).collect();
                 println!("{name:<16} {}", files.join("  "));
             }
+        }
+        Cmd::Stage => {
+            let mut ws = ws(file)?;
+            let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
+            let st = ai::understand_stage(&ws.defn, claude.as_ref())?;
+            ws.set_stage(&st)?;
+            println!("{}\n", st.summary);
+            for (n, d) in &st.anchors {
+                println!("- {n}: {d}");
+            }
+            let mood: Vec<String> = st.mood.iter().map(|(f, a)| format!("{f}={a}")).collect();
+            println!("\nmood board bases: {}", mood.join(", "));
         }
         Cmd::Assets { filter, scan } => {
             let mut ws = ws(file)?;

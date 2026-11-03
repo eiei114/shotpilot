@@ -960,6 +960,30 @@ impl Workspace {
         Ok(idx)
     }
 
+    /// Write `stage:` (the set as read from the scout photos). Editorial: nothing re-renders.
+    pub fn set_stage(&mut self, stage: &model::StageCfg) -> Result<()> {
+        let to_map = |v: &[(String, String)]| Value::Object(v.iter().map(|(k, d)| (k.clone(), json!(d))).collect());
+        let old: Vec<String> = self.defn.stage.anchors.iter().map(|(n, _)| n.clone()).collect();
+        let mut anchors = to_map(&stage.anchors);
+        // anchors that were described before but not now are dropped (null keeps the line, loses the value)
+        if let Some(m) = anchors.as_object_mut() {
+            for n in old {
+                m.entry(n).or_insert(Value::Null);
+            }
+        }
+        let mut doc = Doc::load(&self.path)?;
+        doc.upsert_entries("stage", &[
+            ("summary".to_string(), json!(stage.summary)),
+            ("anchors".to_string(), anchors),
+            ("mood".to_string(), to_map(&stage.mood)),
+        ])?;
+        model::parse(&doc.value()?, &self.path)?;
+        doc.save(&self.path)?;
+        self.reload()?;
+        self.state.log("stage", json!({"anchors": stage.anchors.len()}));
+        self.state.save()
+    }
+
     // ------------------------------------------------------------------ mood board
 
     fn set_images(&mut self, images: &[String]) -> Result<()> {
@@ -970,11 +994,12 @@ impl Workspace {
     /// `brief.images`. A failed frame stops the run; the ones already made are kept.
     pub fn generate_moodboard(&mut self, gen: &dyn crate::moodboard::ImageGen, direction: &str, n: usize)
         -> Result<Vec<String>> {
-        let frames: Vec<(String, String)> = crate::moodboard::prompts(&self.defn, direction).into_iter().take(n.max(1)).collect();
-        let prompts: Vec<String> = frames.iter().map(|(_, p)| p.clone()).collect();
+        let frames: Vec<(String, crate::moodboard::ImageJob)> =
+            crate::moodboard::jobs(&self.defn, direction).into_iter().take(n.max(1)).collect();
+        let jobs: Vec<crate::moodboard::ImageJob> = frames.iter().map(|(_, j)| j.clone()).collect();
         let mut made = Vec::new();
         let mut err = None;
-        match gen.generate_many(&prompts) {
+        match gen.generate_many(&jobs) {
             Ok(images) => {
                 for (i, bytes) in images.iter().enumerate() {
                     let key = frames.get(i).map(|(k, _)| k.as_str()).unwrap_or("extra");

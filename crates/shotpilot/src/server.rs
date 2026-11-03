@@ -367,6 +367,11 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "brief": brief_json(&ws.defn.brief),
         "scout": crate::scout::summary(&ws.root),
         "scout_taken": crate::scout::load_index(&ws.root)["taken"],
+        "stage": {
+            "summary": ws.defn.stage.summary,
+            "anchors": ws.defn.stage.anchors.iter().map(|(n, d)| json!({"name": n, "description": d})).collect::<Vec<_>>(),
+            "mood": ws.defn.stage.mood.iter().map(|(f, a)| (f.clone(), json!(a))).collect::<Map<String, Value>>(),
+        },
         "props": ws.defn.props.iter().map(|(n, p)| json!({"name": n, "asset": p.asset, "kind": p.kind, "size": p.size})).collect::<Vec<_>>(),
         "assets_count": crate::scout::load_assets(&ws.root).len(),
         "pitch": ws.defn.teaser.pitch,
@@ -714,6 +719,14 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut ws = app.ws()?;
             ws.remove_prop(&name)?;
             send_json(stream, false, 200, &json!({"removed": name})).map_err(io)
+        }
+        ("POST", "/api/stage") => {
+            let claude = (app.claude)(&app.settings())?;
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let st = ai::understand_stage(&ws.defn, claude.as_ref())?;
+            ws.set_stage(&st)?;
+            send_json(stream, false, 200, &json!({"summary": st.summary, "anchors": st.anchors.len()})).map_err(io)
         }
         ("POST", "/api/scout") => {
             let body = req.json()?;

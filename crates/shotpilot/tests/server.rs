@@ -500,7 +500,7 @@ fn plan_over_http_needs_confirmation_and_logs_the_check() {
 
 struct OnePng;
 impl shotpilot::moodboard::ImageGen for OnePng {
-    fn generate(&self, _prompt: &str) -> shotpilot::error::Result<Vec<u8>> {
+    fn generate(&self, _job: &shotpilot::moodboard::ImageJob) -> shotpilot::error::Result<Vec<u8>> {
         Ok(vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3])
     }
 }

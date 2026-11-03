@@ -212,8 +212,9 @@ const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13
 
 struct FakeImages(std::cell::RefCell<Vec<String>>);
 impl shotpilot::moodboard::ImageGen for FakeImages {
-    fn generate(&self, prompt: &str) -> shotpilot::Result<Vec<u8>> {
-        self.0.borrow_mut().push(prompt.to_string());
+    fn generate(&self, job: &shotpilot::moodboard::ImageJob) -> shotpilot::Result<Vec<u8>> {
+        let base = job.base.as_ref().map(|b| format!(" [base {}]", b.file_name().unwrap().to_string_lossy())).unwrap_or_default();
+        self.0.borrow_mut().push(format!("{}{base}", job.prompt));
         Ok(PNG.to_vec())
     }
 }
@@ -269,8 +270,12 @@ fn codex_output_is_read_back_from_its_image_folder() {
     let imgs = shotpilot::moodboard::codex_images(dir.path());
     assert_eq!(imgs.len(), 2);
     assert_eq!(imgs[1], second); // oldest first: the order they were asked for
-    let ins = shotpilot::moodboard::CodexImages::instruction(&["one".into(), "two".into()]);
-    assert!(ins.contains("exactly 2 image(s)") && ins.contains("--- Image 2 ---\ntwo") && ins.contains("Do not write"));
+    use shotpilot::moodboard::{CodexImages, ImageJob};
+    let shot = |p: &str, b: Option<&str>| ImageJob { prompt: p.into(), base: b.map(std::path::PathBuf::from) };
+    let (ins, attach) = CodexImages::instruction(&[shot("one", Some("a.png")), shot("two", None), shot("three", Some("a.png"))]);
+    assert!(ins.contains("exactly 3 image(s)") && ins.contains("--- Image 2 ---\ntwo") && ins.contains("Do not write"));
+    assert_eq!(attach.len(), 1); // the same scout photo is attached once
+    assert!(ins.contains("Start from attached image #1"));
 }
 
 #[test]
@@ -322,4 +327,40 @@ fn assets_become_props_and_props_in_use_stay() {
     f.ws.set_fields("s05_door", &set(&[("appear", json!(null))])).unwrap();
     f.ws.remove_prop("crate").unwrap();
     assert!(f.ws.defn.prop("crate").is_none());
+}
+
+#[test]
+fn the_stage_is_read_from_scout_photos_and_grounds_the_mood_board() {
+    use shotpilot::ai::{self, Claude};
+    struct Reader(std::cell::RefCell<Vec<serde_json::Value>>);
+    impl Claude for Reader {
+        fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
+            self.0.borrow_mut().push(request.clone());
+            Ok(json!({"summary": "夕暮れの中庭。中央に井戸。",
+                      "anchors": [{"name": "well", "description": "石の井戸"}, {"name": "ghost", "description": "x"}],
+                      "mood": {"place": "gate", "detail": "lantern", "threat": "window", "title": "nowhere"}}).to_string())
+        }
+    }
+    let mut f = ws();
+    let reader = Reader(Default::default());
+    assert!(ai::understand_stage(&f.ws.defn, &reader).unwrap_err().msg.contains("scout photos"));
+    f.ws.take_scout(&[]).unwrap();
+    let st = ai::understand_stage(&f.ws.defn, &reader).unwrap();
+    assert_eq!(st.anchors, vec![("well".to_string(), "石の井戸".to_string())]); // unknown anchors dropped
+    assert_eq!(st.mood.len(), 3); // `nowhere` is not an anchor
+    let req = &reader.0.borrow()[0];
+    assert_eq!(req["messages"][0]["content"][1]["type"], "image");
+    assert!(shotpilot::craft::self_review_words(req["system"].as_str().unwrap()).is_empty());
+
+    f.ws.render(&[], "previz", false, None).unwrap();
+    f.ws.set_stage(&st).unwrap();
+    assert_eq!(f.ws.defn.stage.summary, "夕暮れの中庭。中央に井戸。");
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+
+    let gen = FakeImages(Default::default());
+    f.ws.generate_moodboard(&gen, "", 4).unwrap();
+    let p = gen.0.borrow();
+    assert!(p[0].contains("The set: 夕暮れの中庭") && p[0].ends_with("[base gate-front.png]"), "{}", p[0]);
+    assert!(p[1].ends_with("[base lantern-front.png]"));
+    assert!(!p[3].contains("[base")); // title had no valid anchor: plain generation
 }

@@ -98,6 +98,31 @@ pub struct TeaserCfg {
     pub resolution: (i64, i64),
 }
 
+/// `stage:`: what the level is, read from the scout photos (written by Claude, editable by
+/// hand). Editorial: it feeds the planner and the mood board, never pixels.
+#[derive(Debug, Clone, Default)]
+pub struct StageCfg {
+    pub summary: String,
+    /// anchor -> what is there, light, materials, where a camera has room.
+    pub anchors: Vec<(String, String)>,
+    /// mood-board frame (place, detail, threat, title) -> the anchor whose scout photo it is based on.
+    pub mood: Vec<(String, String)>,
+}
+
+impl StageCfg {
+    pub fn is_empty(&self) -> bool {
+        self.summary.is_empty() && self.anchors.is_empty()
+    }
+
+    pub fn anchor(&self, name: &str) -> Option<&str> {
+        self.anchors.iter().find(|(n, _)| n == name).map(|(_, d)| d.as_str())
+    }
+
+    pub fn mood_base(&self, frame: &str) -> Option<&str> {
+        self.mood.iter().find(|(f, _)| f == frame).map(|(_, a)| a.as_str())
+    }
+}
+
 /// What a trailer is: a teaser (title/IP first) or a gameplay trailer (gameplay first).
 /// Steam treats them as different kinds, and some checks weigh differently for each.
 pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
@@ -241,6 +266,7 @@ pub struct Definition {
     pub project: ProjectCfg,
     pub teaser: TeaserCfg,
     pub brief: BriefCfg,
+    pub stage: StageCfg,
     pub anchors: Vec<(String, Vec3)>,
     /// Anchors whose size is known (`anchors.<name>: {at, size, center}`).
     pub boxes: Vec<(String, AnchorBox)>,
@@ -497,6 +523,13 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
     }
 
     let brief = parse_brief(top.get("brief"), &mut errs);
+    let stage = {
+        let st = obj(top.get("stage"));
+        let pairs = |k: &str| -> Vec<(String, String)> {
+            obj(st.get(k)).into_iter().filter(|(_, v)| !v.is_null()).map(|(n, v)| (n, str_of(&v))).collect()
+        };
+        StageCfg { summary: opt_str(st.get("summary")).unwrap_or_default(), anchors: pairs("anchors"), mood: pairs("mood") }
+    };
 
     let mut anchors = Vec::new();
     let mut boxes = Vec::new();
@@ -565,7 +598,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     crate::sound::validate(top, &shots, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, anchors, boxes, props, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, stage, anchors, boxes, props, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {

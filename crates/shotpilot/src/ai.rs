@@ -334,6 +334,72 @@ pub struct Planned {
     pub skeleton: Vec<craft::Slot>,
 }
 
+pub fn stage_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string", "description": "the whole set in 3-5 sentences: layout, scale, light, materials, mood"},
+            "anchors": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string", "description": "what is there, what it is made of, the light on it, where a camera has room and what blocks the view"},
+                },
+                "required": ["name", "description"],
+                "additionalProperties": false,
+            }},
+            "mood": {"type": "object", "description": "for each mood-board frame, the anchor whose scout photo suits it best",
+                     "properties": {"place": {"type": "string"}, "detail": {"type": "string"}, "threat": {"type": "string"}, "title": {"type": "string"}},
+                     "required": ["place", "detail", "threat", "title"], "additionalProperties": false},
+        },
+        "required": ["summary", "anchors", "mood"],
+        "additionalProperties": false,
+    })
+}
+
+/// Read the level from the scout photos: a description of the set and of each anchor, and
+/// which anchor each mood-board frame should start from. One pass, written to `stage:`.
+pub fn understand_stage(defn: &Definition, claude: &dyn Claude) -> Result<model::StageCfg> {
+    let photos = crate::scout::planner_blocks(defn, 12);
+    if photos.is_empty() {
+        bail!("no scout photos yet: take them first (shotpilot scout, or the ロケハン stage in the app)");
+    }
+    let system = "You are the location scout on a game trailer shoot. From photos taken inside the game engine and the \
+                  list of named anchors, describe the set the way a cinematographer needs it before planning shots. \
+                  Describe only what the photos and data show; where something is unclear, say so plainly.";
+    let mut text = format!(
+        "Game pitch: {}\nAnchors (name: position, size):\n{}\n\nProps that can be made to appear:\n{}\n\n\
+         The photos are labelled with their anchor; each looks at that anchor from the side facing the middle of the set.\n\
+         Write `summary` and each anchor's `description` in the same language as the pitch. For `mood`, pick from the \
+         anchor names above: `place` = the widest establishing view, `detail` = a small object with texture, \
+         `threat` = where something unsettling could stand or watch, `title` = a calm wide view with sky or open space.",
+        if defn.teaser.pitch.is_empty() { defn.brief.core.as_str() } else { defn.teaser.pitch.as_str() },
+        anchors_list(defn),
+        props_list(defn)
+    );
+    if !defn.brief.genre.is_empty() {
+        text.push_str(&format!("\nGenre: {}", defn.brief.genre));
+    }
+    let mut content = photos;
+    content.push(json!({"type": "text", "text": text}));
+    let out = ask_json(claude, system, Value::Array(content), stage_schema())?;
+    let names: Vec<String> = defn.anchors.iter().map(|(n, _)| n.clone()).collect();
+    let anchors: Vec<(String, String)> = out["anchors"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|a| {
+            let n = a["name"].as_str()?.to_string();
+            names.contains(&n).then(|| (n, a["description"].as_str().unwrap_or("").to_string()))
+        })
+        .collect();
+    let mood: Vec<(String, String)> = ["place", "detail", "threat", "title"]
+        .iter()
+        .filter_map(|k| out["mood"][k].as_str().filter(|a| names.iter().any(|n| n == a)).map(|a| (k.to_string(), a.to_string())))
+        .collect();
+    Ok(model::StageCfg { summary: out["summary"].as_str().unwrap_or("").to_string(), anchors, mood })
+}
+
 /// The planner's system prompt: role, teaser shape and engine conventions. The brief,
 /// skeleton and craft rules go in the user turn (they change per project).
 pub fn plan_system() -> String {
@@ -373,6 +439,13 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     );
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
+    }
+    if !defn.stage.is_empty() {
+        let mut st = format!("\n## Stage (from the location scout)\n{}\n", defn.stage.summary);
+        for (n, d) in &defn.stage.anchors {
+            st.push_str(&format!("- {n}: {d}\n"));
+        }
+        user.push_str(&st);
     }
     let scout = crate::scout::planner_blocks(defn, 8);
     if !scout.is_empty() {

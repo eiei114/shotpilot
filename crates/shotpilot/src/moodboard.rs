@@ -24,17 +24,25 @@ pub fn image_model() -> String {
     std::env::var("SHOTPILOT_IMAGE_MODEL").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| DEFAULT_IMAGE_MODEL.into())
 }
 
+/// One image to make: a prompt, and optionally a picture to start from (a scout photo:
+/// keep its geometry and framing, change the light and atmosphere).
+#[derive(Debug, Clone)]
+pub struct ImageJob {
+    pub prompt: String,
+    pub base: Option<PathBuf>,
+}
+
 /// Makes images from prompts. Tests swap in a fake; the real ones are [`CodexImages`]
 /// (the user's logged-in Codex CLI) and [`OpenAiImages`] (an API key).
 pub trait ImageGen {
-    fn generate(&self, prompt: &str) -> Result<Vec<u8>>;
+    fn generate(&self, job: &ImageJob) -> Result<Vec<u8>>;
 
     /// Several images; backends with a high per-call cost make them in one go.
     /// Returns the images made so far if one fails after the first.
-    fn generate_many(&self, prompts: &[String]) -> Result<Vec<Vec<u8>>> {
+    fn generate_many(&self, jobs: &[ImageJob]) -> Result<Vec<Vec<u8>>> {
         let mut out = Vec::new();
-        for p in prompts {
-            match self.generate(p) {
+        for j in jobs {
+            match self.generate(j) {
                 Ok(b) => out.push(b),
                 Err(e) if out.is_empty() => return Err(e),
                 Err(_) => break,
@@ -61,18 +69,35 @@ impl CodexImages {
         Some(CodexImages { exe, home })
     }
 
-    /// The instruction Codex gets (on stdin).
-    pub fn instruction(prompts: &[String]) -> String {
+    /// The instruction Codex gets (on stdin), and the base images to attach (in order).
+    pub fn instruction(jobs: &[ImageJob]) -> (String, Vec<PathBuf>) {
+        let mut attach: Vec<PathBuf> = Vec::new();
         let mut s = format!(
             "Use your image generation tool to generate exactly {} image(s), one per prompt below, in this order. \
              Landscape 16:9. Do not write, copy or save any files and do not run commands: generating the images is the \
              whole task. When done, reply with just the number of images generated.\n",
-            prompts.len()
+            jobs.len()
         );
-        for (i, p) in prompts.iter().enumerate() {
-            s.push_str(&format!("\n--- Image {} ---\n{p}\n", i + 1));
+        for (i, j) in jobs.iter().enumerate() {
+            s.push_str(&format!("\n--- Image {} ---\n", i + 1));
+            if let Some(b) = &j.base {
+                let k = match attach.iter().position(|a| a == b) {
+                    Some(k) => k,
+                    None => {
+                        attach.push(b.clone());
+                        attach.len() - 1
+                    }
+                };
+                s.push_str(&format!(
+                    "Start from attached image #{} (a frame from the actual game): keep its architecture, layout, \
+                     camera position and framing; change only the lighting, weather, colour grade and atmosphere.\n",
+                    k + 1
+                ));
+            }
+            s.push_str(&j.prompt);
+            s.push('\n');
         }
-        s
+        (s, attach)
     }
 }
 
@@ -101,18 +126,21 @@ pub fn codex_images(dir: &Path) -> Vec<Vec<u8>> {
 }
 
 impl ImageGen for CodexImages {
-    fn generate(&self, prompt: &str) -> Result<Vec<u8>> {
-        self.generate_many(&[prompt.to_string()])?.into_iter().next().ok_or_else(|| Error::user("Codex made no image"))
+    fn generate(&self, job: &ImageJob) -> Result<Vec<u8>> {
+        self.generate_many(std::slice::from_ref(job))?.into_iter().next().ok_or_else(|| Error::user("Codex made no image"))
     }
 
-    fn generate_many(&self, prompts: &[String]) -> Result<Vec<Vec<u8>>> {
+    fn generate_many(&self, jobs: &[ImageJob]) -> Result<Vec<Vec<u8>>> {
         use std::io::Write;
         use std::process::{Command, Stdio};
         let cwd = std::env::temp_dir();
         let mut cmd = Command::new(&self.exe);
-        cmd.args(["exec", "--json", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-C"])
-            .arg(&cwd)
-            .arg("-")
+        let (text, attach) = CodexImages::instruction(jobs);
+        cmd.args(["exec", "--json", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-C"]).arg(&cwd);
+        for a in &attach {
+            cmd.arg("-i").arg(a);
+        }
+        cmd.arg("-")
             .current_dir(&cwd)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -123,7 +151,6 @@ impl ImageGen for CodexImages {
             cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
         }
         let mut child = cmd.spawn().map_err(|e| Error::user(format!("cannot start Codex ({}): {e}", self.exe.display())))?;
-        let text = CodexImages::instruction(prompts);
         let mut stdin = child.stdin.take().expect("piped");
         let writer = std::thread::spawn(move || {
             let r = stdin.write_all(text.as_bytes());
@@ -165,17 +192,39 @@ impl OpenAiImages {
 }
 
 impl ImageGen for OpenAiImages {
-    fn generate(&self, prompt: &str) -> Result<Vec<u8>> {
+    fn generate(&self, job: &ImageJob) -> Result<Vec<u8>> {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(Duration::from_secs(30))
             .timeout_read(Duration::from_secs(300))
             .build();
-        let body = json!({"model": self.model, "prompt": prompt, "size": "1536x1024", "n": 1, "quality": "medium"});
-        let resp = agent
-            .post("https://api.openai.com/v1/images/generations")
-            .set("content-type", "application/json")
-            .set("authorization", &format!("Bearer {}", self.key))
-            .send_string(&body.to_string());
+        let auth = format!("Bearer {}", self.key);
+        let resp = match &job.base {
+            None => {
+                let body = json!({"model": self.model, "prompt": job.prompt, "size": "1536x1024", "n": 1, "quality": "medium"});
+                agent
+                    .post("https://api.openai.com/v1/images/generations")
+                    .set("content-type", "application/json")
+                    .set("authorization", &auth)
+                    .send_string(&body.to_string())
+            }
+            Some(base) => {
+                let bytes = std::fs::read(base)?;
+                let (ext, media) = image_type(&bytes).ok_or_else(|| Error::user("the base image is not PNG / JPEG / WebP"))?;
+                let boundary = format!("shotpilot{}", chrono::Local::now().timestamp_nanos_opt().unwrap_or(0));
+                let mut body: Vec<u8> = Vec::new();
+                for (k, v) in [("model", self.model.as_str()), ("prompt", job.prompt.as_str()), ("size", "1536x1024"), ("quality", "medium")] {
+                    body.extend(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n").as_bytes());
+                }
+                body.extend(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"image[]\"; filename=\"base.{ext}\"\r\nContent-Type: {media}\r\n\r\n").as_bytes());
+                body.extend(&bytes);
+                body.extend(format!("\r\n--{boundary}--\r\n").as_bytes());
+                agent
+                    .post("https://api.openai.com/v1/images/edits")
+                    .set("content-type", &format!("multipart/form-data; boundary={boundary}"))
+                    .set("authorization", &auth)
+                    .send_bytes(&body)
+            }
+        };
         let text = match resp {
             Ok(r) => r.into_string().map_err(|e| Error::user(format!("OpenAI: could not read the reply: {e}")))?,
             Err(ureq::Error::Status(code, r)) => {
@@ -289,10 +338,34 @@ pub const FRAMES: &[(&str, &str)] = &[
     ("title", "a calm, wide closing image with empty space in the upper third for a title card"),
 ];
 
-/// Image prompts for the mood board, from the pitch and the brief.
+/// The scout photo a frame starts from (stage.mood picks the anchor; its front view).
+pub fn base_for(defn: &Definition, frame: &str) -> Option<PathBuf> {
+    let anchor = defn.stage.mood_base(frame)?;
+    let root = defn.root();
+    let idx = crate::scout::load_index(&root);
+    let file = idx["anchors"][anchor].as_array()?.iter().find(|v| v["side"] == "front")?["file"].as_str()?.to_string();
+    let p = root.join(file);
+    p.is_file().then_some(p)
+}
+
+/// Image jobs for the mood board: frame key, prompt, and the scout photo it starts from.
+pub fn jobs(defn: &Definition, direction: &str) -> Vec<(String, ImageJob)> {
+    prompts(defn, direction)
+        .into_iter()
+        .map(|(k, prompt)| {
+            let base = base_for(defn, &k);
+            (k, ImageJob { prompt, base })
+        })
+        .collect()
+}
+
+/// Image prompts for the mood board, from the pitch, the brief and the stage.
 pub fn prompts(defn: &Definition, direction: &str) -> Vec<(String, String)> {
     let b = &defn.brief;
     let mut tone = Vec::new();
+    if !defn.stage.summary.is_empty() {
+        tone.push(format!("The set: {}", defn.stage.summary));
+    }
     for (label, v) in [("Game", defn.teaser.pitch.as_str()), ("Genre", b.genre.as_str()), ("Core experience", b.core.as_str()),
                        ("Notes", b.notes.as_str())] {
         if !v.is_empty() {
