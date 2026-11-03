@@ -393,7 +393,17 @@ def run_scan(job):
         if tagged or label.startswith(prefix):
             loc = a.get_actor_location()
             name = label[len(prefix):] if label.startswith(prefix) else label
-            anchors[name.lower().replace(" ", "_")] = [round(loc.x, 1), round(loc.y, 1), round(loc.z, 1)]
+            at = [round(loc.x, 1), round(loc.y, 1), round(loc.z, 1)]
+            entry = at
+            # the size of what is there, so shots can be framed for it (empty actors have none)
+            try:
+                origin, extent = a.get_actor_bounds(False)
+                size = [round(2 * extent.x, 1), round(2 * extent.y, 1), round(2 * extent.z, 1)]
+                if all(v > 1.0 for v in size):
+                    entry = {"at": at, "size": size, "center": [round(origin.x, 1), round(origin.y, 1), round(origin.z, 1)]}
+            except Exception:  # bounds are optional: keep the point
+                entry = at
+            anchors[name.lower().replace(" ", "_")] = entry
     return {"anchors": anchors}
 
 

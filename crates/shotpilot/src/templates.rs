@@ -31,13 +31,14 @@ brief:
   references: []
 
 # Named points in the level. `shotpilot scan` fills these from actors tagged
-# `shotpilot` (or labelled SP_*). Units: cm, Z up.
+# `shotpilot` (or labelled SP_*), with the size of what is there. Units: cm, Z up.
+# A point alone is fine too: `name: [x, y, z]` (previz then draws a person-sized box).
 anchors:
-  gate: [0, -1500, 100]
-  well: [0, 0, 80]
-  window: [800, 600, 450]
-  door: [-700, 500, 120]
-  lantern: [300, -300, 180]
+  gate: {at: [0, -1500, 100], size: [300, 40, 260], center: [0, -1500, 130]}
+  well: {at: [0, 0, 80], size: [140, 140, 90], center: [0, 0, 45]}
+  window: {at: [800, 600, 450], size: [20, 140, 160]}
+  door: {at: [-700, 500, 120], size: [20, 110, 220], center: [-700, 500, 110]}
+  lantern: {at: [300, -300, 180], size: [30, 30, 45]}
 
 defaults:
   lens: {focal_length: 35, aperture: 2.8}

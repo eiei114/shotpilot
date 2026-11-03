@@ -267,9 +267,20 @@ pub fn read_stream(reader: impl BufRead) -> Result<String> {
 // --------------------------------------------------------------------------- plan
 
 fn anchors_list(defn: &Definition) -> String {
+    let sensor = defn.defaults.get("lens").and_then(|l| l.get("sensor_width")).and_then(num).unwrap_or(36.0);
+    let (w, h) = defn.teaser.resolution;
+    let aspect = if h > 0 { w as f64 / h as f64 } else { 16.0 / 9.0 };
+    let xyz = |v: &[f64; 3]| v.iter().map(|x| yamlio::fmt_float(*x)).collect::<Vec<_>>().join(", ");
     defn.anchors
         .iter()
-        .map(|(k, v)| format!("- {k}: [{}]", v.iter().map(|x| yamlio::fmt_float(*x)).collect::<Vec<_>>().join(", ")))
+        .map(|(k, v)| match defn.known_box(k) {
+            Some(b) => format!(
+                "- {k}: [{}], {} x {} x {} cm (W x D x H, box centre [{}]); fills the frame height from about {} cm at 35mm",
+                xyz(v), model::fmt_g(b.size[0]), model::fmt_g(b.size[1]), model::fmt_g(b.size[2]), xyz(&b.center),
+                model::fmt_g((craft::distance_for(b.size[2], 35.0, sensor, aspect) / 10.0).round() * 10.0)
+            ),
+            None => format!("- {k}: [{}] (size unknown)", xyz(v)),
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }

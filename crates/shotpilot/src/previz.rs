@@ -9,8 +9,8 @@ use std::path::Path;
 use sha2::{Digest, Sha256};
 
 use crate::error::Result;
-use crate::geometry::{self as g, Vec3};
-use crate::model::{num, ResolvedShot};
+use crate::geometry as g;
+use crate::model::{num, AnchorBox, ResolvedShot};
 
 pub type Rgb = [u8; 3];
 
@@ -211,7 +211,7 @@ fn anchor_color(name: &str) -> Rgb {
     [90 + h[0] % 150, 90 + h[1] % 150, 90 + h[2] % 150]
 }
 
-pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, Vec3)], w: u32, h: u32, ground_z: f64,
+pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, AnchorBox)], w: u32, h: u32, ground_z: f64,
                     tint: Option<Rgb>) -> Canvas {
     let cam = shot.camera_at(frame);
     let fl = shot.focal_length();
@@ -256,26 +256,18 @@ pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, Vec3)],
         }
     }
 
-    // anchors as human-scale wireframe boxes (120 x 120 x 180 cm), far to near
+    // anchors as wireframe boxes (their known size, else 120 x 120 x 180 cm), far to near
     let size: i64 = if w >= 640 { 2 } else { 1 };
-    let mut drawn: Vec<(f64, &str, Vec3)> = anchors
+    let mut drawn: Vec<(f64, &str, AnchorBox)> = anchors
         .iter()
-        .filter_map(|(name, pos)| g::project(*pos, &cam, fl, w, h, sensor).map(|c| (c.2, name.as_str(), *pos)))
+        .filter_map(|(name, b)| g::project(b.center, &cam, fl, w, h, sensor).map(|c| (c.2, name.as_str(), *b)))
         .collect();
     drawn.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal).then(b.1.cmp(a.1)));
     const EDGES: [(usize, usize); 12] =
         [(0, 1), (1, 3), (3, 2), (2, 0), (4, 5), (5, 7), (7, 6), (6, 4), (0, 4), (1, 5), (2, 6), (3, 7)];
-    for (_, name, pos) in drawn {
+    for (_, name, b) in drawn {
         let col = anchor_color(name);
-        let mut corners = Vec::with_capacity(8);
-        for sz in [-1.0, 1.0] {
-            for sy in [-1.0, 1.0] {
-                for sx in [-1.0, 1.0] {
-                    corners.push(g::project([pos[0] + sx * 60.0, pos[1] + sy * 60.0, pos[2] + sz * 90.0], &cam, fl, w, h,
-                                            sensor));
-                }
-            }
-        }
+        let corners: Vec<Option<(f64, f64, f64)>> = b.corners().iter().map(|p| g::project(*p, &cam, fl, w, h, sensor)).collect();
         for (a, b) in EDGES {
             if let (Some(p), Some(q)) = (corners[a], corners[b]) {
                 cv.line(p.0, p.1, q.0, q.1, col);
@@ -327,7 +319,7 @@ pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, Vec3)],
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn render_shot(shot: &ResolvedShot, frames: &[i64], anchors: &[(String, Vec3)], out_dir: &Path, w: u32, h: u32,
+pub fn render_shot(shot: &ResolvedShot, frames: &[i64], anchors: &[(String, AnchorBox)], out_dir: &Path, w: u32, h: u32,
                    ground_z: f64, tint: Option<Rgb>) -> Result<Vec<String>> {
     std::fs::create_dir_all(out_dir)?;
     let mut written = Vec::with_capacity(frames.len());

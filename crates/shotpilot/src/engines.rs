@@ -196,7 +196,7 @@ impl Engine for MockEngine {
             // cap mock resolution: it's a stand-in, not a renderer
             let k = (480.0 / w).min(1.0);
             let frames: Vec<i64> = it["frames"].as_array().map(|a| a.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
-            previz::render_shot(&shot, &frames, &self.defn.anchors, Path::new(it["out_dir"].as_str().unwrap_or(".")),
+            previz::render_shot(&shot, &frames, &self.defn.anchor_boxes(), Path::new(it["out_dir"].as_str().unwrap_or(".")),
                                 ((w * k) as u32).max(2), ((h * k) as u32).max(2), 0.0, Some([255, 170, 60]))?;
             renders.insert(key, json!({"status": "ok"}));
         }
@@ -220,7 +220,18 @@ impl Engine for MockEngine {
         if level.exists() {
             return Ok(json!({"anchors": read_json(&level)?}));
         }
-        let anchors: Map<String, Value> = self.defn.anchors.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
+        let anchors: Map<String, Value> = self
+            .defn
+            .anchors
+            .iter()
+            .map(|(k, v)| {
+                let entry = match self.defn.known_box(k) {
+                    Some(b) => json!({"at": v, "size": b.size, "center": b.center}),
+                    None => json!(v),
+                };
+                (k.clone(), entry)
+            })
+            .collect();
         Ok(json!({"anchors": anchors}))
     }
 }

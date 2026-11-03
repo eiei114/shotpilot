@@ -140,6 +140,46 @@ impl BriefCfg {
     }
 }
 
+/// Size of what sits at an anchor, when known (from `scan`, or written by hand).
+/// Without one, previz draws a person-sized box (120 x 120 x 180 cm) centred on the anchor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AnchorBox {
+    /// World-space centre of the box (cm).
+    pub center: Vec3,
+    /// Extent along X, Y, Z (cm).
+    pub size: Vec3,
+}
+
+pub const DEFAULT_BOX: Vec3 = [120.0, 120.0, 180.0];
+
+impl AnchorBox {
+    pub fn corners(&self) -> [Vec3; 8] {
+        let mut out = [[0.0; 3]; 8];
+        let mut i = 0;
+        for sz in [-1.0, 1.0] {
+            for sy in [-1.0, 1.0] {
+                for sx in [-1.0, 1.0] {
+                    out[i] = [
+                        self.center[0] + sx * self.size[0] / 2.0,
+                        self.center[1] + sy * self.size[1] / 2.0,
+                        self.center[2] + sz * self.size[2] / 2.0,
+                    ];
+                    i += 1;
+                }
+            }
+        }
+        out
+    }
+
+    pub fn contains(&self, p: Vec3, margin: f64) -> bool {
+        (0..3).all(|k| (p[k] - self.center[k]).abs() <= self.size[k] / 2.0 + margin)
+    }
+
+    pub fn to_json(&self) -> Value {
+        json!({"center": self.center, "size": self.size})
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Definition {
     pub path: PathBuf,
@@ -147,6 +187,8 @@ pub struct Definition {
     pub teaser: TeaserCfg,
     pub brief: BriefCfg,
     pub anchors: Vec<(String, Vec3)>,
+    /// Anchors whose size is known (`anchors.<name>: {at, size, center}`).
+    pub boxes: Vec<(String, AnchorBox)>,
     pub defaults: Map<String, Value>,
     pub qualities: Map<String, Value>,
     /// `audio:` (BGM, master gain). Sound effects live on their shots (`sfx:`). See sound.rs.
@@ -176,6 +218,21 @@ impl Definition {
 
     pub fn anchor(&self, name: &str) -> Option<Vec3> {
         self.anchors.iter().find(|(n, _)| n == name).map(|(_, v)| *v)
+    }
+
+    /// The known box of an anchor, if its size was given.
+    pub fn known_box(&self, name: &str) -> Option<AnchorBox> {
+        self.boxes.iter().find(|(n, _)| n == name).map(|(_, b)| *b)
+    }
+
+    /// The box to draw for an anchor: its known size, or a person-sized default.
+    pub fn anchor_box(&self, name: &str) -> Option<AnchorBox> {
+        self.known_box(name).or_else(|| self.anchor(name).map(|at| AnchorBox { center: at, size: DEFAULT_BOX }))
+    }
+
+    /// Every anchor with the box previz draws for it.
+    pub fn anchor_boxes(&self) -> Vec<(String, AnchorBox)> {
+        self.anchors.iter().filter_map(|(n, _)| self.anchor_box(n).map(|b| (n.clone(), b))).collect()
     }
 }
 
@@ -374,10 +431,16 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
     let brief = parse_brief(top.get("brief"), &mut errs);
 
     let mut anchors = Vec::new();
+    let mut boxes = Vec::new();
     for (name, v) in obj(top.get("anchors")) {
-        match vec3(&v) {
-            Some(vec) => anchors.push((name, vec)),
-            None => errs.push(format!("anchors.{name}: must be [x, y, z]")),
+        match parse_anchor(&v) {
+            Ok((at, b)) => {
+                anchors.push((name.clone(), at));
+                if let Some(b) = b {
+                    boxes.push((name, b));
+                }
+            }
+            Err(e) => errs.push(format!("anchors.{name}: {e}")),
         }
     }
 
@@ -423,7 +486,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
 
     crate::sound::validate(top, &shots, &mut errs);
 
-    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, anchors, defaults, qualities, audio, shots };
+    let defn = Definition { path: path.to_path_buf(), project, teaser, brief, anchors, boxes, defaults, qualities, audio, shots };
     if errs.is_empty() {
         for i in 0..defn.shots.len() {
             if let Err(e) = resolve_shot(&defn, &defn.shots[i], i) {
@@ -435,6 +498,27 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         bail!("{} has {} problem(s):\n  - {}", path.display(), errs.len(), errs.join("\n  - "));
     }
     Ok(defn)
+}
+
+/// `[x, y, z]`, or `{at: [x, y, z], size: [w, d, h], center: [x, y, z]}` (centre defaults to `at`).
+pub fn parse_anchor(v: &Value) -> std::result::Result<(Vec3, Option<AnchorBox>), String> {
+    if let Some(at) = vec3(v) {
+        return Ok((at, None));
+    }
+    let Some(m) = v.as_object() else { return Err("must be [x, y, z] or {at: [x, y, z], size: [w, d, h]}".into()) };
+    let at = m.get("at").and_then(vec3).ok_or("`at` must be [x, y, z]")?;
+    let b = match m.get("size") {
+        None | Some(Value::Null) => None,
+        Some(s) => {
+            let size = vec3(s).filter(|s| s.iter().all(|v| *v > 0.0)).ok_or("`size` must be [w, d, h] in cm, all > 0")?;
+            let center = match m.get("center") {
+                None | Some(Value::Null) => at,
+                Some(c) => vec3(c).ok_or("`center` must be [x, y, z]")?,
+            };
+            Some(AnchorBox { center, size })
+        }
+    };
+    Ok((at, b))
 }
 
 fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {

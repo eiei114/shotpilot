@@ -191,6 +191,12 @@ pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: 
             a.into_iter().map(|(k, v)| (k, json!(v))).collect()
         };
         body["anchors"] = Value::Object(anchors);
+        // only when sizes are known, so previz takes of projects without them stay valid
+        if !defn.boxes.is_empty() {
+            let mut b = defn.boxes.clone();
+            b.sort_by(|x, y| x.0.cmp(&y.0));
+            body["anchor_boxes"] = Value::Object(b.into_iter().map(|(k, v)| (k, v.to_json())).collect());
+        }
         body["previz"] = json!(PREVIZ_VERSION);
     } else {
         body["map"] = json!(defn.project.map);

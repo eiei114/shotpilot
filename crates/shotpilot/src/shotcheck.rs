@@ -11,7 +11,7 @@
 use serde_json::{json, Value};
 
 use crate::geometry::{self as g, round_to, Vec3};
-use crate::model::{beat_guide, fmt_g, str_of, Definition, ResolvedShot, BEATS};
+use crate::model::{beat_guide, fmt_g, str_of, AnchorBox, Definition, ResolvedShot, BEATS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
@@ -58,7 +58,11 @@ pub const RULES: &[Rule] = &[
     Rule { id: "hook.long", severity: Severity::P1, basis: "inferred",
            summary: "The hook is short (teaser <= 6 s, gameplay trailer <= 3 s)" },
     Rule { id: "camera.inside", severity: Severity::P1, basis: "inferred",
-           summary: "The camera is not inside its subject (>= 40 cm away)" },
+           summary: "The camera is never inside its subject (outside its box, or >= 40 cm away when its size is unknown)" },
+    Rule { id: "frame.lost", severity: Severity::P2, basis: "inferred",
+           summary: "The subject reads: it fills >= 5% of the frame height (wide establishing and title shots excepted)" },
+    Rule { id: "frame.cropped", severity: Severity::P2, basis: "inferred",
+           summary: "A close-up shows a chosen part: the subject is at most 4x the frame height" },
     Rule { id: "shot.length", severity: Severity::P2, basis: "inferred",
            summary: "Shots run 1-8 s" },
     Rule { id: "tempo.flat", severity: Severity::P2, basis: "inferred",
@@ -138,6 +142,65 @@ fn angle_between(a: Vec3, b: Vec3) -> f64 {
     }
     let d = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (la * lb);
     d.clamp(-1.0, 1.0).acos().to_degrees()
+}
+
+/// How a shot frames its subject (the look_at anchor, else the anchor it is placed from).
+#[derive(Debug, Clone)]
+pub struct Framing {
+    pub subject: String,
+    /// The subject's size is known (else the person-sized default box was used).
+    pub known: bool,
+    /// Projected height of the subject's box / frame height, at the first and last frame.
+    /// Infinite when the camera is inside or right against the box.
+    pub fill: (f64, f64),
+    pub inside: bool,
+}
+
+impl Framing {
+    pub fn to_json(&self) -> Value {
+        let f = |v: f64| if v.is_finite() { json!(round_to(v, 2)) } else { Value::Null };
+        json!({"subject": self.subject, "known": self.known, "fill": [f(self.fill.0), f(self.fill.1)],
+               "inside": self.inside, "size": size_name(self.fill.0.min(self.fill.1))})
+    }
+}
+
+/// A plain shot-size word for how much of the frame the subject fills.
+pub fn size_name(fill: f64) -> &'static str {
+    match fill {
+        f if f > 1.6 => "detail",
+        f if f > 0.75 => "close",
+        f if f > 0.35 => "medium",
+        f if f > 0.12 => "full",
+        _ => "wide",
+    }
+}
+
+fn subject_name(defn: &Definition, shot: &ResolvedShot) -> Option<String> {
+    let cam = &defn.shots.get(shot.index)?["camera"];
+    let look = cam.get("look_at").and_then(Value::as_str).filter(|n| defn.anchor(n).is_some());
+    look.or_else(|| cam.get("anchor").and_then(Value::as_str)).map(str::to_string)
+}
+
+fn fill_at(b: &AnchorBox, cam: &crate::geometry::Xform, focal: f64, sensor: f64, w: u32, h: u32) -> f64 {
+    let pts: Vec<Option<(f64, f64, f64)>> = b.corners().iter().map(|p| g::project(*p, cam, focal, w, h, sensor)).collect();
+    if pts.iter().any(Option::is_none) {
+        return f64::INFINITY; // a corner behind the lens: the camera is inside or against it
+    }
+    let ys: Vec<f64> = pts.iter().flatten().map(|p| p.1).collect();
+    let span = ys.iter().cloned().fold(f64::MIN, f64::max) - ys.iter().cloned().fold(f64::MAX, f64::min);
+    span / h as f64
+}
+
+pub fn framing(defn: &Definition, shot: &ResolvedShot) -> Option<Framing> {
+    let subject = subject_name(defn, shot)?;
+    let b = defn.anchor_box(&subject)?;
+    let (w, h) = defn.teaser.resolution;
+    let (w, h) = (w.max(1) as u32, h.max(1) as u32);
+    let (focal, sensor) = (shot.focal_length(), shot.sensor_width());
+    let fill = (fill_at(&b, &shot.start, focal, sensor, w, h), fill_at(&b, &shot.end, focal, sensor, w, h));
+    let known = defn.known_box(&subject).is_some();
+    let inside = known && (b.contains(shot.start.location, 10.0) || b.contains(shot.end.location, 10.0));
+    Some(Framing { subject, known, fill, inside })
 }
 
 /// Lint a shot list. Findings are sorted most severe first, then by shot order.
@@ -238,14 +301,37 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
         out.push("title.short", None, format!("title beat holds {}s", fmt_g(title)), "Hold the title shot at least 2s.");
     }
 
-    // ---- camera
+    // ---- camera and framing
     for s in shots {
-        if let Some(t) = s.target {
-            let near = dist(s.start.location, t).min(dist(s.end.location, t));
-            if near < 40.0 {
-                out.push("camera.inside", Some(&s.id),
-                         format!("camera comes within {}cm of what it looks at", fmt_g(near.round())),
-                         "Pull the camera back (larger offset) or use a longer lens instead.");
+        let fr = framing(defn, s);
+        match &fr {
+            Some(f) if f.known => {
+                if f.inside {
+                    out.push("camera.inside", Some(&s.id), format!("the camera is inside `{}`", f.subject),
+                             "Pull the camera back out of the subject, or frame a part of it with a longer lens.");
+                }
+                let (lo, hi) = (f.fill.0.min(f.fill.1), f.fill.0.max(f.fill.1));
+                let wide_ok = matches!(s.beat.as_deref(), Some("establish") | Some("title"));
+                if !f.inside && hi < 0.05 && !wide_ok {
+                    out.push("frame.lost", Some(&s.id),
+                             format!("`{}` fills only {}% of the frame height", f.subject, fmt_g((hi * 100.0).round())),
+                             "Move closer or use a longer lens so the subject reads.");
+                }
+                if !f.inside && lo.is_finite() && lo > 4.0 {
+                    out.push("frame.cropped", Some(&s.id),
+                             format!("`{}` is {}x the frame height; only a sliver of it shows", f.subject, fmt_g(round_to(lo, 1))),
+                             "Pull back or use a wider lens, unless this detail is the point.");
+                }
+            }
+            _ => {
+                if let Some(t) = s.target {
+                    let near = dist(s.start.location, t).min(dist(s.end.location, t));
+                    if near < 40.0 {
+                        out.push("camera.inside", Some(&s.id),
+                                 format!("camera comes within {}cm of what it looks at", fmt_g(near.round())),
+                                 "Pull the camera back (larger offset) or use a longer lens instead.");
+                    }
+                }
             }
         }
     }

@@ -395,6 +395,14 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("{}", serde_json::to_string_pretty(&v)?);
                 return Ok(0);
             }
+            for s in ws.resolved()? {
+                if let Some(fr) = shotpilot::shotcheck::framing(&ws.defn, &s) {
+                    let pct = |v: f64| if v.is_finite() { format!("{}%", (v * 100.0).round()) } else { "inside".into() };
+                    println!("  {:<24} {:<10} fills {} -> {} of the frame height ({}{})", s.id, fr.subject, pct(fr.fill.0),
+                             pct(fr.fill.1), shotpilot::shotcheck::size_name(fr.fill.0.min(fr.fill.1)),
+                             if fr.known { "" } else { ", size unknown" });
+                }
+            }
             if found.is_empty() {
                 println!("ok: no findings");
             }

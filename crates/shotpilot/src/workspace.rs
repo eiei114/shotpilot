@@ -378,7 +378,7 @@ impl Workspace {
                 std::fs::remove_dir_all(&d)?; // forced re-render: drop old frames and cached segments
             }
             let frames = fp::frame_list(s, q);
-            let files = previz::render_shot(s, &frames, &self.defn.anchors, &d, w as u32, h as u32, ground_z, None)?;
+            let files = previz::render_shot(s, &frames, &self.defn.anchor_boxes(), &d, w as u32, h as u32, ground_z, None)?;
             let dt = t0.elapsed().as_secs_f64();
             let info = self.take_info(s, q, &frames, &files, dt, "previz");
             self.state.write_take(&s.id, quality, rfp, info)?;
@@ -551,15 +551,22 @@ impl Workspace {
         names.sort_by(|a, b| a.0.cmp(&b.0));
         let mut report = ScanReport::default();
         let mut updates = Vec::new();
-        for (name, pos) in names {
-            let Some(p) = model::vec3(&pos) else { continue };
-            let new = json!(p.map(|v| round_to(v, 1)));
+        for (name, found) in names {
+            let Ok((at, b)) = model::parse_anchor(&found) else { continue };
+            let r = |v: crate::geometry::Vec3| v.map(|x| round_to(x, 1));
+            let (at, b) = (r(at), b.map(|b| model::AnchorBox { center: r(b.center), size: r(b.size) }));
+            let new = match b {
+                Some(b) if b.center == at => json!({"at": at, "size": b.size}),
+                Some(b) => json!({"at": at, "size": b.size, "center": b.center}),
+                None => json!(at),
+            };
             match self.defn.anchor(&name) {
                 None => {
                     report.added.push(name.clone());
                     updates.push((name, new));
                 }
-                Some(old) if old != p => {
+                // a size found in the level fills in; a hand-written one is kept when the level has none
+                Some(old) if old != at || (b.is_some() && self.defn.known_box(&name) != b) => {
                     report.moved.push(name.clone());
                     updates.push((name, new));
                 }

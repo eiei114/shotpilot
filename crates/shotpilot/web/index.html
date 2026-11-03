@@ -470,8 +470,16 @@ const RULE_JA = {
   "cut.jump": "ジャンプカット（30度ルール）", "runtime.target": "尺が目標から外れている", "hook.long": "hook が長い",
   "camera.inside": "カメラが被写体に近すぎる", "shot.length": "ショットの長さ", "tempo.flat": "テンポが変わらない",
   "tempo.escalate": "escalate が establish より長い", "repeat.move": "同じ動きが続く", "repeat.lens": "同じレンズが続く",
-  "title.short": "タイトルの尺が短い",
+  "title.short": "タイトルの尺が短い", "frame.lost": "被写体が小さすぎる", "frame.cropped": "被写体が大きすぎて切れている",
 };
+const SIZE_JA = { detail: "ディテール", close: "寄り", medium: "ミディアム", full: "全身・全体", wide: "引き" };
+/** "well 62% · ミディアム": how much of the frame height the subject fills (from its box). */
+function framingText(s) {
+  const f = s.framing; if (!f) return "";
+  const pct = (v) => (v == null ? "中" : `${Math.round(v * 100)}%`);
+  const fill = f.fill[0] === f.fill[1] ? pct(f.fill[0]) : `${pct(f.fill[0])}→${pct(f.fill[1])}`;
+  return `${f.subject} ${fill} · ${SIZE_JA[f.size] || f.size}${f.known ? "" : "（大きさ不明）"}`;
+}
 const BASIS_JA = { sourced: "出典あり", inferred: "推定・要校正" };
 const APPROVAL_JA = { approved: "承認済み", outdated: "変更あり", none: "未承認" };
 
@@ -760,7 +768,7 @@ function drawBrief() {
 
 function drawStructure() {
   const st = ui.status;
-  const key = JSON.stringify([st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.lens, moveOf(s), s.approval]), st.checks, st.ai?.ready, ui.busy]);
+  const key = JSON.stringify([st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.lens, moveOf(s), s.approval, s.framing]), st.checks, st.ai?.ready, ui.busy]);
   if (drawStructure.key === key && $("structpanel").childElementCount) return;
   drawStructure.key = key;
   const beats = ["hook", "establish", "escalate", "title"];
@@ -771,7 +779,8 @@ function drawStructure() {
       const fl = [...new Set(findingsFor(s.id).filter((f) => f.severity !== "P2").map((f) => f.severity))];
       return `<button class="scard" data-open="${esc(s.id)}"><span class="id">${s.index + 1}. ${esc(s.id)}${fl.map((v) => `<span class="sev ${v}">${v}</span>`).join("")}</span>
         <span class="p" title="${esc(s.purpose)}">${esc(s.purpose || "（目的なし）")}</span>
-        <span class="meta">${s.duration}s · ${s.lens ?? "?"}mm · ${esc(moveOf(s))} · ${esc(APPROVAL_JA[s.approval])}</span></button>`;
+        <span class="meta">${s.duration}s · ${s.lens ?? "?"}mm · ${esc(moveOf(s))} · ${esc(APPROVAL_JA[s.approval])}</span>
+        ${s.framing ? `<span class="meta" title="被写体の箱が画面の高さの何割を占めるか（最初→最後のフレーム）">被写体: ${esc(framingText(s))}</span>` : ""}</button>`;
     }).join("");
     return `<div class="beatcol" style="--c:var(--${b})"><h4>${b}<small>${ss.length} 本 · ${sec}s</small></h4>
       <div class="guide">${esc(BEAT_JA[b])}</div>${cards || `<div class="empty-col">まだありません</div>`}</div>`;
@@ -921,7 +930,8 @@ function drawTimeline() {
     const flags = sevs.length ? `<span class="fl">${sevs.map((v) => `<i class="${v}">${v}</i>`).join("")}</span>` : "";
     const okm = s.approval === "approved" ? `<span class="ok-mark" title="構図を承認済み">✓</span>`
       : s.approval === "outdated" ? `<span class="ok-mark outdated" title="承認の後で画が変わりました">✓?</span>` : "";
-    return `<div class="${cls}" data-id="${esc(s.id)}" style="flex:${s.duration} 1 0;--c:var(--${esc(s.beat || "muted")});${bg}" title="${esc(s.purpose)}">
+    return `<div class="${cls}" data-id="${esc(s.id)}" style="flex:${s.duration} 1 0;--c:var(--${esc(s.beat || "muted")});${bg}" title="${esc(s.purpose + (s.framing ? `
+被写体: ${framingText(s)}` : ""))}">
       <div class="beat"></div>
       <div class="top"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></div>${tag}${okm}${flags}
       <div class="bot"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span><span class="ladder">${ladder}</span></div></div>`;

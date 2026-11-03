@@ -337,6 +337,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         v["lens"] = s.lens.get("focal_length").cloned().unwrap_or(Value::Null);
         v["thumbs"] = Value::Object(thumbs);
         v["node"] = ws.defn.shots[row.index].clone();
+        v["framing"] = crate::shotcheck::framing(&ws.defn, s).map(|f| f.to_json()).unwrap_or(Value::Null);
         shots.push(v);
     }
     let total: f64 = resolved.iter().map(|s| s.duration).sum();

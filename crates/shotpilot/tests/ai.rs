@@ -113,7 +113,7 @@ fn plan_gets_the_brief_skeleton_and_craft_before_writing() {
     ai::plan(&f.ws.defn, None, None, None, Some("ジャンプスケアなしで"), &fake).unwrap();
     let req = &fake.calls.borrow()[0];
     let user = req["messages"][0]["content"].as_str().unwrap();
-    for part in ["## Brief", "Genre: 一人称ホラー", "Must show: 井戸", "## Skeleton", "## Craft rules",
+    for part in ["well: [0.0, 0.0, 80.0], 140 x 140 x 90 cm", "fills the frame height from about", "## Brief", "Genre: 一人称ホラー", "Must show: 井戸", "## Skeleton", "## Craft rules",
                  "Do not open on the title", "## Framing", "ジャンプスケアなしで"] {
         assert!(user.contains(part), "missing {part}:
 {user}");
