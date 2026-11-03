@@ -963,7 +963,7 @@ impl Workspace {
     /// Set fields under `finish:` (letterbox, title, end_card, font; null clears one).
     /// Editorial: it is burned in at the next cut, nothing re-renders.
     pub fn set_finish(&mut self, entries: &[(String, Value)]) -> Result<()> {
-        const KEYS: &[&str] = &["letterbox", "title", "end_card", "font"];
+        const KEYS: &[&str] = &["letterbox", "title", "end_card", "font", "grade", "typeface"];
         for (k, _) in entries {
             if !KEYS.contains(&k.as_str()) {
                 bail!("unknown finish field '{k}'. known: {}", KEYS.join(", "));
@@ -1175,8 +1175,20 @@ impl Workspace {
 
     /// Write a fresh shot list (from `plan`), keeping the rest of the file as it is.
     pub fn replace_all_shots(&mut self, shots: &[Value]) -> Result<()> {
+        self.replace_plan(shots, None)
+    }
+
+    /// Write a fresh plan: the shots and (when given) the script together, since script lines
+    /// refer to shot ids. Checked as a whole before anything is written.
+    pub fn replace_plan(&mut self, shots: &[Value], script: Option<&[Value]>) -> Result<()> {
         let mut doc = Doc::load(&self.path)?;
         doc.set_items("shots", shots)?;
+        match script {
+            Some(lines) => doc.set_items("script", lines)?,
+            // a script that points at shots that are gone would not parse: drop it with them
+            None if !self.defn.script.is_empty() => doc.set_items("script", &[])?,
+            None => {}
+        }
         model::parse(&doc.value()?, &self.path)?;
         doc.save(&self.path)?;
         self.reload()?;

@@ -1029,7 +1029,8 @@ fn plan(app: &App, body: &Map<String, Value>) -> Result<Value> {
     }
     let claude = (app.claude)(&app.settings())?;
     let p = ai::plan(&ws.defn, None, duration, n_shots, Some(note).filter(|n| !n.is_empty()), claude.as_ref())?;
-    ws.replace_all_shots(&p.shots)?;
+    ws.set_finish(&p.finish)?;
+    ws.replace_plan(&p.shots, Some(&p.script))?; // last, so the log entry annotated below is the plan
     let found = ws.check()?;
     let count = |sev: &str| found.iter().filter(|f| f.severity.as_str() == sev).count();
     let checks = json!({"P0": count("P0"), "P1": count("P1"), "P2": count("P2")});

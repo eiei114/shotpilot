@@ -92,24 +92,47 @@ fn shot_schema() -> Value {
     })
 }
 
+fn script_line_schema() -> Value {
+    let mut kinds: Vec<&str> = crate::script::SLOT_KINDS.to_vec();
+    kinds.extend(crate::script::OVERLAY_KINDS);
+    json!({
+        "type": "object",
+        "properties": {
+            "id": {"type": "string", "description": "short lowercase id, unique"},
+            "kind": {"type": "string", "enum": kinds},
+            "ja": {"type": "string", "description": "the line (in the pitch's language); empty only for black"},
+            "en": {"type": "string", "description": "a quiet English line under it, or empty"},
+            "head": {"type": "string", "description": "rule: its small heading; message: the chat room name; else empty"},
+            "from": {"type": "string", "description": "message: who sent it; else empty"},
+            "dur": {"type": "number", "description": "seconds"},
+            "after": {"type": "string", "description": "slots: the shot id or slot id it follows, or start; overlays: empty"},
+            "on": {"type": "string", "description": "overlays: the shot id it sits on; slots: empty"},
+            "at": {"type": "number", "description": "overlays: seconds into that shot; slots: 0"},
+        },
+        "required": ["id", "kind", "ja", "en", "head", "from", "dur", "after", "on", "at"],
+        "additionalProperties": false,
+    })
+}
+
 pub fn plan_schema() -> Value {
     let mut shot = shot_schema();
-    shot["properties"]["caption"] = json!({"type": "string", "description": "on-screen text burned in on this shot, or empty"});
     shot["properties"]["transition"] = json!({"type": "string", "enum": crate::finish::TRANSITIONS,
                                               "description": "how this shot hands over to the next one"});
     if let Some(req) = shot["required"].as_array_mut() {
-        req.push(json!("caption"));
         req.push(json!("transition"));
     }
+    let grades: Vec<&str> = std::iter::once("none").chain(crate::finish::GRADES.iter().map(|(n, _)| *n)).collect();
     json!({
         "type": "object",
         "properties": {
             "rationale": {"type": "string"},
+            "script": {"type": "array", "items": script_line_schema(),
+                       "description": "the teaser's text, written first: cards between shots and lines over them"},
             "shots": {"type": "array", "items": shot},
-            "title_card": {"type": "string", "description": "the title shown over the title shot"},
-            "end_card": {"type": "array", "items": {"type": "string"}, "description": "end card lines, or empty"},
+            "grade": {"type": "string", "enum": grades},
+            "letterbox": {"type": "number", "description": "picture aspect inside black bars (2.39 = scope), or 0 for none"},
         },
-        "required": ["rationale", "shots", "title_card", "end_card"],
+        "required": ["rationale", "script", "shots", "grade", "letterbox"],
         "additionalProperties": false,
     })
 }
@@ -346,8 +369,10 @@ pub struct Planned {
     pub adjustments: Vec<String>,
     /// The skeleton Claude was given.
     pub skeleton: Vec<craft::Slot>,
-    /// `finish:` entries (title, end_card) Claude proposed; captions and transitions are on the shots.
+    /// `finish:` entries Claude proposed (grade, letterbox); transitions are on the shots.
     pub finish: Vec<(String, Value)>,
+    /// `script:` lines (cards between shots, lines over them), ids already mapped to the shots.
+    pub script: Vec<Value>,
     /// The measured references the planner read, e.g. "horror (158 teasers)" (refs.rs).
     pub references: Vec<String>,
 }
@@ -455,7 +480,7 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
         props_list(defn),
         craft::plan_spec(defn, &slots)
     );
-    user.push_str(&craft::finish_text(defn));
+    user.push_str(&craft::script_text(defn));
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
@@ -508,22 +533,84 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if shots.is_empty() {
         bail!("Claude returned no shots");
     }
-    let adjustments = craft::normalize(&mut shots, duration);
+    // the script refers to Claude's shot ids; ids are cleaned, so map them through
+    let raw_ids: Vec<String> = out["shots"].as_array().into_iter().flatten().map(|s| model::str_of(&s["id"])).collect();
+    let id_map: std::collections::HashMap<String, String> =
+        raw_ids.iter().cloned().zip(shots.iter().map(|s| model::str_of(&s["id"]))).collect();
+    let (script, mut script_notes) = script_from_plan(&out["script"], &id_map, &shots);
+    // the target is the whole cut: shots get what the cards leave
+    let slot_secs: f64 = script.iter().filter(|l| crate::script::SLOT_KINDS.contains(&l["kind"].as_str().unwrap_or(""))).filter_map(|l| num(&l["dur"])).sum();
+    let mut adjustments = craft::normalize(&mut shots, (duration - slot_secs).max(duration * 0.5));
+    adjustments.append(&mut script_notes);
     validate_shots(defn, &shots)?;
-    let mut finish = Vec::new();
-    let title = out["title_card"].as_str().map(str::trim).filter(|t| !t.is_empty()).map(str::to_string)
-        .or_else(|| (!defn.teaser.title.is_empty()).then(|| defn.teaser.title.clone()));
-    if let Some(t) = title {
-        finish.push(("title".to_string(), json!({"text": t, "at": 0.5, "duration": 3})));
-    }
-    let lines: Vec<String> = out["end_card"].as_array().into_iter().flatten().filter_map(|l| l.as_str())
-        .map(str::trim).filter(|l| !l.is_empty()).map(str::to_string).collect();
-    finish.push(("end_card".to_string(), if lines.is_empty() { Value::Null } else { json!({"lines": lines, "duration": 3}) }));
+    let finish = vec![
+        ("grade".to_string(), json!(out["grade"].as_str().filter(|g| *g != "none"))),
+        ("letterbox".to_string(), json!(num(&out["letterbox"]).filter(|r| (1.0..=3.0).contains(r)))),
+        // the title and end card now live in the script
+        ("title".to_string(), Value::Null),
+        ("end_card".to_string(), Value::Null),
+    ];
     let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
     }
-    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references })
+    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references, script })
+}
+
+/// The script lines Claude wrote, as shots.yaml values: ids mapped to the cleaned shot ids,
+/// empty fields dropped, lines that point nowhere left out (and reported).
+fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String>, shots: &[Value]) -> (Vec<Value>, Vec<String>) {
+    let shot_ids: Vec<String> = shots.iter().map(|s| model::str_of(&s["id"])).collect();
+    let mut out: Vec<Value> = Vec::new();
+    let mut notes = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
+    for (i, l) in v.as_array().into_iter().flatten().enumerate() {
+        let kind = l["kind"].as_str().unwrap_or("caption").to_string();
+        let slot = crate::script::SLOT_KINDS.contains(&kind.as_str());
+        let mut id = clean_id(l["id"].as_str().unwrap_or(""), i).replace('-', "_");
+        if id.is_empty() || seen.contains(&id) || shot_ids.contains(&id) {
+            id = format!("l{:02}", i + 1);
+        }
+        let map = |s: &str| id_map.get(s).cloned().unwrap_or_else(|| s.to_string());
+        let mut m = serde_json::Map::new();
+        m.insert("id".into(), json!(id));
+        m.insert("kind".into(), json!(kind));
+        for k in ["ja", "en", "head", "from"] {
+            if let Some(t) = l[k].as_str().map(str::trim).filter(|t| !t.is_empty()) {
+                m.insert(k.into(), json!(t));
+            }
+        }
+        m.insert("dur".into(), json!(r1(num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0))));
+        if slot {
+            let after = map(l["after"].as_str().unwrap_or("start"));
+            let after = if after.is_empty() { "start".to_string() } else { after };
+            if after != "start" && !shot_ids.contains(&after) && !seen.contains(&after) && !v.as_array().into_iter().flatten().any(|o| o["id"] == after.as_str()) {
+                notes.push(format!("left out script line `{id}`: it follows `{after}`, which is not in the cut"));
+                continue;
+            }
+            m.insert("after".into(), json!(after));
+        } else {
+            let on = map(l["on"].as_str().unwrap_or(""));
+            if !shot_ids.contains(&on) {
+                notes.push(format!("left out script line `{id}`: it sits on `{on}`, which is not a shot"));
+                continue;
+            }
+            m.insert("on".into(), json!(on));
+            m.insert("at".into(), json!(r1(num(&l["at"]).unwrap_or(0.3).max(0.0))));
+        }
+        seen.push(id);
+        out.push(Value::Object(m));
+    }
+    // a slot that follows a dropped or renamed line falls back to following the start
+    let ids: Vec<String> = out.iter().map(|l| model::str_of(&l["id"])).collect();
+    for l in out.iter_mut() {
+        if let Some(a) = l.get("after").and_then(Value::as_str).map(str::to_string) {
+            if a != "start" && !shot_ids.contains(&a) && !ids.contains(&a) {
+                l["after"] = json!("start");
+            }
+        }
+    }
+    (out, notes)
 }
 
 fn r1(v: f64) -> f64 {
