@@ -5,9 +5,12 @@
 //!   .shotpilot/state.json            pushed snapshots (base for pull), current takes, history
 //!   .shotpilot/jobs/                 job/result JSON exchanged with the engine
 //!   render/<shot>/<quality>/<fp12>/  one immutable take per fingerprint, with take.json
+//!   render/<shot>/<quality>/<fp12>~N/  the same definition rendered again because the game
+//!                                    changed under it (content.rs)
 //!
 //! Takes are content-addressed by fingerprint and never overwritten. Reverting a shot's
-//! definition therefore reuses the old take instead of rendering again.
+//! definition (or the game content it showed) therefore reuses the old take instead of
+//! rendering again.
 
 use std::path::{Path, PathBuf};
 
@@ -120,8 +123,55 @@ impl State {
         Some(Take { info, dir })
     }
 
+    /// Every complete take of this definition (fingerprint), newest first. There is more than
+    /// one when the game changed under a shot and it was rendered again: the first lives in
+    /// `<fp12>/`, later ones in `<fp12>~2/`, `<fp12>~3/`, ... (see content.rs).
+    pub fn takes_for(&self, shot_id: &str, quality: &str, fp: &str) -> Vec<Take> {
+        let base = self.take_dir(shot_id, quality, fp);
+        let name = base.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let Some(parent) = base.parent() else { return Vec::new() };
+        let Ok(rd) = std::fs::read_dir(parent) else { return Vec::new() };
+        let mut out: Vec<(u32, Take)> = rd
+            .flatten()
+            .filter_map(|e| {
+                let n = e.file_name().to_string_lossy().to_string();
+                let gen = if n == name { 1 } else { n.strip_prefix(&format!("{name}~"))?.parse::<u32>().ok()? };
+                let dir = e.path();
+                let info: Map<String, Value> = serde_json::from_str(&std::fs::read_to_string(dir.join("take.json")).ok()?).ok()?;
+                let complete = info.get("complete").and_then(Value::as_bool).unwrap_or(false);
+                (complete && info.get("fingerprint").and_then(Value::as_str) == Some(fp)).then_some((gen, Take { info, dir }))
+            })
+            .collect();
+        out.sort_by_key(|(gen, _)| std::cmp::Reverse(*gen));
+        out.into_iter().map(|(_, t)| t).collect()
+    }
+
+    /// Where a new take of this definition goes without touching a finished one: the plain
+    /// `<fp12>/` while it holds no complete take, else the next free `<fp12>~N/`.
+    pub fn new_take_dir(&self, shot_id: &str, quality: &str, fp: &str) -> PathBuf {
+        let base = self.take_dir(shot_id, quality, fp);
+        let complete = |d: &Path| {
+            std::fs::read_to_string(d.join("take.json"))
+                .ok()
+                .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+                .is_some_and(|v| v["complete"].as_bool().unwrap_or(false))
+        };
+        if !complete(&base) {
+            return base;
+        }
+        let name = base.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        (2..).map(|n| base.with_file_name(format!("{name}~{n}"))).find(|d| !complete(d)).expect("unbounded")
+    }
+
     pub fn write_take(&mut self, shot_id: &str, quality: &str, fp: &str, extra: Map<String, Value>) -> Result<PathBuf> {
         let dir = self.take_dir(shot_id, quality, fp);
+        self.write_take_at(&dir, shot_id, quality, fp, extra)
+    }
+
+    /// [`Self::write_take`] into a given take folder (see [`Self::new_take_dir`]).
+    pub fn write_take_at(&mut self, dir: &Path, shot_id: &str, quality: &str, fp: &str, extra: Map<String, Value>)
+        -> Result<PathBuf> {
+        let dir = dir.to_path_buf();
         std::fs::create_dir_all(&dir)?;
         let mut meta = Map::new();
         meta.insert("shot".into(), json!(shot_id));

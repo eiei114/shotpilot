@@ -414,6 +414,37 @@ fn cut_sheet_edits_and_undo_over_http() {
 }
 
 #[test]
+fn a_game_change_shows_in_status_and_renders_only_its_shots() {
+    let s = srv();
+    let content = s.f.ws.root.join("content");
+    std::fs::create_dir_all(&content).unwrap();
+    std::fs::write(content.join("well.png"), "v1").unwrap();
+    let (acts, _) = render(&s, "still");
+    assert!(acts.values().all(|a| a == "rendered"));
+    std::fs::write(content.join("well.png"), "v2, repainted").unwrap();
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let changed: Vec<String> = st["shots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["changed"]["still"].is_array())
+        .map(|x| x["id"].as_str().unwrap().to_string())
+        .collect();
+    assert!(changed.contains(&"s02_well".to_string()), "{changed:?}");
+    assert_eq!(st["shots"][1]["changed"]["still"], json!(["/Game/Mock/well"]));
+    let (acts, events) = render(&s, "still");
+    let plan = &events.iter().find(|(e, _)| e == "plan").unwrap().1;
+    let mut why: Vec<String> = plan["game_changed"].as_object().unwrap().keys().cloned().collect();
+    why.sort();
+    let mut rendered: Vec<String> = acts.iter().filter(|(_, a)| *a == "rendered").map(|(k, _)| k.clone()).collect();
+    rendered.sort();
+    assert_eq!(rendered, why);
+    assert_eq!(rendered, changed);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert!(st["shots"].as_array().unwrap().iter().all(|x| x["changed"].as_object().unwrap().is_empty()));
+}
+
+#[test]
 fn settings_save_the_key_but_never_send_it_back() {
     let f = ws();
     let dir = tempfile::tempdir().unwrap();

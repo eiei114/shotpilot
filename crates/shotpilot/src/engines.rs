@@ -114,6 +114,62 @@ impl MockEngine {
         Ok(())
     }
 
+    /// The mock game's content behind a shot, as UE reports it from the PIE world: the files
+    /// `content/<name>.*` next to shots.yaml for each anchor in view at the first, middle or
+    /// last frame, and for each prop that pops in. None without a `content/` folder (a game
+    /// with no content to track, like the tests that predate it).
+    fn visible_content(&self, shot: &ResolvedShot, w: u32, h: u32) -> Option<Vec<Value>> {
+        let dir = self.defn.root().join("content");
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&dir).ok()?.flatten().map(|e| e.path()).filter(|p| p.is_file()).collect();
+        files.sort();
+        let mut seen = std::collections::BTreeSet::new();
+        let last = (shot.frames - 1).max(0);
+        let (fl, sensor) = (shot.focal_length(), shot.sensor_width());
+        // in view when the box's projected corners overlap the frame; a box the camera is
+        // partly inside of counts too (when unsure, render again rather than miss a change)
+        let in_view = |b: &crate::model::AnchorBox, cam: &Xform| {
+            let [cx, cy, cz] = b.center;
+            let [sx, sy, sz] = b.size.map(|v| v / 2.0);
+            let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+            let mut behind = 0;
+            for dx in [-sx, sx] {
+                for dy in [-sy, sy] {
+                    for dz in [-sz, sz] {
+                        match crate::geometry::project([cx + dx, cy + dy, cz + dz], cam, fl, w, h, sensor) {
+                            Some((x, y, _)) => {
+                                (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
+                            }
+                            None => behind += 1,
+                        }
+                    }
+                }
+            }
+            match behind {
+                8 => false,
+                0 => x1 >= 0.0 && x0 <= w as f64 && y1 >= 0.0 && y0 <= h as f64,
+                _ => true,
+            }
+        };
+        for f in [0, last / 2, last] {
+            let cam = shot.camera_at(f);
+            for (name, b) in self.defn.anchor_boxes() {
+                if in_view(&b, &cam) {
+                    seen.insert(name);
+                }
+            }
+        }
+        seen.extend(shot.appear.iter().map(|a| a.prop.clone()));
+        Some(
+            files
+                .iter()
+                .filter_map(|p| {
+                    let stem = p.file_stem()?.to_string_lossy().to_string();
+                    seen.contains(&stem).then(|| json!({"package": format!("/Game/Mock/{stem}"), "file": p.display().to_string()}))
+                })
+                .collect(),
+        )
+    }
+
     /// Simulate a human editing the shot sequence in Sequencer (tests / demo).
     pub fn edit_asset(&self, shot_id: &str, mutate: impl FnOnce(&mut Value)) -> Result<()> {
         let p = self.asset_file(&shot_asset(&self.defn, shot_id));
@@ -200,7 +256,11 @@ impl Engine for MockEngine {
             let frames: Vec<i64> = it["frames"].as_array().map(|a| a.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
             previz::render_shot(&shot, &frames, &self.defn.anchor_boxes(), Path::new(it["out_dir"].as_str().unwrap_or(".")),
                                 ((w * k) as u32).max(2), ((h * k) as u32).max(2), 0.0, Some([255, 170, 60]))?;
-            renders.insert(key, json!({"status": "ok"}));
+            let mut r = json!({"status": "ok"});
+            if let Some(deps) = self.visible_content(&shot, w as u32, h as u32) {
+                r["deps"] = json!(deps);
+            }
+            renders.insert(key, r);
         }
         Ok(json!({"build": build, "renders": renders, "seconds": (t0.elapsed().as_secs_f64() * 100.0).round() / 100.0}))
     }

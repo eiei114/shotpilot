@@ -79,6 +79,9 @@ pub struct ShotStatus {
     pub qualities: Vec<(String, String)>, // fresh | stale | none
     /// approved | outdated (approved, then the picture changed) | none
     pub approval: String,
+    /// Qualities whose take went out of date because the game changed under it, with the
+    /// packages that changed (content.rs).
+    pub changed: Vec<(String, Vec<String>)>,
 }
 
 impl ShotStatus {
@@ -88,9 +91,10 @@ impl ShotStatus {
 
     pub fn to_json(&self) -> Value {
         let qs: Map<String, Value> = self.qualities.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
+        let changed: Map<String, Value> = self.changed.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
         json!({
             "index": self.index, "id": self.id, "duration": self.duration, "purpose": self.purpose,
-            "beat": self.beat, "build": self.build, "qualities": qs, "approval": self.approval,
+            "beat": self.beat, "build": self.build, "qualities": qs, "approval": self.approval, "changed": changed,
         })
     }
 }
@@ -104,6 +108,19 @@ pub struct QualityTake {
     /// `take` matches `fingerprint`.
     pub fresh: bool,
     pub take: Option<Take>,
+    /// The game content that changed under this definition's take (empty when fresh).
+    pub changed: Vec<String>,
+}
+
+/// What there is of a shot's definition at one quality (see [`Workspace::current_take`]).
+#[derive(Debug, Clone)]
+pub enum TakeMatch {
+    /// A take of this definition whose game content is unchanged.
+    Fresh(Take),
+    /// Only takes whose game content changed since they were rendered: the newest one, and
+    /// the packages that changed under it.
+    GameChanged(Take, Vec<String>),
+    None,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -203,6 +220,23 @@ impl Workspace {
 
     // ------------------------------------------------------------------ status
 
+    /// The take to use for this definition: the newest one whose game content is unchanged
+    /// (a take that recorded no content, such as previz, always is).
+    pub fn current_take(&self, shot_id: &str, quality: &str, fp: &str) -> TakeMatch {
+        let mut first_changed = None;
+        for t in self.state.takes_for(shot_id, quality, fp) {
+            let gone = crate::content::changed(&self.root, &t);
+            if gone.is_empty() {
+                return TakeMatch::Fresh(t);
+            }
+            first_changed.get_or_insert((t, gone));
+        }
+        match first_changed {
+            Some((t, gone)) => TakeMatch::GameChanged(t, gone),
+            None => TakeMatch::None,
+        }
+    }
+
     pub fn status(&self) -> Result<Vec<ShotStatus>> {
         Ok(self.status_detail(&self.resolved()?, false)?.into_iter().map(|(row, _)| row).collect())
     }
@@ -222,19 +256,28 @@ impl Workspace {
             };
             let mut qualities = Vec::new();
             let mut takes = Vec::new();
+            let mut changed = Vec::new();
             for q in &names {
                 let rfp = fp::render_fingerprint(&self.defn, s, q)?;
-                let (st, take) = match self.state.find_take(&s.id, q, &rfp) {
-                    Some(t) => ("fresh", Some(t)),
-                    None if latest => match self.state.latest_take(&s.id, q) {
+                let mut gone = Vec::new();
+                let (st, take) = match self.current_take(&s.id, q, &rfp) {
+                    TakeMatch::Fresh(t) => ("fresh", Some(t)),
+                    TakeMatch::GameChanged(t, pkgs) => {
+                        gone = pkgs;
+                        ("stale", latest.then_some(t))
+                    }
+                    TakeMatch::None if latest => match self.state.latest_take(&s.id, q) {
                         Some(t) => ("stale", Some(t)),
                         None => ("none", None),
                     },
-                    None if self.state.has_takes(&s.id, q) => ("stale", None),
-                    None => ("none", None),
+                    TakeMatch::None if self.state.has_takes(&s.id, q) => ("stale", None),
+                    TakeMatch::None => ("none", None),
                 };
+                if !gone.is_empty() {
+                    changed.push((q.clone(), gone.clone()));
+                }
                 qualities.push((q.clone(), st.to_string()));
-                takes.push(QualityTake { quality: q.clone(), fingerprint: rfp, fresh: st == "fresh", take });
+                takes.push(QualityTake { quality: q.clone(), fingerprint: rfp, fresh: st == "fresh", take, changed: gone });
             }
             let approval = match self.state.approved_fp(&s.id) {
                 None => "none",
@@ -250,6 +293,7 @@ impl Workspace {
                 beat: s.beat.clone(),
                 build: build.into(),
                 qualities,
+                changed,
             };
             rows.push((row, takes));
         }
@@ -342,11 +386,12 @@ impl Workspace {
         let shots = self.select(ids)?;
         let mut outcomes: Vec<RenderOutcome> = Vec::new();
         let mut todo: Vec<(ResolvedShot, String)> = Vec::new();
+        let mut game_changed = Map::new();
         for s in &shots {
             let rfp = fp::render_fingerprint(&self.defn, s, quality)?;
-            let take = if force { None } else { self.state.find_take(&s.id, quality, &rfp) };
-            match take {
-                Some(t) => {
+            let found = if force { TakeMatch::None } else { self.current_take(&s.id, quality, &rfp) };
+            match found {
+                TakeMatch::Fresh(t) => {
                     self.state.mark_current(&s.id, quality, &rfp);
                     outcomes.push(RenderOutcome {
                         shot_id: s.id.clone(),
@@ -358,7 +403,11 @@ impl Workspace {
                         thumb: t.thumb(),
                     });
                 }
-                None => todo.push((s.clone(), rfp)),
+                TakeMatch::GameChanged(_, gone) => {
+                    game_changed.insert(s.id.clone(), json!(gone));
+                    todo.push((s.clone(), rfp));
+                }
+                TakeMatch::None => todo.push((s.clone(), rfp)),
             }
         }
 
@@ -366,6 +415,7 @@ impl Workspace {
             "quality": quality,
             "render": todo.iter().map(|(s, _)| &s.id).collect::<Vec<_>>(),
             "reused": outcomes.iter().map(|o| &o.shot_id).collect::<Vec<_>>(),
+            "game_changed": game_changed,
         }));
         for o in &outcomes {
             emit("shot", &outcome_event(o));
@@ -384,9 +434,13 @@ impl Workspace {
 
         if outcomes.iter().any(|o| o.action != "reused") {
             let by = |a: &str| outcomes.iter().filter(|o| o.action == a).map(|o| o.shot_id.clone()).collect::<Vec<_>>();
-            self.state.log("render", json!({
+            let mut entry = json!({
                 "quality": quality, "rendered": by("rendered"), "reused": by("reused"), "failed": by("failed"),
-            }));
+            });
+            if !game_changed.is_empty() {
+                entry["game_changed"] = Value::Object(game_changed.clone());
+            }
+            self.state.log("render", entry);
         }
         self.state.save()?;
         let order: HashMap<&str, usize> = shots.iter().enumerate().map(|(i, s)| (s.id.as_str(), i)).collect();
@@ -444,9 +498,11 @@ impl Workspace {
         let (w, h) = fp::resolution(&self.defn, q);
         let mut items = Vec::new();
         for (s, rfp) in todo {
-            let d = self.state.take_dir(&s.id, quality, rfp);
+            // a forced take replaces this definition's take; otherwise a finished take (whose
+            // game content changed since) stays, and the new one goes next to it
+            let d = if force { self.state.take_dir(&s.id, quality, rfp) } else { self.state.new_take_dir(&s.id, quality, rfp) };
             if d.exists() {
-                std::fs::remove_dir_all(&d)?; // incomplete leftovers from a failed attempt
+                std::fs::remove_dir_all(&d)?; // incomplete leftovers from a failed attempt, or a forced re-take
             }
             std::fs::create_dir_all(&d)?;
             items.push(json!({
@@ -491,8 +547,15 @@ impl Workspace {
                     continue;
                 }
             };
-            let info = self.take_info(s, q, &frames, &files, share, engine.name());
-            self.state.write_take(&s.id, quality, rfp, info)?;
+            let mut info = self.take_info(s, q, &frames, &files, share, engine.name());
+            // what was on screen, so a later change to the game re-renders only this shot
+            if let Some(reported) = r["deps"].as_array() {
+                info.insert("deps".into(), json!(crate::content::record(&self.root, reported)));
+            }
+            if let Some(e) = r["deps_error"].as_str() {
+                info.insert("deps_error".into(), json!(e));
+            }
+            self.state.write_take_at(&d, &s.id, quality, rfp, info)?;
             out.push(RenderOutcome {
                 shot_id: s.id.clone(),
                 quality: quality.into(),
@@ -634,7 +697,7 @@ impl Workspace {
             let mut chosen = (None, None);
             for qn in ladder {
                 let rfp = fp::render_fingerprint(&self.defn, &s, qn)?;
-                if let Some(t) = self.state.find_take(&s.id, qn, &rfp) {
+                if let TakeMatch::Fresh(t) = self.current_take(&s.id, qn, &rfp) {
                     chosen = (Some(t), Some(qn.to_string()));
                     break;
                 }
