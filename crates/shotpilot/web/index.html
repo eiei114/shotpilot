@@ -610,15 +610,18 @@ function toast(text, isErr = false) {
   if (text) toast.timer = setTimeout(() => (t.hidden = true), isErr ? 8000 : 3500);
 }
 
-async function refresh() {
+async function refresh(poll = false) {
   try {
     const [st, log] = await Promise.all([api("GET", "/api/status"), api("GET", "/api/log?n=80")]);
+    // the timer's poll redraws only when something changed (an answer from cache is the same)
+    const stKey = JSON.stringify(st), logKey = JSON.stringify(log);
+    if (poll && stKey === ui.statusKey && logKey === ui.logKey) return;
+    ui.statusKey = stKey;
     ui.status = st;
     document.title = `Shotpilot — ${st.title || st.project}`;
     if (!ui.quality || !st.qualities.includes(ui.quality)) ui.quality = defaultQuality(st);
     if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
-    const key = JSON.stringify(log);
-    if (key !== ui.logKey) { ui.log = log; ui.logKey = key; drawChat(); }
+    if (logKey !== ui.logKey) { ui.log = log; ui.logKey = logKey; drawChat(); }
     // sound follows the definition (timing, sfx, audio); the mix itself is cached server-side
     const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
     if (skey !== ui.soundKey) { ui.soundKey = skey; fetchSound(); }
@@ -2502,7 +2505,7 @@ document.addEventListener("keydown", (e) => {
 window.addEventListener("resize", () => { drawRegion(); if (ui.status) drawTimeline(); });
 window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 // shots.yaml is the source of truth: pick up edits made from the CLI or a text editor
-setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(); }, 3000);
+setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(true); }, 3000);
 // #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
 function applyHash() {
   for (const part of location.hash.slice(1).split("&").filter(Boolean)) {

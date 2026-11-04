@@ -247,6 +247,37 @@ fn cut_over_http_links_outputs() {
     assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[]).code, 200);
 }
 
+#[test]
+fn files_serve_byte_ranges_and_revalidate() {
+    let s = srv();
+    render(&s, "previz");
+    jcall(&s, "POST", "/api/cut", Some(json!({"quality": "best", "video": false})));
+    let whole = call(&s, "GET", "/files/cut/best/index.html", None, &[]);
+    assert_eq!(whole.code, 200);
+    assert_eq!(whole.header("accept-ranges"), "bytes");
+    let n = whole.body.len();
+    let part = call(&s, "GET", "/files/cut/best/index.html", None, &[("Range", "bytes=10-19")]);
+    assert_eq!(part.code, 206);
+    assert_eq!(part.header("content-range"), format!("bytes 10-19/{n}"));
+    assert_eq!(part.body, whole.body[10..20]);
+    let tail = call(&s, "GET", "/files/cut/best/index.html", None, &[("Range", "bytes=-5")]);
+    assert_eq!(tail.body, whole.body[n - 5..]);
+    assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[("Range", &format!("bytes={n}-"))]).code, 416);
+    let tag = whole.header("etag").to_string();
+    assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[("If-None-Match", &tag)]).code, 304);
+}
+
+#[test]
+fn log_revalidates_like_status() {
+    let s = srv();
+    let first = call(&s, "GET", "/api/log?n=5", None, &[]);
+    assert_eq!(first.code, 200);
+    let tag = first.header("etag").to_string();
+    assert_eq!(call(&s, "GET", "/api/log?n=5", None, &[("If-None-Match", &tag)]).code, 304);
+    render(&s, "previz"); // writes state.json: the history changed
+    assert_eq!(call(&s, "GET", "/api/log?n=5", None, &[("If-None-Match", &tag)]).code, 200);
+}
+
 // --------------------------------------------------------------------------- chat (revise)
 
 struct Recorder {

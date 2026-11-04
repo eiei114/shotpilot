@@ -155,10 +155,40 @@ impl State {
                 }
             }
         }
-        // `created` has one-second resolution; the file time breaks ties
-        let mtime = |t: &Take| std::fs::metadata(t.dir.join("take.json")).and_then(|m| m.modified()).ok();
-        out.sort_by(|a, b| a.created().cmp(b.created()).then_with(|| mtime(a).cmp(&mtime(b))));
+        // `created` has one-second resolution; the file time breaks ties (read once per take)
+        out.sort_by_cached_key(|t| {
+            let mtime = std::fs::metadata(t.dir.join("take.json")).and_then(|m| m.modified()).ok();
+            (t.created().to_string(), mtime)
+        });
         out
+    }
+
+    /// The newest take of this shot and quality ([`Self::list_takes`]'s last), reading only
+    /// that one take.json: takes are written once, so the newest file is the newest take.
+    pub fn latest_take(&self, shot_id: &str, quality: &str) -> Option<Take> {
+        let rd = std::fs::read_dir(self.render_dir.join(shot_id).join(quality)).ok()?;
+        let mut dirs: Vec<(std::time::SystemTime, PathBuf)> = rd
+            .flatten()
+            .filter_map(|e| {
+                let dir = e.path();
+                let t = std::fs::metadata(dir.join("take.json")).and_then(|m| m.modified()).ok()?;
+                Some((t, dir))
+            })
+            .collect();
+        dirs.sort();
+        // newest first; one that does not parse is skipped, as list_takes skips it
+        dirs.into_iter().rev().find_map(|(_, dir)| {
+            let text = std::fs::read_to_string(dir.join("take.json")).ok()?;
+            let info = serde_json::from_str::<Map<String, Value>>(&text).ok()?;
+            Some(Take { info, dir })
+        })
+    }
+
+    /// Whether any take of this shot and quality exists, without reading them.
+    pub fn has_takes(&self, shot_id: &str, quality: &str) -> bool {
+        std::fs::read_dir(self.render_dir.join(shot_id).join(quality))
+            .map(|rd| rd.flatten().any(|e| e.path().join("take.json").is_file()))
+            .unwrap_or(false)
     }
 
     // ----------------------------------------------------------------- engine sync

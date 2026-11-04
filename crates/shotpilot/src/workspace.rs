@@ -89,6 +89,17 @@ impl ShotStatus {
     }
 }
 
+/// One quality of a shot as the app shows it (see [`Workspace::status_detail`]).
+#[derive(Debug, Clone)]
+pub struct QualityTake {
+    pub quality: String,
+    /// The render fingerprint the shot has now at this quality.
+    pub fingerprint: String,
+    /// `take` matches `fingerprint`.
+    pub fresh: bool,
+    pub take: Option<Take>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct BuildReport {
     pub built: Vec<String>,
@@ -187,32 +198,44 @@ impl Workspace {
     // ------------------------------------------------------------------ status
 
     pub fn status(&self) -> Result<Vec<ShotStatus>> {
+        Ok(self.status_detail(&self.resolved()?, false)?.into_iter().map(|(row, _)| row).collect())
+    }
+
+    /// [`Self::status`] for these shots, with each quality's render fingerprint and the take
+    /// to show: the fresh one, else (with `latest`) the newest stale one. Without `latest`
+    /// stale takes are only counted, not read.
+    pub fn status_detail(&self, shots: &[ResolvedShot], latest: bool) -> Result<Vec<(ShotStatus, Vec<QualityTake>)>> {
+        let names = fp::quality_names(&self.defn);
         let mut rows = Vec::new();
-        for s in self.resolved()? {
-            let bfp = fp::build_fingerprint(&self.defn, &s);
+        for s in shots {
+            let bfp = fp::build_fingerprint(&self.defn, s);
             let build = match self.state.pushed_fp(&s.id) {
                 None => "new",
                 Some(p) if p == bfp => "synced",
                 Some(_) => "dirty",
             };
             let mut qualities = Vec::new();
-            for q in fp::quality_names(&self.defn) {
-                let rfp = fp::render_fingerprint(&self.defn, &s, &q)?;
-                let st = if self.state.find_take(&s.id, &q, &rfp).is_some() {
-                    "fresh"
-                } else if !self.state.list_takes(&s.id, &q).is_empty() {
-                    "stale"
-                } else {
-                    "none"
+            let mut takes = Vec::new();
+            for q in &names {
+                let rfp = fp::render_fingerprint(&self.defn, s, q)?;
+                let (st, take) = match self.state.find_take(&s.id, q, &rfp) {
+                    Some(t) => ("fresh", Some(t)),
+                    None if latest => match self.state.latest_take(&s.id, q) {
+                        Some(t) => ("stale", Some(t)),
+                        None => ("none", None),
+                    },
+                    None if self.state.has_takes(&s.id, q) => ("stale", None),
+                    None => ("none", None),
                 };
-                qualities.push((q, st.to_string()));
+                qualities.push((q.clone(), st.to_string()));
+                takes.push(QualityTake { quality: q.clone(), fingerprint: rfp, fresh: st == "fresh", take });
             }
             let approval = match self.state.approved_fp(&s.id) {
                 None => "none",
-                Some(a) if a == fp::look_fingerprint(&self.defn, &s) => "approved",
+                Some(a) if a == fp::look_fingerprint(&self.defn, s) => "approved",
                 Some(_) => "outdated",
             };
-            rows.push(ShotStatus {
+            let row = ShotStatus {
                 approval: approval.into(),
                 index: s.index,
                 id: s.id.clone(),
@@ -221,7 +244,8 @@ impl Workspace {
                 beat: s.beat.clone(),
                 build: build.into(),
                 qualities,
-            });
+            };
+            rows.push((row, takes));
         }
         Ok(rows)
     }

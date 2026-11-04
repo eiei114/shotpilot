@@ -447,8 +447,28 @@ fn find_ue_cmd(defn: &Definition, uproject: &Path) -> Result<PathBuf> {
            set project.ue_cmd in shots.yaml or SHOTPILOT_UE_CMD")
 }
 
-/// `which`: look an executable up on PATH (with PATHEXT on Windows).
+/// How long a PATH lookup is remembered. A long PATH makes one lookup cost thousands of
+/// stat() calls, and the app asks for `claude`, `codex` and `ffmpeg` on every status.
+const PATH_TTL: Duration = Duration::from_secs(10);
+
+/// `which`: look an executable up on PATH (with PATHEXT on Windows). Answers are kept
+/// for a few seconds per (name, PATH), so installing a tool shows up shortly after.
 pub fn find_on_path(name: &str) -> Option<PathBuf> {
+    type Cache = std::collections::HashMap<(String, std::ffi::OsString), (Instant, Option<PathBuf>)>;
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<Cache>> = std::sync::OnceLock::new();
+    let key = (name.to_string(), std::env::var_os("PATH")?);
+    let cache = CACHE.get_or_init(Default::default);
+    if let Some((at, found)) = cache.lock().unwrap_or_else(|p| p.into_inner()).get(&key) {
+        if at.elapsed() < PATH_TTL && found.as_ref().map_or(true, |p| p.is_file()) {
+            return found.clone();
+        }
+    }
+    let found = lookup_on_path(name);
+    cache.lock().unwrap_or_else(|p| p.into_inner()).insert(key, (Instant::now(), found.clone()));
+    found
+}
+
+fn lookup_on_path(name: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     let exts: Vec<String> = if cfg!(windows) {
         std::env::var("PATHEXT")

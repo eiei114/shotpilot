@@ -167,7 +167,7 @@ pub fn summary(shots: &Path) -> Value {
                 }
             }
             if best.is_none() {
-                if let Some(p) = ws.state.list_takes(&s.id, q).pop().and_then(|t| t.thumb()) {
+                if let Some(p) = ws.state.latest_take(&s.id, q).and_then(|t| t.thumb()) {
                     best = Some((false, p));
                 }
             }
