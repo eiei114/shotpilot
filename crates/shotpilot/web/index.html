@@ -241,7 +241,8 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 /* ------------------------------------------------------------------ stage */
 #stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
 #view { position: relative; min-height: 0; overflow: hidden; display: grid; place-items: center; }
-#view img { max-width: 100%; max-height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+/* fill the stage (previz frames are small); imageBox() finds the drawn picture inside the box */
+#view img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
 #view video { width: 100%; height: 100%; object-fit: contain; display: block; }
 #view.mark { cursor: crosshair; }
 #region { position: absolute; border: 2px solid var(--accent); background: rgb(59 224 43 / .12); border-radius: 3px; pointer-events: none; }
@@ -477,7 +478,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     </div>
     <div class="toolbar" id="toolbar">
       <button class="icon" id="reload" title="再読み込み"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
-      <div class="seg">
+      <div class="seg" id="mode-seg">
         <button class="on" data-mode="preview"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>プレビュー</button>
         <button data-mode="tweak"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>調整</button>
       </div>
@@ -701,7 +702,7 @@ function draw() {
   $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
   $("toolbar").hidden = !!panel && ui.tab !== "design";
-  for (const el of [$("quality"), $("mark"), document.querySelector(".seg:not(#finish-seg)")]) el.hidden = finishing;
+  for (const el of [$("quality"), $("mark"), $("mode-seg")]) el.hidden = finishing;
   $("finish-seg").hidden = !finishing;
   $("mark").disabled = ui.tab !== "shot" || tweak || ui.board;
   $("board").hidden = finishing || ui.tab !== "shot" || tweak;
@@ -791,7 +792,11 @@ async function paintBoard(all) {
 function imageBox() {
   const img = $("view").querySelector("img");
   if (!img || !img.naturalWidth) return null;
-  const v = $("view").getBoundingClientRect(), r = img.getBoundingClientRect();
+  const v = $("view").getBoundingClientRect(), e = img.getBoundingClientRect();
+  // object-fit: contain letterboxes the picture inside the element box
+  const k = Math.min(e.width / img.naturalWidth, e.height / img.naturalHeight);
+  const w = img.naturalWidth * k, h = img.naturalHeight * k;
+  const r = { left: e.left + (e.width - w) / 2, top: e.top + (e.height - h) / 2, width: w, height: h };
   return { left: r.left - v.left, top: r.top - v.top, width: r.width, height: r.height, abs: r };
 }
 
@@ -879,8 +884,10 @@ function drawApprove() {
   const a = s.approval;
   b.className = `btn ${a === "approved" ? "ok" : a === "outdated" ? "warn" : "dark"}`;
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
-  b.title = p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認ショットへ移ります。画が変わる修正をすると自動で外れます";
-  b.disabled = !!ui.busy || (!!p0 && a !== "approved");
+  // the storyboard is a generated picture, not the shot: approve only while looking at the take
+  b.title = ui.board ? "絵コンテは生成画像です。「絵コンテ」を押して previz / take に戻ってから承認します"
+    : p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認ショットへ移ります。画が変わる修正をすると自動で外れます";
+  b.disabled = !!ui.busy || ui.board || (!!p0 && a !== "approved");
 }
 
 // ------------------------------------------------------------------ finish: design burned in at the cut
@@ -968,7 +975,9 @@ function nextStep() {
   const base = st.qualities[0];
   const unapproved = shots.filter((x) => x.approval !== "approved");
   const approved = shots.filter((x) => x.approval === "approved");
-  const produced = (ui.log || []).some((e) => e.action === "produce");
+  // the first pass is for an empty project; once shots are taken or cut, go on from what is there
+  const produced = (ui.log || []).some((e) => e.action === "produce")
+    || !!st.cut || shots.some((x) => st.qualities.some((q) => x.qualities[q] === "fresh"));
   if (!produced && !skipped("produce")) return { stage: "structure", what: "一気に作る", why: "ロケハン → ステージ → ムードボード → 構成と仕上げ → 撮影 → Cut まで、制約を全部渡して1本出します。そのあと1カットずつ確かめて直します", act: "produce", skip: "produce", need: ai.ready ? null : "Claude が未接続です" };
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
@@ -2171,6 +2180,7 @@ $("cut").addEventListener("click", cut);
 $("reload").addEventListener("click", () => { ui.logKey = ""; ui.soundKey = ""; refresh(); });
 $("send").addEventListener("click", sendNote);
 $("scope").addEventListener("click", () => {
+  if (planning()) return; // a plan always covers the whole list; do not flip the shot scope behind the label
   if (ui.tab === "sound") { ui.snd = null; drawSoundBits(); drawChips(); return; } // sound notes: drop to BGM + all SE
   ui.scopeAll = !ui.scopeAll; drawChips();
 });
