@@ -1314,6 +1314,10 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     extra.insert("summary".into(), json!(rev.summary));
     extra.insert("changes".into(), Value::Object(changes.clone()));
     extra.insert("pointer".into(), json!(pointer.context));
+    // what the human pointed at, in the app's words (the context above is written for Claude)
+    if let Some(l) = body.get("label").and_then(Value::as_str).filter(|l| !l.is_empty()) {
+        extra.insert("label".into(), json!(l));
+    }
     ws.state.annotate_last(extra);
     ws.state.save()?;
     let mut out = rep.to_json();
@@ -1488,6 +1492,7 @@ fn projects_route(stream: &mut TcpStream, app: &App, action: &str, req: &Request
                 map: Some(text("map")).filter(|s| !s.is_empty()),
                 pitch: text("pitch"),
                 kind: text("kind"),
+                genre: text("genre"),
                 sample: body.get("sample").and_then(Value::as_bool).unwrap_or(false),
             };
             let shots = {

@@ -120,7 +120,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     let found = ws.check()?;
     let count = |sev: &str| found.iter().filter(|f| f.severity.as_str() == sev).count();
     let checks = json!({"P0": count("P0"), "P1": count("P1"), "P2": count("P2")});
-    step("plan", "done", format!("{} ショット", p.shots.len()), emit, &mut steps);
+    step("plan", "done", format!("{} カット", p.shots.len()), emit, &mut steps);
 
     let mut entry = Map::new();
     entry.insert("note".into(), json!(opts.direction));
@@ -138,7 +138,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         let outcomes = ws.render(&[], &base, false, Some(&mut fwd))?;
         let failed = outcomes.iter().filter(|o| o.action == "failed").count();
         if failed > 0 {
-            notes.push(format!("{base} で撮れなかったショット: {failed} 本"));
+            notes.push(format!("{base} で撮れなかったカット: {failed} 本"));
         }
         step("review", "done", format!("{base} で {} 本。カット表で確かめて「続ける」", outcomes.len()), emit, &mut steps);
         entry.insert("stopped".into(), json!("review"));
@@ -215,7 +215,7 @@ fn finish(ws: &mut Workspace, claude: &dyn Claude, opts: &ProduceOpts, emit: &mu
     if failed.is_empty() {
         step("render", "done", format!("{} {} 本", opts.quality, outcomes.len()), emit, &mut steps);
     } else {
-        notes.push(format!("撮れなかったショット: {}", failed.join(", ")));
+        notes.push(format!("撮れなかったカット: {}", failed.join(", ")));
         step("render", "failed", format!("{} 本失敗", failed.len()), emit, &mut steps);
     }
 
