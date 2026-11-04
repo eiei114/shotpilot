@@ -61,7 +61,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/storyboard.rs   絵コンテ（D-33）。previz の線画を下絵に、ロケハン写真とムードボードを参照して画像生成で描く確認用の1枚
   src/produce.rs      初回の一気通し（D-28）。足りない下ごしらえを埋め、plan を1回、最安の品質で撮って仕上げ込みで Cut
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
-  src/refs.rs         実測リファレンス（references/craft/ と genres/<id>/ を埋め込み）。plan に渡す文と、骨格の hook・title の長さ
+  src/refs.rs         実測リファレンス（references/craft/ と genres/<id>/、流行りの型 20 本を埋め込み）。plan に渡す文と、骨格の hook・title の長さと密度の形
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
   src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せ、仕上げがあれば焼き込む）
@@ -105,6 +105,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
+- 流行りの型（`refs::STYLES`、D-39）は実在ティザーの構成とリズムだけを真似させる。話の筋・キャラクター・文言は真似させない。分析文（TEASER.md の 1〜7 節）も plan に渡るので、D-22 の語を書かない（`cargo test --test styles` が守る）。
 - `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。
 - ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。
 - `build` は、Sequencer 側で人間が加えた変更を黙って上書きしない（`--force` のときだけ上書きする）。

@@ -21,6 +21,25 @@ title length (median final shot) for the skeleton from the same `tokens.json`.
 `shotpilot plan --spec` prints exactly what Claude reads. Genres are matched in the
 order horror, cozy, rpg, action, adventure ("action RPG" is rpg).
 
+The skeleton also follows where the cutting is dense: each middle slot's length is its
+beat's weight divided by the measured edit density of the quarter it falls in
+(`profiles.edits_by_quarter`), so a busy quarter gets shorter shots and the calm last
+quarter longer ones.
+
+## Styles: recent popular teasers to imitate (D-39)
+
+Twenty analysed packages in `teasers/<id>/` are embedded as styles, four per genre package
+(`STYLES` in `crates/shotpilot/src/refs.rs`): game teasers uploaded in 2025 or later,
+20-100 s, among the most viewed of their genre, a mix of indie and well-known titles
+(films, TV and live action left out). Their `TEASER.md` sections 1-7 were written from the
+contact sheet and the measured numbers; the first sentence of section 1 is the one-line
+summary the app shows. When `brief.style` names one, the planner also reads its analysis
+and measured rhythm ("Inspired by ..."), and the skeleton takes its hook (first cut),
+title (final shot) and quarter densities instead of the genre's. Structure, rhythm and
+technique are imitated; never the story, characters or words. To add a style: analyse the
+package (sections 1-7, remove the `> 分析: 未` line) and add one `style!("<genre>", "<id>")`
+line; `cargo test --test styles` checks it.
+
 ## craft/ and genres/<id>/
 
 ```
