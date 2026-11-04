@@ -277,6 +277,22 @@ impl State {
         }
     }
 
+    /// The script fingerprint a human approved, if any (fingerprint::script_fingerprint).
+    pub fn approved_script(&self) -> Option<String> {
+        self.data.get("script_approved")?.get("fingerprint")?.as_str().map(str::to_string)
+    }
+
+    pub fn set_approved_script(&mut self, fp: Option<&str>) {
+        match fp {
+            Some(fp) => self.data["script_approved"] = json!({"fingerprint": fp, "at": now_iso()}),
+            None => {
+                if let Some(m) = self.data.as_object_mut() {
+                    m.remove("script_approved");
+                }
+            }
+        }
+    }
+
     pub fn forget(&mut self, shot_id: &str) {
         self.shots().remove(shot_id);
     }

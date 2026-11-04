@@ -116,3 +116,36 @@ pub fn changed(root: &Path, take: &Take) -> Vec<String> {
 pub fn short(package: &str) -> &str {
     package.rsplit(['/', '\\']).next().unwrap_or(package)
 }
+
+/// Every content file the takes under `render/` recorded, deduplicated: what the app's
+/// status has to watch to notice that the game changed.
+pub fn recorded_files(root: &Path) -> Vec<PathBuf> {
+    let mut out = std::collections::BTreeSet::new();
+    let dirs = |p: &Path| -> Vec<PathBuf> {
+        std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect()).unwrap_or_default()
+    };
+    for shot in dirs(&root.join("render")) {
+        for quality in dirs(&shot) {
+            for take in dirs(&quality) {
+                let Ok(text) = std::fs::read_to_string(take.join("take.json")) else { continue };
+                let Ok(info) = serde_json::from_str::<Value>(&text) else { continue };
+                for d in info["deps"].as_array().into_iter().flatten() {
+                    if let Some(f) = d["file"].as_str() {
+                        out.insert(resolve(root, f));
+                    }
+                }
+            }
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// A short stamp of files' sizes and modification times (changes when any of them does).
+pub fn stamp_files(files: &[PathBuf]) -> String {
+    let mut h = Sha256::new();
+    for f in files {
+        let (len, t) = stamp(f).unwrap_or((0, 0));
+        h.update(format!("{}:{len}:{t};", f.display()).as_bytes());
+    }
+    h.finalize().iter().take(6).map(|b| format!("{b:02x}")).collect()
+}

@@ -1178,6 +1178,28 @@ impl Workspace {
         self.state.save()
     }
 
+    /// Sign off (or withdraw) the script: its text and the cut it is the spine of (D-38).
+    /// A change to a line, a shot's purpose, beat or length, or the order drops it; cameras,
+    /// light and sound do not.
+    pub fn approve_script(&mut self, approved: bool) -> Result<()> {
+        if approved && self.defn.shots.is_empty() {
+            bail!("there is no script to approve yet");
+        }
+        let fp = fp::script_fingerprint(&self.defn);
+        self.state.set_approved_script(approved.then_some(fp.as_str()));
+        self.state.log("approve-script", json!({"approved": approved}));
+        self.state.save()
+    }
+
+    /// approved | outdated (approved, then the script or the cut changed) | none
+    pub fn script_approval(&self) -> &'static str {
+        match self.state.approved_script() {
+            None => "none",
+            Some(a) if a == fp::script_fingerprint(&self.defn) => "approved",
+            Some(_) => "outdated",
+        }
+    }
+
     // ------------------------------------------------------------------ brief
 
     /// Set fields under `brief:` (null removes the value). Editorial: nothing goes stale.

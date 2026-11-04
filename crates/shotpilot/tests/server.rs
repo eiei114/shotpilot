@@ -421,7 +421,11 @@ fn a_game_change_shows_in_status_and_renders_only_its_shots() {
     std::fs::write(content.join("well.png"), "v1").unwrap();
     let (acts, _) = render(&s, "still");
     assert!(acts.values().all(|a| a == "rendered"));
+    // the app polls with the ETag: unchanged game, 304; a new texture, a fresh status
+    let tag = call(&s, "GET", "/api/status", None, &[]).header("etag").to_string();
+    assert_eq!(call(&s, "GET", "/api/status", None, &[("If-None-Match", &tag)]).code, 304);
     std::fs::write(content.join("well.png"), "v2, repainted").unwrap();
+    assert_eq!(call(&s, "GET", "/api/status", None, &[("If-None-Match", &tag)]).code, 200);
     let (_, st) = jcall(&s, "GET", "/api/status", None);
     let changed: Vec<String> = st["shots"]
         .as_array()

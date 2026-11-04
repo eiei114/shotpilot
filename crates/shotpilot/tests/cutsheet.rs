@@ -193,6 +193,6 @@ fn a_note_on_the_camera_changes_only_the_camera() {
 
     // a pointed note needs exactly one shot
     let err = ai::revise_at(&f.ws.defn, "x", None, &pointer, &fake).err().unwrap();
-    assert!(err.msg.contains("exactly one shot"), "{}", err.msg);
+    assert!(err.msg.contains("names the shots"), "{}", err.msg);
     assert!(ai::aspect_fields("nope").is_none());
 }

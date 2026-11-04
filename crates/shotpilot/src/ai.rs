@@ -499,13 +499,7 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
-    if !defn.stage.is_empty() {
-        let mut st = format!("\n## Stage (from the location scout)\n{}\n", defn.stage.summary);
-        for (n, d) in &defn.stage.anchors {
-            st.push_str(&format!("- {n}: {d}\n"));
-        }
-        user.push_str(&st);
-    }
+    user.push_str(&stage_section(defn));
     let scout = crate::scout::planner_blocks(defn, 8);
     if !scout.is_empty() {
         user.push_str(&format!(
@@ -780,6 +774,18 @@ pub fn aspect_fields(aspect: &str) -> Option<Vec<String>> {
     ASPECTS.iter().find(|(a, _, _)| *a == aspect).map(|(_, keys, _)| keys.iter().map(|k| k.to_string()).collect())
 }
 
+/// The stage as the location scout read it (empty when it has not been read).
+fn stage_section(defn: &Definition) -> String {
+    if defn.stage.is_empty() {
+        return String::new();
+    }
+    let mut st = format!("\n## Stage (from the location scout)\n{}\n", defn.stage.summary);
+    for (n, d) in &defn.stage.anchors {
+        st.push_str(&format!("- {n}: {d}\n"));
+    }
+    st
+}
+
 /// How many library sounds a sound note lists for Claude.
 const LIBRARY_PROMPT_MAX: usize = 300;
 
@@ -957,8 +963,8 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
         scope_line.push_str("Leave `lines` empty.\n");
     }
     if let Some(fields) = &pointer.fields {
-        if pointer.sound || pointer.line.is_some() || scope.map_or(true, |s| s.len() != 1) {
-            bail!("a note on one part of a shot takes exactly one shot and is not a sound note");
+        if pointer.sound || pointer.line.is_some() || scope.map_or(true, |s| s.is_empty()) {
+            bail!("a note on one part of shots names the shots it is about and is not a sound note");
         }
         let what = ASPECTS
             .iter()
@@ -989,8 +995,14 @@ Library sounds you may also use: write `file: lib:<id>` and it is copied into th
         ));
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
+    // a note on the cameras gets what the planner places cameras with: the stage and the framing table
+    let camera_help = if pointer.fields.as_ref().is_some_and(|f| f.iter().any(|k| k == "camera")) {
+        format!("{}\n## Framing\n{}\n\n", stage_section(defn), craft::framing_table(defn))
+    } else {
+        String::new()
+    };
     let user = format!(
-        "Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}\n\nCurrent audio:\n{audio_now}\n\n\
+        "{camera_help}Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
          Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
