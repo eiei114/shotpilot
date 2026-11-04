@@ -248,6 +248,13 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .sheet-head .seg button { padding: 4px 10px; font-size: 12px; }
 .sheet-head .seg small { color: var(--faint); margin-left: 3px; font-weight: 500; }
 .sheet-lead { color: var(--muted); font-size: 12px; margin-top: -4px; }
+.scr { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 4px 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); }
+.scr b { font-weight: 700; }
+.scr.approved { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+.scr.outdated { border-color: var(--stale); }
+.scr .mini { padding: 2px 9px; border-radius: 999px; }
+.review-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); font-size: 12.5px; }
+.review-bar .sp { flex: 1; }
 .sheet-lead .fchip { margin-left: 4px; }
 .sheet { display: grid; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; container-type: inline-size; }
 .item { position: relative; border-top: 1px solid var(--line); background: var(--card); }
@@ -762,7 +769,7 @@ function startFromHome() {
   sessionStorage.removeItem("shotpilot.produce");
   if (ui.busy || !ui.status?.ai?.ready) return;
   try { $("note").value = JSON.parse(raw).note || ""; } catch { return; }
-  produceAll();
+  produceAll({ review: true });
 }
 
 async function fetchSound() {
@@ -1113,6 +1120,13 @@ function nextStep() {
   const planned = (ui.log || []).some((e) => e.action === "plan");
   if (!planned && !approved.length && !skipped("plan")) return { stage: "structure", what: "Claude に構成を組み直させる", why: "いまのショットは手書きです。ステージとブリーフから組み直せます（置き換え。任意）", act: "plan", skip: "plan", need: needAi };
   if (p0.length) return { stage: "structure", what: `ショット検査の P0 を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
+  if (st.review?.stopped && shots.length) {
+    if (st.script_approval !== "approved") {
+      return { stage: "structure", what: st.script_approval === "outdated" ? "直した台本を承認し直す" : "台本を確かめて承認する",
+        why: "カット表で文字・秒数・見せるものを直せます。カメラだけ組み直すこともできます", act: "approve-script" };
+    }
+    return { stage: "structure", what: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", act: "resume" };
+  }
   const changedShots = shots.filter((x) => gameChanged(x));
   if (changedShots.length) {
     const q = [...st.qualities].reverse().find((qq) => changedShots.some((x) => x.changed?.[qq])) || base;
@@ -1135,9 +1149,10 @@ function drawNext() {
   const stageName = { scout: "ロケハン", brief: "ブリーフ", structure: "構成", framing: "構図", capture: "撮影", finish: "仕上げ" }[n.stage];
   const onSheet = n.stage === "framing" && n.act === "goto" && ui.tab === "structure";
   const here = STAGE_OF[ui.tab] === n.stage || onSheet;
-  const label = n.act === "goto" ? (here ? "" : `${stageName}へ →`) : "実行";
+  const label = n.act === "goto" ? (here ? "" : `${stageName}へ →`) : n.act === "approve-script" ? "台本を承認" : n.act === "resume" ? "続ける" : "実行";
   el.innerHTML = `<span class="lbl">次: ${esc(stageName)}</span><span class="what">${esc(n.what)}</span><span class="why" title="${esc(n.why)}">${esc(n.need || (onSheet ? "行の ○ か Enter で承認します。Space で大きく見ます" : n.why))}</span>
     ${label ? `<button class="btn dark" data-next${n.need ? " disabled" : ""}>${esc(label)}</button>` : ""}
+    ${n.act === "produce" ? `<button class="btn" data-next-full title="確認で止めずに、音・撮影・Cut まで通します"${n.need ? " disabled" : ""}>最後まで自動</button>` : ""}
     ${n.skip ? `<button class="btn" data-next-skip="${esc(n.skip)}">飛ばす</button>` : ""}`;
   drawNext.step = n;
 }
@@ -1151,6 +1166,8 @@ async function runNext() {
   else if (n.act === "mood") generateMood();
   else if (n.act === "plan") planShots();
   else if (n.act === "produce") produceAll();
+  else if (n.act === "approve-script") approveScript(true);
+  else if (n.act === "resume") resumeAll();
   else if (n.act === "render") render(n.quality);
   else if (n.act === "final") render("final", ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id));
   else if (n.act === "cut") cut();
@@ -1377,7 +1394,7 @@ function drawStructure() {
   if (ui.edit && box.querySelector(".inl")) return; // typing in place: a poll must not wipe it
   if (!ui.row || !(shotById(ui.row) || lineById(ui.row))) ui.row = ui.sel;
   const key = JSON.stringify([st.timeline, st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.node, s.approval, s.framing, s.lens, s.thumbs]),
-    st.script, st.checks, st.undo, st.ai?.ready, ui.busy, ui.row, ui.aspect, ui.edit, ui.flash, ui.filter, ui.rowBusy, ui.outcome, ui.popped]);
+    st.script, st.checks, st.undo, st.ai?.ready, st.script_approval, st.review, ui.busy, ui.row, ui.aspect, ui.edit, ui.flash, ui.filter, ui.rowBusy, ui.outcome, ui.popped]);
   if (drawStructure.key === key && box.childElementCount) return;
   drawStructure.key = key;
   const focused = document.activeElement?.id === "row-ask";
@@ -1405,7 +1422,9 @@ function drawStructure() {
         `<button data-filter="${k}" class="${ui.filter === k ? "on" : ""}">${l}${c !== "" ? `<small>${c}</small>` : ""}</button>`).join("")}</div>
       <span class="sp"></span>
       ${st.undo ? `<button class="btn" data-undo title="Ctrl+Z${ui.busy ? "" : "。撮った take は消えないので、戻した画はすぐ表示されます"}"${ui.busy ? " disabled" : ""}>↶ 元に戻す <span style="color:var(--muted)">${esc(undoLabel(st.undo))}</span></button>` : ""}
+      <button class="btn" data-cams${ai && !ui.busy ? "" : " disabled"} title="台本・目的・秒数はそのまま（コードで守ります）、カメラだけを全カット組み直します。左の欄に方向を書いてから押すと、それに沿って組み直します">📷 カメラだけ組み直す</button>
       <button class="btn" data-plan${ai && !ui.busy ? "" : " disabled"} title="ブリーフ・骨格・セオリーから組み直します（いまのカットは置き換わります）">📐 組み直す</button></div>
+    ${scriptBar(st)}
     <div class="sheet-lead">Cut に出る順に 1 行 1 カット。<b>○</b> で承認、文字と秒数は押せばその場で直せます。カメラの欄を押すと、カメラだけを Claude に頼めます。
       ${whole.map((x) => `<button class="fchip ${x.severity}" data-fix-all="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("")}</div>
     <div class="sheet" role="list">${rows || `<div class="sheet-empty">この絞り込みに当てはまるカットはありません</div>`}</div>
@@ -1418,6 +1437,19 @@ function drawStructure() {
     const el = $("row-ask");
     if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
+}
+
+/** The script's approval, and at the review the way on (D-38). */
+function scriptBar(st) {
+  const a = st.script_approval || "none";
+  const label = { approved: "✓ 台本を承認済み", outdated: "台本が変わった · 承認し直す", none: "台本は未承認" }[a];
+  const btn = a === "approved"
+    ? `<button class="mini" data-script="off" title="承認を取り消す"${ui.busy ? " disabled" : ""}>取り消す</button>`
+    : `<button class="mini" data-script="on" title="いまの文字・並び・秒数・見せるもので承認します。変わると自動で外れます"${ui.busy ? " disabled" : ""}>承認</button>`;
+  const chip = `<span class="scr ${a}"><b>${esc(label)}</b>${btn}</span>`;
+  if (!st.review?.stopped) return `<div>${chip}</div>`;
+  return `<div class="review-bar">${chip}<span>一気に作るは、ここで止まっています。台本とカットを確かめて直し、よければ続けます（音 → 撮影 → Cut）。</span><span class="sp"></span>
+    <button class="btn dark" data-resume${st.ai?.ready && !ui.busy ? "" : " disabled"}>${a === "approved" ? "▶ 続ける" : "▶ 台本を承認して続ける"}</button></div>`;
 }
 
 function shotRow(s, it) {
@@ -1656,6 +1688,9 @@ $("structpanel").addEventListener("click", (e) => {
   if (t.closest("[data-plan]")) { planShots(); return; }
   if (t.closest("[data-produce]")) { produceAll(); return; }
   if (t.closest("[data-undo]")) { undo(); return; }
+  if (t.closest("[data-cams]")) { rebuildCameras(); return; }
+  if (t.closest("[data-resume]")) { resumeAll(); return; }
+  const sc = t.closest("[data-script]"); if (sc) { approveScript(sc.dataset.script === "on"); return; }
   const fl = t.closest("[data-filter]"); if (fl) { ui.filter = fl.dataset.filter; draw(); return; }
   const fa = t.closest("[data-fix-all]");
   if (fa) {
@@ -2454,6 +2489,19 @@ function entryHtml(e, isLast) {
     const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
     const steps = (e.steps || []).map((s) => `<div><span class="k">${esc(STEP_ICON[s.status] || "")} ${esc(s.label)}</span> ${esc(s.detail || "")}</div>`).join("");
     const notes = (e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`).join("");
+    const isLast = (ui.log || []).filter((x) => x.action === "produce").pop() === e;
+    if (e.stopped === "review") {
+      return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る（確認で止める）</div></div>
+      <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
+        ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}<div class="changes">${steps}</div>${notes}
+        <div class="done-row"><span class="ok"><span class="dot warn"></span>${(e.shots || []).length} カット · ${esc(e.quality || "")} で撮って確認待ち</span>
+          <span>ショット検査: ${sev || "指摘なし"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
+        ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ カット表で台本とカットを確かめる</button></div>` : ""}</div>`;
+    }
+    if (e.resumed) {
+      return `<div class="event"><span class="dot"></span><span>▶ 続き: ${esc((e.steps || []).map((s) => `${s.label} ${s.detail || ""}`.trim()).join(" → "))}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
+        ${notes}${isLast ? `<div class="suggest"><button data-goto-stage="finish">↗ できた1本を見る</button></div>` : ""}`;
+    }
     return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
       <div class="msg-ai"><div class="who"><span class="logo">C</span>Claude</div>
         ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}<div class="changes">${steps}</div>${notes}
@@ -2496,8 +2544,9 @@ function drawChat() {
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
   if (ui.produce) {
-    const order = ["scout", "stage", "mood", "plan", "sound", "render", "cut"];
-    const names = { scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", sound: "音の設計", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
+    const order = { review: ["scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "cut"] }[ui.produce.mode]
+      || ["scout", "stage", "mood", "plan", "sound", "render", "cut"];
+    const names = { scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
     const rows = order.map((k) => {
       const d = ui.produce.steps[k];
       const icon = d ? STEP_ICON[d.status] : "　";
@@ -2547,14 +2596,16 @@ async function planShots() {
 
 const STEP_ICON = { start: "…", done: "✓", skipped: "–", failed: "✕" };
 
-async function produceAll() {
+async function produceAll({ review = true, resume = false } = {}) {
   const st = ui.status; if (ui.busy || !st?.ai?.ready) return;
-  const note = $("note").value.trim();
-  if (st.shots.length && !confirm(`いまの ${st.shots.length} ショットを置き換えて、一気に作ります（撮った take は消えません）。`)) return;
-  ui.busy = "produce"; ui.produce = { steps: {}, note }; ui.pending = null; $("note").value = "";
+  const note = resume ? "" : $("note").value.trim();
+  if (!resume && st.shots.length && !confirm(`いまの ${st.shots.length} ショットを置き換えて、一気に作ります（撮った take は消えません）。`)) return;
+  ui.busy = "produce"; ui.produce = { steps: {}, note, mode: resume ? "resume" : review ? "review" : "full" }; ui.pending = null;
+  if (!resume) $("note").value = "";
   ui.started = Date.now(); draw(); drawChat();
   try {
-    const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note, quality: "previz", mood: true }) });
+    const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note, quality: "previz", mood: true, review, resume }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
@@ -2566,13 +2617,49 @@ async function produceAll() {
         const ev = /^event: (.*)$/m.exec(block)?.[1];
         const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
         if (ev === "step") ui.produce.steps[d.key] = d;
-        else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); ui.tab = ui.fin = "teaser"; }
+        else if (ev === "done" && d.stopped === "review") {
+          toast("台本とカットができました。カット表で確かめて直し、よければ「続ける」で音・撮影・Cut に進みます");
+          ui.tab = "structure"; ui.row = null; ui.filter = "all";
+        } else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); ui.tab = ui.fin = "teaser"; }
         else if (ev === "error") toast(d.error, true);
         drawChat();
       }
     }
-  } catch (e) { $("note").value = note; toast(e.message, true); }
+  } catch (e) { if (!resume) $("note").value = note; toast(e.message, true); }
   finally { ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
+}
+
+async function approveScript(on = true) {
+  if (ui.busy) return false;
+  ui.busy = "save"; draw();
+  let ok = false;
+  try { await api("POST", "/api/approve", { script: true, approved: on }); ok = true; toast(on ? "台本を承認しました" : "台本の承認を取り消しました"); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+  return ok;
+}
+
+/** Continue past the review: approve the script first when it is not, in the same press. */
+async function resumeAll() {
+  if (ui.status?.script_approval !== "approved" && !(await approveScript(true))) return;
+  produceAll({ resume: true });
+}
+
+/** Ask Claude to rebuild every shot's camera for the script as it stands (the script is kept, in code). */
+async function rebuildCameras() {
+  const st = ui.status; if (ui.busy || !st?.ai?.ready || !st.shots.length) return;
+  const typed = $("note").value.trim();
+  const note = typed || "台本・各カットの目的・秒数はそのままに、目的がいちばん伝わるようにカメラ（位置・向き・レンズ・動き）だけを組み直して";
+  ui.busy = "revise"; ui.pending = { note, ctx: "📷 全カットのカメラだけ" }; ui.started = Date.now(); $("note").value = "";
+  draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `組み直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
+  let out = null;
+  try {
+    out = await api("POST", "/api/revise", { note, aspect: "camera", all: true });
+    toast(out.stale?.length ? `${out.stale.length} カットのカメラを組み直しました（台本はそのまま）` : "Claude は何も変えませんでした");
+  } catch (e) { $("note").value = typed; toast(e.message, true); }
+  finally { clearInterval(tick); ui.busy = null; ui.pending = null; ui.logKey = ""; await refresh(); }
+  if (out) refreshPreviz(out.stale);
 }
 
 async function sendNote() {
@@ -2943,6 +3030,7 @@ $("designpanel").addEventListener("click", (e) => {
 });
 $("next").addEventListener("click", (e) => {
   if (e.target.closest("[data-next]")) runNext();
+  if (e.target.closest("[data-next-full]")) produceAll({ review: false });
   const sk = e.target.closest("[data-next-skip]");
   if (sk) { localStorage.setItem(skipKey(sk.dataset.nextSkip), "1"); draw(); }
 });
