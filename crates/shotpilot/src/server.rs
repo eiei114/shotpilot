@@ -36,7 +36,7 @@ use crate::workspace::Workspace;
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 pub const HOME_HTML: &str = include_str!("../web/home.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard"];
 /// Loopback only; large enough for a mood-board image sent as base64.
 const MAX_BODY: usize = 20 << 20;
 
@@ -474,6 +474,10 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         let mut v = row.to_json();
         v["lens"] = s.lens.get("focal_length").cloned().unwrap_or(Value::Null);
         v["thumbs"] = Value::Object(thumbs);
+        v["storyboard"] = match crate::storyboard::current(&ws.defn, s) {
+            Some(b) => json!({"url": file_url(&ws.root, &b.file), "fresh": b.fresh}),
+            None => Value::Null,
+        };
         v["node"] = ws.defn.shots[row.index].clone();
         v["framing"] = crate::shotcheck::framing(&ws.defn, s).map(|f| f.to_json()).unwrap_or(Value::Null);
         shots.push(v);
@@ -981,6 +985,23 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut ws = app.ws()?;
             let made = ws.generate_moodboard(gen.as_ref(), &direction, n)?;
             send_json(stream, false, 200, &json!({"added": made, "images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/storyboard") => {
+            let body = req.json()?;
+            let shots: Vec<String> = body
+                .get("shots")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            let direction = body.get("direction").and_then(Value::as_str).unwrap_or("").to_string();
+            let force = body.get("force").and_then(Value::as_bool).unwrap_or(false);
+            let gen = (app.images)(&app.settings())?; // say what is missing before taking the lock
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let out = ws.generate_storyboard(gen.as_ref(), &shots, &direction, force)?;
+            let made: Vec<&str> = out.iter().filter(|o| o.action == "made").map(|o| o.shot_id.as_str()).collect();
+            let kept: Vec<&str> = out.iter().filter(|o| o.action == "kept").map(|o| o.shot_id.as_str()).collect();
+            send_json(stream, false, 200, &json!({"made": made, "kept": kept})).map_err(io)
         }
         ("POST", "/api/moodboard/upload") => {
             let body = req.json()?;

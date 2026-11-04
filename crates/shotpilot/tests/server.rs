@@ -536,6 +536,29 @@ fn mood_board_over_http() {
 }
 
 #[test]
+fn storyboard_over_http() {
+    let f = ws();
+    let srv = Server::bind_with(&f.path(), "127.0.0.1", 0, shotpilot::server::default_claude(), None).unwrap()
+        .with_images(Box::new(|_| Ok(Box::new(OnePng) as Box<dyn shotpilot::moodboard::ImageGen>)));
+    let port = srv.port();
+    srv.spawn();
+    let s = Srv { port, f };
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert!(st["shots"].as_array().unwrap().iter().all(|x| x["storyboard"].is_null()));
+    let (code, out) = jcall(&s, "POST", "/api/storyboard", Some(json!({"shots": ["s02_well"]})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["made"], json!(["s02_well"]));
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let well = st["shots"].as_array().unwrap().iter().find(|x| x["id"] == "s02_well").unwrap().clone();
+    assert_eq!(well["storyboard"]["fresh"], true);
+    let url = well["storyboard"]["url"].as_str().unwrap();
+    assert!(url.starts_with("/files/storyboard/s02_well/"), "{url}");
+    assert_eq!(call(&s, "GET", url, None, &[]).code, 200);
+    // painting a storyboard frame never renders a take
+    assert!(st["shots"].as_array().unwrap().iter().all(|x| x["thumbs"]["previz"]["url"].is_null()));
+}
+
+#[test]
 fn library_lists_plays_and_imports_without_rendering() {
     let f = ws();
     let lib = tempfile::tempdir().unwrap();

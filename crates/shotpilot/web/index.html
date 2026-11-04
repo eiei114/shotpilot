@@ -252,6 +252,8 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .badge-q { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 600; color: #fff; background: rgb(0 0 0 / .55);
   padding: 3px 8px; border-radius: 6px; letter-spacing: .02em; }
 .badge-q.stale { background: var(--stale); color: #241900; }
+.board-bar { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; }
+#board.on { background: var(--accent); color: var(--accent-ink); }
 .scrub { display: flex; align-items: center; gap: 12px; padding: 8px 14px; color: #c9cfd2; font-size: 12px; font-variant-numeric: tabular-nums; background: #141617; }
 .scrub input { flex: 1; accent-color: var(--accent); }
 
@@ -487,6 +489,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
       <div class="right">
         <button class="btn" id="approve" hidden></button>
+        <button class="btn" id="board" title="previz の線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
@@ -572,7 +575,9 @@ const ui = {
   quality: null,
   region: null,         // [x0, y0, x1, y1] normalized to the image
   scopeAll: false,      // note applies to the whole list
-  busy: null,           // "render" | "cut" | "revise" | "save"
+  busy: null,           // "render" | "cut" | "revise" | "save" | "board"
+  board: false,         // show the shot's storyboard frame instead of its take
+  boardStamp: 0,        // cache-buster for repainted storyboard frames
   outcome: {},          // shot id -> {action, seconds}
   summary: "",
   pending: null,        // optimistic chat message while Claude works
@@ -698,7 +703,9 @@ function draw() {
   $("toolbar").hidden = !!panel && ui.tab !== "design";
   for (const el of [$("quality"), $("mark"), document.querySelector(".seg:not(#finish-seg)")]) el.hidden = finishing;
   $("finish-seg").hidden = !finishing;
-  $("mark").disabled = ui.tab !== "shot" || tweak;
+  $("mark").disabled = ui.tab !== "shot" || tweak || ui.board;
+  $("board").hidden = finishing || ui.tab !== "shot" || tweak;
+  $("board").classList.toggle("on", ui.board);
   drawStages(); drawNext(); drawFindings(); drawApprove();
   $("render").disabled = $("cut").disabled = !!ui.busy;
   $("send").disabled = !!ui.busy || !st.ai?.ready;
@@ -716,7 +723,9 @@ function draw() {
 
 function drawStage() {
   const s = shot();
+  if (ui.board) { drawBoard(s); return; }
   const view = $("view");
+  if (view.dataset.board) { view.dataset.board = ""; view.innerHTML = ""; } // leaving the storyboard view
   view.classList.toggle("mark", true);
   const tk = s && shownTake(s);
   if (!tk) {
@@ -743,6 +752,40 @@ function drawStage() {
   $("f-label").textContent = `frame ${num + 1} / ${total}`;
   $("f-time").textContent = `${(num / (ui.status.fps || 30)).toFixed(2)}s / ${s.duration}s`;
   drawRegion();
+}
+
+/** The shot's storyboard frame: an image model's near-real painting of its previz layout. */
+function drawBoard(s) {
+  const view = $("view"); view.classList.remove("mark");
+  $("scrub").hidden = true;
+  const b = s?.storyboard, ai = ui.status.ai || {}, busy = ui.busy === "board";
+  const missing = ui.status.shots.filter((x) => !x.storyboard?.fresh).length;
+  const btns = !ai.image_active
+    ? `<button class="btn" data-mood-key title="Codex を入れてログインするか、接続設定で OpenAI の API キーを入れると描けます">画像の生成先を設定</button>`
+    : `<button class="btn dark" data-board-gen${ui.busy ? " disabled" : ""}>${busy ? "描いています…" : b ? "このショットを描き直す" : "このショットを描く"}</button>`
+      + (missing > 1 ? `<button class="btn" data-board-all${ui.busy ? " disabled" : ""}>古い・未作成の ${missing} ショットを描く</button>` : "");
+  const key = JSON.stringify([s?.id, b, btns, ui.boardStamp]);
+  if (view.dataset.board === key && view.querySelector(".board-bar")) return;
+  view.dataset.board = key;
+  if (!s || !b) {
+    view.innerHTML = `<div class="placeholder"><b>絵コンテはまだありません</b>previz の線画を下絵に、ロケハン写真とムードボードを参考にして 1 枚描きます。確認用で、ティザーには入りません。</div><div class="board-bar">${s ? btns : ""}</div>`;
+    return;
+  }
+  const label = `絵コンテ（生成画像・ティザーには入りません）${b.fresh ? "" : " · 画が変わったので古い"}`;
+  view.innerHTML = `<img alt="" draggable="false" src="${esc(b.url)}?v=${ui.boardStamp}"><span class="badge-q${b.fresh ? "" : " stale"}">${esc(label)}</span><div class="board-bar">${btns}</div>`;
+}
+
+async function paintBoard(all) {
+  if (ui.busy) return;
+  const shots = all ? ui.status.shots.filter((x) => !x.storyboard?.fresh).map((x) => x.id) : [ui.sel];
+  if (!shots.length || !shots[0]) return;
+  ui.busy = "board"; draw();
+  toast(`絵コンテを描いています（${shots.length} 枚。数分かかります）`);
+  try {
+    const out = await api("POST", "/api/storyboard", { shots, force: !all });
+    toast(`${out.made.length} 枚を描きました`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; ui.boardStamp = Date.now(); await refresh(); }
 }
 
 function imageBox() {
@@ -2332,6 +2375,7 @@ $("conn-close").addEventListener("click", () => ($("conn").hidden = true));
 $("conn-save").addEventListener("click", saveConn);
 $("conn").addEventListener("change", markConn);
 $("conn-keyinput").addEventListener("focus", () => { document.querySelector("input[name=prov][value=api-key]").checked = true; markConn(); });
+$("board").addEventListener("click", () => { ui.board = !ui.board; ui.region = null; $("view").dataset.board = ""; draw(); });
 $("mark").addEventListener("click", () => toast("プレビューの上をドラッグして、直したいところを囲んでください"));
 $("open-ext").addEventListener("click", async () => {
   const cut = ui.status?.cut;
@@ -2394,8 +2438,14 @@ $("briefpanel").addEventListener("input", (e) => { const el = e.target.closest("
 
 // drag on the frame to mark what the note is about
 let drag = null;
+$("view").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-board-gen],[data-board-all],[data-mood-key]");
+  if (!t) return;
+  if (t.matches("[data-mood-key]")) openConn();
+  else paintBoard(t.matches("[data-board-all]"));
+});
 $("view").addEventListener("pointerdown", (e) => {
-  if (ui.tab !== "shot" || ui.mode !== "preview") return;
+  if (ui.tab !== "shot" || ui.mode !== "preview" || ui.board || e.target.closest(".board-bar")) return;
   const box = imageBox(); if (!box) return;
   const p = (ev) => [Math.min(Math.max((ev.clientX - box.abs.left) / box.abs.width, 0), 1), Math.min(Math.max((ev.clientY - box.abs.top) / box.abs.height, 0), 1)];
   drag = { p, start: p(e) };
