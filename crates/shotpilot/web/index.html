@@ -177,6 +177,25 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .kinds label.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .kinds input { display: none; }
 .kinds b { font-size: 13px; } .kinds span { color: var(--muted); font-size: 11.5px; }
+/* genre and style pickers (D-39) */
+.gcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.gcard { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; text-align: left; background: var(--card); }
+.gcard:hover { border-color: var(--ink); }
+.gcard.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.gcard b { font-size: 13px; } .gcard span { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+.gcard small { color: var(--faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.stcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.stcard { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; text-align: left; background: var(--card); align-content: start; }
+.stcard:hover { border-color: var(--ink); }
+.stcard.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.stcard .nm { font-weight: 600; font-size: 12.5px; line-height: 1.35; }
+.stcard .meta { color: var(--faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.stcard .sum { font-size: 12px; color: var(--ink); line-height: 1.45; }
+.rhythm { width: 100%; height: 16px; display: block; border-radius: 4px; background: var(--soft); }
+.rhythm .cut { stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.rhythm .blk { fill: color-mix(in srgb, var(--ink) 55%, transparent); }
+.stnone { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; text-align: left; background: none; color: var(--muted); font-size: 12px; }
+.stnone.on { border-style: solid; border-color: var(--ink); color: var(--ink); }
 .scout-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: start; max-width: 1100px; }
 .scout-row .nm { font-family: var(--mono); font-size: 12px; padding-top: 4px; }
 .scout-row .nm small { display: block; color: var(--muted); font-family: inherit; }
@@ -1247,11 +1266,48 @@ function briefField(key, label, hint, value, { area = false, ph = "" } = {}) {
   return `<label>${esc(label)}<small>${esc(hint)}</small></label><div>${input}</div>`;
 }
 
+async function fetchGenres() {
+  if (fetchGenres.busy) return;
+  fetchGenres.busy = true;
+  try { ui.genres = await api("GET", "/api/genres"); draw(); }
+  catch (e) { toast(e.message, true); }
+  finally { fetchGenres.busy = false; }
+}
+
+const viewsJa = (v) => (v >= 1e4 ? `${Math.round(v / 1e4).toLocaleString()}万回` : `${v}回`);
+
+/** Cuts as ticks and black as dark spans along the runtime. */
+function rhythmSvg(s) {
+  const d = Math.max(s.duration || 1, 1);
+  const blacks = (s.blacks || []).map(([a, b]) => `<rect class="blk" x="${a}" y="0" width="${Math.max(b - a, 0.15)}" height="1"/>`).join("");
+  const cuts = (s.cuts || []).map((t) => `<line class="cut" x1="${t}" x2="${t}" y1="0.15" y2="0.85"/>`).join("");
+  return `<svg class="rhythm" viewBox="0 0 ${d} 1" preserveAspectRatio="none" aria-label="カット ${(s.cuts || []).length} 回">${blacks}${cuts}</svg>`;
+}
+
+function genrePicker(b) {
+  const gs = ui.genres?.genres;
+  if (!gs) return `<div class="sp-hint">読み込み中…</div>`;
+  return `<div class="gcards">${gs.map((g) => `<button type="button" class="gcard${b.genre_id === g.id ? " on" : ""}" data-genre="${esc(g.id)}">
+      <b>${esc(g.name)}</b><span>${esc(g.headline)}</span><small>${g.n} 本 · 毎分 ${Math.round(g.edits_per_min)} カット</small></button>`).join("")}</div>`;
+}
+
+function stylePicker(b) {
+  const g = ui.genres?.genres.find((x) => x.id === b.genre_id);
+  if (!ui.genres) return `<div class="sp-hint">読み込み中…</div>`;
+  if (!g) return `<div class="sp-hint">ジャンルの型を選ぶと、そのジャンルの流行りの型が出ます。</div>`;
+  const none = `<button type="button" class="stnone${b.style ? "" : " on"}" data-style="">型を使わない<br><small>${esc(g.name)}の実測の平均で組みます</small></button>`;
+  return `<div class="stcards">${g.styles.map((s) => `<button type="button" class="stcard${b.style === s.id ? " on" : ""}" data-style="${esc(s.id)}" title="${esc(s.name)}（${esc(s.channel)}）">
+      <span class="nm">${esc(s.name)}</span>
+      <span class="meta">${esc(s.uploaded)} · ${esc(viewsJa(s.views))} · ${Math.round(s.duration)} 秒 · カット ${(s.cuts || []).length}</span>
+      ${rhythmSvg(s)}<span class="sum">${esc(s.summary)}</span></button>`).join("")}${none}</div>`;
+}
+
 function drawBrief() {
   const st = ui.status, b = st.brief || {};
-  const key = JSON.stringify([{ ...b, images: undefined }, st.pitch]);
+  const key = JSON.stringify([{ ...b, images: undefined }, st.pitch, !!ui.genres]);
   if (drawBrief.key === key && $("briefpanel").childElementCount) { drawMood(); return; } // keep what is being typed
   drawBrief.key = key;
+  if (!ui.genres) fetchGenres();
   const kind = (k, t, d) => `<label class="${b.kind === k ? "on" : ""}"><input type="radio" name="bkind" value="${k}"${b.kind === k ? " checked" : ""}><b>${t}</b><span>${d}</span></label>`;
   $("briefpanel").innerHTML = `<h3>ブリーフ</h3>
     <div class="lead">撮る前に「何のための映像か」を決めます。トレーラー制作では最初の打ち合わせで決める項目で、Claude はショットを組むときにこれを読みます。shots.yaml の <span class="mono">brief:</span> に書かれ、直しても撮り直しは起きません。</div>
@@ -1259,7 +1315,11 @@ function drawBrief() {
       <label>種類<small>Steam はこの2つを別物として扱います</small></label>
       <div class="kinds">${kind("teaser", "ティザー", "タイトルや世界観を印象づける。30〜60秒の演出的な映像")}${kind("gameplay", "ゲームプレイトレーラー", "最初の数秒から実際のプレイを見せる。ストアの1本目向き")}</div>
       <label>ピッチ<small>shots.yaml の teaser.pitch</small></label><div class="readonly">${esc(st.pitch || "（未設定）")}</div>
-      ${briefField("genre", "ジャンル", "最初の数秒で伝わるべきもの", b.genre, { ph: "例: 一人称ホラー" })}
+      ${briefField("genre", "ジャンル", "最初の数秒で伝わるべきもの。下の型から選ぶか、自由に書く", b.genre, { ph: "例: 一人称ホラー" })}
+      <label>ジャンルの型<small>実測したティザーのジャンル別パッケージ。選ぶと、骨格の速さ・色調・台本の手法がそれに沿って組まれます</small></label>
+      <div>${genrePicker(b)}</div>
+      <label>流行りの型<small>そのジャンルで最近よく見られたティザー。選ぶと、その構成とリズムを真似て組みます（中身は真似しません）。帯は、縦線がカット、濃い部分が黒味です</small></label>
+      <div>${stylePicker(b)}</div>
       ${briefField("core", "コア体験", "見た人に残したい1つの感情や体験。1文で", b.core, { area: true, ph: "例: 見慣れた中庭が、少しずつ見知らぬ場所に変わっていく" })}
       ${briefField("audience", "誰に向けて", "比較対象のゲームや、遊ぶ人の像", b.audience, { ph: "例: 静かに怖いホラーが好きな PC プレイヤー" })}
       ${briefField("must_show", "必ず見せるもの", "場所・仕掛け・キャラクター。カンマ区切り", b.must_show, { ph: "例: 井戸, 2階の窓, 提灯" })}
@@ -1812,7 +1872,7 @@ function flashStage() {
   el.classList.remove("advance"); void el.offsetWidth; el.classList.add("advance");
 }
 
-async function saveBrief() {
+async function saveBrief(extra = {}) {
   const set = {};
   const box = $("briefpanel");
   const kind = box.querySelector("input[name=bkind]:checked")?.value;
@@ -1823,6 +1883,7 @@ async function saveBrief() {
     set[k] = k === "must_show" ? el.value.split(/[,、\n]/).map((x) => x.trim()).filter(Boolean)
       : k === "references" ? el.value.split("\n").map((x) => x.trim()).filter(Boolean) : el.value.trim();
   }
+  Object.assign(set, extra);
   if (!ui.status.brief?.written && !Object.keys(set).length) set.kind = kind || "teaser";
   if (!Object.keys(set).length) { toast("変更はありません"); return; }
   ui.busy = "save"; draw();
@@ -3048,8 +3109,20 @@ $("scoutpanel").addEventListener("click", (e) => {
 });
 $("scoutpanel").addEventListener("input", (e) => { if (e.target.id === "asset-filter") { ui.assetFilter = e.target.value; filterAssets(); } });
 for (const id of ["briefpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
-  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label");
+  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label,[data-genre],[data-style]");
   if (!t) return;
+  if (t.dataset.genre !== undefined) {
+    const g = ui.genres?.genres.find((x) => x.id === t.dataset.genre); const b = ui.status.brief || {};
+    if (!g || b.genre_id === g.id) return;
+    // another genre: its own styles, so the old style goes
+    saveBrief({ genre: g.name, ...(b.style ? { style: null } : {}) });
+    return;
+  }
+  if (t.dataset.style !== undefined) {
+    const want = t.dataset.style || null;
+    if ((ui.status.brief?.style || null) !== want) saveBrief({ style: want });
+    return;
+  }
   if (t.matches(".kinds label")) { for (const l of t.parentElement.children) l.classList.toggle("on", l === t); return; }
   if (t.id === "brief-save") saveBrief();
   else if (t.matches("[data-mood-gen]")) generateMood();
