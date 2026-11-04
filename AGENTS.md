@@ -30,10 +30,12 @@ shotpilot render previz           # 古くなったショットだけをエン�
 shotpilot set s03 camera.lens.focal_length=50
 shotpilot check                   # ショット検査（P0 は承認を止める）
 shotpilot approve s03             # 構図を承認（画が変わると外れる）
+shotpilot approve --script        # 台本を承認（文字・並び・各カットの目的と秒数が変わると外れる。カメラでは外れない）
 shotpilot brief genre=ホラー       # brief: を見る・書く
 shotpilot moodboard               # ブリーフからムードボードを4枚生成（Codex か OpenAI キー）
 shotpilot storyboard [s03]        # previz の線画を下絵に、リアル寄りの絵コンテを生成（確認用。Cut には入らない）
 shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
+shotpilot produce --review        # 同じだが、台本とカットの previz で止める（アプリの既定）。確かめて直したら produce --resume で音→撮影→Cut
 shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
@@ -94,6 +96,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
 - Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。カメラだけ・光だけの指示（`Pointer::fields`、`ai::ASPECTS`）では、そのキーだけを取り込む。ショットに絞った指示では BGM を変えさせない。
 - 定義の編集は `Workspace::write_definition` の1か所を通し、変えた部分の前後を履歴（`undo`）に残す。元に戻すは、その部分が後から変わっていたら上書きせずに止める。戻した画は fingerprint が同じなので、古い take をそのまま使う（撮り直さない）。
+- 台本の承認は `state.json` に script fingerprint（台本の文字と位置、各カットの id・beat・purpose・duration と並び）で残す（D-38）。カメラ・光・音では外れない。
 - 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
 - 絵コンテ（`storyboard/`）は確認用で、take ではない。`render/` にも state の take にも入れず、Cut には使わない。look fingerprint を名前にして、画が変わる編集で古くなり、編集的な変更では古くならない。生成するのは人間が頼んだときだけ（produce やレンダでは自動で描かない）。
 - ロケハンのカメラはショットではない。shots.yaml にも take の状態にも入れない（UE では content_root/Scout/ にシーケンスを作るだけ）。
