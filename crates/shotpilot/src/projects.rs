@@ -273,6 +273,8 @@ pub struct NewProject {
     pub pitch: String,
     /// teaser | gameplay
     pub kind: String,
+    /// The genre picked on the home (written to brief.genre; empty = none yet).
+    pub genre: String,
     /// The six-shot sample instead of an empty project.
     pub sample: bool,
 }
@@ -310,7 +312,7 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
     let text = if p.sample {
         templates::render(templates::DEMO, &name, &p.engine, &uproject_yaml, &map_yaml)
     } else {
-        let extra = templates::Extra { title: "", pitch: &p.pitch, kind: &p.kind };
+        let extra = templates::Extra { title: "", pitch: &p.pitch, kind: &p.kind, genre: &p.genre };
         templates::render_with(templates::EMPTY, &name, &p.engine, &uproject_yaml, &map_yaml, &extra)
     };
     std::fs::write(&shots, text)?;
@@ -382,6 +384,7 @@ mod tests {
             engine: "mock".into(),
             pitch: "中庭で住人が\n一人ずつ消える".into(),
             kind: "gameplay".into(),
+            genre: "コージー".into(),
             ..Default::default()
         };
         let shots = create(&p).unwrap();
@@ -389,6 +392,8 @@ mod tests {
         let d = crate::model::load(&shots).unwrap();
         assert_eq!(d.teaser.pitch, "中庭で住人が 一人ずつ消える");
         assert_eq!(d.brief.kind, "gameplay");
+        assert_eq!(d.brief.genre, "コージー"); // picked on the home
+        assert_eq!(crate::refs::genre_for(&d.brief.genre).map(|g| g.id), Some("cozy"));
         assert!(d.shots.is_empty());
         // the same name again gets its own folder
         let again = create(&p).unwrap();

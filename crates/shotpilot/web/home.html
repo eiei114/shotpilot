@@ -207,7 +207,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
     <div class="rail-sep"></div>
     <button class="rail-h" id="recent-h">最近のプロジェクト<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
     <div id="recent"></div>
-    <div class="rail-foot">ティザーのショットを AI が組み、1カット直せばそのカットだけ撮り直る。</div>
+    <div class="rail-foot">ティザーのカットを AI が組み、1カット直せばそのカットだけ撮り直る。</div>
   </nav>
 
   <main id="main">
@@ -215,13 +215,14 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
     <section class="view" id="v-home">
       <div class="hero">
         <h1>どんな<mark id="kind-word">ティザー</mark>を撮る？</h1>
-        <p>ショットを Claude が組み、気になる1カットだけ直して撮り直す。</p>
+        <p>カットを Claude が組み、気になる1カットだけ直して撮り直す。</p>
       </div>
       <div class="cwrap">
         <div class="composer">
           <textarea id="prompt" rows="3" placeholder=""></textarea>
           <div class="crow">
             <span class="pill-wrap" style="position:relative"><button class="pill accent" id="kind-btn"></button><div class="menu" id="kind-menu" hidden></div></span>
+            <span class="pill-wrap" style="position:relative"><button class="pill" id="genre-btn" title="ジャンル。選ぶと、そのジャンルで実測したティザーの型（速さ・色調・台本の手法）で組みます"></button><div class="menu" id="genre-menu" hidden></div></span>
             <span class="pill-wrap" style="position:relative"><button class="pill" id="engine-btn"></button><div class="menu" id="engine-menu" hidden></div></span>
             <span class="sp"></span>
             <button class="model" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="ai-name">Claude</span></button>
@@ -235,7 +236,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
         <h2>例から始める…</h2>
         <div id="examples"></div>
       </div>
-      <button class="blank" id="sample">…またはサンプルで試す（UE なし・6ショット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button class="blank" id="sample">…またはサンプルで試す（UE なし・6カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
     </section>
 
     <!-- all projects -->
@@ -303,13 +304,13 @@ const ENGINES = {
   ue5: { label: "Unreal Engine 5", d: "UE プロジェクトのレベルから撮る。Sequencer と Movie Render Queue を使う" },
 };
 const EXAMPLES = [
-  { kind: "teaser", title: "一人称ホラーのティザー", tag: "30秒", beats: [3, 4, 5, 2],
+  { kind: "teaser", genre: "ホラー", title: "一人称ホラーのティザー", tag: "30秒", beats: [3, 4, 5, 2],
     prompt: "シェアハウスの中庭で、住人が一人ずつ消えていく一人称ホラー。静かな夜の中庭から始め、違和感を3回重ねて、最後に閉まる扉とタイトル。30秒。" },
-  { kind: "teaser", title: "アクションの見せ場を詰めたティザー", tag: "45秒", beats: [2, 3, 7, 2],
+  { kind: "teaser", genre: "アクション", title: "アクションの見せ場を詰めたティザー", tag: "45秒", beats: [2, 3, 7, 2],
     prompt: "崩れかけた塔を登りながら戦うアクション。最初の2秒で最大の見せ場を一瞬だけ見せ、塔の全景で世界を伝え、戦闘を加速させてタイトルへ。45秒、テンポは速め。" },
-  { kind: "teaser", title: "静かなコージーゲームの紹介", tag: "40秒", beats: [3, 6, 4, 3],
+  { kind: "teaser", genre: "コージー", title: "静かなコージーゲームの紹介", tag: "40秒", beats: [3, 6, 4, 3],
     prompt: "海辺の小さな町で喫茶店を営むコージーゲーム。朝の光、湯気、常連客。カットは長めで、カメラはゆっくり。最後は店の外観とタイトル。40秒。" },
-  { kind: "gameplay", title: "パズルの仕掛けを見せるゲームプレイ映像", tag: "60秒", beats: [2, 5, 6, 2],
+  { kind: "gameplay", genre: "アドベンチャー・ナラティブ", title: "パズルの仕掛けを見せるゲームプレイ映像", tag: "60秒", beats: [2, 5, 6, 2],
     prompt: "光の反射で扉を開けるパズルゲーム。仕掛けの全体が分かる引きの画と、鏡を回す手元の寄りを交互に見せ、解けた瞬間を気持ちよく。60秒。" },
 ];
 const PLACEHOLDERS = [
@@ -322,6 +323,8 @@ const ui = {
   view: "home",
   home: null,            // /api/home
   kind: "teaser",
+  genre: "",             // a genre package's name, or "" (decide later in the brief)
+  genres: null,          // /api/genres
   engine: "mock",
   location: "",          // where new projects go (mock)
   name: "",
@@ -355,6 +358,7 @@ function loadPrefs() {
     const p = JSON.parse(localStorage.getItem(STORE) || "{}");
     if (KINDS[p.kind]) ui.kind = p.kind;
     if (ENGINES[p.engine]) ui.engine = p.engine;
+    if (typeof p.genre === "string") ui.genre = p.genre;
     if (p.location) ui.location = p.location;
     if (p.uproject) ui.uproject = { path: p.uproject, name: baseName(p.uproject).replace(/\.uproject$/i, ""), maps: [], projects: [] };
     if (p.map) ui.map = p.map;
@@ -362,13 +366,14 @@ function loadPrefs() {
   } catch { /* first run */ }
 }
 function savePrefs() {
-  localStorage.setItem(STORE, JSON.stringify({ kind: ui.kind, engine: ui.engine, location: ui.location,
+  localStorage.setItem(STORE, JSON.stringify({ kind: ui.kind, genre: ui.genre, engine: ui.engine, location: ui.location,
     uproject: ui.uproject?.path || "", map: ui.map, railOpen: ui.railOpen }));
 }
 
 async function refresh() {
   try { ui.home = await api("GET", "/api/home"); }
   catch (e) { toast(e.message, true); return; }
+  if (!ui.genres) api("GET", "/api/genres").then((g) => { ui.genres = g; drawHome(); }).catch(() => {});
   if (!ui.location) ui.location = ui.home.location || "";
   draw();
 }
@@ -440,6 +445,11 @@ function drawHome() {
   $("kind-word").textContent = k.word;
   $("kind-btn").innerHTML = `${ICON.film}${esc(k.label)}${ICON.chev}`;
   $("kind-menu").innerHTML = Object.entries(KINDS).map(([key, v]) => `<button data-kind="${key}"><span class="ck">${key === ui.kind ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
+  const gs = ui.genres?.genres || [];
+  $("genre-btn").innerHTML = `${esc(ui.genre ? `ジャンル: ${ui.genre}` : "ジャンル: あとで")}${ICON.chev}`;
+  $("genre-btn").classList.toggle("accent", !!ui.genre);
+  $("genre-menu").innerHTML = [`<button data-genre=""><span class="ck">${ui.genre ? "" : "✓"}</span><span class="t">あとで決める</span><span class="d">ブリーフで選べます。説明文から Claude が読み取ります</span></button>`]
+    .concat(gs.map((g) => `<button data-genre="${esc(g.name)}"><span class="ck">${g.name === ui.genre ? "✓" : ""}</span><span class="t">${esc(g.name)}</span><span class="d">${esc(g.headline)}（${g.n} 本を実測）</span></button>`)).join("");
   const e = ENGINES[ui.engine];
   $("engine-btn").innerHTML = `${ui.engine === "ue5" ? ICON.cube : ICON.wire}${esc(e.label)}${ICON.chev}`;
   $("engine-menu").innerHTML = Object.entries(ENGINES).map(([key, v]) => `<button data-engine="${key}"><span class="ck">${key === ui.engine ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
@@ -502,11 +512,11 @@ function card(p) {
   let cover;
   if (p.missing) cover = `<div class="empty">${ICON.folder}見つかりません（移動か削除）</div>`;
   else if (p.error) cover = `<div class="empty" style="padding:0 16px;text-align:center">shots.yaml を読めません<br>${esc(p.error).slice(0, 120)}</div>`;
-  else if (!covers.length) cover = `<div class="empty">${strip(p.beats || [])}${p.shots ? "まだ撮っていません" : "ショットはまだありません"}</div>`;
+  else if (!covers.length) cover = `<div class="empty">${strip(p.beats || [])}${p.shots ? "まだ撮っていません" : "カットはまだありません"}</div>`;
   else cover = covers.map((c) => `<img loading="lazy" alt="" src="${esc(c.url)}">`).join("");
   const flag = p.current ? `<span class="flag"><span class="dot"></span>開いています</span>` : "";
   const meta = gone ? esc(shortPath(p.root))
-    : [p.title && p.title !== p.name ? `「${p.title}」` : "", p.shots ? `${p.shots}ショット` : "", p.duration ? `${p.duration}秒` : "", ago(p.opened || p.modified)].filter(Boolean).map(esc).join(" · ");
+    : [p.title && p.title !== p.name ? `「${p.title}」` : "", p.shots ? `${p.shots}カット` : "", p.duration ? `${p.duration}秒` : "", ago(p.opened || p.modified)].filter(Boolean).map(esc).join(" · ");
   let badge = "";
   if (!gone) {
     if (p.cut) badge = `<span class="badge">${ICON.check}Cut あり</span>`;
@@ -633,7 +643,7 @@ async function create(sample = false) {
   if (ui.busy) return;
   const prompt = $("prompt").value.trim();
   if (!sample && !prompt) { $("prompt").focus(); toast("どんな映像にしたいかを書いてください"); return; }
-  const body = { engine: sample ? "mock" : ui.engine, kind: ui.kind, sample,
+  const body = { engine: sample ? "mock" : ui.engine, kind: ui.kind, genre: sample ? "" : ui.genre, sample,
     name: sample ? "サンプル" : (ui.name.trim() || nameFromPrompt(prompt)), pitch: sample ? "" : prompt,
     location: ui.location };
   if (!sample && ui.engine === "ue5") {
@@ -672,6 +682,9 @@ document.addEventListener("click", (e) => {
   if (ui.menu && !t.closest(".menu")) { ui.menu = null; drawGrid(); }
   const k = t.closest("[data-kind]");
   if (k) { ui.kind = k.dataset.kind; savePrefs(); closeMenus(); drawHome(); return; }
+  const gn = t.closest("[data-genre]");
+  if (gn) { ui.genre = gn.dataset.genre; savePrefs(); closeMenus(); drawHome(); return; }
+  if (t.closest("#genre-btn")) { const m = $("genre-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   const en = t.closest("[data-engine]");
   if (en) { ui.engine = en.dataset.engine; savePrefs(); closeMenus(); drawHome(); hydrateUproject(); return; }
   if (t.closest("#kind-btn")) { const m = $("kind-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
@@ -680,7 +693,7 @@ document.addEventListener("click", (e) => {
   const ex = t.closest("[data-ex]");
   if (ex) {
     const x = EXAMPLES[+ex.dataset.ex];
-    ui.kind = x.kind; savePrefs(); $("prompt").value = x.prompt; drawHome();
+    ui.kind = x.kind; if (x.genre) ui.genre = x.genre; savePrefs(); $("prompt").value = x.prompt; drawHome();
     $("main").scrollTo({ top: 0, behavior: "smooth" }); $("prompt").focus(); return;
   }
   if (t.closest("#pick-loc")) { pickLocation(); return; }
