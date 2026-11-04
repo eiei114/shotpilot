@@ -316,6 +316,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .fchip { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 5px; cursor: pointer; border: 0; white-space: nowrap; }
 .fchip.P0 { background: var(--err); color: #fff; } .fchip.P1 { background: var(--stale); color: #241900; } .fchip.P2 { background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
 .fchip:hover { filter: brightness(1.06); box-shadow: 0 0 0 1.5px var(--ink); }
+.gchip { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 5px; white-space: nowrap; background: var(--stale); color: #241900; }
 .inl { width: 100%; border: 1.5px solid var(--ink); border-radius: 6px; padding: 2px 6px; background: var(--card); outline: 0; font: inherit; color: var(--ink); }
 .inl.small { font-size: 11.5px; margin-top: 3px; }
 .dur .inl { width: 52px; text-align: center; padding: 2px; }
@@ -1112,6 +1113,12 @@ function nextStep() {
   const planned = (ui.log || []).some((e) => e.action === "plan");
   if (!planned && !approved.length && !skipped("plan")) return { stage: "structure", what: "Claude に構成を組み直させる", why: "いまのショットは手書きです。ステージとブリーフから組み直せます（置き換え。任意）", act: "plan", skip: "plan", need: needAi };
   if (p0.length) return { stage: "structure", what: `ショット検査の P0 を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
+  const changedShots = shots.filter((x) => gameChanged(x));
+  if (changedShots.length) {
+    const q = [...st.qualities].reverse().find((qq) => changedShots.some((x) => x.changed?.[qq])) || base;
+    const names = [...new Set(changedShots.flatMap((x) => gameChanged(x).names))];
+    return { stage: "capture", what: `ゲームが変わったカットだけ撮り直す（${changedShots.length} 本・${q}）`, why: `${names.slice(0, 4).join(", ")} が変わりました。写っているカットだけ撮り、ほかは今の take を使います`, act: "render", quality: q };
+  }
   const notShot = shots.filter((x) => !st.qualities.some((q) => x.qualities[q] === "fresh"));
   if (notShot.length) return { stage: "framing", what: `${base} で撮る（${notShot.length} 本）`, why: "一番安い品質で、構図を確かめられるようにします", act: "render", quality: base };
   if (unapproved.length) return { stage: "framing", what: `構図を承認する（残り ${unapproved.length}）`, why: `${unapproved[0].id} から。画が変わる修正をすると承認は外れます`, act: "goto", shot: unapproved[0].id };
@@ -1311,6 +1318,15 @@ const ASPECT_PH = {
   sound: "このカットの音をどう直す？ 例: 人影の瞬間に低い一撃",
 };
 const shotById = (id) => ui.status?.shots.find((s) => s.id === id);
+/** The game content that changed under a shot's takes: {qualities, names} (or null). */
+function gameChanged(s) {
+  const ch = s?.changed || {};
+  const qs = Object.keys(ch);
+  if (!qs.length) return null;
+  const names = [...new Set(qs.flatMap((q) => ch[q]).map((p) => String(p).split("/").pop()))];
+  return { qualities: qs, names };
+}
+const gameText = (g) => `${g.names.slice(0, 3).join(", ")}${g.names.length > 3 ? ` ほか ${g.names.length - 3}` : ""}`;
 const lineById = (id) => (ui.status?.script || []).find((l) => l.id === id);
 const fmtTC = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
 /** How much of the frame height the subject fills ("62%", "40%→62%"). */
@@ -1440,7 +1456,7 @@ function shotRow(s, it) {
       <div class="okc"><button class="okb ${ok}${ui.popped === s.id ? " pop" : ""}" data-approve="${esc(s.id)}" title="${esc(okTitle)}"${(p0 && a !== "approved") || ui.busy ? " disabled" : ""}>✓</button></div>
       <div class="thumb"><div class="box" title="押すと大きく見ます。なぞると中身が動きます">${thumb}</div></div>
       <div class="body">
-        <div class="l1"><span class="n">${s.index + 1}</span>${s.beat ? `<span class="bchip">${esc(s.beat)}</span>` : ""}<span>${fmtTC(it.start)}–${fmtTC(it.start + it.duration)}</span><span class="sid">${esc(s.id)}</span>${chips}</div>
+        <div class="l1"><span class="n">${s.index + 1}</span>${s.beat ? `<span class="bchip">${esc(s.beat)}</span>` : ""}<span>${fmtTC(it.start)}–${fmtTC(it.start + it.duration)}</span><span class="sid">${esc(s.id)}</span>${gameChanged(s) ? `<span class="gchip" title="${esc(`撮ったあとでゲームが変わりました（${gameChanged(s).qualities.join(", ")}）: ${gameChanged(s).names.join(", ")}。撮り直すと、このカットだけ撮ります`)}">ゲームが変わった: ${esc(gameText(gameChanged(s)))}</span>` : ""}${chips}</div>
         ${purpose}
         ${overlays ? `<div class="lines">${overlays}</div>` : ""}
       </div>
@@ -1718,7 +1734,7 @@ function drawCapture() {
   const qh = st.qualities.map((q) => `<th>${esc(q)}</th>`).join("");
   const rows = st.shots.map((s) => `<tr><td>${s.index + 1}</td><td class="id" data-open="${esc(s.id)}">${esc(s.id)}</td><td>${esc(s.beat || "-")}</td>
     <td><span class="appr ${esc(s.approval)}">${esc(APPROVAL_JA[s.approval])}</span></td>
-    ${st.qualities.map((q) => `<td><span class="qs ${esc(s.qualities[q])}">${esc({ fresh: "済", stale: "古い", none: "-" }[s.qualities[q]] || s.qualities[q])}</span></td>`).join("")}</tr>`).join("");
+    ${st.qualities.map((q) => `<td><span class="qs ${esc(s.qualities[q])}"${s.changed?.[q] ? ` title="${esc(s.changed[q].join(", "))}"` : ""}>${esc(s.changed?.[q] ? "ゲーム変更" : { fresh: "済", stale: "古い", none: "-" }[s.qualities[q]] || s.qualities[q])}</span></td>`).join("")}</tr>`).join("");
   const dis = ui.busy || !approved.length ? " disabled" : "";
   $("capturepanel").innerHTML = `<h3>撮影</h3>
     <div class="lead">構図を承認したショットを、本番の品質で撮ります。撮るのは定義が変わったショットだけで、ほかは前の take を使い回します。未承認のショットは、構図の段階（previz / still）で確かめてから進めます。</div>
@@ -1860,7 +1876,9 @@ function drawTimeline() {
     let tag = "";
     if (o && o.action === "rendered") tag = `<span class="tag rendered">RENDERED ${o.seconds.toFixed(0)}s</span>`;
     else if (o && o.action === "failed") tag = `<span class="tag failed">FAILED</span>`;
-    else if (!o && s.qualities[ui.quality] === "stale") tag = `<span class="tag stale">STALE</span>`;
+    else if (!o && s.qualities[ui.quality] === "stale") {
+      tag = s.changed?.[ui.quality] ? `<span class="tag stale" title="${esc(`ゲームが変わった: ${s.changed[ui.quality].join(", ")}`)}">GAME</span>` : `<span class="tag stale">STALE</span>`;
+    }
     const fs = findingsFor(s.id).filter((f) => f.severity !== "P2");
     const sevs = [...new Set(fs.map((f) => f.severity))];
     const flags = sevs.length ? `<span class="fl">${sevs.map((v) => `<i class="${v}">${v}</i>`).join("")}</span>` : "";
@@ -2420,7 +2438,7 @@ function entryHtml(e, isLast) {
   }
   if (e.action === "render") {
     const bad = e.failed?.length;
-    return `<div class="event"><span class="dot${bad ? " bad" : ""}"></span><span><b>${esc(e.quality)}</b>: ${e.rendered.length} rendered / ${e.reused.length} reused${bad ? ` / ${bad} failed` : ""}${e.rendered.length ? `（${esc(e.rendered.join(", "))}）` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+    return `<div class="event"><span class="dot${bad ? " bad" : ""}"></span><span><b>${esc(e.quality)}</b>: ${e.rendered.length} rendered / ${e.reused.length} reused${bad ? ` / ${bad} failed` : ""}${e.rendered.length ? `（${esc(e.rendered.join(", "))}）` : ""}${e.game_changed && Object.keys(e.game_changed).length ? ` · ゲームが変わった: ${esc([...new Set(Object.values(e.game_changed).flat().map((p) => String(p).split("/").pop()))].join(", "))}` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   }
   if (e.action === "cut") {
     const v = e.sound ? ` · 音: ${esc(VERDICT_JA[e.sound] || e.sound)}` : "";
@@ -2618,7 +2636,8 @@ async function render(quality = ui.quality, shots = [], opts = {}) {
         const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
         if (ev === "plan") {
           for (const id of d.render) ui.outcome[id] = { action: "rendering" };
-          ui.summary = d.render.length ? `<b>${d.render.length}</b> ショットを撮影中…` : "全部 fresh。撮り直しなし";
+          const game = Object.keys(d.game_changed || {}).length;
+          ui.summary = d.render.length ? `<b>${d.render.length}</b> ショットを撮影中…${game ? `（ゲームが変わった ${game} 本を含む）` : ""}` : "全部 fresh。撮り直しなし";
         } else if (ev === "shot") {
           ui.outcome[d.shot_id] = { action: d.action, seconds: d.seconds || 0 };
           if (d.action === "failed") toast(`${d.shot_id}: ${d.detail}`, true);
