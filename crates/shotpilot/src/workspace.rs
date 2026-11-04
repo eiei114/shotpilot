@@ -32,6 +32,15 @@ pub type TakePick = (ResolvedShot, Option<Take>, Option<String>);
 /// Progress callback: ("plan", {...}) once, then ("shot", outcome) per shot.
 pub type Progress<'a> = &'a mut dyn FnMut(&str, &Value);
 
+/// What happened to a shot's storyboard frame.
+#[derive(Debug, Clone)]
+pub struct StoryboardOutcome {
+    pub shot_id: String,
+    /// "made" or "kept" (its frame already matched the shot's picture).
+    pub action: String,
+    pub file: PathBuf,
+}
+
 #[derive(Debug, Clone)]
 pub struct RenderOutcome {
     pub shot_id: String,
@@ -1070,6 +1079,52 @@ impl Workspace {
         match err {
             Some(e) if made.is_empty() => Err(e),
             _ => Ok(made),
+        }
+    }
+
+    /// Paint storyboard frames (a near-real look over the previz layout) for the given shots,
+    /// all when empty. Shots whose frame matches their current picture are kept unless
+    /// `force`. Frames live in storyboard/, outside the takes: nothing here re-renders or
+    /// reaches the cut. A failed batch stops the run; the frames already made are kept.
+    pub fn generate_storyboard(&mut self, gen: &dyn crate::moodboard::ImageGen, ids: &[String], direction: &str,
+                               force: bool) -> Result<Vec<StoryboardOutcome>> {
+        use crate::storyboard as sb;
+        let shots = self.select(ids)?;
+        let mut out = Vec::new();
+        let mut todo = Vec::new();
+        for s in shots {
+            match sb::current(&self.defn, &s) {
+                Some(b) if b.fresh && !force => out.push(StoryboardOutcome { shot_id: s.id.clone(), action: "kept".into(), file: b.file }),
+                _ => todo.push(s),
+            }
+        }
+        let mut err = None;
+        for batch in todo.chunks(4) {
+            let jobs = batch.iter().map(|s| sb::job(&self.defn, s, direction)).collect::<Result<Vec<_>>>()?;
+            match gen.generate_many(&jobs) {
+                Ok(images) => {
+                    for (s, bytes) in batch.iter().zip(images.iter()) {
+                        let file = sb::store(&self.defn, s, bytes)?;
+                        out.push(StoryboardOutcome { shot_id: s.id.clone(), action: "made".into(), file });
+                    }
+                    if images.len() < batch.len() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+        }
+        let made: Vec<&str> = out.iter().filter(|o| o.action == "made").map(|o| o.shot_id.as_str()).collect();
+        if !made.is_empty() {
+            self.state.log("storyboard", json!({"made": made, "direction": direction}));
+            self.state.save()?;
+        }
+        match err {
+            Some(e) if made.is_empty() => Err(e),
+            _ => Ok(out),
         }
     }
 

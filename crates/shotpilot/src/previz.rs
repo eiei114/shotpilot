@@ -213,6 +213,19 @@ fn anchor_color(name: &str) -> Rgb {
 
 pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, AnchorBox)], w: u32, h: u32, ground_z: f64,
                     tint: Option<Rgb>) -> Canvas {
+    draw_frame(shot, frame, anchors, w, h, ground_z, tint, true)
+}
+
+/// The frame without the framing guides and the shot header: the layout an image model
+/// starts from when it paints a storyboard frame (anchor labels stay, they name the boxes).
+pub fn render_layout(shot: &ResolvedShot, frame: i64, anchors: &[(String, AnchorBox)], w: u32, h: u32, ground_z: f64)
+    -> Canvas {
+    draw_frame(shot, frame, anchors, w, h, ground_z, None, false)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, AnchorBox)], w: u32, h: u32, ground_z: f64,
+              tint: Option<Rgb>, guides: bool) -> Canvas {
     let cam = shot.camera_at(frame);
     let fl = shot.focal_length();
     let sensor = shot.sensor_width();
@@ -307,6 +320,10 @@ pub fn render_frame(shot: &ResolvedShot, frame: i64, anchors: &[(String, AnchorB
             cv.line(t.0 - r, t.1, t.0 + r, t.1, [255, 60, 60]);
             cv.line(t.0, t.1 - r, t.0, t.1 + r, [255, 60, 60]);
         }
+    }
+
+    if !guides {
+        return cv;
     }
 
     // rule-of-thirds guides
