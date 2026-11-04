@@ -238,6 +238,117 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .clip .ap span { position: absolute; top: 14px; left: 3px; font-size: 9.5px; font-weight: 800; color: #fff; background: #d92d20;
   padding: 0 4px; border-radius: 3px; white-space: nowrap; }
 
+/* ------------------------------------------------------------------ cut sheet: one row per piece of the cut */
+#structpanel { gap: 10px; padding: 14px 18px 16px; }
+.sheet-head { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.sheet-head h3 { margin: 0; }
+.sheet-head .stats { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.sheet-head .stats b { color: var(--ink); }
+.sheet-head .sp { flex: 1; }
+.sheet-head .seg button { padding: 4px 10px; font-size: 12px; }
+.sheet-head .seg small { color: var(--faint); margin-left: 3px; font-weight: 500; }
+.sheet-lead { color: var(--muted); font-size: 12px; margin-top: -4px; }
+.sheet-lead .fchip { margin-left: 4px; }
+.sheet { display: grid; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; container-type: inline-size; }
+.item { position: relative; border-top: 1px solid var(--line); background: var(--card); }
+.item:first-child { border-top: 0; }
+.item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c, transparent); z-index: 1; }
+.item.sel { background: color-mix(in srgb, var(--ink) 3.5%, var(--card)); box-shadow: inset 0 0 0 2px var(--ink); z-index: 2; }
+.item.slot { background: var(--soft); }
+.item.slot.sel { background: color-mix(in srgb, var(--ink) 6%, var(--soft)); }
+.item.flash { animation: rowflash 1.4s ease-out; }
+@keyframes rowflash { from { background: color-mix(in srgb, var(--accent) 22%, var(--card)); } }
+.item.busy::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--accent) 16%, transparent) 50%, transparent 70%) 0 0 / 220% 100%;
+  animation: shimmer 1.3s linear infinite; }
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.row { display: grid; grid-template-columns: 44px 144px minmax(0, 1fr) minmax(150px, 210px) 64px; align-items: stretch; min-height: 92px; cursor: default; }
+.item.slot .row { min-height: 0; }
+.row > * { padding: 8px 10px; min-width: 0; }
+.row > .okc { display: grid; place-items: center; padding: 0 0 0 4px; }
+.okb { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); color: transparent; display: grid;
+  place-items: center; font-weight: 800; font-size: 14px; line-height: 1; transition: transform .12s, background .12s, border-color .12s; padding: 0; }
+.okb:hover:not(:disabled) { border-color: var(--accent); color: color-mix(in srgb, var(--accent) 60%, var(--ink)); }
+.okb.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.okb.on:hover { background: color-mix(in srgb, var(--accent) 75%, var(--card)); }
+.okb.outdated { border-color: var(--stale); color: var(--stale); }
+.okb.blocked { border-color: var(--err); border-style: dashed; }
+.okb.pop { animation: pop .3s ease-out; }
+@keyframes pop { 45% { transform: scale(1.28); } }
+.row > .thumb { padding: 7px 0; }
+.thumb .box { position: relative; aspect-ratio: 16 / 9; border-radius: 7px; overflow: hidden; background: var(--stage); cursor: zoom-in; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
+.thumb .q { position: absolute; left: 4px; top: 4px; font-size: 9.5px; font-weight: 700; color: #fff; background: rgb(0 0 0 / .55); padding: 0 5px; border-radius: 4px; }
+.thumb .q.stale { background: var(--stale); color: #241900; }
+.thumb .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--accent); width: 0; }
+.thumb .none { position: absolute; inset: 0; display: grid; place-items: center; color: #8a9094; font-size: 10.5px; text-align: center; padding: 4px; }
+.item.rendering .thumb .box::after { content: "撮影中"; position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5);
+  color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; animation: pulse 1.2s ease-in-out infinite; }
+.cardmini { aspect-ratio: 16 / 9; background: #0a0a0a; border-radius: 7px; display: grid; place-items: center; align-content: center; gap: 2px; color: #e0dbcf;
+  font: 500 10px/1.3 "Yu Mincho", "Hiragino Mincho ProN", serif; text-align: center; padding: 4px 6px; overflow: hidden; }
+.cardmini small { font: 8px/1.2 system-ui, sans-serif; color: #8a8478; letter-spacing: .08em; }
+.cardmini.black { color: #5c5f61; font: 9.5px system-ui, sans-serif; }
+.cardmini.title { font-size: 13px; letter-spacing: .1em; }
+.row > .body { display: grid; gap: 4px; align-content: center; }
+.l1 { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.l1 .n { font-weight: 700; color: var(--ink); font-size: 12.5px; }
+.bchip { font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 4px; color: #fff; background: var(--c); letter-spacing: .02em; }
+.sid { font-family: var(--mono); font-size: 11px; }
+.cell { border-radius: 6px; cursor: text; transition: background .1s; }
+.cell:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.cell.pointed { box-shadow: inset 0 0 0 1.5px var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.purpose { font-size: 13px; font-weight: 500; padding: 1px 5px; margin-left: -5px; }
+.purpose.empty { color: var(--faint); font-weight: 400; }
+.lines { display: flex; gap: 6px; flex-wrap: wrap; }
+.lchip { font-size: 12px; padding: 1px 8px; border-radius: 6px; background: var(--soft); border: 1px solid var(--line); }
+.lchip small { color: var(--muted); margin-left: 5px; font-size: 10px; }
+.row > .cam { display: grid; gap: 2px; align-content: center; font-size: 12px; cursor: pointer; margin: 6px 0; padding: 4px 10px; }
+.cam b { font-weight: 600; }
+.cam b small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.cam span { color: var(--muted); font-size: 11px; }
+.cam .hint { font-size: 10px; color: var(--faint); }
+.cam.pointed .hint, .cam:hover .hint { color: color-mix(in srgb, var(--accent) 55%, var(--ink)); }
+.row > .dur { display: grid; place-items: center; font-variant-numeric: tabular-nums; font-size: 13px; margin: 6px 6px 6px 0; padding: 4px; }
+.dur b { font-weight: 700; }
+.slot-text { font-size: 13px; padding: 1px 5px; margin-left: -5px; }
+.slot-text small { display: block; color: var(--muted); font-size: 11px; }
+.slot-kind { font-size: 11px; color: var(--muted); }
+.fchip { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 5px; cursor: pointer; border: 0; white-space: nowrap; }
+.fchip.P0 { background: var(--err); color: #fff; } .fchip.P1 { background: var(--stale); color: #241900; } .fchip.P2 { background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+.fchip:hover { filter: brightness(1.06); box-shadow: 0 0 0 1.5px var(--ink); }
+.inl { width: 100%; border: 1.5px solid var(--ink); border-radius: 6px; padding: 2px 6px; background: var(--card); outline: 0; font: inherit; color: var(--ink); }
+.inl.small { font-size: 11.5px; margin-top: 3px; }
+.dur .inl { width: 52px; text-align: center; padding: 2px; }
+/* the selected shot's tools: say what to change, or change it in one tap */
+.tools { display: grid; gap: 8px; padding: 0 14px 12px 54px; }
+.ask { display: flex; gap: 8px; align-items: center; background: var(--card); border: 1.5px solid var(--ink); border-radius: 12px; padding: 4px 4px 4px 4px; box-shadow: var(--shadow); }
+.ask .seg { flex: none; }
+.ask .seg button { padding: 4px 9px; font-size: 12px; }
+.ask input { flex: 1; min-width: 120px; border: 0; outline: 0; background: transparent; padding: 6px 2px; }
+.ask input::placeholder { color: var(--faint); }
+.ask .send { width: 30px; height: 30px; flex: none; }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.quick button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 11px; font-size: 12px; }
+.quick button:hover:not(:disabled) { border-color: var(--ink); }
+.quick .lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
+.quick .gap { width: 8px; }
+.change { font-size: 12px; display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; padding: 6px 10px; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.change .what { font-weight: 600; }
+.change .k { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.change .b { color: var(--faint); text-decoration: line-through; }
+.change .mini { margin-left: auto; }
+.sheet-empty { border: 1px dashed var(--line); border-radius: 12px; padding: 28px; display: grid; gap: 10px; justify-items: center; text-align: center; color: var(--muted); }
+.sheet-empty b { color: var(--ink); font-size: 15px; }
+.sheet-keys { color: var(--faint); font-size: 11px; display: flex; gap: 6px 16px; flex-wrap: wrap; }
+kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--muted); background: var(--card); }
+@container (max-width: 760px) {
+  .row { grid-template-columns: 40px 112px minmax(0, 1fr) 58px; }
+  .row > .cam { grid-column: 3; grid-row: 2; margin: 0 0 6px; }
+  .row > .dur { grid-column: 4; grid-row: 1; }
+  .tools { padding-left: 14px; }
+}
+
 /* ------------------------------------------------------------------ stage */
 #stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
 #view { position: relative; min-height: 0; overflow: hidden; display: grid; place-items: center; }
@@ -477,6 +588,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
     </div>
     <div class="toolbar" id="toolbar">
+      <button class="btn" id="to-sheet" title="カット表に戻る (Esc)" hidden>☰ カット表</button>
       <button class="icon" id="reload" title="再読み込み"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
       <div class="seg" id="mode-seg">
         <button class="on" data-mode="preview"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>プレビュー</button>
@@ -591,6 +703,14 @@ const ui = {
   lib: null,            // /api/library: the global sound library (search results)
   libQ: "",             // library search words
   libKind: "",          // "" | "bgm" | "oneshot"
+  row: null,            // the cut sheet's selected row (a shot id or a script line id)
+  aspect: "shot",       // what a row note is about: shot | camera | light | sound
+  edit: null,           // {kind: purpose|dur|line|ldur, id}: a cell being typed in place
+  rowNote: "",          // the selected row's note, kept across redraws
+  flash: null,          // {id, text, changes, stale, previz}: what the last edit did, shown on its row
+  filter: "all",        // all | todo | flag
+  rowBusy: null,        // the row Claude is working on
+  popped: null,         // the row whose approval just changed (one bounce)
 };
 
 // ------------------------------------------------------------------ data
@@ -709,6 +829,7 @@ function draw() {
   $("finish-seg").hidden = !finishing;
   $("mark").disabled = ui.tab !== "shot" || tweak || ui.board;
   $("board").hidden = finishing || ui.tab !== "shot" || tweak;
+  $("to-sheet").hidden = ui.tab !== "shot";
   $("board").classList.toggle("on", ui.board);
   drawStages(); drawNext(); drawFindings(); drawApprove();
   $("render").disabled = $("cut").disabled = !!ui.busy;
@@ -1005,9 +1126,10 @@ function drawNext() {
   el.hidden = !n || !!ui.busy;
   if (el.hidden) return;
   const stageName = { scout: "ロケハン", brief: "ブリーフ", structure: "構成", framing: "構図", capture: "撮影", finish: "仕上げ" }[n.stage];
-  const here = STAGE_OF[ui.tab] === n.stage;
+  const onSheet = n.stage === "framing" && n.act === "goto" && ui.tab === "structure";
+  const here = STAGE_OF[ui.tab] === n.stage || onSheet;
   const label = n.act === "goto" ? (here ? "" : `${stageName}へ →`) : "実行";
-  el.innerHTML = `<span class="lbl">次: ${esc(stageName)}</span><span class="what">${esc(n.what)}</span><span class="why" title="${esc(n.why)}">${esc(n.need || n.why)}</span>
+  el.innerHTML = `<span class="lbl">次: ${esc(stageName)}</span><span class="what">${esc(n.what)}</span><span class="why" title="${esc(n.why)}">${esc(n.need || (onSheet ? "行の ○ か Enter で承認します。Space で大きく見ます" : n.why))}</span>
     ${label ? `<button class="btn dark" data-next${n.need ? " disabled" : ""}>${esc(label)}</button>` : ""}
     ${n.skip ? `<button class="btn" data-next-skip="${esc(n.skip)}">飛ばす</button>` : ""}`;
   drawNext.step = n;
@@ -1173,39 +1295,418 @@ async function removeMood(rel) {
   await refresh();
 }
 
-function drawStructure() {
-  const st = ui.status;
-  const key = JSON.stringify([st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.lens, moveOf(s), s.approval, s.framing]), st.checks, st.ai?.ready, ui.busy]);
-  if (drawStructure.key === key && $("structpanel").childElementCount) return;
-  drawStructure.key = key;
-  const beats = ["hook", "establish", "escalate", "title"];
-  const cols = beats.map((b) => {
-    const ss = st.shots.filter((s) => s.beat === b);
-    const sec = Math.round(ss.reduce((a, s) => a + s.duration, 0) * 10) / 10;
-    const cards = ss.map((s) => {
-      const fl = [...new Set(findingsFor(s.id).filter((f) => f.severity !== "P2").map((f) => f.severity))];
-      return `<button class="scard" data-open="${esc(s.id)}"><span class="id">${s.index + 1}. ${esc(s.id)}${fl.map((v) => `<span class="sev ${v}">${v}</span>`).join("")}</span>
-        <span class="p" title="${esc(s.purpose)}">${esc(s.purpose || "（目的なし）")}</span>
-        <span class="meta">${s.duration}s · ${s.lens ?? "?"}mm · ${esc(moveOf(s))} · ${esc(APPROVAL_JA[s.approval])}</span>
-        ${s.framing ? `<span class="meta" title="被写体の箱が画面の高さの何割を占めるか（最初→最後のフレーム）">被写体: ${esc(framingText(s))}</span>` : ""}</button>`;
-    }).join("");
-    return `<div class="beatcol" style="--c:var(--${b})"><h4>${b}<small>${ss.length} 本 · ${sec}s</small></h4>
-      <div class="guide">${esc(BEAT_JA[b])}</div>${cards || `<div class="empty-col">まだありません</div>`}</div>`;
-  }).join("");
-  const loose = st.shots.filter((s) => !s.beat);
-  const f = findings();
-  const counts = ["P0", "P1", "P2"].map((v) => [v, f.filter((x) => x.severity === v).length]).filter(([, c]) => c);
-  const ai = st.ai?.ready;
-  $("structpanel").innerHTML = `<h3>構成</h3>
-    <div class="lead">ティザーの型 hook → establish → escalate → title に沿って並んでいるかを見ます。カードを押すとそのショットの構図に移ります。並べ替えやビートの付け替えでは撮り直しは起きません。</div>
-    <div class="capbar"><button class="btn dark" data-plan${ai && !ui.busy ? "" : " disabled"}>📐 ブリーフから Claude に組ませる</button>
-      <span class="sp-hint">ブリーフ・骨格（${st.shots.length ? "いまの尺" : "目標の尺"}から自動）・トレーラーのセオリーを渡して、1回で組ませます。左の欄に方向を書いて送っても組めます。${st.shots.length ? "いまのショットは置き換わります。" : ""}</span></div>
-    <div class="beats">${cols}</div>
-    ${loose.length ? `<div class="sp-hint">ビートのないショット: ${loose.map((s) => `<button class="mini" data-open="${esc(s.id)}">${esc(s.id)}</button>`).join(" ")}</div>` : ""}
-    <h4 class="sec">ショット検査 ${counts.map(([v, c]) => `<span class="sev ${v}">${v} ${c}</span>`).join(" ") || `<span class="sev P2">問題なし</span>`}</h4>
-    <div class="lead">P0 は直すまで構図を承認できません。P1 は直すべきもの、P2 は助言です。「推定・要校正」の閾値は、実在トレーラーの実測で今後置き換えます。</div>
-    <div class="flist">${f.map((x) => findingHtml(x, { open: true })).join("") || `<div class="sp-hint">指摘はありません。</div>`}</div>`;
+// ------------------------------------------------------------------ the cut sheet: one row per piece of the cut
+
+const MOVE_JA = { static: "固定", dolly_in: "前進", dolly_out: "後退", truck_left: "左へ", truck_right: "右へ", crane_up: "上昇",
+  crane_down: "下降", orbit_left: "左回り", orbit_right: "右回り", keyframed: "キーフレーム" };
+const TOD_JA = { dawn: "夜明け", morning: "朝", noon: "昼", afternoon: "午後", golden_hour: "夕方", dusk: "薄暮", night: "夜" };
+const KIND_JA = { card: "カード", rule: "決まり", title: "タイトル", message: "メッセージ", black: "黒", caption: "字幕", count: "数え上げ" };
+const NUDGE_JA = { closer: "寄る", farther: "引く", wider: "広角に", tighter: "望遠に", shorter: "−0.5秒", longer: "+0.5秒" };
+const ASPECTS = ["shot", "camera", "light", "sound"];
+const ASPECT_JA = { shot: "このカット", camera: "カメラだけ", light: "光だけ", sound: "音だけ" };
+const ASPECT_PH = {
+  shot: "このカットをどう直す？ 例: 人影が映るところまで待ってから切る",
+  camera: "カメラをどう直す？ 例: もう少し低い位置から見上げる",
+  light: "光をどう直す？ 例: 夕方にして、窓だけ明るく",
+  sound: "このカットの音をどう直す？ 例: 人影の瞬間に低い一撃",
+};
+const shotById = (id) => ui.status?.shots.find((s) => s.id === id);
+const lineById = (id) => (ui.status?.script || []).find((l) => l.id === id);
+const fmtTC = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+/** How much of the frame height the subject fills ("62%", "40%→62%"). */
+const fillText = (f) => { const pct = (v) => (v == null ? "中" : `${Math.round(v * 100)}%`); return f.fill[0] === f.fill[1] ? pct(f.fill[0]) : `${pct(f.fill[0])}→${pct(f.fill[1])}`; };
+const showVal = (v) => v === undefined || v === null ? "なし" : typeof v === "object" ? JSON.stringify(v) : String(v);
+
+/** The picture a row shows: the best quality that matches the shot as it is now, else the best stale one. */
+function bestTake(s) {
+  let stale = null;
+  for (const q of [...ui.status.qualities].reverse()) {
+    const t = s.thumbs[q];
+    if (!t?.url) continue;
+    if (t.fresh) return { q, t, fresh: true };
+    stale ??= { q, t, fresh: false };
+  }
+  return stale;
 }
+
+/** The pieces of the cut in the order the viewer sees them (shots and the script's slots). */
+function sheetItems() {
+  const st = ui.status;
+  let at = 0;
+  const items = st.timeline || st.shots.map((s) => { const it = { kind: "shot", id: s.id, start: at, duration: s.duration }; at += s.duration; return it; });
+  if (ui.filter === "all") return items;
+  return items.filter((it) => {
+    if (it.kind !== "shot") return false;
+    const s = shotById(it.id);
+    return ui.filter === "todo" ? s.approval !== "approved" : findingsFor(it.id).some((f) => f.severity !== "P2");
+  });
+}
+
+function undoLabel(u) {
+  const who = [...(u.shots || []), ...(u.lines || [])].join(", ");
+  const what = { nudge: NUDGE_JA[u.note] || u.note, revise: "Claude の修正", script: "台本の文字", sound: "音", set: "手の修正", order: "並べ替え" }[u.action] || u.action;
+  return `${who ? `${who} の` : ""}${what}`;
+}
+
+function changeText(changes) {
+  const rows = [];
+  for (const [id, list] of Object.entries(changes || {})) {
+    for (const c of list || []) rows.push(`<span class="k">${esc(id)}.${esc(c.path)}</span> <span class="b">${esc(showVal(c.before))}</span> → <b>${esc(showVal(c.after))}</b>`);
+  }
+  return rows.slice(0, 4).join("　") + (rows.length > 4 ? ` ほか ${rows.length - 4} か所` : "");
+}
+
+function drawStructure() {
+  const st = ui.status, box = $("structpanel");
+  if (ui.edit && box.querySelector(".inl")) return; // typing in place: a poll must not wipe it
+  if (!ui.row || !(shotById(ui.row) || lineById(ui.row))) ui.row = ui.sel;
+  const key = JSON.stringify([st.timeline, st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.node, s.approval, s.framing, s.lens, s.thumbs]),
+    st.script, st.checks, st.undo, st.ai?.ready, ui.busy, ui.row, ui.aspect, ui.edit, ui.flash, ui.filter, ui.rowBusy, ui.outcome, ui.popped]);
+  if (drawStructure.key === key && box.childElementCount) return;
+  drawStructure.key = key;
+  const focused = document.activeElement?.id === "row-ask";
+  const ai = st.ai?.ready;
+  if (!st.shots.length) {
+    box.innerHTML = `<div class="sheet-head"><h3>カット表</h3></div>
+      <div class="sheet-empty"><b>まだカットがありません</b>
+        ブリーフとロケハン写真から、Claude に台本とカットを組ませます。できたら、ここに1行1カットで並びます。
+        <div class="capbar"><button class="btn dark" data-produce${ai && !ui.busy ? "" : " disabled"}>⚡ 一気に作る</button>
+          <button class="btn" data-plan${ai && !ui.busy ? "" : " disabled"}>📐 構成だけ組ませる</button></div>
+        ${ai ? "" : `<span class="sp-hint">Claude が未接続です（左下から接続）</span>`}</div>`;
+    return;
+  }
+  const f = findings();
+  const n = st.shots.length, approved = st.shots.filter((s) => s.approval === "approved").length;
+  const todo = n - approved, flagged = st.shots.filter((s) => findingsFor(s.id).some((x) => x.severity !== "P2")).length;
+  const sev = ["P0", "P1"].map((v) => [v, f.filter((x) => x.severity === v).length]).filter(([, c]) => c);
+  const whole = f.filter((x) => !x.shot && x.severity !== "P2");
+  const total = st.total_duration ?? st.shots.reduce((a, s) => a + s.duration, 0);
+  const rows = sheetItems().map((it) => (it.kind === "shot" ? shotRow(shotById(it.id), it) : slotRow(it))).join("");
+  box.innerHTML = `<div class="sheet-head"><h3>カット表</h3>
+      <span class="stats"><span>承認 <b>${approved}</b>/${n}</span><span>尺 <b>${Math.round(total * 10) / 10}</b>s / ${st.target_duration}s</span>
+        ${sev.map(([v, c]) => `<span class="sev ${v}">${v} ${c}</span>`).join("")}</span>
+      <div class="seg">${[["all", "すべて", ""], ["todo", "未承認", todo], ["flag", "指摘あり", flagged]].map(([k, l, c]) =>
+        `<button data-filter="${k}" class="${ui.filter === k ? "on" : ""}">${l}${c !== "" ? `<small>${c}</small>` : ""}</button>`).join("")}</div>
+      <span class="sp"></span>
+      ${st.undo ? `<button class="btn" data-undo title="Ctrl+Z${ui.busy ? "" : "。撮った take は消えないので、戻した画はすぐ表示されます"}"${ui.busy ? " disabled" : ""}>↶ 元に戻す <span style="color:var(--muted)">${esc(undoLabel(st.undo))}</span></button>` : ""}
+      <button class="btn" data-plan${ai && !ui.busy ? "" : " disabled"} title="ブリーフ・骨格・セオリーから組み直します（いまのカットは置き換わります）">📐 組み直す</button></div>
+    <div class="sheet-lead">Cut に出る順に 1 行 1 カット。<b>○</b> で承認、文字と秒数は押せばその場で直せます。カメラの欄を押すと、カメラだけを Claude に頼めます。
+      ${whole.map((x) => `<button class="fchip ${x.severity}" data-fix-all="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("")}</div>
+    <div class="sheet" role="list">${rows || `<div class="sheet-empty">この絞り込みに当てはまるカットはありません</div>`}</div>
+    <div class="sheet-keys"><span><kbd>↑</kbd><kbd>↓</kbd> 選ぶ</span><span><kbd>Enter</kbd> 承認して次へ</span><span><kbd>Space</kbd> 大きく見る・範囲を囲む</span>
+      <span><kbd>/</kbd> 直す</span><span><kbd>1</kbd>〜<kbd>4</kbd> 直す範囲</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</span></div>`;
+  if (ui.edit) {
+    const el = box.querySelector(".inl");
+    if (el) { el.focus(); el.select?.(); }
+  } else if (focused) {
+    const el = $("row-ask");
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }
+}
+
+function shotRow(s, it) {
+  const st = ui.status, sel = ui.row === s.id;
+  const fs = findingsFor(s.id);
+  const p0 = fs.find((x) => x.severity === "P0");
+  const a = s.approval;
+  const tk = bestTake(s);
+  const cls = ["item", sel ? "sel" : "", ui.rowBusy === s.id ? "busy" : "", ui.outcome[s.id]?.action === "rendering" ? "rendering" : "",
+    ui.flash?.id === s.id && ui.flash.fresh ? "flash" : ""].join(" ");
+  const ok = a === "approved" ? "on" : a === "outdated" ? "outdated" : p0 ? "blocked" : "";
+  const okTitle = a === "approved" ? "承認済み（押すと取り消し）" : a === "outdated" ? "承認したあとで画が変わりました。押すと承認し直します"
+    : p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : "この画でよければ押す（Enter）";
+  const editing = (kind, id) => ui.edit?.kind === kind && ui.edit.id === id;
+  const purpose = editing("purpose", s.id)
+    ? `<input class="inl" data-k="purpose" value="${esc(s.purpose)}" placeholder="このカットで見せるもの">`
+    : `<div class="purpose cell${s.purpose ? "" : " empty"}" data-edit="purpose" title="押して直す（撮り直しは起きません）">${esc(s.purpose || "見せるものを書く")}</div>`;
+  const overlays = (st.script || []).filter((l) => l.on === s.id).map((l) => editing("line", l.id) ? lineEditor(l)
+    : `<span class="lchip cell" data-edit="line" data-id="${esc(l.id)}" title="${esc(KIND_JA[l.kind] || l.kind)}（押して直す。撮り直しは起きません）">${esc(l.ja || l.en || "…")}<small>${esc(KIND_JA[l.kind] || l.kind)} ${l.at ? `+${l.at}s` : ""}</small></span>`).join("");
+  const fr = s.framing;
+  const env = s.node?.environment?.time_of_day;
+  const mv = moveOf(s);
+  const cam = `<div class="cam cell${sel && ui.aspect === "camera" ? " pointed" : ""}" data-aspect="camera" title="押すと「カメラだけ」を直す指示になります">
+      <b>${esc(fr ? SIZE_JA[fr.size] || fr.size : "画角")}${fr ? `<small>${esc(fr.subject)} ${esc(fillText(fr))}</small>` : ""}</b>
+      <span>${esc(s.lens ?? "?")}mm · ${esc(MOVE_JA[mv] || mv)}${env ? ` · ${esc(TOD_JA[env] || env)}` : ""}</span>
+      <span class="hint">カメラを直す</span></div>`;
+  const dur = editing("dur", s.id)
+    ? `<div class="dur"><input class="inl" data-k="dur" type="number" step="0.5" min="0.5" value="${esc(s.duration)}"></div>`
+    : `<div class="dur cell" data-edit="dur" title="秒数（押して直す）"><span><b>${esc(s.duration)}</b>s</span></div>`;
+  const chips = fs.map((x) => `<button class="fchip ${x.severity}" data-fix-row="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}（押すと直す指示に入ります）">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("");
+  const thumb = tk
+    ? `<img alt="" draggable="false" src="${esc(tk.t.url)}"><span class="q${tk.fresh ? "" : " stale"}">${esc(tk.q)}${tk.fresh ? "" : " · 古い"}</span><span class="bar"></span>`
+    : `<span class="none">まだ撮っていません</span>`;
+  return `<div class="${cls}" data-row="${esc(s.id)}" style="--c:var(--${esc(s.beat || "muted")})" role="listitem">
+    <div class="row">
+      <div class="okc"><button class="okb ${ok}${ui.popped === s.id ? " pop" : ""}" data-approve="${esc(s.id)}" title="${esc(okTitle)}"${(p0 && a !== "approved") || ui.busy ? " disabled" : ""}>✓</button></div>
+      <div class="thumb"><div class="box" title="押すと大きく見ます。なぞると中身が動きます">${thumb}</div></div>
+      <div class="body">
+        <div class="l1"><span class="n">${s.index + 1}</span>${s.beat ? `<span class="bchip">${esc(s.beat)}</span>` : ""}<span>${fmtTC(it.start)}–${fmtTC(it.start + it.duration)}</span><span class="sid">${esc(s.id)}</span>${chips}</div>
+        ${purpose}
+        ${overlays ? `<div class="lines">${overlays}</div>` : ""}
+      </div>
+      ${cam}${dur}
+    </div>
+    ${sel ? shotTools(s) : ""}</div>`;
+}
+
+function lineEditor(l) {
+  const en = l.en || ["card", "title"].includes(l.kind);
+  return `<span style="display:block;flex:1 1 100%"><input class="inl" data-k="ja" value="${esc(l.ja)}" placeholder="${esc(KIND_JA[l.kind] || l.kind)}の文字">
+    ${en ? `<input class="inl small" data-k="en" value="${esc(l.en)}" placeholder="英語の小さな一行（任意）">` : ""}</span>`;
+}
+
+function slotRow(it) {
+  const l = lineById(it.id) || { id: it.id, kind: it.kind, ja: it.text || "", en: "" };
+  const sel = ui.row === l.id;
+  const editing = (kind) => ui.edit?.kind === kind && ui.edit.id === l.id;
+  const mini = l.kind === "black" ? `<div class="cardmini black">黒 ${esc(it.duration)}s</div>`
+    : `<div class="cardmini${l.kind === "title" ? " title" : ""}">${l.head ? `<small>${esc(l.head)}</small>` : ""}${esc(l.ja || l.en || "")}${l.en && l.ja ? `<small>${esc(l.en)}</small>` : ""}</div>`;
+  const text = l.kind === "black" ? `<span class="slot-kind">無音の間。次のカットの前に溜めを作ります</span>`
+    : editing("line") ? lineEditor(l)
+    : `<div class="slot-text cell" data-edit="line" data-id="${esc(l.id)}" title="押して直す（撮り直しは起きません）">${esc(l.ja || "（文字なし）")}${l.en ? `<small>${esc(l.en)}</small>` : ""}</div>`;
+  const dur = editing("ldur")
+    ? `<div class="dur"><input class="inl" data-k="dur" type="number" step="0.1" min="0.2" value="${esc(l.dur ?? it.duration)}"></div>`
+    : `<div class="dur cell" data-edit="ldur" data-id="${esc(l.id)}" title="秒数（押して直す）"><span><b>${esc(it.duration)}</b>s</span></div>`;
+  return `<div class="item slot${sel ? " sel" : ""}${ui.flash?.id === l.id && ui.flash.fresh ? " flash" : ""}" data-row="${esc(l.id)}" role="listitem">
+    <div class="row"><div class="okc"></div><div class="thumb">${mini}</div>
+      <div class="body"><div class="l1"><span class="slot-kind">${esc(KIND_JA[l.kind] || l.kind)}</span><span>${fmtTC(it.start)}–${fmtTC(it.start + it.duration)}</span><span class="sid">${esc(l.id)}</span></div>${text}</div>
+      <div></div>${dur}</div>
+    ${sel && ui.flash?.id === l.id ? `<div class="tools">${flashHtml()}</div>` : ""}</div>`;
+}
+
+function shotTools(s) {
+  const ai = ui.status.ai?.ready, busy = !!ui.busy;
+  const ph = ai ? ASPECT_PH[ui.aspect] : "Claude が未接続です（すぐ直す と、文字・秒数の直接編集は使えます）";
+  return `<div class="tools">
+    <div class="ask"><div class="seg">${ASPECTS.map((a, i) => `<button data-aspect="${a}" class="${ui.aspect === a ? "on" : ""}" title="${i + 1}">${ASPECT_JA[a]}</button>`).join("")}</div>
+      <input id="row-ask" autocomplete="off" placeholder="${esc(ph)}" value="${esc(ui.rowNote)}"${ai ? "" : " disabled"}>
+      <button class="send" data-row-send title="送る (Enter)"${ai && !busy ? "" : " disabled"}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+    <div class="quick"><span class="lbl">すぐ直す</span>${["closer", "farther", "wider", "tighter"].map((k) => `<button data-nudge="${k}"${busy ? " disabled" : ""}>${NUDGE_JA[k]}</button>`).join("")}
+      <span class="gap"></span>${["shorter", "longer"].map((k) => `<button data-nudge="${k}"${busy ? " disabled" : ""}>${NUDGE_JA[k]}</button>`).join("")}
+      <span class="gap"></span><button data-open-big>大きく見る・範囲を囲む ↗</button></div>
+    ${ui.flash?.id === s.id ? flashHtml() : ""}</div>`;
+}
+
+function flashHtml() {
+  const fl = ui.flash; if (!fl) return "";
+  const stale = fl.stale || [];
+  const pv = fl.previz === "running" ? "（previz を撮っています…）" : fl.previz === "done" ? "（previz を更新しました）" : "";
+  const again = stale.length ? `撮り直し: <b>${esc(stale.join(", "))}</b> だけ${pv}` : "撮り直しなし";
+  const detail = changeText(fl.changes);
+  return `<div class="change"><span class="what">✓ ${esc(fl.text)}</span>${detail ? `<span>${detail}</span>` : ""}<span>· ${again}</span>
+    ${ui.status.undo ? `<button class="mini" data-undo${ui.busy ? " disabled" : ""}>↶ 元に戻す</button>` : ""}</div>`;
+}
+
+/** Select a row of the sheet (a shot row also selects the shot everywhere else). */
+function pickRow(id, scroll = true) {
+  if (!id) return;
+  if (ui.row !== id) { ui.aspect = "shot"; ui.edit = null; }
+  ui.row = id;
+  if (shotById(id)) { if (ui.sel !== id) ui.region = null; ui.sel = id; }
+  draw();
+  if (scroll) $("structpanel").querySelector(`[data-row="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" });
+}
+
+/** Remember what an edit did, to show it on its row. */
+function afterEdit(id, out, text) {
+  ui.flash = { id, text, changes: out?.changes, stale: out?.stale || [], previz: null, fresh: true };
+  setTimeout(() => { if (ui.flash) ui.flash.fresh = false; }, 1500);
+  ui.outcome = {};
+}
+
+/** Re-take the previz of the shots an edit made stale (no engine, seconds), keeping the view's quality. */
+async function refreshPreviz(stale) {
+  if (!stale?.length || !ui.status?.qualities.includes("previz")) return;
+  if (ui.flash) ui.flash.previz = "running";
+  await render("previz", stale, { keep: true });
+  if (ui.flash) ui.flash.previz = "done";
+  draw();
+}
+
+async function nudge(id, kind) {
+  if (ui.busy) return;
+  ui.busy = "save"; draw();
+  let out = null;
+  try { out = await api("POST", "/api/nudge", { shot: id, kind }); afterEdit(id, out, `${id} を${NUDGE_JA[kind]}`); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+}
+
+async function undo() {
+  const u = ui.status?.undo; if (!u || ui.busy) return;
+  ui.busy = "save"; draw();
+  let out = null;
+  try {
+    out = await api("POST", "/api/undo", {});
+    const id = u.shots?.[0] || u.lines?.[0];
+    ui.flash = null;
+    toast(`元に戻しました: ${undoLabel(u)}${out.stale?.length ? `（${out.stale.join(", ")} は前の take に戻ります）` : ""}`);
+    if (id && ui.tab === "structure") ui.row = id;
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+}
+
+async function approveRow(id, on = true) {
+  ui.popped = on ? id : null;
+  await approve(id, on);
+  setTimeout(() => { ui.popped = null; }, 400);
+}
+
+async function sendRowNote() {
+  const s = shotById(ui.row);
+  const note = ($("row-ask")?.value ?? ui.rowNote).trim();
+  if (!s || !note || ui.busy || !ui.status?.ai?.ready) return;
+  const body = { note, shot: s.id };
+  if (ui.aspect === "sound") body.sound = true;
+  else if (ui.aspect !== "shot") body.aspect = ui.aspect;
+  ui.busy = "revise"; ui.rowBusy = s.id; ui.rowNote = "";
+  ui.pending = { note, ctx: `${s.index + 1}. ${s.id} · ${ASPECT_JA[ui.aspect]}` }; ui.started = Date.now();
+  draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
+  let out = null;
+  try {
+    out = await api("POST", "/api/revise", body);
+    afterEdit(s.id, out, out.summary || "Claude が直しました");
+    if (!out.edited?.length && !Object.keys(out.changes || {}).length) toast("Claude は何も変えませんでした");
+  } catch (e) { ui.rowNote = note; toast(e.message, true); }
+  finally { clearInterval(tick); ui.busy = null; ui.rowBusy = null; ui.pending = null; ui.logKey = ""; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+}
+
+function startEdit(kind, id) {
+  if (ui.busy) return;
+  ui.edit = { kind, id };
+  drawStructure.key = ""; draw();
+}
+
+async function saveEdit() {
+  const ed = ui.edit; if (!ed || ed.saving) return;
+  ed.saving = true;
+  const box = $("structpanel");
+  const val = (k) => box.querySelector(`.inl[data-k="${k}"]`)?.value ?? null;
+  let req = null, owner = ed.id, text = "";
+  if (ed.kind === "purpose") {
+    const s = shotById(ed.id), v = (val("purpose") ?? "").trim();
+    if (v !== (s.purpose || "")) { req = [`/api/shots/${encodeURIComponent(ed.id)}`, { set: { purpose: v || null } }]; text = "見せるものを直しました"; }
+  } else if (ed.kind === "dur") {
+    const s = shotById(ed.id), v = Number(val("dur"));
+    if (v > 0 && v !== s.duration) { req = [`/api/shots/${encodeURIComponent(ed.id)}`, { set: { duration: v } }]; text = `${s.duration}s → ${v}s`; }
+  } else if (ed.kind === "line" || ed.kind === "ldur") {
+    const l = lineById(ed.id), set = {};
+    if (ed.kind === "ldur") { const v = Number(val("dur")); if (v > 0 && v !== l.dur) set.dur = v; }
+    else {
+      const ja = val("ja"), en = val("en");
+      if (ja !== null && ja.trim() !== (l.ja || "")) set.ja = ja;
+      if (en !== null && en.trim() !== (l.en || "")) set.en = en;
+    }
+    if (Object.keys(set).length) { req = ["/api/script", { id: ed.id, set }]; text = `台本「${(set.ja ?? l.ja ?? "").trim() || l.id}」`; }
+    owner = l.on && shotById(l.on) ? l.on : l.id;
+  }
+  ui.edit = null;
+  if (!req) { drawStructure.key = ""; draw(); return; }
+  ui.busy = "save"; draw();
+  let out = null;
+  try { out = await api("POST", req[0], req[1]); afterEdit(owner, out, text); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+}
+
+/** Keys on the sheet (focus outside an input). True when the key was used. */
+function sheetKey(e) {
+  const ids = sheetItems().map((it) => it.id);
+  const i = ids.indexOf(ui.row);
+  const s = shotById(ui.row);
+  if (e.key === "ArrowDown" || e.key === "j") { pickRow(ids[Math.min(i + 1, ids.length - 1)] ?? ids[0]); return true; }
+  if (e.key === "ArrowUp" || e.key === "k") { pickRow(ids[Math.max(i - 1, 0)] ?? ids[0]); return true; }
+  if (e.key === "Enter") {
+    if (s && s.approval !== "approved") approveRow(s.id);
+    else if (!s && lineById(ui.row) && lineById(ui.row).kind !== "black") startEdit("line", ui.row);
+    return true;
+  }
+  if (e.key === " " && s) { selectShot(s.id); return true; }
+  if ((e.key === "/" || e.key === "e") && s) { $("row-ask")?.focus(); return true; }
+  if (/^[1-4]$/.test(e.key) && s) { ui.aspect = ASPECTS[Number(e.key) - 1]; draw(); $("row-ask")?.focus(); return true; }
+  if (e.key === "Escape") { ui.aspect = "shot"; ui.edit = null; draw(); return true; }
+  return false;
+}
+
+$("structpanel").addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest(".inl")) return;
+  t.closest("button")?.blur(); // so Space / Enter go to the sheet, not to the last button pressed
+  if (t.closest("[data-plan]")) { planShots(); return; }
+  if (t.closest("[data-produce]")) { produceAll(); return; }
+  if (t.closest("[data-undo]")) { undo(); return; }
+  const fl = t.closest("[data-filter]"); if (fl) { ui.filter = fl.dataset.filter; draw(); return; }
+  const fa = t.closest("[data-fix-all]");
+  if (fa) {
+    const x = findings().find((f) => !f.shot && f.rule === fa.dataset.fixAll);
+    if (x) { $("note").value = `ショット検査の指摘を直して: ${RULE_JA[x.rule] || x.rule}。${x.message}（${x.fix}）`; $("note").focus(); }
+    return;
+  }
+  const item = t.closest("[data-row]"); if (!item) return;
+  const id = item.dataset.row;
+  const ap = t.closest("[data-approve]");
+  if (ap) { const s = shotById(id); if (s) { if (ui.row !== id) pickRow(id, false); approveRow(id, s.approval !== "approved"); } return; }
+  if (ui.row !== id) pickRow(id, false);
+  if (t.closest("[data-row-send]")) { sendRowNote(); return; }
+  const nd = t.closest("[data-nudge]"); if (nd) { nudge(id, nd.dataset.nudge); return; }
+  const as = t.closest("[data-aspect]");
+  if (as) {
+    // pointing is never a toggle: the camera cell always means "the camera only" (Esc or このカット widens it)
+    ui.aspect = as.dataset.aspect;
+    draw(); $("row-ask")?.focus(); return;
+  }
+  if (t.closest("[data-open-big]") || (t.closest(".thumb .box") && shotById(id))) { selectShot(id); return; }
+  const fx = t.closest("[data-fix-row]");
+  if (fx) {
+    const x = findingsFor(id).find((f) => f.rule === fx.dataset.fixRow);
+    if (x) { ui.aspect = "shot"; ui.rowNote = `ショット検査の指摘を直して: ${RULE_JA[x.rule] || x.rule}。${x.message}（${x.fix}）`; draw(); $("row-ask")?.focus(); }
+    return;
+  }
+  const ed = t.closest("[data-edit]"); if (ed) startEdit(ed.dataset.edit, ed.dataset.id || id);
+});
+$("structpanel").addEventListener("keydown", (e) => {
+  const composing = e.isComposing || e.keyCode === 229; // Japanese input: Enter confirms the word, not the note
+  if (e.target.id === "row-ask") {
+    if (e.key === "Enter" && !composing) { e.preventDefault(); sendRowNote(); }
+    else if (e.key === "Escape") { e.preventDefault(); e.target.blur(); }
+    return;
+  }
+  if (e.target.classList.contains("inl")) {
+    if (e.key === "Enter" && !composing) { e.preventDefault(); saveEdit(); }
+    else if (e.key === "Escape") { e.preventDefault(); ui.edit = null; drawStructure.key = ""; draw(); }
+  }
+});
+$("structpanel").addEventListener("input", (e) => { if (e.target.id === "row-ask") ui.rowNote = e.target.value; });
+$("structpanel").addEventListener("focusout", (e) => {
+  // leaving the in-place editor saves it (moving between its own fields does not)
+  if (!e.target.classList?.contains("inl") || e.relatedTarget?.classList?.contains("inl")) return;
+  if (ui.edit && !ui.edit.saving) saveEdit();
+});
+// run a finger over a thumbnail to see the whole take
+$("structpanel").addEventListener("pointermove", (e) => {
+  const img = e.target.closest?.(".thumb img"); if (!img) return;
+  const s = shotById(img.closest("[data-row]")?.dataset.row);
+  const frames = (s && bestTake(s)?.t.frames) || [];
+  if (frames.length < 2) return;
+  const r = img.getBoundingClientRect();
+  const frac = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 0.999);
+  const k = Math.floor(frac * frames.length);
+  if (img.dataset.k !== String(k)) { img.dataset.k = String(k); img.src = frames[k]; }
+  const bar = img.parentElement.querySelector(".bar"); if (bar) bar.style.width = `${(frac * 100).toFixed(1)}%`;
+});
+$("structpanel").addEventListener("pointerout", (e) => {
+  const img = e.target.closest?.(".thumb img");
+  if (!img || img.contains(e.relatedTarget)) return;
+  const s = shotById(img.closest("[data-row]")?.dataset.row);
+  const tk = s && bestTake(s);
+  if (tk && img.dataset.k) { img.src = tk.t.url; delete img.dataset.k; }
+  const bar = img.parentElement.querySelector(".bar"); if (bar) bar.style.width = "0";
+});
 
 function drawCapture() {
   const st = ui.status;
@@ -1244,11 +1745,13 @@ async function approve(id, on) {
   const shots = ui.status?.shots || [];
   const i = shots.findIndex((s) => s.id === id);
   const next = [...shots.slice(i + 1), ...shots.slice(0, Math.max(i, 0))].find((s) => s.approval !== "approved");
+  const onSheet = ui.tab === "structure";
   if (next) {
-    if (ui.sel === id) { selectShot(next.id); flashStage(); }
+    if (onSheet) { if (ui.row === id) pickRow(next.id); }
+    else if (ui.sel === id) { selectShot(next.id); flashStage(); }
     toast(`${id} を承認 → ${next.id} へ`);
   } else {
-    toast("全ショットの構図を承認しました。撮影へ進みます");
+    toast(onSheet ? "全カットを承認しました。撮影の段で本番の品質で撮れます" : "全ショットの構図を承認しました。撮影へ進みます");
     if (ui.sel === id && ui.tab === "shot") goStage("capture");
   }
 }
@@ -1288,6 +1791,7 @@ function askFix(rule, shotId) {
 
 function goStage(stage) {
   ui.tab = stage === "framing" ? "shot" : stage === "finish" ? ui.fin : stage;
+  if (stage === "structure") ui.row = ui.sel;
   draw();
 }
 
@@ -1833,7 +2337,7 @@ function seek(t) {
   placePlayhead();
 }
 
-const planning = () => ui.tab === "brief" || ui.tab === "structure";
+const planning = () => ui.tab === "brief" || (ui.tab === "structure" && !ui.status?.shots.length);
 
 function drawChips() {
   const s = shot();
@@ -1858,7 +2362,8 @@ function drawChips() {
       : "音をどう直す？ 例: タイトルの前で一瞬音を抜いて / BGM をもう少し下げて";
     return;
   }
-  if (ui.scopeAll) chips.push(`<span class="chip">全体（並べ替えも可）</span>`);
+  const whole = ui.scopeAll || ui.tab === "structure";
+  if (whole) chips.push(`<span class="chip">全体（並べ替えも可）</span>`);
   else if (s) {
     chips.push(`<span class="chip">🎯 ${esc(s.index + 1 + ". " + s.id)}</span>`);
     const tk = ui.tab === "shot" && ui.mode === "preview" && shownTake(s);
@@ -1869,8 +2374,9 @@ function drawChips() {
     if (ui.region) chips.push(`<span class="chip">範囲を囲み済み <button data-clear="region" title="範囲を消す">✕</button></span>`);
   }
   $("chips").innerHTML = chips.join("");
-  $("scope").textContent = ui.scopeAll ? "↔ 全体に指示" : "◎ このショットに指示";
-  $("note").placeholder = ui.scopeAll ? "全体にどう直す？ 例: 30秒に収めて、タイトル前に間を作って"
+  $("scope").textContent = whole ? "↔ 全体に指示" : "◎ このショットに指示";
+  $("note").placeholder = ui.tab === "structure" ? "全体にどう直す？ 例: 30秒に収めて、タイトル前に間を作って（1カットだけはカット表の行で）"
+    : ui.scopeAll ? "全体にどう直す？ 例: 30秒に収めて、タイトル前に間を作って"
     : ui.region ? "囲んだところをどう直す？ 例: この柱が邪魔。避けて" : "このショットをどう直す？ 例: もう少し手すりに寄せて";
 }
 
@@ -1949,12 +2455,22 @@ function entryHtml(e, isLast) {
           <span>ショット検査: ${sev || "指摘なし"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
         ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ 構成で並びと検査を見る</button><button data-render="previz">↗ previz で全部撮る（エンジンなし、数秒）</button></div>` : ""}</div>`;
   }
+  if (e.action === "nudge") {
+    return `<div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span><span><b>${esc(e.shot || (e.edited || [])[0] || "")}</b> を${esc(NUDGE_JA[e.kind || e.note] || e.note)}${e.stale?.length ? ` · 撮り直し: ${esc(e.stale.join(", "))}` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
+  if (e.action === "script") {
+    return `<div class="event"><span class="dot"></span><span>台本 <b>${esc(e.line || (e.lines || [])[0] || "")}</b> を直した（撮り直しなし）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
+  if (e.action === "undo") {
+    const what = undoLabel({ action: e.undid, note: e.note, shots: e.edited, lines: e.lines });
+    return `<div class="event"><span class="dot"></span><span>↶ 元に戻した: ${esc(what)}${e.stale?.length ? ` · ${esc(e.stale.join(", "))} は前の take に戻る` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
   if (e.action === "order") return `<div class="event"><span class="dot"></span><span>並べ替え（撮り直しなし）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
   return "";
 }
 
 function drawChat() {
-  const keep = new Set(["produce", "plan", "revise", "set", "render", "cut", "order", "sound"]);
+  const keep = new Set(["produce", "plan", "revise", "set", "render", "cut", "order", "sound", "nudge", "script", "undo"]);
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
     ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
@@ -2058,7 +2574,7 @@ async function sendNote() {
     }
     else if (it) ctx.push("BGM");
     if (ui.playT) { body.time = ui.playT; ctx.push(fmtT(ui.playT)); }
-  } else if (!ui.scopeAll && s) {
+  } else if (!ui.scopeAll && s && ui.tab !== "structure") {
     body.shot = s.id; ctx.push(s.id);
     const tk = ui.tab === "shot" && ui.mode === "preview" && shownTake(s);
     if (tk) {
@@ -2083,10 +2599,10 @@ async function sendNote() {
   }
 }
 
-async function render(quality = ui.quality, shots = []) {
+async function render(quality = ui.quality, shots = [], opts = {}) {
   if (ui.busy) return;
   ui.busy = "render"; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
-  if (quality !== ui.quality) ui.quality = quality;
+  if (quality !== ui.quality && !opts.keep) ui.quality = quality;
   draw();
   try {
     const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quality, shots }) });
@@ -2160,6 +2676,7 @@ function selectShot(id, frame = 0) {
 
 $("track").addEventListener("click", (e) => {
   const clip = e.target.closest(".clip"); if (!clip) return;
+  if (ui.tab === "structure") { pickRow(clip.dataset.id); return; }
   if (clip.classList.contains("slot")) { ui.tab = ui.fin = "design"; draw(); return; } // script cards are edited in design
   const s = ui.status.shots.find((x) => x.id === clip.dataset.id);
   const tk = s && shownTake(s);
@@ -2180,10 +2697,11 @@ $("frame").addEventListener("input", (e) => { ui.frame = Number(e.target.value);
 $("quality").addEventListener("change", (e) => { ui.quality = e.target.value; ui.outcome = {}; ui.summary = ""; draw(); });
 $("render").addEventListener("click", () => render());
 $("cut").addEventListener("click", cut);
+$("to-sheet").addEventListener("click", () => goStage("structure"));
 $("reload").addEventListener("click", () => { ui.logKey = ""; ui.soundKey = ""; refresh(); });
 $("send").addEventListener("click", sendNote);
 $("scope").addEventListener("click", () => {
-  if (planning()) return; // a plan always covers the whole list; do not flip the shot scope behind the label
+  if (planning() || ui.tab === "structure") return; // a plan (and the sheet's composer) covers the whole list
   if (ui.tab === "sound") { ui.snd = null; drawSoundBits(); drawChips(); return; } // sound notes: drop to BGM + all SE
   ui.scopeAll = !ui.scopeAll; drawChips();
 });
@@ -2422,7 +2940,7 @@ $("scoutpanel").addEventListener("click", (e) => {
   } else if (t.dataset.propRm) scoutAction("prop", { name: t.dataset.propRm }, "/api/props/remove", "save");
 });
 $("scoutpanel").addEventListener("input", (e) => { if (e.target.id === "asset-filter") { ui.assetFilter = e.target.value; filterAssets(); } });
-for (const id of ["briefpanel", "structpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
+for (const id of ["briefpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
   const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label");
   if (!t) return;
   if (t.matches(".kinds label")) { for (const l of t.parentElement.children) l.classList.toggle("on", l === t); return; }
@@ -2481,6 +2999,12 @@ $("view").addEventListener("pointerup", () => {
 document.addEventListener("keydown", (e) => {
   if (e.target.closest("input, textarea, select")) return;
   const st = ui.status; if (!st) return;
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") { undo(); e.preventDefault(); return; }
+  if (ui.tab === "structure" && st.shots.length && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (sheetKey(e)) { e.preventDefault(); return; }
+    if (e.key === "/") { $("note").focus(); e.preventDefault(); }
+    return;
+  }
   const i = st.shots.findIndex((s) => s.id === ui.sel);
   if (ui.tab === "sound") {
     if ((e.key === "Delete" || e.key === "Backspace") && ui.snd?.kind === "sfx") { deleteSfx(); e.preventDefault(); return; }
@@ -2494,7 +3018,9 @@ document.addEventListener("keydown", (e) => {
     draw(); e.preventDefault();
   } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     const t = st.shots[i + (e.key === "ArrowDown" ? 1 : -1)]; if (t) selectShot(t.id); e.preventDefault();
-  } else if (e.key === "Escape") { ui.region = null; draw(); }
+  } else if (e.key === "Escape") {
+    if (ui.region || ui.tab !== "shot") { ui.region = null; draw(); } else goStage("structure");
+  }
   else if (e.key === "/" ) { $("note").focus(); e.preventDefault(); }
   else if (e.key === "Enter" && !e.target.closest("button") && ui.tab === "shot" && ui.mode !== "tweak") {
     // Enter approves the shot on screen and moves on; it never un-approves
