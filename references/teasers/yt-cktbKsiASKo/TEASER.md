@@ -1,13 +1,13 @@
 # Teaser Inspired by ネフィ＆ノヴァ -バディタクティクス-　ティザーPV
 
-> Category: general / Channel: TOM CREATE
+> Category: strategy / Channel: TOM CREATE
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 46 秒 / 視聴数: 72 / 出典: https://www.youtube.com/watch?v=cktbKsiASKo
 - ショット数: 17、平均ショット長 2.71 秒、中央値 2.17 秒、最長 7.54 秒
 - 最初のカット: 4.04 秒、最後のショット（タイトル相当）: 7.46 秒

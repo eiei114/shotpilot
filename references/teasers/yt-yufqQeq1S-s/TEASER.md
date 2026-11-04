@@ -1,13 +1,13 @@
 # Teaser Inspired by Plants vs. Zombies Delturbia 2.5 - Teaser Trailer
 
-> Category: general / Channel: Niqo
+> Category: strategy / Channel: Niqo
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 37 秒 / 視聴数: 10936 / 出典: https://www.youtube.com/watch?v=yufqQeq1S-s
 - ショット数: 7、平均ショット長 5.14 秒、中央値 4.54 秒、最長 12.42 秒
 - 最初のカット: 4.54 秒、最後のショット（タイトル相当）: 10.46 秒

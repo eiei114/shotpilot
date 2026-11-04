@@ -1,13 +1,13 @@
 # Teaser Inspired by 【Steam】孤独なインディーゲーム開発者の一生 - 公式ゲームティザー【Mac, Windows】
 
-> Category: general / Channel: Kan Kikuchi
+> Category: strategy / Channel: Kan Kikuchi
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 25 秒 / 視聴数: 2753 / 出典: https://www.youtube.com/watch?v=B-4GA16mPYs
 - ショット数: 4、平均ショット長 6.25 秒、中央値 2.44 秒、最長 18.33 秒
 - 最初のカット: 1.79 秒、最後のショット（タイトル相当）: 18.33 秒

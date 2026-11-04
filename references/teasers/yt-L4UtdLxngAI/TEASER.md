@@ -1,13 +1,13 @@
 # Teaser Inspired by Artificer's Tower - Steam Next Fest Teaser
 
-> Category: general / Channel: RodentGames
+> Category: strategy / Channel: RodentGames
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 65 秒 / 視聴数: 152 / 出典: https://www.youtube.com/watch?v=L4UtdLxngAI
 - ショット数: 24、平均ショット長 2.67 秒、中央値 1.46 秒、最長 11.24 秒
 - 最初のカット: 0.13 秒、最後のショット（タイトル相当）: 5.37 秒

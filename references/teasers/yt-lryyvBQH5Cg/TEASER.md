@@ -1,13 +1,13 @@
 # Teaser Inspired by Heavy Cargo | Steam Next Fest Teaser
 
-> Category: general / Channel: Aerosoft Games
+> Category: strategy / Channel: Aerosoft Games
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 27 秒 / 視聴数: 115525 / 出典: https://www.youtube.com/watch?v=lryyvBQH5Cg
 - ショット数: 14、平均ショット長 1.86 秒、中央値 1.69 秒、最長 3.46 秒
 - 最初のカット: 2.37 秒、最後のショット（タイトル相当）: 2.67 秒

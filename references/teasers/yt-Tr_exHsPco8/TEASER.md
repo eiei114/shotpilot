@@ -1,13 +1,13 @@
 # Teaser Inspired by 【公式】遊戯王デュエルリンクス ゴーラッシュ!! ワールド追加 ティザー映像
 
-> Category: general / Channel: 【公式】遊戯王ラッシュデュエルTV
+> Category: strategy / Channel: 【公式】遊戯王ラッシュデュエルTV
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 49 秒 / 視聴数: 6508 / 出典: https://www.youtube.com/watch?v=Tr_exHsPco8
 - ショット数: 22、平均ショット長 2.23 秒、中央値 1.9 秒、最長 8.47 秒
 - 最初のカット: 0.5 秒、最後のショット（タイトル相当）: 3.42 秒

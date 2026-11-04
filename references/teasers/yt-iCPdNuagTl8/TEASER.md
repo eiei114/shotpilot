@@ -1,13 +1,13 @@
 # Teaser Inspired by 【カプセルメイツ】歩いて育て、盤上で闘え。｜ティザーPV（2026年冬 公開予定）
 
-> Category: general / Channel: AiGENT & Co. 公式
+> Category: strategy / Channel: AiGENT & Co. 公式
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 76 秒 / 視聴数: 32 / 出典: https://www.youtube.com/watch?v=iCPdNuagTl8
 - ショット数: 17、平均ショット長 4.47 秒、中央値 0.17 秒、最長 21.97 秒
 - 最初のカット: 21.97 秒、最後のショット（タイトル相当）: 10.7 秒

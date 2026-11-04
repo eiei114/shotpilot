@@ -1,7 +1,7 @@
 # Genre: cozy（コージー）
 
 > 標本: `references/teasers/` のうち cozy と判定したティザー 59 本（タイトル・タグ・説明文のキーワードで判定）。
-> ブリーフの `genre` が次の語を含むと、plan のときに Claude へ渡る: cozy, cosy, wholesome, コージー, ほのぼの, 癒し, スローライフ, farming, 農場, life sim, 生活
+> ブリーフの `genre` が次の語を含むと、plan のときに Claude へ渡る: cozy, cosy, wholesome, コージー, ほのぼの, 癒し, スローライフ, farming, 農場, life sim, 生活, ライフシム, ライフシミュレーション
 
 <!-- auto:begin -->
 

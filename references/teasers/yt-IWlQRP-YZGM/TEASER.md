@@ -1,13 +1,13 @@
 # Teaser Inspired by 『Winning Post 10 2024』 ティザー映像
 
-> Category: general / Channel: コーエーテクモChannel
+> Category: strategy / Channel: コーエーテクモChannel
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 48 秒 / 視聴数: 571328 / 出典: https://www.youtube.com/watch?v=IWlQRP-YZGM
 - ショット数: 24、平均ショット長 2.0 秒、中央値 0.67 秒、最長 24.61 秒
 - 最初のカット: 8.14 秒、最後のショット（タイトル相当）: 24.61 秒

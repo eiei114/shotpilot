@@ -232,7 +232,7 @@
 | [yt--Y5U8n4Ie3I](yt--Y5U8n4Ie3I/TEASER.md) | general | teaser | in | ja | 79 | 59 | 1.34 | measured | ペルソナ５　ティザー映像 |
 | [yt--fBmDzBAFSo](yt--fBmDzBAFSo/TEASER.md) | general | teaser | in | ja | 76 | 8 | 9.38 | measured | 山河在 SHANHE REMAIN / Blackswan-Studio First UE5 Game Teaser |
 | [yt--tvKGk0FemE](yt--tvKGk0FemE/TEASER.md) | general | teaser | non-game | ja | 40 | 27 | 1.48 | measured | 【デビューティザーPV】夕霧レイ / Yugiri Ray【ミリプロ】 |
-| [yt--uDHQlmGstM](yt--uDHQlmGstM/TEASER.md) | general | teaser | in | ja | 82 | 94 | 0.87 | measured | 『Winning Post 10 2026』 ティザー映像 |
+| [yt--uDHQlmGstM](yt--uDHQlmGstM/TEASER.md) | strategy | teaser | in | ja | 82 | 94 | 0.87 | measured | 『Winning Post 10 2026』 ティザー映像 |
 | [yt--vPMnXj9Gvk](yt--vPMnXj9Gvk/TEASER.md) | general | teaser | in | en | 96 | 10 | 9.5 | measured | Pine Creek - Official Teaser Trailer |
 | [yt-0Dr8I_RyRCg](yt-0Dr8I_RyRCg/TEASER.md) | general | teaser | in | en | 108 | 50 | 2.14 | measured | Blade Runner 2099 - Official Teaser / Prime Video |
 | [yt-0Im_3t1LWps](yt-0Im_3t1LWps/TEASER.md) | general | teaser | in | en | 28 | 16 | 1.75 | measured | Unreal Engine 6 / Official Rocket League Teaser |
@@ -244,13 +244,13 @@
 | [yt-14L1h9IF-pI](yt-14L1h9IF-pI/TEASER.md) | general | teaser | in | ja | 61 |  |  | catalogued | 『軋轢のイデオローグ』の第1弾ティザームービー |
 | [yt-1PCcjGiIMZI](yt-1PCcjGiIMZI/TEASER.md) | general | teaser | non-game | ja | 24 | 26 | 0.88 | measured | 【続報】スロット最新機種 ティザーPV |
 | [yt-1gWNAeFayH8](yt-1gWNAeFayH8/TEASER.md) | general | teaser | in | en | 76 | 66 | 1.14 | measured | Neverway - Official Reveal Trailer / The Triple-i Initiative Showcase 2025 |
-| [yt-23t7KDnSCkM](yt-23t7KDnSCkM/TEASER.md) | general | teaser | in | en | 62 | 34 | 1.79 | measured | Military Logistics Simulator - Official Steam Next Fest Teaser Trailer |
+| [yt-23t7KDnSCkM](yt-23t7KDnSCkM/TEASER.md) | strategy | teaser | in | en | 62 | 34 | 1.79 | measured | Military Logistics Simulator - Official Steam Next Fest Teaser Trailer |
 | [yt-24Lc7E-Vt80](yt-24Lc7E-Vt80/TEASER.md) | general | teaser | in | en | 90 | 4 | 22.25 | measured | Avatar: Frontiers of Pandora – From the Ashes: EXPANSION REVEAL TEASER |
 | [yt-2AgEQ0WL1ec](yt-2AgEQ0WL1ec/TEASER.md) | general | teaser | non-game | ja | 43 | 20 | 2.15 | measured | 【ティザーPV】ミリプロUNI、本格始動のお知らせ【眠雲ツクリ / 雨夜リズ】 |
 | [yt-2dwbKEL1UTs](yt-2dwbKEL1UTs/TEASER.md) | general | teaser | in | en | 85 | 8 | 10.5 | measured | CAONA - Announcement Teaser (Sound Design Only) / Unreal Engine 5 |
 | [yt-2k9OArKSD0s](yt-2k9OArKSD0s/TEASER.md) | general | teaser | in | ja | 52 | 30 | 1.7 | measured | 【新ブランド】『アイドルマスター』シリーズ　新ブランドアプリゲーム　ティザーPV【アイドルマスター】 |
 | [yt-2oad7AX7gWM](yt-2oad7AX7gWM/TEASER.md) | general | teaser | in | en | 40 | 13 | 3.08 | measured | DayZ Badlands - Expansion Announcement Teaser |
-| [yt-2tkikl91xPw](yt-2tkikl91xPw/TEASER.md) | general | teaser | in | en | 36 | 7 | 5.0 | measured | Frostpunk 1886 - Official New Game Announcement Trailer |
+| [yt-2tkikl91xPw](yt-2tkikl91xPw/TEASER.md) | strategy | teaser | in | en | 36 | 7 | 5.0 | measured | Frostpunk 1886 - Official New Game Announcement Trailer |
 | [yt-3RJDSZKQ_bc](yt-3RJDSZKQ_bc/TEASER.md) | general | teaser | in | ja | 83 | 62 | 1.32 | measured | 【10月17日 発売】『プロ野球スピリッツ2024-2025』ティザートレーラー |
 | [yt-3RxlzJWWzdY](yt-3RxlzJWWzdY/TEASER.md) | general | teaser | non-game | ja | 109 | 107 | 1.02 | measured | 『ホロライブ・オルタナティブ』 ティザーPV（Fullver） |
 | [yt-3cMedpO5u6o](yt-3cMedpO5u6o/TEASER.md) | general | teaser | in | en | 87 | 52 | 1.67 | measured | Sink My Bricks! / Official Announcement Trailer |
@@ -284,7 +284,7 @@
 | [yt-AnffDVY2onU](yt-AnffDVY2onU/TEASER.md) | general | teaser | in | ja | 57 | 22 | 2.55 | measured | 『Project:;COLD case.mirage』 ティザー映像 |
 | [yt-At50B3NJbPc](yt-At50B3NJbPc/TEASER.md) | general | teaser | in | en | 15 | 20 | 0.7 | measured | BLACKPINK - 'How You Like That' Concept Teaser Video |
 | [yt-AvzSHq004Go](yt-AvzSHq004Go/TEASER.md) | general | teaser | in | en | 65 | 73 | 0.89 | measured | Warden's Will - Official Steam Next Fest Teaser Trailer |
-| [yt-B-4GA16mPYs](yt-B-4GA16mPYs/TEASER.md) | general | teaser | in | ja | 25 | 4 | 6.25 | measured | 【Steam】孤独なインディーゲーム開発者の一生 - 公式ゲームティザー【Mac, Windows】 |
+| [yt-B-4GA16mPYs](yt-B-4GA16mPYs/TEASER.md) | strategy | teaser | in | ja | 25 | 4 | 6.25 | measured | 【Steam】孤独なインディーゲーム開発者の一生 - 公式ゲームティザー【Mac, Windows】 |
 | [yt-BCKMMsQULKg](yt-BCKMMsQULKg/TEASER.md) | general | teaser | in | en | 26 | 4 | 6.25 | measured | GTA 6 (Grand Theft Auto 6) - Official Extended Look Teaser Trailer |
 | [yt-BDh2yjR2mZw](yt-BDh2yjR2mZw/TEASER.md) | general | teaser | in | en | 31 | 42 | 0.71 | measured | EDF5 30 Second STEAM Trailer |
 | [yt-BLm8tagJBVI](yt-BLm8tagJBVI/TEASER.md) | general | teaser | in | ja | 43 |  |  | catalogued | ガンバレジェンズ 新シリーズティザー映像 |
@@ -292,7 +292,7 @@
 | [yt-BhXT-IMlkKY](yt-BhXT-IMlkKY/TEASER.md) | general | teaser | in | ja | 66 | 91 | 0.71 | measured | 配信少女ノ裏垢迷宮 ティザーPV |
 | [yt-Bzo7bQK91ZI](yt-Bzo7bQK91ZI/TEASER.md) | general | teaser | in | en | 90 | 11 | 8.18 | measured | OD (Overdose) - Reveal Trailer (Hideo Kojima & Jordan Peele) / Game Awards 2023 |
 | [yt-C9d5o0FGyLs](yt-C9d5o0FGyLs/TEASER.md) | general | teaser | in | en | 42 | 20 | 2.1 | measured | Swords & Slippers - Official Rapunzel Teaser Trailer |
-| [yt-CJk83pqOBRA](yt-CJk83pqOBRA/TEASER.md) | general | gameplay | in | en | 41 | 27 | 1.48 | measured | ShoreTiles - Official Gameplay Teaser Trailer |
+| [yt-CJk83pqOBRA](yt-CJk83pqOBRA/TEASER.md) | strategy | gameplay | in | en | 41 | 27 | 1.48 | measured | ShoreTiles - Official Gameplay Teaser Trailer |
 | [yt-CL-q0HgfMOY](yt-CL-q0HgfMOY/TEASER.md) | general | teaser | in | en | 79 | 37 | 2.14 | measured | Persona 6 — Teaser Trailer |
 | [yt-CgHfpx9sWgs](yt-CgHfpx9sWgs/TEASER.md) | general | teaser | in | ja | 26 | 13 | 1.92 | measured | フリーゲーム「cutor_kill 」ティザーPV(再投稿) |
 | [yt-Ch92-7BJQ5U](yt-Ch92-7BJQ5U/TEASER.md) | general | gameplay | in | en | 93 | 62 | 1.48 | measured | Assassin's Creed: Black Flag Resynced - Official Gameplay Trailer / IGN Summer of Gaming |
@@ -306,7 +306,7 @@
 | [yt-EFlq9Yhi-5w](yt-EFlq9Yhi-5w/TEASER.md) | general | teaser | in | en | 41 | 2 | 20.5 | measured | Never Secure – It Was Never Secure / Steam Next Fest Teaser |
 | [yt-EaziqRICLyU](yt-EaziqRICLyU/TEASER.md) | general | teaser | in | en | 31 | 23 | 1.3 | measured | L.A. Noire Official Trailer #2 (30 Second Version) |
 | [yt-Ei5Po1xKWig](yt-Ei5Po1xKWig/TEASER.md) | general | teaser | in | ja | 57 | 32 | 1.78 | measured | 『進撃の巨人』ティザー映像 |
-| [yt-Emua_1u4ZPk](yt-Emua_1u4ZPk/TEASER.md) | general | teaser | in | ja | 51 | 9 | 5.56 | measured | 『動物園ウォーズ』ティザームービー |
+| [yt-Emua_1u4ZPk](yt-Emua_1u4ZPk/TEASER.md) | strategy | teaser | in | ja | 51 | 9 | 5.56 | measured | 『動物園ウォーズ』ティザームービー |
 | [yt-ExrpgfY-r1w](yt-ExrpgfY-r1w/TEASER.md) | general | teaser | in | en | 73 | 81 | 0.9 | measured | Sleepover - Official Announcement Trailer |
 | [yt-EzMxyEKB0cg](yt-EzMxyEKB0cg/TEASER.md) | general | teaser | in | en | 119 | 139 | 0.86 | measured | DISCO Official Teaser / Ullas Chemban / Antony Pepe / Chemban Vinod / Arjun Asokan / Dev / Lukman |
 | [yt-FN82qEvzhkY](yt-FN82qEvzhkY/TEASER.md) | general | teaser | in | en | 54 | 8 | 6.75 | measured | PEAK: The Final Ascent / Teaser Trailer |
@@ -320,24 +320,24 @@
 | [yt-GYkuRXMAEPU](yt-GYkuRXMAEPU/TEASER.md) | general | teaser | in | ja | 73 | 18 | 4.06 | measured | 『ゴーストリコン ブレイクポイント』AIチームメイトティザー |
 | [yt-GbCWYL-KJBM](yt-GbCWYL-KJBM/TEASER.md) | general | teaser | in | en | 48 | 39 | 1.21 | measured | eFootball 2026 Nintendo Switch 2 30 Second Kick-Off Trailer |
 | [yt-Gbeg7KSnfgk](yt-Gbeg7KSnfgk/TEASER.md) | general | teaser | in | ja | 35 | 11 | 3.18 | measured | 『Dolls Nest』ティザーPV |
-| [yt-GiZ1OLoUb4Q](yt-GiZ1OLoUb4Q/TEASER.md) | general | teaser | in | en | 30 | 24 | 1.25 | measured | Culdcept BEGINS - 30-Second Trailer |
+| [yt-GiZ1OLoUb4Q](yt-GiZ1OLoUb4Q/TEASER.md) | strategy | teaser | in | en | 30 | 24 | 1.25 | measured | Culdcept BEGINS - 30-Second Trailer |
 | [yt-GxCN_AKYtts](yt-GxCN_AKYtts/TEASER.md) | general | teaser | in | en | 48 |  |  | catalogued | Diablo V Teaser |
 | [yt-Hpz_sDVpE20](yt-Hpz_sDVpE20/TEASER.md) | general | teaser | in | en | 28 | 14 | 2.0 | measured | Opening Trailer - Universal Resort Roblox (30 Second) |
 | [yt-Hs1AlE91RYQ](yt-Hs1AlE91RYQ/TEASER.md) | general | teaser | non-game | ja | 31 | 26 | 1.15 | measured | TVアニメ『新 美味しんぼ』ティザーPV / 美味しんぼ |
 | [yt-I0YWGgZBiYc](yt-I0YWGgZBiYc/TEASER.md) | general | teaser | non-game | en | 45 |  |  | catalogued | The Bluey Movie / Official Teaser Trailer 🎈 / In Theatres 2027 |
 | [yt-IFMtatOlEQA](yt-IFMtatOlEQA/TEASER.md) | general | teaser | non-game | ja | 70 | 69 | 1.0 | measured | 映画『ブルーロック』ティザー映像【8月7日(金)公開】 |
-| [yt-IWlQRP-YZGM](yt-IWlQRP-YZGM/TEASER.md) | general | teaser | in | ja | 48 | 24 | 2.0 | measured | 『Winning Post 10 2024』 ティザー映像 |
+| [yt-IWlQRP-YZGM](yt-IWlQRP-YZGM/TEASER.md) | strategy | teaser | in | ja | 48 | 24 | 2.0 | measured | 『Winning Post 10 2024』 ティザー映像 |
 | [yt-Ihm8cY7_-2Y](yt-Ihm8cY7_-2Y/TEASER.md) | general | teaser | in | en | 42 | 10 | 4.1 | measured | Pax Astra - Steam Next Fest Teaser |
 | [yt-J2NkYisEl74](yt-J2NkYisEl74/TEASER.md) | general | teaser | in | ja | 24 | 17 | 1.41 | measured | インディーライブエキスポ 2024.5.25 ティザー映像 |
 | [yt-JbrBGAQA0J4](yt-JbrBGAQA0J4/TEASER.md) | general | teaser | in | en | 37 | 20 | 1.8 | measured | Expedition: Into Darkness—Official Steam Next Fest 2026 Teaser |
 | [yt-Jci0qKqbfoo](yt-Jci0qKqbfoo/TEASER.md) | general | teaser | in | en | 103 | 35 | 2.91 | measured | We Don't Exist - Announcement Trailer |
 | [yt-JjXngOfw_YQ](yt-JjXngOfw_YQ/TEASER.md) | general | teaser | in | ja | 81 | 137 | 0.58 | measured | 『メタファー：リファンタジオ』ロンチトレーラー |
 | [yt-Klr1oznpwcg](yt-Klr1oznpwcg/TEASER.md) | general | teaser | in | ja | 60 | 7 | 8.43 | measured | VA-11 Hall-A PS4 Nintendo Switch JP ティザートレーラー |
-| [yt-L4UtdLxngAI](yt-L4UtdLxngAI/TEASER.md) | general | teaser | in | en | 65 | 24 | 2.67 | measured | Artificer's Tower - Steam Next Fest Teaser |
+| [yt-L4UtdLxngAI](yt-L4UtdLxngAI/TEASER.md) | strategy | teaser | in | en | 65 | 24 | 2.67 | measured | Artificer's Tower - Steam Next Fest Teaser |
 | [yt-L6LCwzbPS1A](yt-L6LCwzbPS1A/TEASER.md) | general | teaser | in | en | 61 | 16 | 3.75 | measured | Simpler Times - Official Reveal Trailer / Day of the Devs 2023 |
 | [yt-L9AydUFrK6E](yt-L9AydUFrK6E/TEASER.md) | general | teaser | in | en | 61 | 23 | 2.65 | measured | Infinitesimals / Teaser Trailer |
 | [yt-LOA65C93_t4](yt-LOA65C93_t4/TEASER.md) | general | teaser | in | en | 31 | 24 | 1.25 | measured | Modern Warfare 4 South Korea Teaser Trailer! Signal Lost! (COD MW4 Reveal Trailer Teasers) |
-| [yt-LeS4jr4cWWM](yt-LeS4jr4cWWM/TEASER.md) | general | teaser | in | ja | 85 | 103 | 0.83 | measured | 『Winning Post 10 2026』ティザー映像 |
+| [yt-LeS4jr4cWWM](yt-LeS4jr4cWWM/TEASER.md) | strategy | teaser | in | ja | 85 | 103 | 0.83 | measured | 『Winning Post 10 2026』ティザー映像 |
 | [yt-Lea_yP4Rr2Y](yt-Lea_yP4Rr2Y/TEASER.md) | general | teaser | in | en | 45 | 7 | 6.43 | measured | Trees Hate You—Announce Trailer |
 | [yt-LiPPIkdQ-Io](yt-LiPPIkdQ-Io/TEASER.md) | general | teaser | in | ja | 36 | 32 | 1.09 | measured | ゲーム『FAIRY TAIL２』ティザートレーラー |
 | [yt-LiyJLlOyDhU](yt-LiyJLlOyDhU/TEASER.md) | general | teaser | in | en | 23 | 20 | 1.1 | measured | Harold Halibut - Steam Next Fest Demo Teaser |
@@ -375,13 +375,13 @@
 | [yt-Pqbhpm0qAaM](yt-Pqbhpm0qAaM/TEASER.md) | general | teaser | non-game | ja | 54 | 16 | 3.38 | measured | 【ティザーPV】夕霧レイ / Yugiri Ray【ミリプロ】 |
 | [yt-Q8lJRR7brq0](yt-Q8lJRR7brq0/TEASER.md) | general | teaser | in | en | 59 | 10 | 5.8 | measured | Pro Evolution Soccer - Next-Gen PES Teaser |
 | [yt-QAJctruQL8s](yt-QAJctruQL8s/TEASER.md) | general | teaser | in | en | 64 | 19 | 3.37 | measured | OD KNOCK - Official Teaser / KOJIMA PRODUCTIONS |
-| [yt-QW_7oiMLM6o](yt-QW_7oiMLM6o/TEASER.md) | general | teaser | in | en | 61 | 16 | 3.81 | measured | Frostpunk 2: The Surge / Date Reveal Trailer |
+| [yt-QW_7oiMLM6o](yt-QW_7oiMLM6o/TEASER.md) | strategy | teaser | in | en | 61 | 16 | 3.81 | measured | Frostpunk 2: The Surge / Date Reveal Trailer |
 | [yt-R2uW-9BKzuU](yt-R2uW-9BKzuU/TEASER.md) | general | teaser | in | en | 101 | 15 | 6.73 | measured | OD Official Teaser Trailer (Hideo Kojima's New Game) / The Game Awards 2023 |
 | [yt-RP8DT2JaQUM](yt-RP8DT2JaQUM/TEASER.md) | general | teaser | in | ja | 99 | 36 | 2.75 | measured | 『STRANGER THAN HEAVEN』1stティザートレーラー |
 | [yt-Rchiwh24tBk](yt-Rchiwh24tBk/TEASER.md) | general | teaser | in | en | 66 | 13 | 5.08 | measured | Inheritance / Cinematic Trailer / Unreal Engine 5 |
 | [yt-RuYcdIHu4L0](yt-RuYcdIHu4L0/TEASER.md) | general | gameplay | in | en | 88 | 33 | 2.64 | measured | The Lost Wild - Official Gameplay Trailer / State of Play 2026 |
 | [yt-RvGlkQKipGo](yt-RvGlkQKipGo/TEASER.md) | general | teaser | in | en | 97 | 67 | 1.45 | measured | College Football 25 / Official Teaser Trailer |
-| [yt-S3kF2Rn5F_A](yt-S3kF2Rn5F_A/TEASER.md) | general | teaser | in | en | 31 | 14 | 2.14 | measured | Global Ordnance: The Iron Fist / 30-Second Trailer / Free Mobile RTS |
+| [yt-S3kF2Rn5F_A](yt-S3kF2Rn5F_A/TEASER.md) | strategy | teaser | in | en | 31 | 14 | 2.14 | measured | Global Ordnance: The Iron Fist / 30-Second Trailer / Free Mobile RTS |
 | [yt-SMJtpWYIXuw](yt-SMJtpWYIXuw/TEASER.md) | general | teaser | non-game | en | 88 | 49 | 1.78 | measured | Predecessor 3D Short Film Series - Full Trailer - Predecessor Worlds |
 | [yt-SfPXD0rAxGI](yt-SfPXD0rAxGI/TEASER.md) | general | teaser | in | ja | 118 | 93 | 1.27 | measured | 『STRANGER THAN HEAVEN』3rdティザートレーラー |
 | [yt-SizD56s6guU](yt-SizD56s6guU/TEASER.md) | general | teaser | non-game | en | 58 | 33 | 1.73 | measured | TV Anime "Skip and Loafer 2nd Season" Teaser PV / Airing April 2027! |
@@ -391,15 +391,15 @@
 | [yt-TCPD3trVBsA](yt-TCPD3trVBsA/TEASER.md) | general | teaser | non-game | ja | 31 | 4 | 7.5 | measured | 【スーパーティザー映像】『映画ドラえもん のび太の蒸気時間車』＜2027年春 公開決定！＞ |
 | [yt-TFvYwBEFtXg](yt-TFvYwBEFtXg/TEASER.md) | general | teaser | in | en | 96 |  |  | catalogued | Dark Mass - Announcement Trailer / PS5 Games |
 | [yt-TUIWnUuv4-8](yt-TUIWnUuv4-8/TEASER.md) | general | teaser | in | en | 31 | 36 | 0.83 | measured | AVA - Infection - 30 Second Trailer |
-| [yt-TfS472qZUL4](yt-TfS472qZUL4/TEASER.md) | general | teaser | in | en | 76 | 7 | 10.86 | measured | Trucker 2056 — Exclusive Steam Next Fest Teaser |
-| [yt-Tqms5Lo-qS0](yt-Tqms5Lo-qS0/TEASER.md) | general | teaser | in | en | 28 | 30 | 0.9 | measured | Outlive 25 - Teaser (Demo at Steam Next Fest) |
-| [yt-Tr_exHsPco8](yt-Tr_exHsPco8/TEASER.md) | general | teaser | in | ja | 49 | 22 | 2.23 | measured | 【公式】遊戯王デュエルリンクス ゴーラッシュ!! ワールド追加 ティザー映像 |
+| [yt-TfS472qZUL4](yt-TfS472qZUL4/TEASER.md) | strategy | teaser | in | en | 76 | 7 | 10.86 | measured | Trucker 2056 — Exclusive Steam Next Fest Teaser |
+| [yt-Tqms5Lo-qS0](yt-Tqms5Lo-qS0/TEASER.md) | strategy | teaser | in | en | 28 | 30 | 0.9 | measured | Outlive 25 - Teaser (Demo at Steam Next Fest) |
+| [yt-Tr_exHsPco8](yt-Tr_exHsPco8/TEASER.md) | strategy | teaser | in | ja | 49 | 22 | 2.23 | measured | 【公式】遊戯王デュエルリンクス ゴーラッシュ!! ワールド追加 ティザー映像 |
 | [yt-TzvGu90MQe4](yt-TzvGu90MQe4/TEASER.md) | general | teaser | in | ja | 51 | 4 | 12.75 | measured | 『Kona II: Brume』ティザートレーラー |
 | [yt-UE1LyloLQOk](yt-UE1LyloLQOk/TEASER.md) | general | teaser | in | en | 56 | 1 | 56.0 | measured | Tribute: An Assassin's Creed Fan Game Announcement - Environment Teaser |
 | [yt-UUJUGfRp8yE](yt-UUJUGfRp8yE/TEASER.md) | general | teaser | in | en | 23 | 1 | 23.0 | measured | Descent: Into the Abyss / Teaser #2 “Nothing guarantees your return” / Unreal Engine 5 |
 | [yt-UcjZq9RWAH8](yt-UcjZq9RWAH8/TEASER.md) | general | teaser | in | en | 96 | 79 | 1.2 | measured | .hack//Z.E.R.O. Teaser Trailer #hackZERO #dothack |
 | [yt-UoOiIQRdYnc](yt-UoOiIQRdYnc/TEASER.md) | general | teaser | in | en | 77 | 27 | 2.81 | measured | Quatiica Motorsports / Official Cinematic Teaser |
-| [yt-UpH6HB-Km_0](yt-UpH6HB-Km_0/TEASER.md) | general | teaser | in | en | 60 | 21 | 2.86 | measured | Neighborhoods - Official Reveal Trailer / The MIX Summer Game Showcase 2026 |
+| [yt-UpH6HB-Km_0](yt-UpH6HB-Km_0/TEASER.md) | strategy | teaser | in | en | 60 | 21 | 2.86 | measured | Neighborhoods - Official Reveal Trailer / The MIX Summer Game Showcase 2026 |
 | [yt-V3GsB1Jgj0w](yt-V3GsB1Jgj0w/TEASER.md) | general | teaser | in | en | 48 | 11 | 4.36 | measured | Diablo 5 - Official Teaser Trailer / BlizzCon 2026 |
 | [yt-V74EM4s4aWA](yt-V74EM4s4aWA/TEASER.md) | general | teaser | in | ja | 95 | 16 | 5.94 | measured | Fallout 76 – ティザートレーラー |
 | [yt-V9zT4X9-u3Y](yt-V9zT4X9-u3Y/TEASER.md) | general | teaser | in | en | 31 | 11 | 2.73 | measured | PBJ - The Musical: Official Announcement Trailer / Day of the Devs 2024 |
@@ -437,8 +437,8 @@
 | [yt-basLDO2bj2k](yt-basLDO2bj2k/TEASER.md) | general | teaser | in | en | 84 | 20 | 4.2 | measured | Marvel’s Blade / Announcement Trailer / The Game Awards 2023 |
 | [yt-bvyCAFV9MbM](yt-bvyCAFV9MbM/TEASER.md) | general | teaser | in | ja | 83 | 13 | 6.31 | measured | 『真・女神転生Ⅴ』ティザートレーラー |
 | [yt-by3AGK4UW80](yt-by3AGK4UW80/TEASER.md) | general | teaser | in | ja | 49 | 1 | 48.0 | measured | 『Kona II: Brume』ティザートレーラー |
-| [yt-c0u4DH4Jnxo](yt-c0u4DH4Jnxo/TEASER.md) | general | teaser | in | ja | 46 | 6 | 7.5 | measured | 『信長の野望･新生』ティザー映像 |
-| [yt-cktbKsiASKo](yt-cktbKsiASKo/TEASER.md) | general | teaser | in | ja | 46 | 17 | 2.71 | measured | ネフィ＆ノヴァ -バディタクティクス-　ティザーPV |
+| [yt-c0u4DH4Jnxo](yt-c0u4DH4Jnxo/TEASER.md) | strategy | teaser | in | ja | 46 | 6 | 7.5 | measured | 『信長の野望･新生』ティザー映像 |
+| [yt-cktbKsiASKo](yt-cktbKsiASKo/TEASER.md) | strategy | teaser | in | ja | 46 | 17 | 2.71 | measured | ネフィ＆ノヴァ -バディタクティクス-　ティザーPV |
 | [yt-cntP2XG8exk](yt-cntP2XG8exk/TEASER.md) | general | teaser | in | en | 73 | 43 | 1.7 | measured | INDIE CROSS TEASER// NEW CHARACTER REVEAL |
 | [yt-dIQGI36BxDE](yt-dIQGI36BxDE/TEASER.md) | general | teaser | in | en | 31 | 12 | 2.5 | measured | God of War Ragnarök - "Father and Son" Cinematic Trailer / PS5 & PS4 Games |
 | [yt-dhGYyNBEE0c](yt-dhGYyNBEE0c/TEASER.md) | general | teaser | in | en | 25 | 12 | 2.08 | measured | Minabo - A walk through life - Steam Next Fest Teaser |
@@ -447,8 +447,8 @@
 | [yt-evU8B13S9T8](yt-evU8B13S9T8/TEASER.md) | general | teaser | in | ja | 32 | 14 | 2.21 | measured | 【公式】岩井俊二×ポケモンカードゲーム～ドキュメンタリー：ティザー映像 |
 | [yt-f-y2wfedn64](yt-f-y2wfedn64/TEASER.md) | general | teaser | in | ja | 22 | 19 | 1.16 | measured | M!LK - しおざきわんだーらんど (塩﨑太智) (Official Teaser) |
 | [yt-f0M1I8kqVLY](yt-f0M1I8kqVLY/TEASER.md) | general | teaser | non-game | ja | 48 | 39 | 1.23 | measured | 【ティザーPV】海琳あおい / Mitama Aoi【ミリプロ】 |
-| [yt-fGgsNvxaA04](yt-fGgsNvxaA04/TEASER.md) | general | teaser | in | en | 90 | 23 | 3.91 | measured | Miniopolis - Official Announcement Trailer |
-| [yt-fHmLyZdcqUw](yt-fHmLyZdcqUw/TEASER.md) | general | teaser | in | en | 42 | 46 | 0.89 | measured | Deviled Dice - Official Announcement Trailer |
+| [yt-fGgsNvxaA04](yt-fGgsNvxaA04/TEASER.md) | strategy | teaser | in | en | 90 | 23 | 3.91 | measured | Miniopolis - Official Announcement Trailer |
+| [yt-fHmLyZdcqUw](yt-fHmLyZdcqUw/TEASER.md) | strategy | teaser | in | en | 42 | 46 | 0.89 | measured | Deviled Dice - Official Announcement Trailer |
 | [yt-flf2_wM2FIU](yt-flf2_wM2FIU/TEASER.md) | general | teaser | in | en | 97 | 11 | 8.73 | measured | Unreal Engine 5.6 - Official Feature Highlights Overview Trailer / State of Unreal 2025 |
 | [yt-g3y3dmkrpVo](yt-g3y3dmkrpVo/TEASER.md) | general | teaser | in | en | 57 | 9 | 6.33 | measured | Mafia: The Old Country - Teaser Trailer / PS5 Games |
 | [yt-g61OQTbWtWA](yt-g61OQTbWtWA/TEASER.md) | general | teaser | in | en | 39 | 16 | 2.44 | measured | Windrose: Ashlands Update Teaser |
@@ -462,7 +462,7 @@
 | [yt-hgPBfGaPikw](yt-hgPBfGaPikw/TEASER.md) | general | teaser | in | ja | 21 | 6 | 3.33 | measured | 『ステラソラ』ティザーPV |
 | [yt-hn_5gTAJ1cc](yt-hn_5gTAJ1cc/TEASER.md) | general | teaser | in | ja | 43 | 19 | 2.26 | measured | 【ゲーム】『ガールズバンドクライ First Riff』ティザーPV【ガルリフ】 |
 | [yt-hu4ItaI8LHI](yt-hu4ItaI8LHI/TEASER.md) | general | teaser | in | en | 31 | 21 | 1.43 | measured | ALVION   PS4「MALICIOUS FALLEN」30 Seconds Official Trailer |
-| [yt-iCPdNuagTl8](yt-iCPdNuagTl8/TEASER.md) | general | teaser | in | ja | 76 | 17 | 4.47 | measured | 【カプセルメイツ】歩いて育て、盤上で闘え。｜ティザーPV（2026年冬 公開予定） |
+| [yt-iCPdNuagTl8](yt-iCPdNuagTl8/TEASER.md) | strategy | teaser | in | ja | 76 | 17 | 4.47 | measured | 【カプセルメイツ】歩いて育て、盤上で闘え。｜ティザーPV（2026年冬 公開予定） |
 | [yt-iMTYmHx-NhY](yt-iMTYmHx-NhY/TEASER.md) | general | teaser | non-game | ja | 33 | 7 | 4.57 | measured | 【ホロカ】｢エンチャントレガリア｣商品ティザー映像 |
 | [yt-iZSVpr90Pm8](yt-iZSVpr90Pm8/TEASER.md) | general | teaser | in | en | 101 | 3 | 33.67 | measured | Dawngazer - Ignisphere Teaser Trailer |
 | [yt-j151ek2rYs0](yt-j151ek2rYs0/TEASER.md) | general | teaser | in | en | 87 | 43 | 2.0 | measured | KINGDOM HEARTS IV Teaser Trailer / June 2026 |
@@ -470,7 +470,7 @@
 | [yt-j6BsHQ6iJ00](yt-j6BsHQ6iJ00/TEASER.md) | general | teaser | non-game | en | 94 | 55 | 1.69 | measured | DEVI VIGYANAM / Official Teaser / Out Now / Movie Coming Soon |
 | [yt-jLoTKRXC-X0](yt-jLoTKRXC-X0/TEASER.md) | general | teaser | in | ja | 75 | 41 | 1.83 | measured | 【公式】ゲーム『れーぞく！ネクロマンスちゃん』ティザーPV Necromance-chan |
 | [yt-j_KO0flIWrU](yt-j_KO0flIWrU/TEASER.md) | general | teaser | in | en | 34 | 8 | 4.12 | measured | Speak. Teaser Trailer |
-| [yt-jhK21JNrPyI](yt-jhK21JNrPyI/TEASER.md) | general | teaser | in | en | 29 | 30 | 0.93 | measured | Heretic's Fork - Official Steam Next Fest Trailer |
+| [yt-jhK21JNrPyI](yt-jhK21JNrPyI/TEASER.md) | strategy | teaser | in | en | 29 | 30 | 0.93 | measured | Heretic's Fork - Official Steam Next Fest Trailer |
 | [yt-jiNcZfGQu6g](yt-jiNcZfGQu6g/TEASER.md) | general | teaser | in | en | 63 | 49 | 1.29 | measured | Romancelvania / Teaser Trailer / Steam Next Fest 2022 |
 | [yt-jq5oCjhQtIc](yt-jq5oCjhQtIc/TEASER.md) | general | teaser | non-game | en | 92 | 70 | 1.31 | measured | I Play Rocky / Official Trailer 2 |
 | [yt-k7LS1zSu2PE](yt-k7LS1zSu2PE/TEASER.md) | general | teaser | in | en | 33 | 11 | 3.0 | measured | Predecessor Reimagined – Fan Made UE5 Cinematic Trailer [FIRST TEASER] |
@@ -478,7 +478,7 @@
 | [yt-kJFpjFmc6uA](yt-kJFpjFmc6uA/TEASER.md) | general | teaser | non-game | ja | 47 | 15 | 3.07 | measured | 『ゴジラ-0.0』ファーストティザー＜2026年11月3日(火・祝)劇場公開＞ |
 | [yt-kPeHbz_8U_o](yt-kPeHbz_8U_o/TEASER.md) | general | teaser | in | ja | 96 | 1 | 96.0 | measured | ゲーム『 Undefined Survivors 』ティザー映像 |
 | [yt-liul_-0nev4](yt-liul_-0nev4/TEASER.md) | general | teaser | in | ja | 81 | 70 | 1.14 | measured | 新作リズムゲーム「BanG Dream! Our Notes」ティザーPV 第二弾 |
-| [yt-lryyvBQH5Cg](yt-lryyvBQH5Cg/TEASER.md) | general | teaser | in | en | 27 | 14 | 1.86 | measured | Heavy Cargo / Steam Next Fest Teaser |
+| [yt-lryyvBQH5Cg](yt-lryyvBQH5Cg/TEASER.md) | strategy | teaser | in | en | 27 | 14 | 1.86 | measured | Heavy Cargo / Steam Next Fest Teaser |
 | [yt-lwlw0ChiSR0](yt-lwlw0ChiSR0/TEASER.md) | general | teaser | in | en | 62 | 3 | 20.33 | measured | Forza Horizon 6 - Official Teaser Trailer / Tokyo Game Show 2025 |
 | [yt-m-Aqt-bKs9A](yt-m-Aqt-bKs9A/TEASER.md) | general | teaser | in | en | 64 | 69 | 0.93 | measured | Steam Next Fest - October 2025 Edition: Official Trailer |
 | [yt-mC2ib_efdRs](yt-mC2ib_efdRs/TEASER.md) | general | teaser | in | en | 35 | 4 | 8.5 | measured | Mass Effect / N7 Day 2023 Official Teaser Trailer |
@@ -516,7 +516,7 @@
 | [yt-ptrv_h08eeI](yt-ptrv_h08eeI/TEASER.md) | general | teaser | in | en | 104 | 14 | 7.36 | measured | TRAILER Mass Effect 4 / Official Teaser Unreal Engine 5 HD 4K 2022 |
 | [yt-puR-YEKZDGY](yt-puR-YEKZDGY/TEASER.md) | general | teaser | in | en | 49 | 13 | 3.77 | measured | Marvel Rivals / Character Reveal Teaser / Jeff the Land Shark: Four-Legged Friend |
 | [yt-pvm5gvobL5w](yt-pvm5gvobL5w/TEASER.md) | general | teaser | non-game | en | 62 | 56 | 1.11 | measured | Transformers: Rise of Unicron - New Official Teaser |
-| [yt-pygcgE3a_uY](yt-pygcgE3a_uY/TEASER.md) | general | teaser | in | en | 92 | 2 | 45.5 | measured | Sid Meier’s Civilization VII - Official Teaser Trailer |
+| [yt-pygcgE3a_uY](yt-pygcgE3a_uY/TEASER.md) | strategy | teaser | in | en | 92 | 2 | 45.5 | measured | Sid Meier’s Civilization VII - Official Teaser Trailer |
 | [yt-qR4VKsXOR1I](yt-qR4VKsXOR1I/TEASER.md) | general | teaser | in | en | 32 | 12 | 2.67 | measured | Monomyth - Steam Next Fest Teaser (June 2024) |
 | [yt-qj3h3Bs5-2s](yt-qj3h3Bs5-2s/TEASER.md) | general | teaser | in | en | 60 | 27 | 2.19 | measured | Batman Fan Made Trailer / Unreal Engine 5 Cinematic |
 | [yt-qjp5KL_Zg4A](yt-qjp5KL_Zg4A/TEASER.md) | general | teaser | non-game | en | 106 | 82 | 1.28 | measured | BHOGI Official Teaser / Sharwanand / Sampath Nandi / Anupama / Dimple Hayathi / Bheems Ceciroleo |
@@ -542,7 +542,7 @@
 | [yt-twVrqAeJH1E](yt-twVrqAeJH1E/TEASER.md) | general | teaser | in | ja | 21 | 26 | 0.77 | measured | 『BIOHAZARD Survival Unit』 / 1周年ティザーPV |
 | [yt-twoGXJB2zIc](yt-twoGXJB2zIc/TEASER.md) | general | teaser | in | en | 100 | 57 | 1.75 | measured | WE BURY THE DEAD Official Teaser Trailer (2025) Daisy Ridley |
 | [yt-txWOkqPwtTk](yt-txWOkqPwtTk/TEASER.md) | general | teaser | non-game | en | 61 | 18 | 3.39 | measured | KONAMI’s PROJECT ZIRCON Official VTuber / Rune Salowa / Teaser PV |
-| [yt-u7q8N3tpigA](yt-u7q8N3tpigA/TEASER.md) | general | teaser | in | en | 66 | 25 | 2.64 | measured | 10 Million Pixels - Official Announcement Trailer |
+| [yt-u7q8N3tpigA](yt-u7q8N3tpigA/TEASER.md) | strategy | teaser | in | en | 66 | 25 | 2.64 | measured | 10 Million Pixels - Official Announcement Trailer |
 | [yt-u83VdXAVq08](yt-u83VdXAVq08/TEASER.md) | general | teaser | in | en | 84 | 50 | 1.66 | measured | Black Myth: Wukong - Pre-Order CG Trailer / PS5 Games |
 | [yt-u84hRUQlaio](yt-u84hRUQlaio/TEASER.md) | general | teaser | in | en | 112 | 15 | 7.47 | measured | Stray - Teaser Trailer / PS5 |
 | [yt-uLltiWS1KI4](yt-uLltiWS1KI4/TEASER.md) | general | teaser | in | en | 50 | 40 | 1.25 | measured | Toy Story 2 Reassembled Trailer / Unreal Engine 5 Remake |
@@ -560,10 +560,10 @@
 | [yt-wZk8WgJ6N_4](yt-wZk8WgJ6N_4/TEASER.md) | general | teaser | in | en | 36 | 12 | 2.92 | measured | Rocket League x Unreal Engine 6 - A New Era / Reveal Teaser / GameStop |
 | [yt-waEVO8wOky8](yt-waEVO8wOky8/TEASER.md) | general | teaser | in | en | 56 | 34 | 1.65 | measured | Feather's Edge - Announcement Trailer |
 | [yt-xK9iYiMNdE4](yt-xK9iYiMNdE4/TEASER.md) | general | teaser | in | en | 48 | 48 | 1.0 | measured | Cosmo Tales - Demo Teaser Trailer - Steam Next Fest June 2026 |
-| [yt-xjVvZQFsHhw](yt-xjVvZQFsHhw/TEASER.md) | general | teaser | in | ja | 79 | 33 | 2.39 | measured | 『信長の野望･飛翔』ティザー映像 オリジナルVer. |
+| [yt-xjVvZQFsHhw](yt-xjVvZQFsHhw/TEASER.md) | strategy | teaser | in | ja | 79 | 33 | 2.39 | measured | 『信長の野望･飛翔』ティザー映像 オリジナルVer. |
 | [yt-y_AP9UN73WQ](yt-y_AP9UN73WQ/TEASER.md) | general | teaser | in | en | 64 | 44 | 1.45 | measured | NARUTO CARD GAME Teaser Trailer / GameStop |
 | [yt-yixBhujscHo](yt-yixBhujscHo/TEASER.md) | general | teaser | in | ja | 107 | 47 | 2.28 | measured | NieR:Automata/ニーア オートマタ: PGW 2015 トレーラー |
-| [yt-yufqQeq1S-s](yt-yufqQeq1S-s/TEASER.md) | general | teaser | in | en | 37 | 7 | 5.14 | measured | Plants vs. Zombies Delturbia 2.5 - Teaser Trailer |
+| [yt-yufqQeq1S-s](yt-yufqQeq1S-s/TEASER.md) | strategy | teaser | in | en | 37 | 7 | 5.14 | measured | Plants vs. Zombies Delturbia 2.5 - Teaser Trailer |
 | [yt-z3MnK1UNNrQ](yt-z3MnK1UNNrQ/TEASER.md) | general | teaser | in | ja | 52 |  |  | catalogued | [GLiTCHiA] ティザームービー |
 | [yt-zTr0fErd5AU](yt-zTr0fErd5AU/TEASER.md) | general | teaser | in | ja | 38 | 20 | 1.85 | measured | 新作スマホアプリゲーム『ワールドウィッチーズ UNITED FRONT』ティザーPV |
 | [yt-zUT7XaVBFa4](yt-zUT7XaVBFa4/TEASER.md) | general | teaser | in | en | 18 | 15 | 1.2 | measured | The Outer Worlds 2 - Official Side Effects Guaranteed Cinematic Teaser Trailer |

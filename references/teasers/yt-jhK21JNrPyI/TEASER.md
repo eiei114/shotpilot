@@ -1,13 +1,13 @@
 # Teaser Inspired by Heretic's Fork - Official Steam Next Fest Trailer
 
-> Category: general / Channel: GameTrailers
+> Category: strategy / Channel: GameTrailers
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 29 秒 / 視聴数: 4765 / 出典: https://www.youtube.com/watch?v=jhK21JNrPyI
 - ショット数: 30、平均ショット長 0.93 秒、中央値 0.52 秒、最長 4.7 秒
 - 最初のカット: 0.13 秒、最後のショット（タイトル相当）: 2.98 秒
