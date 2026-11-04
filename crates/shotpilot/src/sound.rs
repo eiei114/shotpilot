@@ -18,6 +18,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use serde_json::{json, Map, Value};
 
@@ -245,7 +246,7 @@ impl Placement {
         json!({
             "role": if self.role == Role::Bgm { "bgm" } else { "sfx" },
             "shot": self.shot, "index": self.index, "label": self.label, "file": self.file,
-            "start": r3(self.start), "offset": r3(self.offset), "gain": self.gain_db,
+            "start": r3(self.start), "offset": r3(self.offset), "until": self.until.map(r3), "gain": self.gain_db,
             "fade_in": self.fade_in, "fade_out": self.fade_out,
         })
     }
@@ -320,7 +321,7 @@ pub fn loudness(defn: &Definition) -> f64 {
     defn.audio.get("loudness").and_then(num).unwrap_or(DEFAULT_LOUDNESS)
 }
 
-/// Peak ceiling of the cut's soundtrack (dBTP, as `loudnorm` TP in cut.rs).
+/// Peak ceiling of the cut's soundtrack (dBTP; the mix is limited to it before the cut).
 pub const CEILING_DB: f64 = -1.5;
 
 pub fn master_gain(defn: &Definition) -> f64 {
@@ -473,6 +474,12 @@ impl Pcm {
     }
 }
 
+impl AsRef<Pcm> for Pcm {
+    fn as_ref(&self) -> &Pcm {
+        self
+    }
+}
+
 fn u16le(b: &[u8], i: usize) -> u16 {
     u16::from_le_bytes([b[i], b[i + 1]])
 }
@@ -566,13 +573,19 @@ fn to_stereo(rate: u32, mut chans: Vec<Vec<f32>>) -> Pcm {
 
 /// Decode one source to stereo at [`SR`]: WAV natively, everything else through ffmpeg.
 pub fn decode(path: &Path) -> Result<Pcm> {
+    decode_upto(path, None).map(|(pcm, _)| pcm)
+}
+
+/// [`decode`], stopping after `secs` seconds of the file when that is all the mix needs.
+/// Also says whether the whole file was decoded (a WAV at [`SR`] always is).
+fn decode_upto(path: &Path, secs: Option<f64>) -> Result<(Pcm, bool)> {
     let ext = path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
     let shown = path.display().to_string();
     if ext == "wav" {
         let bytes = std::fs::read(path).map_err(|e| Error::user(format!("cannot read {shown}: {e}")))?;
         let parsed = read_wav(&bytes, &shown);
         match parsed {
-            Ok((rate, chans)) if rate == SR || ffmpeg().is_none() => return Ok(to_stereo(rate, chans)),
+            Ok((rate, chans)) if rate == SR || ffmpeg().is_none() => return Ok((to_stereo(rate, chans), true)),
             Ok(_) => {} // other rates: let ffmpeg resample properly
             Err(e) if ffmpeg().is_none() => return Err(e),
             Err(_) => {} // an encoding we do not read: ffmpeg may
@@ -581,9 +594,13 @@ pub fn decode(path: &Path) -> Result<Pcm> {
     let Some(exe) = ffmpeg() else {
         bail!("{shown}: reading .{ext} needs ffmpeg on PATH (or convert it to .wav)");
     };
-    let out = crate::cut::no_window(&mut Command::new(exe))
-        .args(["-hide_banner", "-loglevel", "error", "-i"])
-        .arg(path)
+    let mut command = Command::new(exe);
+    let cmd = crate::cut::no_window(&mut command);
+    cmd.args(["-hide_banner", "-loglevel", "error", "-i"]).arg(path);
+    if let Some(s) = secs {
+        cmd.args(["-t", &format!("{s:.3}")]);
+    }
+    let out = cmd
         .args(["-vn", "-f", "f32le", "-acodec", "pcm_f32le", "-ac", "2", "-ar", &SR.to_string(), "-"])
         .stdin(Stdio::null())
         .output()?;
@@ -597,7 +614,9 @@ pub fn decode(path: &Path) -> Result<Pcm> {
         pcm.l.push(f32::from_le_bytes([f[0], f[1], f[2], f[3]]));
         pcm.r.push(f32::from_le_bytes([f[4], f[5], f[6], f[7]]));
     }
-    Ok(pcm)
+    // fewer samples than asked for means the file ended: that is the whole file
+    let whole = secs.map_or(true, |s| (pcm.len() as f64) < s * SR as f64 - 1.0);
+    Ok((pcm, whole))
 }
 
 /// 16-bit PCM stereo WAV (what browsers and the AAC encoder take without surprises).
@@ -671,13 +690,14 @@ fn db_to_gain(db: f64) -> f32 {
 
 /// Mix the placements into a teaser-long stereo buffer. `sources` maps each placement's
 /// `file` to its decoded samples.
-pub fn mix(placements: &[Placement], sources: &HashMap<String, Pcm>, total: f64, master_db: f64) -> (Pcm, Vec<Lane>) {
+pub fn mix<P: AsRef<Pcm>>(placements: &[Placement], sources: &HashMap<String, P>, total: f64, master_db: f64)
+    -> (Pcm, Vec<Lane>) {
     let n = (total * SR as f64).round().max(0.0) as usize;
     let mut out = Pcm::silent(n);
     let master = db_to_gain(master_db);
     let mut lanes = Vec::new();
     for p in placements {
-        let Some(src) = sources.get(&p.file) else { continue };
+        let Some(src) = sources.get(&p.file).map(AsRef::as_ref) else { continue };
         let sr = SR as f64;
         let start = (p.start * sr).round() as i64;
         let off = (p.offset * sr).round().max(0.0) as i64;
@@ -764,8 +784,77 @@ pub fn mix_key(defn: &Definition, root: &Path, placements: &[Placement], shots: 
     }))
 }
 
-/// Decode every distinct source of the placements.
-pub fn load_sources(root: &Path, placements: &[Placement]) -> Result<HashMap<String, Pcm>> {
+/// Decoded sources kept across mixes in this process (the app's server lives long):
+/// moving a sound effect re-mixes without decoding anything again.
+struct Decoded {
+    stamp: Value,
+    /// Seconds of the file decoded; None = all of it.
+    upto: Option<f64>,
+    pcm: Arc<Pcm>,
+    used: u64,
+}
+
+/// Decoded samples kept at most (f32 stereo, ~1.5 GB).
+const DECODED_MAX_SAMPLES: usize = 200_000_000;
+
+fn decoded_cache() -> &'static Mutex<(HashMap<PathBuf, Decoded>, u64)> {
+    static CACHE: OnceLock<Mutex<(HashMap<PathBuf, Decoded>, u64)>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new((HashMap::new(), 0)))
+}
+
+/// Seconds of each file the placements can reach, or None when one plays to the file's
+/// natural end (its fade-out sits at the end of the file, so all of it is needed).
+fn needed_secs(placements: &[Placement]) -> HashMap<&str, Option<f64>> {
+    let mut need: HashMap<&str, Option<f64>> = HashMap::new();
+    for p in placements {
+        // a little past the end, so resampling never rounds a needed sample away
+        let reach = p.until.map(|u| (p.offset.max(0.0) + (u - p.start)).max(0.0) + 0.5);
+        let e = need.entry(p.file.as_str()).or_insert(Some(0.0));
+        *e = match (*e, reach) {
+            (Some(a), Some(b)) => Some(a.max(b)),
+            _ => None,
+        };
+    }
+    need
+}
+
+/// [`decode`] through the process-wide cache, decoding no more of the file than `upto`.
+fn decode_cached(path: &Path, upto: Option<f64>) -> Result<Arc<Pcm>> {
+    let stamp = file_stamp(path);
+    {
+        let mut guard = decoded_cache().lock().unwrap_or_else(|p| p.into_inner());
+        let (map, clock) = &mut *guard;
+        *clock += 1;
+        if let Some(d) = map.get_mut(path) {
+            let enough = match (d.upto, upto) {
+                (None, _) => true,
+                (Some(have), Some(want)) => want <= have,
+                (Some(_), None) => false,
+            };
+            if d.stamp == stamp && enough {
+                d.used = *clock;
+                return Ok(Arc::clone(&d.pcm));
+            }
+        }
+    }
+    let (pcm, whole) = decode_upto(path, upto)?;
+    let pcm = Arc::new(pcm);
+    let mut guard = decoded_cache().lock().unwrap_or_else(|p| p.into_inner());
+    let (map, clock) = &mut *guard;
+    map.insert(path.to_path_buf(), Decoded { stamp, upto: if whole { None } else { upto }, pcm: Arc::clone(&pcm), used: *clock });
+    // drop the least recently used until the rest fits (the one just decoded stays)
+    while map.values().map(|d| d.pcm.len()).sum::<usize>() > DECODED_MAX_SAMPLES && map.len() > 1 {
+        let Some(old) = map.iter().filter(|(k, _)| k.as_path() != path).min_by_key(|(_, d)| d.used).map(|(k, _)| k.clone())
+        else {
+            break;
+        };
+        map.remove(&old);
+    }
+    Ok(pcm)
+}
+
+/// Decode every distinct source of the placements (only as much of each as they reach).
+pub fn load_sources(root: &Path, placements: &[Placement]) -> Result<HashMap<String, Arc<Pcm>>> {
     let mut missing: Vec<String> = Vec::new();
     for p in placements {
         if !root.join(&p.file).is_file() && !missing.contains(&p.file) {
@@ -775,10 +864,12 @@ pub fn load_sources(root: &Path, placements: &[Placement]) -> Result<HashMap<Str
     if !missing.is_empty() {
         bail!("audio file(s) not found: {} (put them under {}/)", missing.join(", "), root.join("audio").display());
     }
+    let need = needed_secs(placements);
     let mut out = HashMap::new();
     for p in placements {
         if !out.contains_key(&p.file) {
-            out.insert(p.file.clone(), decode(&root.join(&p.file))?);
+            let upto = need.get(p.file.as_str()).copied().flatten();
+            out.insert(p.file.clone(), decode_cached(&root.join(&p.file), upto)?);
         }
     }
     Ok(out)
@@ -988,5 +1079,35 @@ mod tests {
         let early = Placement { start: -5.0 / SR as f64, ..p };
         let (out, _) = mix(&[early], &src, 1.0, 0.0);
         assert!(out.l[4] > 0.4 && out.l[5] == 0.0);
+    }
+
+    #[test]
+    fn decoding_only_what_is_reached_mixes_the_same() {
+        let long = sine(220.0, 20.0, 0.5);
+        let music = |start: f64, offset: f64, until: Option<f64>| Placement {
+            role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
+            start, offset, until, gain_db: 0.0, fade_in: 0.3, fade_out: 1.0,
+        };
+        let ps = [music(1.0, 2.5, Some(4.0)), music(5.0, 0.0, Some(6.0))];
+        let need = needed_secs(&ps)["m.wav"].expect("every placement stops: a known reach");
+        assert!((5.5..20.0).contains(&need), "{need}");
+        let short = Pcm { l: long.l[..(need * SR as f64) as usize].to_vec(), r: long.r[..(need * SR as f64) as usize].to_vec() };
+        let full: HashMap<String, Pcm> = [("m.wav".to_string(), long)].into();
+        let cut: HashMap<String, Pcm> = [("m.wav".to_string(), short)].into();
+        let (a, la) = mix(&ps, &full, 8.0, 0.0);
+        let (b, lb) = mix(&ps, &cut, 8.0, 0.0);
+        assert_eq!(a.l, b.l);
+        assert_eq!(la.iter().map(|l| l.peaks.clone()).collect::<Vec<_>>(), lb.iter().map(|l| l.peaks.clone()).collect::<Vec<_>>());
+        // one that plays to the file's end needs all of it (its fade-out sits there)
+        assert_eq!(needed_secs(&[music(0.0, 0.0, Some(3.0)), music(4.0, 0.0, None)])["m.wav"], None);
+    }
+
+    #[test]
+    fn mix_key_follows_until() {
+        let p = |until: Option<f64>| Placement {
+            role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
+            start: 0.0, offset: 0.0, until, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0,
+        };
+        assert_ne!(p(Some(3.0)).to_json(), p(Some(4.0)).to_json());
     }
 }

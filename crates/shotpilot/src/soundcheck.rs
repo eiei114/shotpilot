@@ -483,9 +483,9 @@ impl Loud {
     }
 }
 
-/// Bring a mix to the integrated loudness the cut is normalized to (`loudnorm` in
-/// cut.rs), with a peak limiter at `ceiling_db`, so what is heard in the app and what is
-/// checked is the level the teaser ships at. Silence is left as it is.
+/// Bring a mix to the integrated loudness the cut ships at (`audio.loudness`), with a peak
+/// limiter at `ceiling_db`. The cut lays this mix under the picture as it is, so what is
+/// heard in the app, what is checked and what ships are the same. Silence is left as it is.
 pub fn normalize(pcm: &mut Pcm, target_lufs: f64, ceiling_db: f64) {
     if pcm.is_empty() {
         return;
@@ -632,15 +632,24 @@ fn onset_envelope(m48: &[f64]) -> Vec<f64> {
     let mel_f: Vec<f64> = (0..n_mels + 2).map(|i| mel_to_hz(top * i as f64 / (n_mels + 1) as f64)).collect();
     let bins = ONFFT / 2 + 1;
     let freqs: Vec<f64> = (0..bins).map(|k| k as f64 * OSR / ONFFT as f64).collect();
-    let mut fb = vec![vec![0.0; bins]; n_mels];
-    for i in 0..n_mels {
-        let enorm = 2.0 / (mel_f[i + 2] - mel_f[i]);
-        for (k, f) in freqs.iter().enumerate() {
-            let lower = (f - mel_f[i]) / (mel_f[i + 1] - mel_f[i]);
-            let upper = (mel_f[i + 2] - f) / (mel_f[i + 2] - mel_f[i + 1]);
-            fb[i][k] = lower.min(upper).max(0.0) * enorm;
-        }
-    }
+    // each triangle as (first non-zero bin, its weights): the rest of the row is zero, and
+    // skipping it gives the same sums at a fraction of the work
+    let fb: Vec<(usize, Vec<f64>)> = (0..n_mels)
+        .map(|i| {
+            let enorm = 2.0 / (mel_f[i + 2] - mel_f[i]);
+            let row: Vec<f64> = freqs
+                .iter()
+                .map(|f| {
+                    let lower = (f - mel_f[i]) / (mel_f[i + 1] - mel_f[i]);
+                    let upper = (mel_f[i + 2] - f) / (mel_f[i + 2] - mel_f[i + 1]);
+                    lower.min(upper).max(0.0) * enorm
+                })
+                .collect();
+            let lo = row.iter().position(|v| *v != 0.0).unwrap_or(0);
+            let hi = row.iter().rposition(|v| *v != 0.0).map_or(lo, |p| p + 1);
+            (lo, row[lo..hi].to_vec())
+        })
+        .collect();
     // centred STFT (zero padding), power, mel, dB with an 80 dB floor
     let pad = ONFFT / 2;
     let frames = 1 + y.len() / OHOP;
@@ -656,8 +665,8 @@ fn onset_envelope(m48: &[f64]) -> Vec<f64> {
             })
             .collect();
         let p = power(&frame, ONFFT);
-        for (i, row) in fb.iter().enumerate() {
-            let e: f64 = row.iter().zip(&p).map(|(a, b)| a * b).sum();
+        for (i, (lo, row)) in fb.iter().enumerate() {
+            let e: f64 = row.iter().zip(&p[*lo..]).map(|(a, b)| a * b).sum();
             let d = 10.0 * e.max(1e-10).log10();
             s[i][t] = d;
             smax = smax.max(d);

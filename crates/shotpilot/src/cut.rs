@@ -84,6 +84,26 @@ fn segment(take: &Take, w: i64, h: i64, fps: i64) -> Result<PathBuf> {
     Ok(seg)
 }
 
+/// Every pick's segment, in pick order. Missing ones are encoded a few at a time: each
+/// take has its own folder, and for small frames an encode is mostly ffmpeg starting up.
+fn segments(picks: &[Pick], w: i64, h: i64, fps: i64) -> Result<Vec<PathBuf>> {
+    let jobs = std::thread::available_parallelism().map(|n| (n.get() / 2).clamp(1, 4)).unwrap_or(2);
+    let mut out = Vec::with_capacity(picks.len());
+    for batch in picks.chunks(jobs) {
+        let made: Vec<Result<PathBuf>> = std::thread::scope(|sc| {
+            let handles: Vec<_> = batch.iter().map(|p| sc.spawn(move || segment(&p.take, w, h, fps))).collect();
+            handles
+                .into_iter()
+                .map(|h| h.join().unwrap_or_else(|_| Err(crate::error::Error::user("segment encode panicked"))))
+                .collect()
+        });
+        for r in made {
+            out.push(r?);
+        }
+    }
+    Ok(out)
+}
+
 /// `os.path.relpath` for two absolute paths, with forward slashes.
 pub fn relpath(target: &Path, base: &Path) -> String {
     let t: Vec<Component> = target.components().collect();
@@ -166,7 +186,7 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
     let finishing = crate::finish::needed(&defn.finish, &pieces);
 
     if video && ffmpeg().is_some() {
-        let segs: Vec<PathBuf> = picks.iter().map(|p| segment(&p.take, w, h, fps)).collect::<Result<_>>()?;
+        let segs = segments(picks, w, h, fps)?;
         let lst = out_dir.join("segments.txt");
         let body: String = segs.iter().map(|p| format!("file '{}'\n", p.display().to_string().replace('\\', "/"))).collect();
         std::fs::write(&lst, body)?;
@@ -179,10 +199,11 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
         let mut args: Vec<String> =
             ["-f", "concat", "-safe", "0", "-i", &lst.display().to_string()].map(String::from).to_vec();
         match mixed {
-            // the picture is stream-copied either way; only the soundtrack is encoded
+            // the picture is stream-copied either way; only the soundtrack is encoded. The mix
+            // is already at `audio.loudness` (sound.rs), so it ships exactly as it was checked.
             Some(m) => args.extend(
-                ["-i", &m.wav.display().to_string(), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-af", &loudnorm(defn),
-                 "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                ["-i", &m.wav.display().to_string(), "-map", "0:v", "-map", "1:a", "-c:v", "copy",
+                 "-c:a", "aac", "-b:a", "192k", "-ar", AUDIO_RATE, "-shortest"]
                     .map(String::from),
             ),
             None => args.extend(["-c", "copy"].map(String::from)),
@@ -212,11 +233,11 @@ fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: 
     let mut args: Vec<String> = ["-f", "concat", "-safe", "0", "-i", &segments.display().to_string()].map(String::from).to_vec();
     if let Some(m) = mix {
         args.extend(["-i".to_string(), m.display().to_string()]);
-        graph.push_str(&format!(";[1:a]{},apad[a]", loudnorm(defn)));
+        graph.push_str(";[1:a]apad[a]"); // already normalized (sound.rs); silence over the end card
     }
     args.extend(["-filter_complex".to_string(), graph, "-map".to_string(), "[v]".to_string()]);
     if mix.is_some() {
-        args.extend(["-map", "[a]", "-c:a", "aac", "-b:a", "192k"].map(String::from));
+        args.extend(["-map", "[a]", "-c:a", "aac", "-b:a", "192k", "-ar", AUDIO_RATE].map(String::from));
     }
     args.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-r", &fps.to_string(), "-t", &format!("{total:.3}")]
         .map(String::from));
@@ -228,10 +249,9 @@ fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: 
     Ok(crate::geometry::round_to(total, 3))
 }
 
-/// The loudness filter for the cut's soundtrack (`audio.loudness`, default -16 LUFS).
-fn loudnorm(defn: &Definition) -> String {
-    format!("loudnorm=I={}:TP={}:LRA=11", crate::sound::loudness(defn), crate::sound::CEILING_DB)
-}
+/// Sample rate of the cut's soundtrack (the mix's own rate; said out loud so no filter or
+/// encoder default picks another).
+const AUDIO_RATE: &str = "48000";
 
 /// The cut as finishing sees it: shots (with their place in the plain concatenation) and
 /// script slots, in cut order (script.rs layout).
