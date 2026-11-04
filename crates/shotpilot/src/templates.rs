@@ -152,7 +152,7 @@ teaser:
 
 brief:
   kind: {kind}      # teaser | gameplay
-  genre: ""
+  genre: {genre}
   audience: ""
   core: ""          # the one experience the viewer must get
   must_show: []
@@ -180,6 +180,8 @@ pub struct Extra<'a> {
     pub pitch: &'a str,
     /// teaser | gameplay (empty = teaser)
     pub kind: &'a str,
+    /// The genre picked on the home (a genre package's name, or empty).
+    pub genre: &'a str,
 }
 
 pub fn render_with(tpl: &str, name: &str, engine: &str, uproject: &str, map: &str, extra: &Extra) -> String {
@@ -191,6 +193,7 @@ pub fn render_with(tpl: &str, name: &str, engine: &str, uproject: &str, map: &st
         .replace("{title}", &quoted(extra.title))
         .replace("{pitch}", &quoted(extra.pitch))
         .replace("{kind}", kind)
+        .replace("{genre}", &quoted(extra.genre))
 }
 
 /// A one-line YAML string; empty stays `""` so the field is visibly blank.

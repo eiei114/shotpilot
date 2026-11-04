@@ -499,13 +499,7 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if let Some(d) = direction.map(str::trim).filter(|d| !d.is_empty()) {
         user.push_str(&format!("\n## Direction from the director\n{d}\n"));
     }
-    if !defn.stage.is_empty() {
-        let mut st = format!("\n## Stage (from the location scout)\n{}\n", defn.stage.summary);
-        for (n, d) in &defn.stage.anchors {
-            st.push_str(&format!("- {n}: {d}\n"));
-        }
-        user.push_str(&st);
-    }
+    user.push_str(&stage_section(defn));
     let scout = crate::scout::planner_blocks(defn, 8);
     if !scout.is_empty() {
         user.push_str(&format!(
@@ -568,6 +562,9 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
+    }
+    if let Some(s) = crate::refs::style(&defn.brief.style) {
+        references.push(format!("style: {}", s.name));
     }
     Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references, script })
 }
@@ -763,6 +760,33 @@ pub struct Pointer {
     pub library: Option<Library>,
     /// A sound note about one script line's effects: only that line's `sfx` may change.
     pub line: Option<String>,
+    /// The director pointed at one part of the shot (`camera`, `environment`): only these
+    /// top-level keys of the shots in scope may change. Anything else Claude returns is dropped.
+    pub fields: Option<Vec<String>>,
+}
+
+/// Parts of a shot a note can be pointed at, with the top-level keys each one covers and
+/// how the planner is told about it.
+pub const ASPECTS: &[(&str, &[&str], &str)] = &[
+    ("camera", &["camera"], "the shot's camera only (where it stands, where it looks, the lens and the move)"),
+    ("light", &["environment"], "the shot's light only (`environment`: time of day and the like)"),
+];
+
+/// The keys a pointed-at part covers (`camera` -> [camera]).
+pub fn aspect_fields(aspect: &str) -> Option<Vec<String>> {
+    ASPECTS.iter().find(|(a, _, _)| *a == aspect).map(|(_, keys, _)| keys.iter().map(|k| k.to_string()).collect())
+}
+
+/// The stage as the location scout read it (empty when it has not been read).
+fn stage_section(defn: &Definition) -> String {
+    if defn.stage.is_empty() {
+        return String::new();
+    }
+    let mut st = format!("\n## Stage (from the location scout)\n{}\n", defn.stage.summary);
+    for (n, d) in &defn.stage.anchors {
+        st.push_str(&format!("- {n}: {d}\n"));
+    }
+    st
 }
 
 /// How many library sounds a sound note lists for Claude.
@@ -941,6 +965,21 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     } else {
         scope_line.push_str("Leave `lines` empty.\n");
     }
+    if let Some(fields) = &pointer.fields {
+        if pointer.sound || pointer.line.is_some() || scope.map_or(true, |s| s.is_empty()) {
+            bail!("a note on one part of shots names the shots it is about and is not a sound note");
+        }
+        let what = ASPECTS
+            .iter()
+            .find(|(_, keys, _)| keys.len() == fields.len() && keys.iter().zip(fields).all(|(k, f)| k == f))
+            .map(|(_, _, t)| t.to_string())
+            .unwrap_or_else(|| format!("`{}` of the shot only", fields.join("`, `")));
+        scope_line.push_str(&format!(
+            "This note is about {what}: change only `{}`; keep the duration, beat, purpose, sound, caption and every \
+             other field exactly as they are.\n",
+            fields.join("`, `")
+        ));
+    }
     if !audio_allowed {
         scope_line.push_str("Leave `audio` empty (the background music is out of scope for this note).\n");
     }
@@ -959,8 +998,14 @@ Library sounds you may also use: write `file: lib:<id>` and it is copied into th
         ));
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
+    // a note on the cameras gets what the planner places cameras with: the stage and the framing table
+    let camera_help = if pointer.fields.as_ref().is_some_and(|f| f.iter().any(|k| k == "camera")) {
+        format!("{}\n## Framing\n{}\n\n", stage_section(defn), craft::framing_table(defn))
+    } else {
+        String::new()
+    };
     let user = format!(
-        "Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}\n\nCurrent audio:\n{audio_now}\n\n\
+        "{camera_help}Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
          Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
@@ -997,7 +1042,21 @@ Where the director is pointing: {c}")).unwrap_or_default();
             bail!("edit for '{sid}' is not a mapping");
         };
         m.insert("id".into(), json!(sid));
-        if pointer.sound {
+        if let Some(fields) = &pointer.fields {
+            // a note pointed at one part keeps the rest of the shot as it is
+            let mut kept = defn.find(&sid)?.clone();
+            if let Some(k) = kept.as_object_mut() {
+                for f in fields {
+                    if let Some(v) = m.get(f).filter(|v| !v.is_null()) {
+                        k.insert(f.clone(), v.clone());
+                    }
+                }
+            }
+            new = kept;
+            if &new == defn.find(&sid)? {
+                continue; // the part came back as it was
+            }
+        } else if pointer.sound {
             // a sound note keeps the shot as it is and takes only Claude's `sfx`
             let mut kept = defn.find(&sid)?.clone();
             if let Some(k) = kept.as_object_mut() {

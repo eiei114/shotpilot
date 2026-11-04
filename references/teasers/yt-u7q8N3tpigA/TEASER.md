@@ -1,13 +1,13 @@
 # Teaser Inspired by 10 Million Pixels - Official Announcement Trailer
 
-> Category: general / Channel: BATTLE LAB
+> Category: strategy / Channel: BATTLE LAB
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 66 秒 / 視聴数: 256136 / 出典: https://www.youtube.com/watch?v=u7q8N3tpigA
 - ショット数: 25、平均ショット長 2.64 秒、中央値 2.06 秒、最長 11.97 秒
 - 最初のカット: 1.77 秒、最後のショット（タイトル相当）: 11.97 秒

@@ -1,13 +1,13 @@
 # Teaser Inspired by Frostpunk 1886 - Official New Game Announcement Trailer
 
-> Category: general / Channel: IGN
+> Category: strategy / Channel: IGN
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 36 秒 / 視聴数: 69331 / 出典: https://www.youtube.com/watch?v=2tkikl91xPw
 - ショット数: 7、平均ショット長 5.0 秒、中央値 3.6 秒、最長 17.32 秒
 - 最初のカット: 5.92 秒、最後のショット（タイトル相当）: 3.6 秒

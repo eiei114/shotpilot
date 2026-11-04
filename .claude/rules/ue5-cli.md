@@ -39,6 +39,15 @@ paths:
 - 七号室の `-R7StageOnly` では、正面玄関は施錠されたまま、七号室の扉は物語で出現するまで壁になっている。撮影の構図はこの状態を前提に決める。
 - 出現（`appear`）も七号室で通った（2026-11-03、テスト用の `teaser-appear-test/`、`content_root: /Game/ShotpilotTest` で本番と分けた）。static mesh（`SM_CY_Observer`）と skeletal mesh（`SK_CY_Businessman`、基準ポーズのまま）を spawnable で置き、Spawn トラックのキーで指定フレームから出る。build 約 51 秒、render still 1 ショット約 69 秒。still の 0 フレーム目には出現前の prop が映らず、59 フレーム目には映った。警告は既知の `add_spawnable_from_class` 非推奨だけ。
 
+## 写っていたものの報告（deps、D-37）
+
+- render の result で、各 `renders[key]` に `deps: [{package, file}]` を返す（file は絶対パス）。失敗は `deps_error` にトレースバックを入れる。撮影そのものは止めない。mock エンジンも同じ形で返す（`content/<アンカー名 | prop 名>.*`）。
+- 集め方: MRQ の `on_individual_job_started_delegate` でいま撮っているショットを知り、`register_slate_post_tick_callback` で 10 tick ごとに PIE ワールド（`UnrealEditorSubsystem.get_game_world()`）のアクターを見る。`was_recently_rendered(0.5)` のアクターから、Blueprint クラス、メッシュ、マテリアル（動的インスタンスは親）、Niagara などのパッケージを取り、アセットレジストリの hard 依存を 3 段まで足す（上限 800）。`/Engine/`、`/Script/`、PIE の複製は除く。
+- パッケージからファイルへは、`/Game/` をプロジェクトの Content、各プラグインはその `.uplugin` の名前のマウントとして対応づけ、`.uasset` か `.umap` があるものだけを返す。
+- 見ないもの: エディタのレベルでの配置（World Partition の `__ExternalActors__` は PIE から戻せない）、ゲームのコード。シャドウだけに写ったアクターも含まれる（撮り直しすぎる側に倒している）。
+- **実機では未確認（2026-11-05）。** API 名は 5.7 の Python リファレンスで確かめ、ロジックは偽の `unreal` モジュールで通した。最初に実機で撮るときは、result の `deps` と `deps_error` を確かめる。
+- 品質プリセットの `render_warmup_frames`（描画するウォームアップの枚数）と `warmup_camera_cut`（ショットのカメラでウォームアップする）は、書いたときだけ MRQ に渡す。既定は変えていない（画が変わらないので RENDERER_VERSION は上げていない）。Lumen の影が出そろわないときに試す。
+
 ## 検証
 
 - `sp_entry.py` はユニットテストできない。プロトコル側の挙動は、mock エンジンのテストで担保する。

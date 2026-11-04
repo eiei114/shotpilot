@@ -1,13 +1,13 @@
 # Teaser Inspired by Sid Meier’s Civilization VII - Official Teaser Trailer
 
-> Category: general / Channel: Sid Meier's Civilization
+> Category: strategy / Channel: Sid Meier's Civilization
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 92 秒 / 視聴数: 2467422 / 出典: https://www.youtube.com/watch?v=pygcgE3a_uY
 - ショット数: 2、平均ショット長 45.5 秒、中央値 45.5 秒、最長 81.42 秒
 - 最初のカット: 81.42 秒、最後のショット（タイトル相当）: 9.58 秒

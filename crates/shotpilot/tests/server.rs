@@ -373,6 +373,82 @@ fn chat_scope_is_enforced_over_http() {
 }
 
 #[test]
+fn cut_sheet_edits_and_undo_over_http() {
+    let (s, _) = srv_with_claude(json!({
+        "summary": "寄った", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
+    let original = s.f.text();
+    // one tap: only that shot goes stale, and the status offers to take it back
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "tighter"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!(["s01_gate"]));
+    assert_eq!(out["changes"]["s01_gate"][0]["path"], "camera.lens.focal_length");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["undo"]["action"], "nudge");
+    assert_eq!(st["undo"]["shots"], json!(["s01_gate"]));
+    let (code, out) = jcall(&s, "POST", "/api/undo", Some(json!({})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["undid"]["action"], "nudge");
+    assert_eq!(s.f.text(), original);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert!(st["undo"].is_null());
+    let (code, _) = jcall(&s, "POST", "/api/undo", Some(json!({})));
+    assert_eq!(code, 400);
+
+    // a note pointed at the camera keeps the rest of the shot (S03_CLOSER drops its sound)
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "寄って", "shot": "s03_window", "aspect": "camera"})));
+    assert_eq!(code, 200, "{out}");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let s03 = &st["shots"][2]["node"];
+    assert_eq!(s03["camera"]["lens"]["focal_length"], 85);
+    assert!(s03["sfx"].as_array().is_some_and(|a| !a.is_empty()), "{s03}");
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "寄って", "aspect": "camera"})));
+    assert_eq!(code, 400, "{out}");
+    let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "寄って", "shot": "s03_window", "aspect": "nope"})));
+    assert_eq!(code, 400);
+
+    let (code, out) = jcall(&s, "POST", "/api/script", Some(json!({"id": "nope", "set": {"ja": "x"}})));
+    assert_eq!(code, 400);
+    assert!(out["error"].as_str().unwrap().contains("unknown script line"));
+    let (code, _) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "sideways"})));
+    assert_eq!(code, 400);
+}
+
+#[test]
+fn a_game_change_shows_in_status_and_renders_only_its_shots() {
+    let s = srv();
+    let content = s.f.ws.root.join("content");
+    std::fs::create_dir_all(&content).unwrap();
+    std::fs::write(content.join("well.png"), "v1").unwrap();
+    let (acts, _) = render(&s, "still");
+    assert!(acts.values().all(|a| a == "rendered"));
+    // the app polls with the ETag: unchanged game, 304; a new texture, a fresh status
+    let tag = call(&s, "GET", "/api/status", None, &[]).header("etag").to_string();
+    assert_eq!(call(&s, "GET", "/api/status", None, &[("If-None-Match", &tag)]).code, 304);
+    std::fs::write(content.join("well.png"), "v2, repainted").unwrap();
+    assert_eq!(call(&s, "GET", "/api/status", None, &[("If-None-Match", &tag)]).code, 200);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let changed: Vec<String> = st["shots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["changed"]["still"].is_array())
+        .map(|x| x["id"].as_str().unwrap().to_string())
+        .collect();
+    assert!(changed.contains(&"s02_well".to_string()), "{changed:?}");
+    assert_eq!(st["shots"][1]["changed"]["still"], json!(["/Game/Mock/well"]));
+    let (acts, events) = render(&s, "still");
+    let plan = &events.iter().find(|(e, _)| e == "plan").unwrap().1;
+    let mut why: Vec<String> = plan["game_changed"].as_object().unwrap().keys().cloned().collect();
+    why.sort();
+    let mut rendered: Vec<String> = acts.iter().filter(|(_, a)| *a == "rendered").map(|(k, _)| k.clone()).collect();
+    rendered.sort();
+    assert_eq!(rendered, why);
+    assert_eq!(rendered, changed);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert!(st["shots"].as_array().unwrap().iter().all(|x| x["changed"].as_object().unwrap().is_empty()));
+}
+
+#[test]
 fn settings_save_the_key_but_never_send_it_back() {
     let f = ws();
     let dir = tempfile::tempdir().unwrap();

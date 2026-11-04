@@ -562,6 +562,17 @@ def configure_job(job, item, map_path, game_mode=None):
     aa.spatial_sample_count = int(q.get("spatial_samples", 1))
     aa.temporal_sample_count = int(q.get("temporal_samples", 1))
     aa.engine_warm_up_count = int(q.get("warmup_frames", 0))
+    # optional, only when the quality preset names them (Lumen and TSR settle over rendered
+    # warm-up frames; warming up on the camera cut keeps the warm-up at the shot camera)
+    for key, prop, cast in (("render_warmup_frames", "render_warm_up_count", int),
+                            ("render_warmup_frames", "render_warm_up_frames", lambda v: int(v) > 0),
+                            ("warmup_camera_cut", "use_camera_cut_for_warm_up", bool)):
+        if q.get(key) is None:
+            continue
+        try:
+            aa.set_editor_property(prop, cast(q[key]))
+        except Exception:
+            raise RuntimeError("quality.%s: this engine has no MoviePipelineAntiAliasingSetting.%s" % (key, prop))
     if aa.temporal_sample_count > 1:
         aa.override_anti_aliasing = True
         aa.anti_aliasing_method = unreal.AntiAliasingMethod.AAM_NONE
@@ -573,6 +584,204 @@ def configure_job(job, item, map_path, game_mode=None):
         except Exception:
             cv.console_variables["r.ScreenPercentage"] = float(sp)
     cfg.initialize_transient_settings()
+
+
+# ------------------------------------------------------------------ what a shot showed (game content)
+#
+# While MRQ renders a shot in PIE, a tick callback samples the actors the renderer drew
+# (Actor.was_recently_rendered) and collects the content packages behind them: the actor's
+# Blueprint class, meshes, materials, Niagara systems, then their hard dependencies
+# (materials -> textures). When the job finishes, the packages that are files under the
+# project are reported as the shot's `deps`; shotpilot hashes them, so a later change to
+# one of them (a texture, a material) re-renders only the shots that showed it.
+# Not covered: where actors are placed in an editor level (World Partition keeps them in
+# __ExternalActors__ packages we cannot map back from PIE), and game code.
+
+SKIP_ROOTS = ("/Script/", "/Engine/", "/Temp/", "/Memory/", "/Transient", "/Niagara/")
+DEPS_LIMIT = 800
+_CONTENT_DIRS = {}
+
+
+def _package_of(obj):
+    """The content package an object lives in, or None (engine, transient, PIE copies)."""
+    if obj is None:
+        return None
+    try:
+        path = obj.get_path_name() if hasattr(obj, "get_path_name") else str(obj)
+    except Exception:
+        return None
+    pkg = str(path).split(".")[0].split(":")[0]
+    if not pkg.startswith("/") or pkg.startswith(SKIP_ROOTS) or "UEDPIE" in pkg:
+        return None
+    return pkg
+
+
+def _actor_packages(actor):
+    out = set()
+    try:
+        out.add(_package_of(actor.get_class()))
+    except Exception:
+        pass
+    try:
+        comps = actor.get_components_by_class(unreal.ActorComponent)
+    except Exception:
+        comps = []
+    for c in comps:
+        for prop in ("static_mesh", "skeletal_mesh_asset", "skeletal_mesh", "asset", "decal_material",
+                     "material", "font", "landscape_material"):
+            try:
+                out.add(_package_of(c.get_editor_property(prop)))
+            except Exception:
+                continue
+        try:
+            mats = c.get_materials()
+        except Exception:
+            mats = []
+        for m in mats or []:
+            # a dynamic material instance lives in the level; its parent is the asset
+            if isinstance(m, unreal.MaterialInstanceDynamic):
+                try:
+                    m = m.get_editor_property("parent")
+                except Exception:
+                    continue
+            out.add(_package_of(m))
+    out.discard(None)
+    return out
+
+
+def _expand(packages, depth=3):
+    """Packages plus their hard package dependencies (mesh -> material -> texture)."""
+    reg = unreal.AssetRegistryHelpers.get_asset_registry()
+    opts = unreal.AssetRegistryDependencyOptions()
+    for prop, on in (("include_hard_package_references", True), ("include_soft_package_references", False),
+                     ("include_searchable_names", False), ("include_soft_management_references", False),
+                     ("include_hard_management_references", False)):
+        try:
+            opts.set_editor_property(prop, on)
+        except Exception:
+            pass
+    seen, frontier = set(packages), list(packages)
+    for _ in range(depth):
+        nxt = []
+        for p in frontier:
+            try:
+                deps = reg.get_dependencies(p, opts) or []
+            except Exception:
+                deps = []
+            for d in deps:
+                d = _package_of(str(d))
+                if d is None or d in seen:
+                    continue
+                seen.add(d)
+                nxt.append(d)
+                if len(seen) >= DEPS_LIMIT:
+                    return seen
+        frontier = nxt
+    return seen
+
+
+def _content_dirs():
+    """Mount point -> content folder: /Game/ is the project's, each plugin mounts its name."""
+    if _CONTENT_DIRS:
+        return _CONTENT_DIRS
+    full = unreal.Paths.convert_relative_path_to_full
+    _CONTENT_DIRS["/Game/"] = full(unreal.Paths.project_content_dir())
+    plugins = full(unreal.Paths.project_plugins_dir())
+    for dirpath, dirnames, filenames in os.walk(plugins):
+        if dirpath[len(plugins):].count(os.sep) > 3:
+            dirnames[:] = []
+            continue
+        for fn in filenames:
+            if fn.endswith(".uplugin"):
+                _CONTENT_DIRS["/" + fn[:-len(".uplugin")] + "/"] = os.path.join(dirpath, "Content")
+    return _CONTENT_DIRS
+
+
+def _package_file(pkg):
+    for mount, folder in _content_dirs().items():
+        if pkg.startswith(mount):
+            base = os.path.join(folder, *pkg[len(mount):].split("/"))
+            for ext in (".uasset", ".umap"):
+                if os.path.isfile(base + ext):
+                    return os.path.normpath(base + ext)
+    return None
+
+
+def _game_world():
+    for get in (lambda: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world(),
+                lambda: unreal.EditorLevelLibrary.get_game_world(),
+                lambda: (unreal.EditorLevelLibrary.get_pie_worlds(False) or [None])[0]):
+        try:
+            w = get()
+            if w is not None:
+                return w
+        except Exception:
+            continue
+    return None
+
+
+class ShotContent(object):
+    """Samples what the renderer draws while each MRQ job runs (see the comment above)."""
+
+    EVERY = 10  # ticks between samples
+
+    def __init__(self):
+        self.key = None
+        self.ticks = 0
+        self.packages = {}   # render key -> set of packages seen on screen
+        self.errors = {}     # render key -> first traceback
+        self.by_actor = {}   # actor path -> packages (an actor's assets do not change mid-shot)
+        self.handle = None
+
+    def start(self):
+        self.handle = unreal.register_slate_post_tick_callback(self.tick)
+
+    def stop(self):
+        if self.handle is not None:
+            try:
+                unreal.unregister_slate_post_tick_callback(self.handle)
+            except Exception:
+                warn(traceback.format_exc())
+            self.handle = None
+
+    def job_started(self, key):
+        self.key, self.ticks, self.by_actor = key, 0, {}
+        self.packages.setdefault(key, set())
+
+    def tick(self, delta):
+        if self.key is None:
+            return
+        self.ticks += 1
+        if self.ticks % self.EVERY:
+            return
+        try:
+            world = _game_world()
+            if world is None:
+                return
+            seen = self.packages[self.key]
+            for a in unreal.GameplayStatics.get_all_actors_of_class(world, unreal.Actor):
+                if not a.was_recently_rendered(0.5):
+                    continue
+                path = a.get_path_name()
+                if path not in self.by_actor:
+                    self.by_actor[path] = _actor_packages(a)
+                seen.update(self.by_actor[path])
+        except Exception:
+            self.errors.setdefault(self.key, traceback.format_exc())
+
+    def report(self, key):
+        """[{package, file}] for one render key, or (None, error)."""
+        if key in self.errors and not self.packages.get(key):
+            return None, self.errors[key]
+        out = []
+        try:
+            for pkg in sorted(_expand(self.packages.get(key, set()))):
+                f = _package_file(pkg)
+                if f:
+                    out.append({"package": pkg, "file": f})
+        except Exception:
+            return None, traceback.format_exc()
+        return out, self.errors.get(key)
 
 
 def keep_alive(flag):
@@ -615,6 +824,33 @@ def run_render(job):
         finish_render_process()
         return
 
+    content = ShotContent()
+    content_error = None
+    try:
+        content.start()
+    except Exception:
+        content_error = traceback.format_exc()
+
+    def put_deps(k):
+        r = result["renders"].get(k)
+        if r is None or r.get("status") != "ok" or "deps" in r:
+            return
+        if content_error:
+            r["deps_error"] = content_error
+            return
+        deps, err = content.report(k)
+        if deps is not None:
+            r["deps"] = deps
+        if err:
+            r["deps_error"] = err
+
+    def on_job_start(*args):
+        try:
+            job = args[0] if args else None
+            content.job_started(index.get(job.get_editor_property("job_name")) if job is not None else None)
+        except Exception:
+            warn(traceback.format_exc())
+
     def on_job(params):
         try:
             name = params.job.get_editor_property("job_name")
@@ -623,16 +859,19 @@ def run_render(job):
                 result["renders"][k]["status"] = "ok" if params.success else "error"
                 if not params.success:
                     result["renders"][k]["error"] = "MRQ reported this job as failed (see the UE log)"
+            content.key = None
         except Exception:
             warn(traceback.format_exc())
 
     def on_done(executor, success):
+        content.stop()
         for k, r in result["renders"].items():
             if r["status"] == "pending":
                 r["status"] = "ok" if success else "error"
                 if not success:
                     r["error"] = ("render stopped before this shot finished (PIE ended or MRQ aborted); "
                                   "rerun to render only the missing shots")
+            put_deps(k)
         result["seconds"] = round(time.time() - started, 1)
         write_result(result)
         finish_render_process()
@@ -641,9 +880,14 @@ def run_render(job):
     # to keep it alive; MRQ renders asynchronously after we return.
     keep_alive(True)
     executor = unreal.MoviePipelinePIEExecutor(subsystem)
+    try:
+        executor.on_individual_job_started_delegate.add_callable_unique(on_job_start)
+    except Exception:
+        content_error = content_error or traceback.format_exc()
     executor.on_individual_job_work_finished_delegate.add_callable_unique(on_job)
     executor.on_executor_finished_delegate.add_callable_unique(on_done)
     _KEEP["executor"], _KEEP["on_job"], _KEEP["on_done"] = executor, on_job, on_done
+    _KEEP["content"], _KEEP["on_job_start"] = content, on_job_start
     subsystem.render_queue_with_executor_instance(executor)
 
 

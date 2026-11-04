@@ -23,10 +23,15 @@ pub const DIP: f64 = 0.25;
 
 /// Colour grades applied to every shot at the cut (ffmpeg filters; `{b}` is the brightness,
 /// which a shot's `exposure` shifts). `horror`: cooler, desaturated, contrast up, vignette,
-/// film grain. `red`: the same with a red cast, for a jolt.
+/// film grain. `red`: the same with a red cast, for a jolt. `warm`: brighter colour and a
+/// sunny cast (cozy). `vivid`: contrast and saturation up, a little sharper (action).
+/// `cool`: a blue cast, slightly desaturated (sci-fi, mystery, night).
 pub const GRADES: &[(&str, &str)] = &[
     ("horror", "eq=contrast=1.10:brightness={b}:saturation=0.80,colorbalance=bs=0.03:bm=0.015:rs=-0.015,vignette=angle=PI/4.5,noise=alls=4:allf=t"),
     ("red", "eq=contrast=1.15:brightness={b}:saturation=0.70,colorbalance=rs=0.25:rm=0.18:gs=-0.06:bs=-0.08,vignette=angle=PI/4,noise=alls=5:allf=t"),
+    ("warm", "eq=contrast=1.04:brightness={b}:saturation=1.12,colorbalance=rs=0.05:rm=0.04:bs=-0.04:bm=-0.02"),
+    ("vivid", "eq=contrast=1.12:brightness={b}:saturation=1.25,unsharp=5:5:0.4"),
+    ("cool", "eq=contrast=1.06:brightness={b}:saturation=0.92,colorbalance=bs=0.06:bm=0.03:rs=-0.03"),
 ];
 
 #[derive(Debug, Clone, PartialEq)]

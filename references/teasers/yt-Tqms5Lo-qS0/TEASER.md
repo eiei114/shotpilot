@@ -1,13 +1,13 @@
 # Teaser Inspired by Outlive 25 - Teaser (Demo at Steam Next Fest)
 
-> Category: general / Channel: Nuuvem
+> Category: strategy / Channel: Nuuvem
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 28 秒 / 視聴数: 50629 / 出典: https://www.youtube.com/watch?v=Tqms5Lo-qS0
 - ショット数: 30、平均ショット長 0.9 秒、中央値 1.0 秒、最長 3.78 秒
 - 最初のカット: 0.97 秒、最後のショット（タイトル相当）: 3.78 秒

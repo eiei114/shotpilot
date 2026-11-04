@@ -1,13 +1,13 @@
 # Teaser Inspired by 『信長の野望･新生』ティザー映像
 
-> Category: general / Channel: コーエーテクモChannel
+> Category: strategy / Channel: コーエーテクモChannel
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 46 秒 / 視聴数: 396986 / 出典: https://www.youtube.com/watch?v=c0u4DH4Jnxo
 - ショット数: 6、平均ショット長 7.5 秒、中央値 5.6 秒、最長 21.45 秒
 - 最初のカット: 7.81 秒、最後のショット（タイトル相当）: 5.36 秒

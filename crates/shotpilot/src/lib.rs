@@ -5,6 +5,7 @@
 pub mod ai;
 pub mod connect;
 pub mod craft;
+pub mod content;
 pub mod cut;
 pub mod engines;
 pub mod error;

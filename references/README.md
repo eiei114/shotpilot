@@ -19,7 +19,27 @@ also reads that `GENRE.md`. Claude gets the prose below the generated tables plu
 line of medians from `tokens.json`. Code takes the hook length (median first cut) and the
 title length (median final shot) for the skeleton from the same `tokens.json`.
 `shotpilot plan --spec` prints exactly what Claude reads. Genres are matched in the
-order horror, cozy, rpg, action, adventure ("action RPG" is rpg).
+order horror, cozy, strategy, rpg, action, adventure ("tactics RPG" is strategy, "action
+RPG" is rpg, "life sim" stays cozy).
+
+The skeleton also follows where the cutting is dense: each middle slot's length is its
+beat's weight divided by the measured edit density of the quarter it falls in
+(`profiles.edits_by_quarter`), so a busy quarter gets shorter shots and the calm last
+quarter longer ones.
+
+## Styles: recent popular teasers to imitate (D-39)
+
+Twenty analysed packages in `teasers/<id>/` are embedded as styles, four per genre package
+(`STYLES` in `crates/shotpilot/src/refs.rs`): game teasers uploaded in 2025 or later,
+20-100 s, among the most viewed of their genre, a mix of indie and well-known titles
+(films, TV and live action left out). Their `TEASER.md` sections 1-7 were written from the
+contact sheet and the measured numbers; the first sentence of section 1 is the one-line
+summary the app shows. When `brief.style` names one, the planner also reads its analysis
+and measured rhythm ("Inspired by ..."), and the skeleton takes its hook (first cut),
+title (final shot) and quarter densities instead of the genre's. Structure, rhythm and
+technique are imitated; never the story, characters or words. To add a style: analyse the
+package (sections 1-7, remove the `> 分析: 未` line) and add one `style!("<genre>", "<id>")`
+line; `cargo test --test styles` checks it.
 
 ## craft/ and genres/<id>/
 
@@ -34,7 +54,14 @@ genres/<id>/manifest.json  id, display name, aliases, sample size, member teaser
 genres/_index.json      one line per genre
 ```
 
-A genre gets a package once it has 20 teasers. Sci-fi (15, mixed with TV series) has none.
+A genre gets a package once it has 20 teasers. The keyword scoring left 305 in-scope
+videos as `general`; Claude read their titles, tags and descriptions (D-40), and the ones
+it put in a genre that had no package yet are kept in `teasers/_genre_overrides.json`
+(applied only where the keywords found nothing, so the five earlier packages keep their
+members and numbers). That gave strategy / simulation 26 teasers (trading-card product
+teasers left out). Still short of 20 once non-games are left out: sci-fi (about 15 games;
+the rest are TV series and tech demos), party / co-op (21, but mixed with rhythm and idol
+games), racing / sports (17), survival (13).
 
 ## teasers/<id>/
 

@@ -77,6 +77,9 @@ pub struct App {
     /// Projects opened before, for the home.
     recents: Recents,
     picker: Option<Picker>,
+    /// The content files the takes recorded (content.rs), keyed by the state.json stamp
+    /// they were read at: the status ETag watches them so a change to the game shows up.
+    watched: Mutex<(String, Vec<PathBuf>)>,
 }
 
 impl App {
@@ -86,7 +89,8 @@ impl App {
             None => None,
         };
         Ok(App { current: RwLock::new(current), lock: Mutex::new(()), claude, images: Box::new(connect::make_image_gen),
-            settings_path, library_root: library::default_root(), recents: Recents::new(None), picker: None })
+            settings_path, library_root: library::default_root(), recents: Recents::new(None), picker: None,
+            watched: Mutex::new((String::new(), Vec::new())) })
     }
 
     /// The open project's shots.yaml.
@@ -550,6 +554,9 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "checks": checks.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
         "timeline": timeline,
         "script": ws.defn.script.iter().map(line_json).collect::<Vec<_>>(),
+        "undo": ws.undo_target().map(|(_, e)| undo_json(&e)),
+        "script_approval": ws.script_approval(),
+        "review": review_json(ws),
         "brief": brief_json(&ws.defn.brief),
         "scout": scout["anchors"].as_object().cloned().unwrap_or_default(), // scout::summary
         "scout_taken": scout["taken"],
@@ -590,6 +597,27 @@ fn timeline_json(defn: &crate::model::Definition, shots: &[crate::model::Resolve
         .collect()
 }
 
+/// Where the first pass stands (D-38): stopped at the review and not continued since, the
+/// quality it rendered at, and when.
+fn review_json(ws: &Workspace) -> Value {
+    let hist = ws.state.history();
+    let last = hist.iter().rev().find(|e| e["action"] == "produce" || e["action"] == "plan");
+    match last {
+        Some(e) if e["action"] == "produce" && e["stopped"] == "review" => json!({"stopped": true, "at": e["at"], "quality": e["quality"]}),
+        _ => Value::Null,
+    }
+}
+
+/// What "undo" would take back, for the app's button: the action, its note and the pieces.
+fn undo_json(e: &Value) -> Value {
+    let keys = |k: &str| -> Vec<String> { e["undo"][k].as_object().map(|m| m.keys().cloned().collect()).unwrap_or_default() };
+    json!({
+        "action": e["action"], "note": e["note"], "at": e["at"],
+        "shots": keys("shots"), "lines": keys("lines"),
+        "order": e["undo"].get("order").is_some(), "audio": e["undo"].get("audio").is_some(),
+    })
+}
+
 fn line_json(l: &crate::script::Line) -> Value {
     json!({"id": l.id, "kind": l.kind, "ja": l.ja, "en": l.en, "head": l.head, "from": l.from, "dur": l.dur,
            "after": l.after, "on": l.on, "at": l.at})
@@ -597,7 +625,8 @@ fn line_json(l: &crate::script::Line) -> Value {
 
 fn brief_json(b: &crate::model::BriefCfg) -> Value {
     json!({
-        "kind": b.kind, "genre": b.genre, "audience": b.audience, "core": b.core,
+        "kind": b.kind, "genre": b.genre, "style": b.style, "genre_id": crate::refs::genre_for(&b.genre).map(|r| r.id),
+        "audience": b.audience, "core": b.core,
         "must_show": b.must_show, "references": b.references, "notes": b.notes,
         "missing": b.missing(), "written": !b.raw.is_empty(), "images": b.images,
     })
@@ -690,7 +719,18 @@ fn etag(app: &App) -> String {
     let shots = app.current().unwrap_or_default();
     // the project's path too, so switching projects never answers 304
     let which = path_tag(&shots);
-    format!("\"{which}.{}.{}.{settings}\"", stamp(shots), stamp(root.join(".shotpilot").join("state.json")))
+    let state = stamp(root.join(".shotpilot").join("state.json"));
+    // the game content the takes showed: a new texture changes the status without touching
+    // shots.yaml or state.json (the list is re-read only when state.json changes)
+    let content = {
+        let mut w = app.watched.lock().unwrap_or_else(|p| p.into_inner());
+        let key = format!("{which}.{state}");
+        if w.0 != key {
+            *w = (key, crate::content::recorded_files(&root));
+        }
+        crate::content::stamp_files(&w.1)
+    };
+    format!("\"{which}.{}.{state}.{content}.{settings}\"", stamp(shots))
 }
 
 // --------------------------------------------------------------------------- routes
@@ -776,8 +816,47 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let rep = ws.set_fields(&sid, &assignments)?;
             send_json(stream, false, 200, &rep.to_json()).map_err(io)
         }
+        ("POST", "/api/nudge") => {
+            let body = req.json()?;
+            let shot = body.get("shot").and_then(Value::as_str).unwrap_or("");
+            let kind = body.get("kind").and_then(Value::as_str).unwrap_or("");
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let sid = ws.select_one(shot)?.id;
+            let rep = ws.nudge(&sid, kind)?;
+            let mut out = rep.to_json();
+            out["changes"] = ws.state.history().last().map(|e| e["changes"].clone()).unwrap_or(Value::Null);
+            send_json(stream, false, 200, &out).map_err(io)
+        }
+        ("POST", "/api/script") => {
+            let body = req.json()?;
+            let id = body.get("id").and_then(Value::as_str).unwrap_or("");
+            let assignments: Vec<(String, Value)> = match body.get("set") {
+                Some(Value::Object(m)) if !m.is_empty() => m.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+                _ => bail!("expected {{\"id\": \"<line>\", \"set\": {{\"ja\": \"...\", ...}}}}"),
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let rep = ws.set_line(id, &assignments)?;
+            send_json(stream, false, 200, &rep.to_json()).map_err(io)
+        }
+        ("POST", "/api/undo") => {
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let (rep, what) = ws.undo()?;
+            let mut out = rep.to_json();
+            out["undid"] = what;
+            send_json(stream, false, 200, &out).map_err(io)
+        }
         ("POST", "/api/approve") => {
             let body = req.json()?;
+            if body.get("script").and_then(Value::as_bool) == Some(true) {
+                let approved = body.get("approved").and_then(Value::as_bool).unwrap_or(true);
+                let _guard = app.mutate()?;
+                let mut ws = app.ws()?;
+                ws.approve_script(approved)?;
+                return send_json(stream, false, 200, &json!({"script": ws.script_approval()})).map_err(io);
+            }
             let shots: Vec<String> = match body.get("shots") {
                 Some(Value::Array(a)) => a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
                 _ => bail!("expected {{\"shots\": [\"s01\", ...], \"approved\": true}}"),
@@ -876,6 +955,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
         }
+        ("GET" | "HEAD", "/api/genres") => send_json(stream, head, 200, &crate::refs::catalogue()).map_err(io),
         ("GET" | "HEAD", "/api/library") => {
             let lib = app.library()?;
             let arg = |k: &str| {
@@ -1131,14 +1211,29 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     }
     let _guard = app.mutate()?;
     let mut ws = app.ws()?;
+    let aspect = body.get("aspect").and_then(Value::as_str).filter(|a| !a.is_empty() && *a != "shot");
     let scope = match body.get("shot").and_then(Value::as_str).filter(|s| !s.is_empty()) {
         Some(s) => Some(vec![ws.select_one(s)?.id]),
+        // one part of every shot (e.g. the cameras, keeping the script) is still a scoped note
+        None if aspect.is_some() && body.get("all").and_then(Value::as_bool) == Some(true) => Some(ws.defn.shot_ids()),
         None => None,
     };
     let mut context = Vec::new();
     let mut pointer = ai::Pointer { sound: body.get("sound").and_then(Value::as_bool).unwrap_or(false), ..Default::default() };
-    if let Some(s) = &scope {
-        context.push(format!("shot {}", s[0]));
+    match scope.as_deref() {
+        Some([one]) => context.push(format!("shot {one}")),
+        Some(many) => context.push(format!("all {} shots", many.len())),
+        None => {}
+    }
+    if let Some(a) = aspect {
+        let Some(fields) = ai::aspect_fields(a) else {
+            bail!("aspect: one of shot, {}", ai::ASPECTS.iter().map(|(k, _, _)| *k).collect::<Vec<_>>().join(", "));
+        };
+        if scope.is_none() || pointer.sound {
+            bail!("a note on one part of a shot needs that shot");
+        }
+        context.push(format!("the director points at this part of the shot: {a}"));
+        pointer.fields = Some(fields);
     }
     if let Some(l) = body.get("line").and_then(Value::as_str).filter(|s| !s.is_empty()) {
         let Some(line) = ws.defn.script.iter().find(|x| x.id == l) else { bail!("unknown script line '{l}'") };
@@ -1219,6 +1314,10 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     extra.insert("summary".into(), json!(rev.summary));
     extra.insert("changes".into(), Value::Object(changes.clone()));
     extra.insert("pointer".into(), json!(pointer.context));
+    // what the human pointed at, in the app's words (the context above is written for Claude)
+    if let Some(l) = body.get("label").and_then(Value::as_str).filter(|l| !l.is_empty()) {
+        extra.insert("label".into(), json!(l));
+    }
     ws.state.annotate_last(extra);
     ws.state.save()?;
     let mut out = rep.to_json();
@@ -1235,11 +1334,13 @@ fn produce_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()
         direction: body.get("note").and_then(Value::as_str).unwrap_or("").to_string(),
         mood: body.get("mood").and_then(Value::as_bool).unwrap_or(true),
         library: None,
+        review: body.get("review").and_then(Value::as_bool).unwrap_or(false),
     }
     .with_user_library();
+    let resume = body.get("resume").and_then(Value::as_bool).unwrap_or(false);
     let settings = app.settings();
     let claude = (app.claude)(&settings)?; // a plain 400 before streaming when Claude is not connected
-    let images = if opts.mood { (app.images)(&settings).ok() } else { None };
+    let images = if opts.mood && !resume { (app.images)(&settings).ok() } else { None };
     let _guard = app.mutate()?;
     let mut ws = app.ws()?;
     fp::quality(&ws.defn, &opts.quality)?;
@@ -1255,7 +1356,11 @@ fn produce_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()
         }
     };
     let mut on = |event: &str, data: &Value| send_event(event, data, &mut alive);
-    let result = crate::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut on);
+    let result = if resume {
+        crate::produce::resume(&mut ws, claude.as_ref(), &opts, &mut on)
+    } else {
+        crate::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut on)
+    };
     match result {
         Ok(out) => send_event("done", &out, &mut alive),
         Err(e) => send_event("error", &json!({"error": e.msg}), &mut alive),
@@ -1387,6 +1492,7 @@ fn projects_route(stream: &mut TcpStream, app: &App, action: &str, req: &Request
                 map: Some(text("map")).filter(|s| !s.is_empty()),
                 pitch: text("pitch"),
                 kind: text("kind"),
+                genre: text("genre"),
                 sample: body.get("sample").and_then(Value::as_bool).unwrap_or(false),
             };
             let shots = {

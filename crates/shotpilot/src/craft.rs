@@ -47,16 +47,53 @@ pub fn skeleton(brief: &BriefCfg, target: f64, n_shots: Option<usize>) -> Vec<Sl
     let establish = ((middle as f64 * 0.4).round() as usize).clamp(1, middle - 1);
     let escalate = middle - establish;
     // establishing shots breathe; escalation accelerates (each shot a little shorter)
-    let mut weights: Vec<f64> = vec![1.3; establish];
+    let mut beat_weights: Vec<f64> = vec![1.3; establish];
     for i in 0..escalate {
-        weights.push(1.0 - 0.3 * i as f64 / (escalate.max(2) - 1) as f64);
+        beat_weights.push(1.0 - 0.3 * i as f64 / (escalate.max(2) - 1) as f64);
     }
     let rest = (target - hook - title).max(middle as f64);
+    // then follow the measured cutting along the teaser (the style's, else the genre's): a
+    // shot in a busy quarter gets shorter, one in a calm quarter longer (D-29, D-39)
+    let density_at = |frac: f64| {
+        let c = [0.125, 0.375, 0.625, 0.875];
+        let d = pace.density;
+        let v = if frac <= c[0] {
+            d[0]
+        } else if frac >= c[3] {
+            d[3]
+        } else {
+            let i = c.iter().rposition(|x| *x <= frac).unwrap_or(0).min(2);
+            d[i] + (d[i + 1] - d[i]) * (frac - c[i]) / (c[i + 1] - c[i])
+        };
+        v.clamp(0.5, 2.0)
+    };
+    let mut weights = beat_weights.clone();
+    for _ in 0..2 {
+        let sum: f64 = weights.iter().sum();
+        let mut t = hook;
+        weights = beat_weights
+            .iter()
+            .zip(&weights)
+            .map(|(b, w)| {
+                let d = rest * w / sum;
+                let mid = (t + d / 2.0) / target;
+                t += d;
+                b / density_at(mid)
+            })
+            .collect();
+    }
     let sum: f64 = weights.iter().sum();
     let mut mids: Vec<f64> = weights.iter().map(|w| half(rest * w / sum).clamp(1.5, 8.0)).collect();
-    let drift = rest - mids.iter().sum::<f64>();
-    if let Some(first) = mids.first_mut() {
-        *first = half(*first + drift).clamp(1.5, 8.0);
+    // rounding and the 1.5-8 s bounds leave some time over: hand it out half a second at a
+    // time to the shot furthest from its share that still has room
+    let mut drift = rest - mids.iter().sum::<f64>();
+    while drift.abs() >= 0.5 {
+        let step: f64 = if drift > 0.0 { 0.5 } else { -0.5 };
+        let want = |i: usize| (rest * weights[i] / sum - mids[i]) * step.signum();
+        let room = |i: &usize| (1.5..=8.0).contains(&(mids[*i] + step));
+        let Some(i) = (0..mids.len()).filter(room).max_by(|a, b| want(*a).total_cmp(&want(*b))) else { break };
+        mids[i] += step;
+        drift -= step;
     }
 
     let mut out = vec![Slot { beat: "hook", duration: hook, size: "one striking image: an extreme close-up or a strange wide" }];
@@ -182,15 +219,18 @@ pub fn script_text(defn: &Definition) -> String {
          - Overlays sit on a shot (`on`, `at` seconds into it): `caption` lower centre, `count` lower left like a note \
            under a photograph, for a run of evidence shots. One line at a time: two overlays on the same shot must \
            not overlap in time (a count reads best on its own short shot).\n\
-         - Devices that hold a teaser together: a first-person voice (\"Today, I move in.\"); a count that keeps going \
-           (seven shoes, seven cups, seven keys...) over short evidence shots of 1-1.5 s; a rule of the world that is \
-           about to be broken; a final message that turns the premise back on the viewer.\n\
+         - Devices that hold a teaser together (use the ones the genre and style references use): a first-person \
+           voice (\"Today, I move in.\"); a count that keeps going over short evidence shots of 1-1.5 s; a rule of the \
+           world that is about to be broken; a final message that turns the premise back on the viewer; verbs one at a \
+           time over the play they name (DIG / GROW / BUILD); features named one line at a time; a maker's short note.\n\
          - Lines are short: Japanese up to ~15 characters, English up to ~6 words. Never invent a release date, a \
            platform or a store claim; use only facts the brief states.\n\
          - `target` length is the whole cut, cards included.\n\
          - `transition`: mostly `cut`; `dip` through black for a jump in time; `flash` (from white) on each short \
            evidence shot of a count, or for one jolt.\n\
-         - `grade`: `horror` for a cold, desaturated look; `red` only for a short jolt teaser; `none` otherwise. \
+         - `grade`: follow the genre and style references: `horror` (cold, desaturated, grain), `red` (only for a \
+           short jolt teaser), `warm` (cozy, bright, sunny), `vivid` (action, punchy colour), `cool` (sci-fi, mystery, \
+           night), or `none` to keep the game's own look. \
            `letterbox`: 2.39 for a cinematic teaser, 0 for none.\n",
         if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
     )

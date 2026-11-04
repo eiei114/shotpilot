@@ -1,13 +1,13 @@
 # Teaser Inspired by Trucker 2056 — Exclusive Steam Next Fest Teaser
 
-> Category: general / Channel: Ratas Games
+> Category: strategy / Channel: Ratas Games
 > 分析: 未（下の各節を埋めたらこの行を消す）
 
 <!-- auto:begin -->
 
 ## 0. 実測値（自動生成。手で直さない）
 
-- ジャンル（自動判定）: general / 種別: teaser / 集計対象: in
+- ジャンル（自動判定）: strategy / 種別: teaser / 集計対象: in
 - 尺: 76 秒 / 視聴数: 24 / 出典: https://www.youtube.com/watch?v=TfS472qZUL4
 - ショット数: 7、平均ショット長 10.86 秒、中央値 5.23 秒、最長 22.9 秒
 - 最初のカット: 22.9 秒、最後のショット（タイトル相当）: 1.07 秒

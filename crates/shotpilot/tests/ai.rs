@@ -202,6 +202,10 @@ fn brief_genre_picks_a_measured_reference() {
     assert_eq!(id("見下ろし型シューター"), Some("action"));
     assert_eq!(id("謎解きアドベンチャー"), Some("adventure"));
     assert_eq!(id("adventure"), Some("adventure"));
+    assert_eq!(id("都市開発シミュレーション"), Some("strategy"));
+    assert_eq!(id("タクティクスRPG"), Some("strategy")); // strategy is matched before rpg
+    assert_eq!(id("ライフシミュレーション"), Some("cozy")); // a life sim stays cozy
+    assert_eq!(id("4X strategy"), Some("strategy"));
     assert_eq!(id("レース"), None);
     assert_eq!(id(""), None);
     for g in genres() {

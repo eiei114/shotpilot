@@ -160,6 +160,26 @@ pub fn build_fingerprint(defn: &Definition, shot: &ResolvedShot) -> String {
     }))
 }
 
+/// What a human approves when signing off the script (D-38): the text and where it sits,
+/// and the cut it is the spine of (each shot's id, beat, purpose and length, in order).
+/// Cameras, light, sound and the finish are not in it: rebuilding the cameras for an
+/// approved script keeps the approval. Editorial only; it never decides a re-render.
+pub fn script_fingerprint(defn: &Definition) -> String {
+    let lines: Vec<Value> = defn
+        .script
+        .iter()
+        .map(|l| json!({"id": l.id, "kind": l.kind, "ja": l.ja, "en": l.en, "head": l.head, "from": l.from,
+                        "dur": l.dur, "after": l.after, "on": l.on, "at": l.at}))
+        .collect();
+    let shots: Vec<Value> = defn
+        .shots
+        .iter()
+        .map(|s| json!({"id": s.get("id"), "beat": s.get("beat"), "purpose": s.get("purpose"),
+                        "duration": s.get("duration").and_then(num)}))
+        .collect();
+    digest(&json!({"script": lines, "shots": shots}))
+}
+
 /// What a human approves when signing off a shot's framing: the shot's picture, independent
 /// of quality presets. Any edit that changes pixels changes it (and so drops the approval);
 /// beats, purpose, notes, markers and sound do not.

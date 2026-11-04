@@ -97,11 +97,14 @@ enum Cmd {
     },
     /// sign off a shot's framing; any edit that changes its picture withdraws it
     Approve {
-        #[arg(required = true)]
+        #[arg(required_unless_present = "script")]
         shots: Vec<String>,
         /// withdraw the approval
         #[arg(long)]
         undo: bool,
+        /// approve the script (its text and the cut it is the spine of) instead of shots
+        #[arg(long)]
+        script: bool,
     },
     /// photograph every anchor from four sides into scout/ (stage 0, location scouting)
     Scout {
@@ -118,6 +121,12 @@ enum Cmd {
         /// skip the mood board
         #[arg(long)]
         no_mood: bool,
+        /// stop after the script, the shots and their previz, to check them first
+        #[arg(long, conflicts_with = "resume")]
+        review: bool,
+        /// continue after a review: sound, render, cut
+        #[arg(long)]
+        resume: bool,
     },
     /// read the set from the scout photos with Claude and write `stage:` (stage 0)
     Stage,
@@ -259,6 +268,15 @@ fn parse_assignments(raw: &[String]) -> Result<Vec<(String, Value)>> {
     Ok(parsed)
 }
 
+/// "T_Enemy_D, M_Enemy +3" from a list of content packages.
+fn short_list(packages: &[Value]) -> String {
+    let names: Vec<&str> = packages.iter().filter_map(Value::as_str).map(shotpilot::content::short).collect();
+    match names.len() {
+        0..=3 => names.join(", "),
+        n => format!("{} +{}", names[..3].join(", "), n - 3),
+    }
+}
+
 fn dash(v: &[String]) -> String {
     if v.is_empty() { "-".into() } else { v.join(", ") }
 }
@@ -316,8 +334,10 @@ fn run(cli: Cli) -> Result<u8> {
                 let marks: Vec<String> = qs
                     .iter()
                     .map(|q| {
+                        let game = r.changed.iter().any(|(k, _)| k == q);
                         let m = match r.quality(q) {
                             "fresh" => "fresh",
+                            "stale" if game => "GAME",
                             "stale" => "STALE",
                             _ => "-",
                         };
@@ -337,7 +357,14 @@ fn run(cli: Cli) -> Result<u8> {
             let diff = total - target;
             println!("\ntotal {}s / target {}s ({}{}s)", fmt_g(total), fmt_g(target), if diff >= 0.0 { "+" } else { "" }, fmt_g(diff));
             println!("engine: synced = sequence asset matches shots.yaml, dirty = needs build, new = never built");
-            println!("takes:  fresh = take exists for the current definition, STALE = only older takes exist");
+            println!("takes:  fresh = take exists for the current definition, STALE = only older takes exist,");
+            println!("        GAME = the game content the take showed changed since (re-render shoots only those)");
+            for r in rows.iter().filter(|r| !r.changed.is_empty()) {
+                let mut pkgs: Vec<Value> = r.changed.iter().flat_map(|(_, p)| p.iter().map(|x| json!(x))).collect();
+                pkgs.dedup();
+                let qs: Vec<&str> = r.changed.iter().map(|(q, _)| q.as_str()).collect();
+                println!("game changed under {} ({}): {}", r.id, qs.join(", "), short_list(&pkgs));
+            }
             println!("framing: ok = approved, CHANGED = the picture changed after approval (shotpilot approve)");
             for w in ws.structure_warnings()? {
                 println!("note: {w}");
@@ -366,10 +393,22 @@ fn run(cli: Cli) -> Result<u8> {
             if targets.first().is_some_and(|t| fp::quality_names(&ws.defn).contains(t)) {
                 quality = targets.remove(0);
             }
-            let outcomes = ws.render(&targets, &quality, force, None)?;
+            // the shots that render because the game changed under their take, and what changed
+            let mut game_changed = serde_json::Map::new();
+            let outcomes = {
+                let mut on = |event: &str, data: &Value| {
+                    if event == "plan" {
+                        game_changed = data["game_changed"].as_object().cloned().unwrap_or_default();
+                    }
+                };
+                ws.render(&targets, &quality, force, Some(&mut on))?
+            };
             for o in &outcomes {
                 let extra = match o.action.as_str() {
-                    "rendered" => format!("{:.1}s", o.seconds),
+                    "rendered" => match game_changed.get(&o.shot_id).and_then(Value::as_array) {
+                        Some(p) => format!("{:.1}s  (game changed: {})", o.seconds, short_list(p)),
+                        None => format!("{:.1}s", o.seconds),
+                    },
                     "failed" => o.detail.clone(),
                     _ => String::new(),
                 };
@@ -463,7 +502,15 @@ fn run(cli: Cli) -> Result<u8> {
             let p0 = found.iter().filter(|f| f.severity == shotpilot::shotcheck::Severity::P0).count();
             return Ok(if p0 > 0 { 1 } else { 0 });
         }
-        Cmd::Approve { shots, undo } => {
+        Cmd::Approve { shots, undo, script: true } => {
+            let mut ws = ws(file)?;
+            if !shots.is_empty() {
+                bail!("approve --script takes no shot ids");
+            }
+            ws.approve_script(!undo)?;
+            println!("script: {}", ws.script_approval());
+        }
+        Cmd::Approve { shots, undo, script: false } => {
             let mut ws = ws(file)?;
             for s in ws.select(&shots)? {
                 ws.approve(&s.id, !undo)?;
@@ -478,12 +525,13 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("{name:<16} {}", files.join("  "));
             }
         }
-        Cmd::Produce { quality, note, no_mood } => {
+        Cmd::Produce { quality, note, no_mood, review, resume } => {
             let mut ws = ws(file)?;
             let settings = Settings::load(Settings::default_path().as_deref());
             let claude = connect::make_claude(&settings)?;
-            let images = if no_mood { None } else { connect::make_image_gen(&settings).ok() };
-            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood, library: None }.with_user_library();
+            let images = if no_mood || resume { None } else { connect::make_image_gen(&settings).ok() };
+            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood, library: None, review }
+                .with_user_library();
             let mut print = |e: &str, d: &Value| {
                 if e == "step" && d["status"] != "start" {
                     println!("{:<10} {:<8} {}", d["label"].as_str().unwrap_or(""), d["status"].as_str().unwrap_or(""),
@@ -492,7 +540,11 @@ fn run(cli: Cli) -> Result<u8> {
                     println!("{} ...", d["label"].as_str().unwrap_or(""));
                 }
             };
-            let out = shotpilot::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut print)?;
+            let out = if resume {
+                shotpilot::produce::resume(&mut ws, claude.as_ref(), &opts, &mut print)?
+            } else {
+                shotpilot::produce::produce(&mut ws, claude.as_ref(), images.as_deref(), &opts, &mut print)?
+            };
             println!("\n{}", out["rationale"].as_str().unwrap_or(""));
             for n in out["notes"].as_array().into_iter().flatten() {
                 println!("note: {}", n.as_str().unwrap_or(""));
@@ -500,7 +552,12 @@ fn run(cli: Cli) -> Result<u8> {
             if let Some(v) = out["video"].as_str() {
                 println!("video: {v}");
             }
-            println!("next: check the shots (shotpilot check), approve or point-fix them, then render final");
+            if out["stopped"] == "review" {
+                println!("next: check the script and the shots (status / check), fix them, approve the script \
+                          (shotpilot approve --script), then shotpilot produce --resume");
+            } else {
+                println!("next: check the shots (shotpilot check), approve or point-fix them, then render final");
+            }
         }
         Cmd::Stage => {
             let mut ws = ws(file)?;
