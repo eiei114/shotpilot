@@ -128,7 +128,7 @@ impl StageCfg {
 pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
 
 /// Fields of `brief:` a planner reads. Order is the order the app asks them in.
-pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "audience", "core", "must_show", "references", "notes", "images"];
+pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "style", "audience", "core", "must_show", "references", "notes", "images"];
 
 /// `brief:`: what the trailer is for, written before any shot. Editorial only: it never
 /// affects pixels, so editing it never re-renders anything.
@@ -136,6 +136,8 @@ pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "audience", "core", "must_s
 pub struct BriefCfg {
     pub kind: String, // teaser | gameplay
     pub genre: String,
+    /// A recently popular teaser whose structure to follow (an id of refs::styles, D-39).
+    pub style: String,
     pub audience: String,
     /// The core experience the viewer must get (one sentence).
     pub core: String,
@@ -689,6 +691,7 @@ fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
     BriefCfg {
         kind,
         genre: opt_str(raw.get("genre")).unwrap_or_default(),
+        style: opt_str(raw.get("style")).unwrap_or_default(),
         audience: opt_str(raw.get("audience")).unwrap_or_default(),
         core: opt_str(raw.get("core")).unwrap_or_default(),
         must_show: list("must_show", errs),

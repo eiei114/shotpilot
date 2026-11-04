@@ -625,7 +625,8 @@ fn line_json(l: &crate::script::Line) -> Value {
 
 fn brief_json(b: &crate::model::BriefCfg) -> Value {
     json!({
-        "kind": b.kind, "genre": b.genre, "audience": b.audience, "core": b.core,
+        "kind": b.kind, "genre": b.genre, "style": b.style, "genre_id": crate::refs::genre_for(&b.genre).map(|r| r.id),
+        "audience": b.audience, "core": b.core,
         "must_show": b.must_show, "references": b.references, "notes": b.notes,
         "missing": b.missing(), "written": !b.raw.is_empty(), "images": b.images,
     })
@@ -954,6 +955,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
         }
+        ("GET" | "HEAD", "/api/genres") => send_json(stream, head, 200, &crate::refs::catalogue()).map_err(io),
         ("GET" | "HEAD", "/api/library") => {
             let lib = app.library()?;
             let arg = |k: &str| {

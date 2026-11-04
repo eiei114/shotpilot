@@ -563,6 +563,9 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
     }
+    if let Some(s) = crate::refs::style(&defn.brief.style) {
+        references.push(format!("style: {}", s.name));
+    }
     Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references, script })
 }
 
