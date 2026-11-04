@@ -16,7 +16,7 @@ fn brief(genre: &str, style: &str) -> BriefCfg {
 
 #[test]
 fn four_recent_styles_per_genre_each_analysed() {
-    assert_eq!(styles().len(), 20);
+    assert_eq!(styles().len(), 4 * genres().len());
     for g in genres() {
         let mine = styles_for(g.id);
         assert_eq!(mine.len(), 4, "{}", g.id);

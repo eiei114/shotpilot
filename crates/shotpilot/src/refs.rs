@@ -28,9 +28,15 @@ macro_rules! genre {
 }
 
 /// Genre packages in match order: the first whose alias appears in `brief.genre` wins, so
-/// "horror RPG" is horror and "action RPG" is rpg.
-const GENRES: &[(&str, &str, &str, &str)] =
-    &[genre!("horror"), genre!("cozy"), genre!("rpg"), genre!("action"), genre!("adventure")];
+/// "horror RPG" is horror, "tactics RPG" is strategy and "action RPG" is rpg.
+const GENRES: &[(&str, &str, &str, &str)] = &[
+    genre!("horror"),
+    genre!("cozy"),
+    genre!("strategy"),
+    genre!("rpg"),
+    genre!("action"),
+    genre!("adventure"),
+];
 
 const AUTO_END: &str = "<!-- auto:end -->";
 
@@ -250,6 +256,10 @@ const STYLES: &[(&str, &str, &str, &str, &str)] = &[
     style!("cozy", "yt-QtGJNp2QWEw"),
     style!("cozy", "yt-CP61GovN7ZE"),
     style!("cozy", "yt-vmVVsImRjHo"),
+    style!("strategy", "yt-fGgsNvxaA04"),
+    style!("strategy", "yt-UpH6HB-Km_0"),
+    style!("strategy", "yt--uDHQlmGstM"),
+    style!("strategy", "yt-QW_7oiMLM6o"),
     style!("rpg", "yt-9lwef2jan-Q"),
     style!("rpg", "yt-3idSGSoMMn8"),
     style!("rpg", "yt-AZmYsFsGVMk"),
