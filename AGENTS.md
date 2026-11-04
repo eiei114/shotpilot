@@ -5,7 +5,7 @@ UE5 プロジェクトからティザー映像（30〜60秒）を撮るための
 
 一行で言うと「ティザーのショットを AI が組み、人間が1カットだけ直すと、その1カットだけ撮り直る」。
 
-提出先は Built with Claude: Japan 2026 で、締切は **2026-11-08 20:00 JST**。開発者は1人。
+提出先は Built with Claude: Japan 2026。開発者は1人。
 
 ## 最優先の要件: 部分修正ループ（D-13）
 
@@ -111,7 +111,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `only_changed_shot_rerenders` と `order_purpose_notes_never_invalidate` はデモの主張そのものにあたる。落としたまま先に進まない。
 - テストから実際の UE や Claude API は呼ばない。UE は mock エンジンで、Claude は差し替えで代用する。
 
-## スコープ（7日間）
+## スコープ
 
 - やる: UE5 のティザー映像1本。ティザーの型（`hook → establish → escalate → title`）を同梱する。1ビートに3バリアントを出すのは余力があればやる。
 - やる: デスクトップアプリ（`shotpilot-app`、Tauri）。ブラウザは使わない。中身はコアを組み込んだ loopback サーバーと、ビルド不要の HTML 1枚。
