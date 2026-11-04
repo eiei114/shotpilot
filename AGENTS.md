@@ -50,6 +50,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/model.rs        shots.yaml のスキーマ・検証・resolve（Definition → ResolvedShot）
   src/fingerprint.rs  再レンダ判定。品質プリセット（previz/still/preview/final）
   src/state.rs        .shotpilot/state.json と render/<shot>/<quality>/<fp12>/ の take 管理
+  src/content.rs      take が写していたゲームの中身（エンジンが報告したパッケージのファイルと SHA-256）。変わったカットだけを古いとする
   src/workspace.rs    上の3つとエンジンを束ねる。全操作はここを通る
   src/engines.rs      mock / ue5 バックエンド。共通の job/result JSON プロトコル
   src/sync.rs         Sequencer → shots.yaml の逆同期（base / engine / ours の三方比較）
@@ -89,6 +90,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - エンジン側スクリプトが、同じ入力に対して違う出力を出すように変わったら `fingerprint::RENDERER_VERSION` を上げる。previz の描画を変えたら `PREVIZ_VERSION` を上げる（エンジンの take は無効にしない）。
 - fingerprint は Python 版と同じ正規化 JSON（キー整列・区切り `,` `:`）の SHA-256。`fingerprints_match_the_python_version` を落とさない（落ちると UE で撮った take が全部撮り直しになる）。
 - **take は fingerprint で管理し、上書きしない。** 定義を元に戻したら、古い take を再利用する。`render/` 以下を手で編集しない。
+- **ゲームの中身の変化は fingerprint に入れず、take の `deps` で見る（D-37）。** エンジンはレンダ中に写っていたもののパッケージを報告し、take はそのファイルの大きさ・時刻・SHA-256 を持つ。中身が変わったカットだけが古くなり、撮り直した take は `<fp12>~N/` に置く（前の take は消さない。中身を戻せば前の take が使われる）。fingerprint は定義だけのまま（Python 版との互換と、撮った take を守るため）。迷ったら「写っている」側に倒す（撮り直しすぎる方が、見落とすより安全）。
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
 - Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。カメラだけ・光だけの指示（`Pointer::fields`、`ai::ASPECTS`）では、そのキーだけを取り込む。ショットに絞った指示では BGM を変えさせない。
 - 定義の編集は `Workspace::write_definition` の1か所を通し、変えた部分の前後を履歴（`undo`）に残す。元に戻すは、その部分が後から変わっていたら上書きせずに止める。戻した画は fingerprint が同じなので、古い take をそのまま使う（撮り直さない）。
