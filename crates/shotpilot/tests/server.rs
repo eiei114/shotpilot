@@ -373,6 +373,47 @@ fn chat_scope_is_enforced_over_http() {
 }
 
 #[test]
+fn cut_sheet_edits_and_undo_over_http() {
+    let (s, _) = srv_with_claude(json!({
+        "summary": "寄った", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
+    let original = s.f.text();
+    // one tap: only that shot goes stale, and the status offers to take it back
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "tighter"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!(["s01_gate"]));
+    assert_eq!(out["changes"]["s01_gate"][0]["path"], "camera.lens.focal_length");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["undo"]["action"], "nudge");
+    assert_eq!(st["undo"]["shots"], json!(["s01_gate"]));
+    let (code, out) = jcall(&s, "POST", "/api/undo", Some(json!({})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["undid"]["action"], "nudge");
+    assert_eq!(s.f.text(), original);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert!(st["undo"].is_null());
+    let (code, _) = jcall(&s, "POST", "/api/undo", Some(json!({})));
+    assert_eq!(code, 400);
+
+    // a note pointed at the camera keeps the rest of the shot (S03_CLOSER drops its sound)
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "寄って", "shot": "s03_window", "aspect": "camera"})));
+    assert_eq!(code, 200, "{out}");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let s03 = &st["shots"][2]["node"];
+    assert_eq!(s03["camera"]["lens"]["focal_length"], 85);
+    assert!(s03["sfx"].as_array().is_some_and(|a| !a.is_empty()), "{s03}");
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "寄って", "aspect": "camera"})));
+    assert_eq!(code, 400, "{out}");
+    let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "寄って", "shot": "s03_window", "aspect": "nope"})));
+    assert_eq!(code, 400);
+
+    let (code, out) = jcall(&s, "POST", "/api/script", Some(json!({"id": "nope", "set": {"ja": "x"}})));
+    assert_eq!(code, 400);
+    assert!(out["error"].as_str().unwrap().contains("unknown script line"));
+    let (code, _) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "sideways"})));
+    assert_eq!(code, 400);
+}
+
+#[test]
 fn settings_save_the_key_but_never_send_it_back() {
     let f = ws();
     let dir = tempfile::tempdir().unwrap();

@@ -550,6 +550,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "checks": checks.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
         "timeline": timeline,
         "script": ws.defn.script.iter().map(line_json).collect::<Vec<_>>(),
+        "undo": ws.undo_target().map(|(_, e)| undo_json(&e)),
         "brief": brief_json(&ws.defn.brief),
         "scout": scout["anchors"].as_object().cloned().unwrap_or_default(), // scout::summary
         "scout_taken": scout["taken"],
@@ -588,6 +589,16 @@ fn timeline_json(defn: &crate::model::Definition, shots: &[crate::model::Resolve
             }
         })
         .collect()
+}
+
+/// What "undo" would take back, for the app's button: the action, its note and the pieces.
+fn undo_json(e: &Value) -> Value {
+    let keys = |k: &str| -> Vec<String> { e["undo"][k].as_object().map(|m| m.keys().cloned().collect()).unwrap_or_default() };
+    json!({
+        "action": e["action"], "note": e["note"], "at": e["at"],
+        "shots": keys("shots"), "lines": keys("lines"),
+        "order": e["undo"].get("order").is_some(), "audio": e["undo"].get("audio").is_some(),
+    })
 }
 
 fn line_json(l: &crate::script::Line) -> Value {
@@ -775,6 +786,38 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let sid = ws.select_one(&percent_decode(&p["/api/shots/".len()..]))?.id;
             let rep = ws.set_fields(&sid, &assignments)?;
             send_json(stream, false, 200, &rep.to_json()).map_err(io)
+        }
+        ("POST", "/api/nudge") => {
+            let body = req.json()?;
+            let shot = body.get("shot").and_then(Value::as_str).unwrap_or("");
+            let kind = body.get("kind").and_then(Value::as_str).unwrap_or("");
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let sid = ws.select_one(shot)?.id;
+            let rep = ws.nudge(&sid, kind)?;
+            let mut out = rep.to_json();
+            out["changes"] = ws.state.history().last().map(|e| e["changes"].clone()).unwrap_or(Value::Null);
+            send_json(stream, false, 200, &out).map_err(io)
+        }
+        ("POST", "/api/script") => {
+            let body = req.json()?;
+            let id = body.get("id").and_then(Value::as_str).unwrap_or("");
+            let assignments: Vec<(String, Value)> = match body.get("set") {
+                Some(Value::Object(m)) if !m.is_empty() => m.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+                _ => bail!("expected {{\"id\": \"<line>\", \"set\": {{\"ja\": \"...\", ...}}}}"),
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let rep = ws.set_line(id, &assignments)?;
+            send_json(stream, false, 200, &rep.to_json()).map_err(io)
+        }
+        ("POST", "/api/undo") => {
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let (rep, what) = ws.undo()?;
+            let mut out = rep.to_json();
+            out["undid"] = what;
+            send_json(stream, false, 200, &out).map_err(io)
         }
         ("POST", "/api/approve") => {
             let body = req.json()?;
@@ -1139,6 +1182,16 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     let mut pointer = ai::Pointer { sound: body.get("sound").and_then(Value::as_bool).unwrap_or(false), ..Default::default() };
     if let Some(s) = &scope {
         context.push(format!("shot {}", s[0]));
+    }
+    if let Some(a) = body.get("aspect").and_then(Value::as_str).filter(|a| !a.is_empty() && *a != "shot") {
+        let Some(fields) = ai::aspect_fields(a) else {
+            bail!("aspect: one of shot, {}", ai::ASPECTS.iter().map(|(k, _, _)| *k).collect::<Vec<_>>().join(", "));
+        };
+        if scope.is_none() || pointer.sound {
+            bail!("a note on one part of a shot needs that shot");
+        }
+        context.push(format!("the director points at this part of the shot: {a}"));
+        pointer.fields = Some(fields);
     }
     if let Some(l) = body.get("line").and_then(Value::as_str).filter(|s| !s.is_empty()) {
         let Some(line) = ws.defn.script.iter().find(|x| x.id == l) else { bail!("unknown script line '{l}'") };

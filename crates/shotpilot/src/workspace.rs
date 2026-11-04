@@ -25,6 +25,12 @@ use crate::yamlio::Doc;
 
 const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "exr", "bmp"];
 pub const QUALITY_RANK: &[&str] = &["final", "preview", "still", "previz"];
+/// Script line fields the app edits in place (the text and its timing; never where it sits).
+pub const LINE_FIELDS: &[&str] = &["ja", "en", "head", "from", "dur", "at"];
+/// One-tap shot changes worked out in code ([`Workspace::nudge`]).
+pub const NUDGES: &[&str] = &["closer", "farther", "wider", "tighter", "shorter", "longer"];
+/// Lens steps for `wider` / `tighter` (mm).
+const LENS_STEPS: &[f64] = &[12.0, 14.0, 18.0, 24.0, 28.0, 35.0, 50.0, 65.0, 85.0, 105.0, 135.0, 200.0];
 
 /// (shot, its take if any, the quality that take is in).
 pub type TakePick = (ResolvedShot, Option<Take>, Option<String>);
@@ -706,6 +712,45 @@ impl Workspace {
     pub fn edit_definition_full(&mut self, edits: &[(String, Value)], line_sfx: &[(String, Value)],
                                 order: Option<&[String]>, audio: Option<&Map<String, Value>>, action: &str,
                                 note: &str) -> Result<EditReport> {
+        let lines = if line_sfx.is_empty() {
+            Vec::new()
+        } else {
+            Doc::load(&self.path)?.value()?["script"].as_array().cloned().unwrap_or_default()
+        };
+        let mut line_nodes = Vec::new();
+        for (id, list) in line_sfx {
+            let Some(cur) = lines.iter().find(|l| model::str_of(&l["id"]) == *id) else {
+                bail!("unknown script line '{id}'");
+            };
+            let mut node = cur.clone();
+            let Some(m) = node.as_object_mut() else { bail!("script line '{id}' is not a mapping") };
+            match list {
+                Value::Array(a) if !a.is_empty() => {
+                    m.insert("sfx".into(), list.clone());
+                }
+                Value::Null | Value::Array(_) => {
+                    m.remove("sfx");
+                }
+                _ => bail!("sfx for script line '{id}' must be a list"),
+            }
+            line_nodes.push((id.clone(), node));
+        }
+        let rep = self.write_definition(edits, &line_nodes, order, audio, action, note)?;
+        if !line_sfx.is_empty() {
+            let mut extra = Map::new();
+            extra.insert("lines".into(), json!(line_sfx.iter().map(|(id, _)| id).collect::<Vec<_>>()));
+            self.state.annotate_last(extra);
+            self.state.save()?;
+        }
+        Ok(rep)
+    }
+
+    /// The one write path for edits: whole shots, whole script lines, the shot order and
+    /// `audio:`, checked as a whole before anything is written. The log entry keeps each
+    /// changed piece as it was before and after (`undo`), so the edit can be taken back.
+    fn write_definition(&mut self, edits: &[(String, Value)], line_nodes: &[(String, Value)],
+                        order: Option<&[String]>, audio: Option<&Map<String, Value>>, action: &str, note: &str)
+        -> Result<EditReport> {
         let before = self.render_fps()?;
         let audio_before = self.defn.audio.clone();
         let mut doc = Doc::load(&self.path)?;
@@ -714,6 +759,7 @@ impl Workspace {
             .as_array()
             .map(|a| a.iter().map(|s| model::str_of(&s["id"])).collect())
             .unwrap_or_default();
+        let mut undo_shots = Map::new();
         let mut replace = Vec::new();
         for (id, node) in edits {
             let Some(i) = ids.iter().position(|x| x == id) else {
@@ -723,29 +769,24 @@ impl Workspace {
             if let Some(m) = node.as_object_mut() {
                 m.insert("id".into(), json!(id));
             }
+            undo_shots.insert(id.clone(), current["shots"][i].clone());
             replace.push((i, node, Vec::new()));
         }
         if !replace.is_empty() {
             doc.replace_items("shots", &replace)?;
         }
-        if !line_sfx.is_empty() {
+        let mut undo_lines = Map::new();
+        if !line_nodes.is_empty() {
             let lines = current["script"].as_array().cloned().unwrap_or_default();
             let mut replace = Vec::new();
-            for (id, list) in line_sfx {
+            for (id, node) in line_nodes {
                 let Some(i) = lines.iter().position(|l| model::str_of(&l["id"]) == *id) else {
                     bail!("unknown script line '{id}'");
                 };
-                let mut node = lines[i].clone();
+                let mut node = node.clone();
                 let Some(m) = node.as_object_mut() else { bail!("script line '{id}' is not a mapping") };
-                match list {
-                    Value::Array(a) if !a.is_empty() => {
-                        m.insert("sfx".into(), list.clone());
-                    }
-                    Value::Null | Value::Array(_) => {
-                        m.remove("sfx");
-                    }
-                    _ => bail!("sfx for script line '{id}' must be a list"),
-                }
+                m.insert("id".into(), json!(id));
+                undo_lines.insert(id.clone(), lines[i].clone());
                 replace.push((i, node, Vec::new()));
             }
             doc.replace_items("script", &replace)?;
@@ -770,9 +811,31 @@ impl Workspace {
             audio_changed = true;
         }
         // validate before writing anything
-        model::parse(&doc.value()?, &self.path)?;
+        let written = doc.value()?;
+        model::parse(&written, &self.path)?;
         doc.save(&self.path)?;
         self.reload()?;
+
+        // each changed piece as it is now, next to what it was, so the edit can be undone
+        let find = |list: &str, id: &str| -> Value {
+            written[list].as_array().into_iter().flatten().find(|x| model::str_of(&x["id"]) == id).cloned().unwrap_or(Value::Null)
+        };
+        let pair = |b: Value, a: Value| json!({"before": b, "after": a});
+        let mut undo = Map::new();
+        if !undo_shots.is_empty() {
+            let m: Map<String, Value> = undo_shots.into_iter().map(|(id, b)| { let a = find("shots", &id); (id, pair(b, a)) }).collect();
+            undo.insert("shots".into(), Value::Object(m));
+        }
+        if !undo_lines.is_empty() {
+            let m: Map<String, Value> = undo_lines.into_iter().map(|(id, b)| { let a = find("script", &id); (id, pair(b, a)) }).collect();
+            undo.insert("lines".into(), Value::Object(m));
+        }
+        if order.is_some() {
+            undo.insert("order".into(), pair(json!(ids), json!(self.defn.shot_ids())));
+        }
+        if audio_changed {
+            undo.insert("audio".into(), pair(Value::Object(audio_before), written["audio"].clone()));
+        }
 
         let mut stale = Vec::new();
         for s in self.resolved()? {
@@ -792,12 +855,203 @@ impl Workspace {
         if audio_changed {
             entry["audio"] = json!(true);
         }
-        if !line_sfx.is_empty() {
-            entry["lines"] = json!(line_sfx.iter().map(|(id, _)| id).collect::<Vec<_>>());
+        if action != "undo" {
+            entry["undo"] = Value::Object(undo);
         }
         self.state.log(action, entry);
         self.state.save()?;
         Ok(EditReport { edited, stale, order: order_v, audio: audio_changed })
+    }
+
+    // ------------------------------------------------------------------ script lines, nudges, undo
+
+    /// Set text and timing fields of one script line (see [`LINE_FIELDS`]; null or an empty
+    /// string removes the field). The script is editorial: nothing re-renders.
+    pub fn set_line(&mut self, line_id: &str, assignments: &[(String, Value)]) -> Result<EditReport> {
+        let lines = Doc::load(&self.path)?.value()?["script"].as_array().cloned().unwrap_or_default();
+        let Some(cur) = lines.iter().find(|l| model::str_of(&l["id"]) == line_id) else {
+            bail!("unknown script line '{line_id}'");
+        };
+        let mut node = cur.clone();
+        let Some(m) = node.as_object_mut() else { bail!("script line '{line_id}' is not a mapping") };
+        for (k, v) in assignments {
+            if !LINE_FIELDS.contains(&k.as_str()) {
+                bail!("script line field '{k}' cannot be set here (one of {})", LINE_FIELDS.join(", "));
+            }
+            let v = match v {
+                Value::String(s) => json!(s.trim()),
+                v => v.clone(),
+            };
+            if v.is_null() || v.as_str() == Some("") {
+                m.remove(k);
+            } else {
+                m.insert(k.clone(), v);
+            }
+        }
+        if &node == cur {
+            return Ok(EditReport::default());
+        }
+        let changes = field_changes(cur, &node);
+        let note: Vec<&str> = assignments.iter().map(|(k, _)| k.as_str()).collect();
+        let rep = self.write_definition(&[], &[(line_id.to_string(), node)], None, None, "script", &note.join(", "))?;
+        let mut extra = Map::new();
+        extra.insert("line".into(), json!(line_id));
+        extra.insert("changes".into(), json!({ line_id: changes }));
+        self.state.annotate_last(extra);
+        self.state.save()?;
+        Ok(rep)
+    }
+
+    /// A one-tap change to a shot, worked out in code (no Claude): `closer` / `farther`
+    /// move the camera (and its whole path) toward or away from what it looks at, `wider` /
+    /// `tighter` step the lens, `shorter` / `longer` change the length by half a second.
+    pub fn nudge(&mut self, shot_id: &str, kind: &str) -> Result<EditReport> {
+        use crate::geometry as g;
+        let s = self.select_one(shot_id)?;
+        let old = self.defn.find(&s.id)?.clone();
+        let mut node = old.clone();
+        let round = |v: g::Vec3| json!(v.map(f64::round));
+        match kind {
+            "closer" | "farther" => {
+                let k = if kind == "closer" { 0.8 } else { 1.25 };
+                let Some(target) = s.target else {
+                    bail!("{} is aimed by rotation, not at a point; ask Claude to move it instead", s.id);
+                };
+                let d = g::sub(s.start.location, target);
+                let dist = g::length(d);
+                if dist * k < 30.0 {
+                    bail!("{} is already {:.0} cm from what it looks at", s.id, dist);
+                }
+                let delta = g::scale(d, k - 1.0);
+                let Some(cam) = node.get_mut("camera").and_then(Value::as_object_mut) else {
+                    bail!("{} has no camera mapping", s.id);
+                };
+                if cam.contains_key("anchor") {
+                    let off = cam.get("offset").and_then(model::vec3).unwrap_or([-600.0, 0.0, 150.0]);
+                    cam.insert("offset".into(), round(g::add(off, delta)));
+                } else if let Some(loc) = cam.get("location").and_then(model::vec3) {
+                    cam.insert("location".into(), round(g::add(loc, delta)));
+                }
+                if let Some(end) = cam.get_mut("end").and_then(Value::as_object_mut) {
+                    if let Some(l) = end.get("location").and_then(model::vec3) {
+                        end.insert("location".into(), round(g::add(l, delta)));
+                    }
+                }
+                // a dolly keeps its share of the distance, so it does not run through the subject
+                if let Some(mv) = cam.get_mut("move").and_then(Value::as_object_mut) {
+                    let dolly = mv.get("type").and_then(Value::as_str).is_some_and(|t| t.starts_with("dolly"));
+                    if let (true, Some(dd)) = (dolly, mv.get("distance").and_then(num)) {
+                        mv.insert("distance".into(), json!((dd * k).round()));
+                    }
+                }
+            }
+            "wider" | "tighter" => {
+                let f = s.focal_length();
+                let next = if kind == "wider" {
+                    LENS_STEPS.iter().rev().find(|x| **x < f - 0.5)
+                } else {
+                    LENS_STEPS.iter().find(|x| **x > f + 0.5)
+                };
+                let Some(n) = next else { bail!("{} is already at {}mm", s.id, model::fmt_g(f)) };
+                let Some(cam) = node.get_mut("camera").and_then(Value::as_object_mut) else {
+                    bail!("{} has no camera mapping", s.id);
+                };
+                if !cam.get("lens").is_some_and(Value::is_object) {
+                    cam.insert("lens".into(), json!({}));
+                }
+                cam["lens"]["focal_length"] = json!(n);
+            }
+            "shorter" | "longer" => {
+                let d = round_to(((s.duration + if kind == "longer" { 0.5 } else { -0.5 }) * 2.0).round() / 2.0, 2);
+                if !(1.0..=8.0).contains(&d) {
+                    bail!("{} would be {}s; a shot stays within 1-8 s", s.id, model::fmt_g(d));
+                }
+                node["duration"] = json!(d);
+            }
+            _ => bail!("nudge: one of {}", NUDGES.join(", ")),
+        }
+        let changes = field_changes(&old, &node);
+        let rep = self.edit_definition(&[(s.id.clone(), node)], None, "nudge", kind)?;
+        let mut extra = Map::new();
+        extra.insert("shot".into(), json!(s.id));
+        extra.insert("kind".into(), json!(kind));
+        extra.insert("changes".into(), json!({ s.id.clone(): changes }));
+        self.state.annotate_last(extra);
+        self.state.save()?;
+        Ok(rep)
+    }
+
+    /// The newest edit that can still be taken back: (its index in the history, the entry).
+    /// A fresh plan rewrites everything, so nothing before one can be undone.
+    pub fn undo_target(&self) -> Option<(usize, Value)> {
+        let hist = self.state.history();
+        let undone: Vec<u64> = hist.iter().filter(|e| e["action"] == "undo").filter_map(|e| e["of"].as_u64()).collect();
+        for (i, e) in hist.iter().enumerate().rev() {
+            let action = e["action"].as_str().unwrap_or("");
+            if action == "plan" || action == "produce" {
+                return None;
+            }
+            if action != "undo" && e.get("undo").is_some_and(Value::is_object) && !undone.contains(&(i as u64)) {
+                return Some((i, e.clone()));
+            }
+        }
+        None
+    }
+
+    /// Take back the newest edit: its shots, script lines, order and `audio:` go back to
+    /// what they were. Takes are kept by fingerprint, so a shot put back reuses the take it
+    /// had (nothing re-renders). Refuses when a piece changed again since (a hand edit, the
+    /// CLI), so nothing written later is lost.
+    pub fn undo(&mut self) -> Result<(EditReport, Value)> {
+        let Some((idx, entry)) = self.undo_target() else { bail!("nothing to undo") };
+        let u = &entry["undo"];
+        let now = Doc::load(&self.path)?.value()?;
+        let find = |list: &str, id: &str| -> Value {
+            now[list].as_array().into_iter().flatten().find(|x| model::str_of(&x["id"]) == id).cloned().unwrap_or(Value::Null)
+        };
+        let mut shots = Vec::new();
+        for (id, p) in u["shots"].as_object().into_iter().flatten() {
+            if find("shots", id) != p["after"] {
+                bail!("{id} changed again after that edit; nothing undone");
+            }
+            shots.push((id.clone(), p["before"].clone()));
+        }
+        let mut lines = Vec::new();
+        for (id, p) in u["lines"].as_object().into_iter().flatten() {
+            if find("script", id) != p["after"] {
+                bail!("script line {id} changed again after that edit; nothing undone");
+            }
+            lines.push((id.clone(), p["before"].clone()));
+        }
+        let order: Option<Vec<String>> = match u.get("order") {
+            Some(p) => {
+                if json!(self.defn.shot_ids()) != p["after"] {
+                    bail!("the shot order changed again after that edit; nothing undone");
+                }
+                Some(p["before"].as_array().into_iter().flatten().map(model::str_of).collect())
+            }
+            None => None,
+        };
+        let audio: Option<Map<String, Value>> = match u.get("audio") {
+            Some(p) => {
+                if now["audio"] != p["after"] {
+                    bail!("the audio changed again after that edit; nothing undone");
+                }
+                Some(p["before"].as_object().cloned().unwrap_or_default())
+            }
+            None => None,
+        };
+        let what = entry["note"].as_str().unwrap_or("").to_string();
+        let action = entry["action"].as_str().unwrap_or("").to_string();
+        let line_ids: Vec<String> = lines.iter().map(|(id, _)| id.clone()).collect();
+        let rep = self.write_definition(&shots, &lines, order.as_deref(), audio.as_ref(), "undo", &what)?;
+        let mut extra = Map::new();
+        extra.insert("of".into(), json!(idx));
+        extra.insert("undid".into(), json!(action));
+        extra.insert("lines".into(), json!(line_ids));
+        self.state.annotate_last(extra);
+        self.state.save()?;
+        Ok((rep, json!({"action": action, "note": what, "lines": line_ids})))
     }
 
     pub fn set_fields(&mut self, shot_id: &str, assignments: &[(String, Value)]) -> Result<EditReport> {
