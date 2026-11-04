@@ -236,6 +236,24 @@ impl OpenAiImages {
 }
 
 impl ImageGen for OpenAiImages {
+    /// One request per image, all at once (each takes tens of seconds). Same contract as
+    /// the default: the first failure is an error, a later one keeps the images before it.
+    fn generate_many(&self, jobs: &[ImageJob]) -> Result<Vec<Vec<u8>>> {
+        let results: Vec<Result<Vec<u8>>> = std::thread::scope(|sc| {
+            let handles: Vec<_> = jobs.iter().map(|j| sc.spawn(move || self.generate(j))).collect();
+            handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(Error::user("image request panicked")))).collect()
+        });
+        let mut out = Vec::new();
+        for r in results {
+            match r {
+                Ok(b) => out.push(b),
+                Err(e) if out.is_empty() => return Err(e),
+                Err(_) => break,
+            }
+        }
+        Ok(out)
+    }
+
     fn generate(&self, job: &ImageJob) -> Result<Vec<u8>> {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(Duration::from_secs(30))
