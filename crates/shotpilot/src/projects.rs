@@ -167,7 +167,7 @@ pub fn summary(shots: &Path) -> Value {
                 }
             }
             if best.is_none() {
-                if let Some(p) = ws.state.list_takes(&s.id, q).pop().and_then(|t| t.thumb()) {
+                if let Some(p) = ws.state.latest_take(&s.id, q).and_then(|t| t.thumb()) {
                     best = Some((false, p));
                 }
             }
@@ -192,9 +192,10 @@ fn modified(p: &Path) -> Option<String> {
     Some(chrono::DateTime::<chrono::Local>::from(t).to_rfc3339())
 }
 
+/// A cut is written per quality: cut/<quality>/cut.mp4.
 fn has_cut(root: &Path) -> bool {
     std::fs::read_dir(root.join("cut"))
-        .map(|rd| rd.flatten().any(|e| e.path().extension().is_some_and(|x| x.eq_ignore_ascii_case("mp4"))))
+        .map(|rd| rd.flatten().any(|e| e.path().join("cut.mp4").is_file()))
         .unwrap_or(false)
 }
 
@@ -409,6 +410,14 @@ mod tests {
         assert_eq!(card["shots"], 6);
         assert_eq!(card["taken"], 0);
         assert_eq!(card["engine"], "mock");
+        assert_eq!(card["cut"], false);
+        // cuts live in a folder per quality
+        let root = shots.parent().unwrap();
+        std::fs::create_dir_all(root.join("cut").join("sound")).unwrap();
+        assert_eq!(summary(&shots)["cut"], false);
+        std::fs::create_dir_all(root.join("cut").join("best")).unwrap();
+        std::fs::write(root.join("cut").join("best").join("cut.mp4"), b"").unwrap();
+        assert_eq!(summary(&shots)["cut"], true);
         assert!(summary(&dir.path().join("nope").join("shots.yaml"))["missing"].as_bool().unwrap());
         assert_eq!(find_projects(dir.path()), vec![shots.clone()]);
     }

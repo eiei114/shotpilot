@@ -241,7 +241,8 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 /* ------------------------------------------------------------------ stage */
 #stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
 #view { position: relative; min-height: 0; overflow: hidden; display: grid; place-items: center; }
-#view img { max-width: 100%; max-height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+/* fill the stage (previz frames are small); imageBox() finds the drawn picture inside the box */
+#view img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
 #view video { width: 100%; height: 100%; object-fit: contain; display: block; }
 #view.mark { cursor: crosshair; }
 #region { position: absolute; border: 2px solid var(--accent); background: rgb(59 224 43 / .12); border-radius: 3px; pointer-events: none; }
@@ -252,6 +253,8 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .badge-q { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 600; color: #fff; background: rgb(0 0 0 / .55);
   padding: 3px 8px; border-radius: 6px; letter-spacing: .02em; }
 .badge-q.stale { background: var(--stale); color: #241900; }
+.board-bar { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; }
+#board.on { background: var(--accent); color: var(--accent-ink); }
 .scrub { display: flex; align-items: center; gap: 12px; padding: 8px 14px; color: #c9cfd2; font-size: 12px; font-variant-numeric: tabular-nums; background: #141617; }
 .scrub input { flex: 1; accent-color: var(--accent); }
 
@@ -475,7 +478,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     </div>
     <div class="toolbar" id="toolbar">
       <button class="icon" id="reload" title="再読み込み"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
-      <div class="seg">
+      <div class="seg" id="mode-seg">
         <button class="on" data-mode="preview"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>プレビュー</button>
         <button data-mode="tweak"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>調整</button>
       </div>
@@ -487,6 +490,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
       <div class="right">
         <button class="btn" id="approve" hidden></button>
+        <button class="btn" id="board" title="previz の線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
@@ -572,7 +576,9 @@ const ui = {
   quality: null,
   region: null,         // [x0, y0, x1, y1] normalized to the image
   scopeAll: false,      // note applies to the whole list
-  busy: null,           // "render" | "cut" | "revise" | "save"
+  busy: null,           // "render" | "cut" | "revise" | "save" | "board"
+  board: false,         // show the shot's storyboard frame instead of its take
+  boardStamp: 0,        // cache-buster for repainted storyboard frames
   outcome: {},          // shot id -> {action, seconds}
   summary: "",
   pending: null,        // optimistic chat message while Claude works
@@ -604,15 +610,18 @@ function toast(text, isErr = false) {
   if (text) toast.timer = setTimeout(() => (t.hidden = true), isErr ? 8000 : 3500);
 }
 
-async function refresh() {
+async function refresh(poll = false) {
   try {
     const [st, log] = await Promise.all([api("GET", "/api/status"), api("GET", "/api/log?n=80")]);
+    // the timer's poll redraws only when something changed (an answer from cache is the same)
+    const stKey = JSON.stringify(st), logKey = JSON.stringify(log);
+    if (poll && stKey === ui.statusKey && logKey === ui.logKey) return;
+    ui.statusKey = stKey;
     ui.status = st;
     document.title = `Shotpilot — ${st.title || st.project}`;
     if (!ui.quality || !st.qualities.includes(ui.quality)) ui.quality = defaultQuality(st);
     if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
-    const key = JSON.stringify(log);
-    if (key !== ui.logKey) { ui.log = log; ui.logKey = key; drawChat(); }
+    if (logKey !== ui.logKey) { ui.log = log; ui.logKey = logKey; drawChat(); }
     // sound follows the definition (timing, sfx, audio); the mix itself is cached server-side
     const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
     if (skey !== ui.soundKey) { ui.soundKey = skey; fetchSound(); }
@@ -696,9 +705,11 @@ function draw() {
   $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
   $("toolbar").hidden = !!panel && ui.tab !== "design";
-  for (const el of [$("quality"), $("mark"), document.querySelector(".seg:not(#finish-seg)")]) el.hidden = finishing;
+  for (const el of [$("quality"), $("mark"), $("mode-seg")]) el.hidden = finishing;
   $("finish-seg").hidden = !finishing;
-  $("mark").disabled = ui.tab !== "shot" || tweak;
+  $("mark").disabled = ui.tab !== "shot" || tweak || ui.board;
+  $("board").hidden = finishing || ui.tab !== "shot" || tweak;
+  $("board").classList.toggle("on", ui.board);
   drawStages(); drawNext(); drawFindings(); drawApprove();
   $("render").disabled = $("cut").disabled = !!ui.busy;
   $("send").disabled = !!ui.busy || !st.ai?.ready;
@@ -716,7 +727,9 @@ function draw() {
 
 function drawStage() {
   const s = shot();
+  if (ui.board) { drawBoard(s); return; }
   const view = $("view");
+  if (view.dataset.board) { view.dataset.board = ""; view.innerHTML = ""; } // leaving the storyboard view
   view.classList.toggle("mark", true);
   const tk = s && shownTake(s);
   if (!tk) {
@@ -745,10 +758,48 @@ function drawStage() {
   drawRegion();
 }
 
+/** The shot's storyboard frame: an image model's near-real painting of its previz layout. */
+function drawBoard(s) {
+  const view = $("view"); view.classList.remove("mark");
+  $("scrub").hidden = true;
+  const b = s?.storyboard, ai = ui.status.ai || {}, busy = ui.busy === "board";
+  const missing = ui.status.shots.filter((x) => !x.storyboard?.fresh).length;
+  const btns = !ai.image_active
+    ? `<button class="btn" data-mood-key title="Codex を入れてログインするか、接続設定で OpenAI の API キーを入れると描けます">画像の生成先を設定</button>`
+    : `<button class="btn dark" data-board-gen${ui.busy ? " disabled" : ""}>${busy ? "描いています…" : b ? "このショットを描き直す" : "このショットを描く"}</button>`
+      + (missing > 1 ? `<button class="btn" data-board-all${ui.busy ? " disabled" : ""}>古い・未作成の ${missing} ショットを描く</button>` : "");
+  const key = JSON.stringify([s?.id, b, btns, ui.boardStamp]);
+  if (view.dataset.board === key && view.querySelector(".board-bar")) return;
+  view.dataset.board = key;
+  if (!s || !b) {
+    view.innerHTML = `<div class="placeholder"><b>絵コンテはまだありません</b>previz の線画を下絵に、ロケハン写真とムードボードを参考にして 1 枚描きます。確認用で、ティザーには入りません。</div><div class="board-bar">${s ? btns : ""}</div>`;
+    return;
+  }
+  const label = `絵コンテ（生成画像・ティザーには入りません）${b.fresh ? "" : " · 画が変わったので古い"}`;
+  view.innerHTML = `<img alt="" draggable="false" src="${esc(b.url)}?v=${ui.boardStamp}"><span class="badge-q${b.fresh ? "" : " stale"}">${esc(label)}</span><div class="board-bar">${btns}</div>`;
+}
+
+async function paintBoard(all) {
+  if (ui.busy) return;
+  const shots = all ? ui.status.shots.filter((x) => !x.storyboard?.fresh).map((x) => x.id) : [ui.sel];
+  if (!shots.length || !shots[0]) return;
+  ui.busy = "board"; draw();
+  toast(`絵コンテを描いています（${shots.length} 枚。数分かかります）`);
+  try {
+    const out = await api("POST", "/api/storyboard", { shots, force: !all });
+    toast(`${out.made.length} 枚を描きました`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; ui.boardStamp = Date.now(); await refresh(); }
+}
+
 function imageBox() {
   const img = $("view").querySelector("img");
   if (!img || !img.naturalWidth) return null;
-  const v = $("view").getBoundingClientRect(), r = img.getBoundingClientRect();
+  const v = $("view").getBoundingClientRect(), e = img.getBoundingClientRect();
+  // object-fit: contain letterboxes the picture inside the element box
+  const k = Math.min(e.width / img.naturalWidth, e.height / img.naturalHeight);
+  const w = img.naturalWidth * k, h = img.naturalHeight * k;
+  const r = { left: e.left + (e.width - w) / 2, top: e.top + (e.height - h) / 2, width: w, height: h };
   return { left: r.left - v.left, top: r.top - v.top, width: r.width, height: r.height, abs: r };
 }
 
@@ -836,8 +887,10 @@ function drawApprove() {
   const a = s.approval;
   b.className = `btn ${a === "approved" ? "ok" : a === "outdated" ? "warn" : "dark"}`;
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
-  b.title = p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認ショットへ移ります。画が変わる修正をすると自動で外れます";
-  b.disabled = !!ui.busy || (!!p0 && a !== "approved");
+  // the storyboard is a generated picture, not the shot: approve only while looking at the take
+  b.title = ui.board ? "絵コンテは生成画像です。「絵コンテ」を押して previz / take に戻ってから承認します"
+    : p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認ショットへ移ります。画が変わる修正をすると自動で外れます";
+  b.disabled = !!ui.busy || ui.board || (!!p0 && a !== "approved");
 }
 
 // ------------------------------------------------------------------ finish: design burned in at the cut
@@ -925,7 +978,9 @@ function nextStep() {
   const base = st.qualities[0];
   const unapproved = shots.filter((x) => x.approval !== "approved");
   const approved = shots.filter((x) => x.approval === "approved");
-  const produced = (ui.log || []).some((e) => e.action === "produce");
+  // the first pass is for an empty project; once shots are taken or cut, go on from what is there
+  const produced = (ui.log || []).some((e) => e.action === "produce")
+    || !!st.cut || shots.some((x) => st.qualities.some((q) => x.qualities[q] === "fresh"));
   if (!produced && !skipped("produce")) return { stage: "structure", what: "一気に作る", why: "ロケハン → ステージ → ムードボード → 構成と仕上げ → 撮影 → Cut まで、制約を全部渡して1本出します。そのあと1カットずつ確かめて直します", act: "produce", skip: "produce", need: ai.ready ? null : "Claude が未接続です" };
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
@@ -2128,6 +2183,7 @@ $("cut").addEventListener("click", cut);
 $("reload").addEventListener("click", () => { ui.logKey = ""; ui.soundKey = ""; refresh(); });
 $("send").addEventListener("click", sendNote);
 $("scope").addEventListener("click", () => {
+  if (planning()) return; // a plan always covers the whole list; do not flip the shot scope behind the label
   if (ui.tab === "sound") { ui.snd = null; drawSoundBits(); drawChips(); return; } // sound notes: drop to BGM + all SE
   ui.scopeAll = !ui.scopeAll; drawChips();
 });
@@ -2332,6 +2388,7 @@ $("conn-close").addEventListener("click", () => ($("conn").hidden = true));
 $("conn-save").addEventListener("click", saveConn);
 $("conn").addEventListener("change", markConn);
 $("conn-keyinput").addEventListener("focus", () => { document.querySelector("input[name=prov][value=api-key]").checked = true; markConn(); });
+$("board").addEventListener("click", () => { ui.board = !ui.board; ui.region = null; $("view").dataset.board = ""; draw(); });
 $("mark").addEventListener("click", () => toast("プレビューの上をドラッグして、直したいところを囲んでください"));
 $("open-ext").addEventListener("click", async () => {
   const cut = ui.status?.cut;
@@ -2394,8 +2451,14 @@ $("briefpanel").addEventListener("input", (e) => { const el = e.target.closest("
 
 // drag on the frame to mark what the note is about
 let drag = null;
+$("view").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-board-gen],[data-board-all],[data-mood-key]");
+  if (!t) return;
+  if (t.matches("[data-mood-key]")) openConn();
+  else paintBoard(t.matches("[data-board-all]"));
+});
 $("view").addEventListener("pointerdown", (e) => {
-  if (ui.tab !== "shot" || ui.mode !== "preview") return;
+  if (ui.tab !== "shot" || ui.mode !== "preview" || ui.board || e.target.closest(".board-bar")) return;
   const box = imageBox(); if (!box) return;
   const p = (ev) => [Math.min(Math.max((ev.clientX - box.abs.left) / box.abs.width, 0), 1), Math.min(Math.max((ev.clientY - box.abs.top) / box.abs.height, 0), 1)];
   drag = { p, start: p(e) };
@@ -2442,7 +2505,7 @@ document.addEventListener("keydown", (e) => {
 window.addEventListener("resize", () => { drawRegion(); if (ui.status) drawTimeline(); });
 window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 // shots.yaml is the source of truth: pick up edits made from the CLI or a text editor
-setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(); }, 3000);
+setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(true); }, 3000);
 // #teaser / #tweak / #s03_west_stair open the app on that view (handy for checks and links)
 function applyHash() {
   for (const part of location.hash.slice(1).split("&").filter(Boolean)) {

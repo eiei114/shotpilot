@@ -142,6 +142,17 @@ enum Cmd {
         #[arg(short, long, default_value_t = 4)]
         n: usize,
     },
+    /// paint near-real storyboard frames over the previz layout (preview only; never in the cut)
+    Storyboard {
+        /// shots to paint (all when empty)
+        shots: Vec<String>,
+        /// art direction, e.g. "cold blue, red lantern, fog"
+        #[arg(long, default_value = "")]
+        direction: String,
+        /// repaint even if the frame matches the shot
+        #[arg(long)]
+        force: bool,
+    },
     /// what the trailer is for: brief kind=teaser genre=ホラー must_show='[井戸, 窓]'
     Brief {
         assignments: Vec<String>,
@@ -534,6 +545,15 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("added {m}");
             }
             println!("mood board: {} image(s); plan shows them to Claude", ws.defn.brief.images.len());
+        }
+        Cmd::Storyboard { shots, direction, force } => {
+            let mut ws = ws(file)?;
+            let gen = connect::make_image_gen(&Settings::load(Settings::default_path().as_deref()))?;
+            for o in ws.generate_storyboard(gen.as_ref(), &shots, &direction, force)? {
+                let rel = o.file.strip_prefix(&ws.root).unwrap_or(&o.file).display().to_string();
+                println!("{:<14} {:<5} {rel}", o.shot_id, o.action);
+            }
+            println!("storyboard frames are a preview: the cut uses only takes rendered from the game");
         }
         Cmd::Brief { assignments } => {
             let mut ws = ws(file)?;

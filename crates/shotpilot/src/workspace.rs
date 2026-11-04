@@ -32,6 +32,15 @@ pub type TakePick = (ResolvedShot, Option<Take>, Option<String>);
 /// Progress callback: ("plan", {...}) once, then ("shot", outcome) per shot.
 pub type Progress<'a> = &'a mut dyn FnMut(&str, &Value);
 
+/// What happened to a shot's storyboard frame.
+#[derive(Debug, Clone)]
+pub struct StoryboardOutcome {
+    pub shot_id: String,
+    /// "made" or "kept" (its frame already matched the shot's picture).
+    pub action: String,
+    pub file: PathBuf,
+}
+
 #[derive(Debug, Clone)]
 pub struct RenderOutcome {
     pub shot_id: String,
@@ -78,6 +87,17 @@ impl ShotStatus {
             "beat": self.beat, "build": self.build, "qualities": qs, "approval": self.approval,
         })
     }
+}
+
+/// One quality of a shot as the app shows it (see [`Workspace::status_detail`]).
+#[derive(Debug, Clone)]
+pub struct QualityTake {
+    pub quality: String,
+    /// The render fingerprint the shot has now at this quality.
+    pub fingerprint: String,
+    /// `take` matches `fingerprint`.
+    pub fresh: bool,
+    pub take: Option<Take>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -178,32 +198,44 @@ impl Workspace {
     // ------------------------------------------------------------------ status
 
     pub fn status(&self) -> Result<Vec<ShotStatus>> {
+        Ok(self.status_detail(&self.resolved()?, false)?.into_iter().map(|(row, _)| row).collect())
+    }
+
+    /// [`Self::status`] for these shots, with each quality's render fingerprint and the take
+    /// to show: the fresh one, else (with `latest`) the newest stale one. Without `latest`
+    /// stale takes are only counted, not read.
+    pub fn status_detail(&self, shots: &[ResolvedShot], latest: bool) -> Result<Vec<(ShotStatus, Vec<QualityTake>)>> {
+        let names = fp::quality_names(&self.defn);
         let mut rows = Vec::new();
-        for s in self.resolved()? {
-            let bfp = fp::build_fingerprint(&self.defn, &s);
+        for s in shots {
+            let bfp = fp::build_fingerprint(&self.defn, s);
             let build = match self.state.pushed_fp(&s.id) {
                 None => "new",
                 Some(p) if p == bfp => "synced",
                 Some(_) => "dirty",
             };
             let mut qualities = Vec::new();
-            for q in fp::quality_names(&self.defn) {
-                let rfp = fp::render_fingerprint(&self.defn, &s, &q)?;
-                let st = if self.state.find_take(&s.id, &q, &rfp).is_some() {
-                    "fresh"
-                } else if !self.state.list_takes(&s.id, &q).is_empty() {
-                    "stale"
-                } else {
-                    "none"
+            let mut takes = Vec::new();
+            for q in &names {
+                let rfp = fp::render_fingerprint(&self.defn, s, q)?;
+                let (st, take) = match self.state.find_take(&s.id, q, &rfp) {
+                    Some(t) => ("fresh", Some(t)),
+                    None if latest => match self.state.latest_take(&s.id, q) {
+                        Some(t) => ("stale", Some(t)),
+                        None => ("none", None),
+                    },
+                    None if self.state.has_takes(&s.id, q) => ("stale", None),
+                    None => ("none", None),
                 };
-                qualities.push((q, st.to_string()));
+                qualities.push((q.clone(), st.to_string()));
+                takes.push(QualityTake { quality: q.clone(), fingerprint: rfp, fresh: st == "fresh", take });
             }
             let approval = match self.state.approved_fp(&s.id) {
                 None => "none",
-                Some(a) if a == fp::look_fingerprint(&self.defn, &s) => "approved",
+                Some(a) if a == fp::look_fingerprint(&self.defn, s) => "approved",
                 Some(_) => "outdated",
             };
-            rows.push(ShotStatus {
+            let row = ShotStatus {
                 approval: approval.into(),
                 index: s.index,
                 id: s.id.clone(),
@@ -212,7 +244,8 @@ impl Workspace {
                 beat: s.beat.clone(),
                 build: build.into(),
                 qualities,
-            });
+            };
+            rows.push((row, takes));
         }
         Ok(rows)
     }
@@ -1070,6 +1103,52 @@ impl Workspace {
         match err {
             Some(e) if made.is_empty() => Err(e),
             _ => Ok(made),
+        }
+    }
+
+    /// Paint storyboard frames (a near-real look over the previz layout) for the given shots,
+    /// all when empty. Shots whose frame matches their current picture are kept unless
+    /// `force`. Frames live in storyboard/, outside the takes: nothing here re-renders or
+    /// reaches the cut. A failed batch stops the run; the frames already made are kept.
+    pub fn generate_storyboard(&mut self, gen: &dyn crate::moodboard::ImageGen, ids: &[String], direction: &str,
+                               force: bool) -> Result<Vec<StoryboardOutcome>> {
+        use crate::storyboard as sb;
+        let shots = self.select(ids)?;
+        let mut out = Vec::new();
+        let mut todo = Vec::new();
+        for s in shots {
+            match sb::current(&self.defn, &s) {
+                Some(b) if b.fresh && !force => out.push(StoryboardOutcome { shot_id: s.id.clone(), action: "kept".into(), file: b.file }),
+                _ => todo.push(s),
+            }
+        }
+        let mut err = None;
+        for batch in todo.chunks(4) {
+            let jobs = batch.iter().map(|s| sb::job(&self.defn, s, direction)).collect::<Result<Vec<_>>>()?;
+            match gen.generate_many(&jobs) {
+                Ok(images) => {
+                    for (s, bytes) in batch.iter().zip(images.iter()) {
+                        let file = sb::store(&self.defn, s, bytes)?;
+                        out.push(StoryboardOutcome { shot_id: s.id.clone(), action: "made".into(), file });
+                    }
+                    if images.len() < batch.len() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+        }
+        let made: Vec<&str> = out.iter().filter(|o| o.action == "made").map(|o| o.shot_id.as_str()).collect();
+        if !made.is_empty() {
+            self.state.log("storyboard", json!({"made": made, "direction": direction}));
+            self.state.save()?;
+        }
+        match err {
+            Some(e) if made.is_empty() => Err(e),
+            _ => Ok(out),
         }
     }
 

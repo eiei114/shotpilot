@@ -36,7 +36,7 @@ use crate::workspace::Workspace;
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 pub const HOME_HTML: &str = include_str!("../web/home.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard"];
 /// Loopback only; large enough for a mood-board image sent as base64.
 const MAX_BODY: usize = 20 << 20;
 
@@ -342,6 +342,7 @@ fn read_request(stream: &TcpStream) -> std::io::Result<Option<Request>> {
 fn status_text(code: u16) -> &'static str {
     match code {
         200 => "OK",
+        206 => "Partial Content",
         302 => "Found",
         304 => "Not Modified",
         400 => "Bad Request",
@@ -349,6 +350,7 @@ fn status_text(code: u16) -> &'static str {
         404 => "Not Found",
         409 => "Conflict",
         413 => "Payload Too Large",
+        416 => "Range Not Satisfiable",
         _ => "Internal Server Error",
     }
 }
@@ -366,6 +368,57 @@ fn send(stream: &mut TcpStream, head_only: bool, code: u16, ctype: &str, body: &
     stream.write_all(head.as_bytes())?;
     if !head_only && code != 304 {
         stream.write_all(body)?;
+    }
+    stream.flush()
+}
+
+/// A file from disk, streamed (videos and mixes are tens of MB) and with byte ranges, so
+/// the window's video and audio players can seek without fetching the whole file again.
+fn send_file(stream: &mut TcpStream, req: &Request, path: &Path, cache: &str) -> std::io::Result<()> {
+    let head_only = req.method == "HEAD";
+    let mut file = std::fs::File::open(path)?;
+    let meta = file.metadata()?;
+    let len = meta.len();
+    let stamp = meta.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_nanos()).unwrap_or(0);
+    let tag = format!("\"{stamp:x}-{len:x}\"");
+    let mut extra: Vec<(&str, String)> =
+        vec![("Cache-Control", cache.into()), ("Accept-Ranges", "bytes".into()), ("ETag", tag.clone())];
+    if req.header("if-none-match") == Some(tag.as_str()) {
+        return send(stream, true, 304, "", b"", &extra);
+    }
+    // one range only ("bytes=a-b", "bytes=a-", "bytes=-n"); anything else gets the whole file
+    let range = req.header("range").and_then(|r| r.strip_prefix("bytes=")).filter(|r| !r.contains(',')).and_then(|r| {
+        let (a, b) = r.split_once('-')?;
+        let (a, b) = (a.trim(), b.trim());
+        match (a.parse::<u64>().ok(), b.parse::<u64>().ok()) {
+            (Some(a), Some(b)) => Some((a, b.min(len.saturating_sub(1)))),
+            (Some(a), None) if b.is_empty() => Some((a, len.saturating_sub(1))),
+            (None, Some(n)) if a.is_empty() => Some((len.saturating_sub(n), len.saturating_sub(1))),
+            _ => None,
+        }
+    });
+    let (code, start, count) = match range {
+        Some((a, b)) if a < len && a <= b => {
+            extra.push(("Content-Range", format!("bytes {a}-{b}/{len}")));
+            (206, a, b - a + 1)
+        }
+        Some(_) => {
+            extra.push(("Content-Range", format!("bytes */{len}")));
+            return send(stream, head_only, 416, "text/plain", b"", &extra);
+        }
+        None => (200, 0, len),
+    };
+    let mut head = format!("HTTP/1.1 {code} {}\r\nServer: shotpilot\r\nConnection: close\r\n", status_text(code));
+    head.push_str(&format!("Content-Type: {}\r\nContent-Length: {count}\r\n", mime(path)));
+    for (k, v) in &extra {
+        head.push_str(&format!("{k}: {v}\r\n"));
+    }
+    head.push_str("\r\n");
+    stream.write_all(head.as_bytes())?;
+    if !head_only {
+        use std::io::Seek;
+        file.seek(std::io::SeekFrom::Start(start))?;
+        std::io::copy(&mut file.take(count), stream)?;
     }
     stream.flush()
 }
@@ -453,33 +506,38 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
     let qualities = fp::quality_names(&ws.defn);
     let resolved = ws.resolved()?;
     let mut shots = Vec::new();
-    for row in ws.status()? {
-        let s = resolved.iter().find(|s| s.id == row.id).expect("same definition");
+    for ((row, takes), s) in ws.status_detail(&resolved, true)?.into_iter().zip(&resolved) {
         let mut thumbs = Map::new();
-        for q in &qualities {
-            let rfp = fp::render_fingerprint(&ws.defn, s, q)?;
-            let fresh = ws.state.find_take(&s.id, q, &rfp);
-            let is_fresh = fresh.is_some();
-            let take = fresh.or_else(|| ws.state.list_takes(&s.id, q).pop());
+        for qt in takes {
+            let (q, rfp, is_fresh, take) = (qt.quality, qt.fingerprint, qt.fresh, qt.take);
             let url = take.as_ref().and_then(|t| t.thumb()).and_then(|p| file_url(&ws.root, &p));
             let frames: Vec<String> = take
                 .as_ref()
                 .map(|t| t.files().iter().filter_map(|f| file_url(&ws.root, &t.dir.join(f))).collect())
                 .unwrap_or_default();
             let numbers = take.as_ref().map(|t| t.frames()).unwrap_or_default();
-            thumbs.insert(q.clone(), json!({
+            thumbs.insert(q, json!({
                 "url": url, "fresh": is_fresh, "fingerprint": &rfp[..12], "frames": frames, "frame_numbers": numbers,
             }));
         }
         let mut v = row.to_json();
         v["lens"] = s.lens.get("focal_length").cloned().unwrap_or(Value::Null);
         v["thumbs"] = Value::Object(thumbs);
+        v["storyboard"] = match crate::storyboard::current(&ws.defn, s) {
+            Some(b) => json!({"url": file_url(&ws.root, &b.file), "fresh": b.fresh}),
+            None => Value::Null,
+        };
         v["node"] = ws.defn.shots[row.index].clone();
         v["framing"] = crate::shotcheck::framing(&ws.defn, s).map(|f| f.to_json()).unwrap_or(Value::Null);
         shots.push(v);
     }
     let timeline = timeline_json(&ws.defn, &resolved);
     let total: f64 = timeline.last().map(|it| it["start"].as_f64().unwrap_or(0.0) + it["duration"].as_f64().unwrap_or(0.0)).unwrap_or(0.0);
+    // the shot check once: the warnings are its P0 and P1 lines (Workspace::structure_warnings)
+    let checks = crate::shotcheck::check(&ws.defn, &resolved);
+    let warnings: Vec<String> =
+        checks.iter().filter(|f| f.severity <= crate::shotcheck::Severity::P1).map(crate::shotcheck::Finding::line).collect();
+    let scout = crate::scout::load_index(&ws.root);
     Ok(json!({
         "project": ws.defn.project.name,
         "engine": ws.defn.project.engine,
@@ -488,13 +546,13 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "target_duration": ws.defn.teaser.target_duration,
         "total_duration": crate::geometry::round_to(total, 3),
         "qualities": qualities,
-        "warnings": ws.structure_warnings()?,
-        "checks": ws.check()?.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
+        "warnings": warnings,
+        "checks": checks.iter().map(|f| f.to_json()).collect::<Vec<_>>(),
         "timeline": timeline,
         "script": ws.defn.script.iter().map(line_json).collect::<Vec<_>>(),
         "brief": brief_json(&ws.defn.brief),
-        "scout": crate::scout::summary(&ws.root),
-        "scout_taken": crate::scout::load_index(&ws.root)["taken"],
+        "scout": scout["anchors"].as_object().cloned().unwrap_or_default(), // scout::summary
+        "scout_taken": scout["taken"],
         "finish": {
             "letterbox": ws.defn.finish.letterbox,
             "title": ws.defn.finish.title.as_ref().map(|t| json!({"text": t.text, "at": t.at, "duration": t.duration})),
@@ -671,11 +729,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
         ("GET" | "HEAD", "/home/cover") => {
             let p = req.query.split('&').find_map(|kv| kv.strip_prefix("p=")).unwrap_or("");
             match app.cover_file(p) {
-                Some(file) => {
-                    let data = std::fs::read(&file).map_err(io)?;
-                    send(stream, head, 200, mime(&file), &data, &[("Cache-Control", "public, max-age=31536000, immutable".into())])
-                        .map_err(io)
-                }
+                Some(file) => send_file(stream, req, &file, "public, max-age=31536000, immutable").map_err(io),
                 None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
             }
         }
@@ -692,17 +746,22 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
         }
         ("GET" | "HEAD", "/api/log") => {
             let n: usize = req.query.split('&').find_map(|kv| kv.strip_prefix("n=")).and_then(|v| v.parse().ok()).unwrap_or(30);
+            // the history lives in state.json, which the status ETag covers
+            let tag = format!("\"log{n}.{}", etag(app).trim_start_matches('"'));
+            if req.header("if-none-match") == Some(tag.as_str()) {
+                return send(stream, head, 304, "", b"", &[("ETag", tag)]).map_err(io);
+            }
             let h = app.ws()?.state.history();
             let tail = h[h.len().saturating_sub(n)..].to_vec();
-            send_json(stream, head, 200, &Value::Array(tail)).map_err(io)
+            send(stream, head, 200, "application/json; charset=utf-8", Value::Array(tail).to_string().as_bytes(),
+                 &[("Cache-Control", "no-cache".into()), ("ETag", tag)]).map_err(io)
         }
         ("GET" | "HEAD", p) if p.starts_with("/files/") => match app.served_file(&p["/files/".len()..]) {
             None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
             Some(file) => {
-                let body = std::fs::read(&file)?;
                 // takes live under their fingerprint and are never overwritten, so they cache forever
                 let cache = if p.starts_with("/files/render/") { "public, max-age=31536000, immutable" } else { "no-cache" };
-                send(stream, head, 200, mime(&file), &body, &[("Cache-Control", cache.into())]).map_err(io)
+                send_file(stream, req, &file, cache).map_err(io)
             }
         },
         ("POST", p) if p.starts_with("/api/shots/") => {
@@ -845,10 +904,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let id = percent_decode(&p["/library/".len()..]);
             match lib.get(&id).and_then(|s| lib.file(s)) {
                 None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
-                Some(file) => {
-                    let body = std::fs::read(&file)?;
-                    send(stream, head, 200, mime(&file), &body, &[("Cache-Control", "max-age=3600".into())]).map_err(io)
-                }
+                Some(file) => send_file(stream, req, &file, "max-age=3600").map_err(io),
             }
         }
         ("POST", "/api/library/import") => {
@@ -981,6 +1037,23 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut ws = app.ws()?;
             let made = ws.generate_moodboard(gen.as_ref(), &direction, n)?;
             send_json(stream, false, 200, &json!({"added": made, "images": ws.defn.brief.images})).map_err(io)
+        }
+        ("POST", "/api/storyboard") => {
+            let body = req.json()?;
+            let shots: Vec<String> = body
+                .get("shots")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            let direction = body.get("direction").and_then(Value::as_str).unwrap_or("").to_string();
+            let force = body.get("force").and_then(Value::as_bool).unwrap_or(false);
+            let gen = (app.images)(&app.settings())?; // say what is missing before taking the lock
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let out = ws.generate_storyboard(gen.as_ref(), &shots, &direction, force)?;
+            let made: Vec<&str> = out.iter().filter(|o| o.action == "made").map(|o| o.shot_id.as_str()).collect();
+            let kept: Vec<&str> = out.iter().filter(|o| o.action == "kept").map(|o| o.shot_id.as_str()).collect();
+            send_json(stream, false, 200, &json!({"made": made, "kept": kept})).map_err(io)
         }
         ("POST", "/api/moodboard/upload") => {
             let body = req.json()?;

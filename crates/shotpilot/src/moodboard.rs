@@ -26,10 +26,46 @@ pub fn image_model() -> String {
 
 /// One image to make: a prompt, and optionally a picture to start from (a scout photo:
 /// keep its geometry and framing, change the light and atmosphere).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ImageJob {
     pub prompt: String,
     pub base: Option<PathBuf>,
+    /// The base is a wireframe layout (a previz frame), not a frame of the game: keep its
+    /// camera and the placement of every box, replace the drawing with a finished picture.
+    pub layout: bool,
+    /// Frames of the actual game to match for materials, architecture and light (not framing).
+    pub refs: Vec<PathBuf>,
+}
+
+/// Said of a layout base (after "Attached image #k" / "The first attached image").
+const LAYOUT_NOTE: &str = "is a wireframe layout of this exact shot: keep its camera position, lens, horizon line, and \
+                           the position and size on screen of every box (each labelled box is an object or place in the \
+                           scene; the red cross is where the camera looks). Replace the wireframe, grid and labels with a \
+                           finished picture; draw no boxes, lines or labels.";
+/// Said of reference images (after "Attached images #a, #b" / "The other attached images").
+const REFS_NOTE: &str = "are frames from the actual game: match their materials, architecture, props and lighting, not \
+                         their framing.";
+
+impl ImageJob {
+    /// What the attached images are, for a backend that sends them with one prompt
+    /// (the base first, then the references).
+    pub fn attachment_note(&self) -> String {
+        let mut s = String::new();
+        if self.base.is_some() {
+            if self.layout {
+                s.push_str(&format!("The first attached image {LAYOUT_NOTE} "));
+            } else {
+                s.push_str("Start from the first attached image (a frame from the actual game): keep its architecture, \
+                            layout, camera position and framing; change only the lighting, weather, colour grade and \
+                            atmosphere. ");
+            }
+        }
+        if !self.refs.is_empty() {
+            let who = if self.base.is_some() { "The other attached images" } else { "The attached images" };
+            s.push_str(&format!("{who} {REFS_NOTE} "));
+        }
+        s
+    }
 }
 
 /// Makes images from prompts. Tests swap in a fake; the real ones are [`CodexImages`]
@@ -80,19 +116,27 @@ impl CodexImages {
         );
         for (i, j) in jobs.iter().enumerate() {
             s.push_str(&format!("\n--- Image {} ---\n", i + 1));
+            let mut slot = |p: &PathBuf| match attach.iter().position(|a| a == p) {
+                Some(k) => k + 1,
+                None => {
+                    attach.push(p.clone());
+                    attach.len()
+                }
+            };
             if let Some(b) = &j.base {
-                let k = match attach.iter().position(|a| a == b) {
-                    Some(k) => k,
-                    None => {
-                        attach.push(b.clone());
-                        attach.len() - 1
-                    }
-                };
-                s.push_str(&format!(
-                    "Start from attached image #{} (a frame from the actual game): keep its architecture, layout, \
-                     camera position and framing; change only the lighting, weather, colour grade and atmosphere.\n",
-                    k + 1
-                ));
+                let k = slot(b);
+                if j.layout {
+                    s.push_str(&format!("Attached image #{k} {LAYOUT_NOTE}\n"));
+                } else {
+                    s.push_str(&format!(
+                        "Start from attached image #{k} (a frame from the actual game): keep its architecture, layout, \
+                         camera position and framing; change only the lighting, weather, colour grade and atmosphere.\n"
+                    ));
+                }
+            }
+            if !j.refs.is_empty() {
+                let ks: Vec<String> = j.refs.iter().map(|r| format!("#{}", slot(r))).collect();
+                s.push_str(&format!("Attached images {} {REFS_NOTE}\n", ks.join(", ")));
             }
             s.push_str(&j.prompt);
             s.push('\n');
@@ -192,32 +236,55 @@ impl OpenAiImages {
 }
 
 impl ImageGen for OpenAiImages {
+    /// One request per image, all at once (each takes tens of seconds). Same contract as
+    /// the default: the first failure is an error, a later one keeps the images before it.
+    fn generate_many(&self, jobs: &[ImageJob]) -> Result<Vec<Vec<u8>>> {
+        let results: Vec<Result<Vec<u8>>> = std::thread::scope(|sc| {
+            let handles: Vec<_> = jobs.iter().map(|j| sc.spawn(move || self.generate(j))).collect();
+            handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(Error::user("image request panicked")))).collect()
+        });
+        let mut out = Vec::new();
+        for r in results {
+            match r {
+                Ok(b) => out.push(b),
+                Err(e) if out.is_empty() => return Err(e),
+                Err(_) => break,
+            }
+        }
+        Ok(out)
+    }
+
     fn generate(&self, job: &ImageJob) -> Result<Vec<u8>> {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(Duration::from_secs(30))
             .timeout_read(Duration::from_secs(300))
             .build();
         let auth = format!("Bearer {}", self.key);
-        let resp = match &job.base {
+        let prompt = format!("{}{}", job.attachment_note(), job.prompt);
+        let images: Vec<&PathBuf> = job.base.iter().chain(job.refs.iter()).collect();
+        let resp = match images.first() {
             None => {
-                let body = json!({"model": self.model, "prompt": job.prompt, "size": "1536x1024", "n": 1, "quality": "medium"});
+                let body = json!({"model": self.model, "prompt": prompt, "size": "1536x1024", "n": 1, "quality": "medium"});
                 agent
                     .post("https://api.openai.com/v1/images/generations")
                     .set("content-type", "application/json")
                     .set("authorization", &auth)
                     .send_string(&body.to_string())
             }
-            Some(base) => {
-                let bytes = std::fs::read(base)?;
-                let (ext, media) = image_type(&bytes).ok_or_else(|| Error::user("the base image is not PNG / JPEG / WebP"))?;
+            Some(_) => {
                 let boundary = format!("shotpilot{}", chrono::Local::now().timestamp_nanos_opt().unwrap_or(0));
                 let mut body: Vec<u8> = Vec::new();
-                for (k, v) in [("model", self.model.as_str()), ("prompt", job.prompt.as_str()), ("size", "1536x1024"), ("quality", "medium")] {
+                for (k, v) in [("model", self.model.as_str()), ("prompt", prompt.as_str()), ("size", "1536x1024"), ("quality", "medium")] {
                     body.extend(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n").as_bytes());
                 }
-                body.extend(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"image[]\"; filename=\"base.{ext}\"\r\nContent-Type: {media}\r\n\r\n").as_bytes());
-                body.extend(&bytes);
-                body.extend(format!("\r\n--{boundary}--\r\n").as_bytes());
+                for (i, path) in images.iter().enumerate() {
+                    let bytes = std::fs::read(path)?;
+                    let (ext, media) = image_type(&bytes).ok_or_else(|| Error::user("an attached image is not PNG / JPEG / WebP"))?;
+                    body.extend(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"image[]\"; filename=\"image{i}.{ext}\"\r\nContent-Type: {media}\r\n\r\n").as_bytes());
+                    body.extend(&bytes);
+                    body.extend(b"\r\n");
+                }
+                body.extend(format!("--{boundary}--\r\n").as_bytes());
                 agent
                     .post("https://api.openai.com/v1/images/edits")
                     .set("content-type", &format!("multipart/form-data; boundary={boundary}"))
@@ -354,13 +421,30 @@ pub fn jobs(defn: &Definition, direction: &str) -> Vec<(String, ImageJob)> {
         .into_iter()
         .map(|(k, prompt)| {
             let base = base_for(defn, &k);
-            (k, ImageJob { prompt, base })
+            (k, ImageJob { prompt, base, ..Default::default() })
         })
         .collect()
 }
 
 /// Image prompts for the mood board, from the pitch, the brief and the stage.
 pub fn prompts(defn: &Definition, direction: &str) -> Vec<(String, String)> {
+    let tone = tone(defn, direction);
+    FRAMES
+        .iter()
+        .map(|(key, what)| {
+            (key.to_string(), format!(
+                "A cinematic still frame for a video game teaser, 16:9, shot as if inside the game engine. \
+                 {what}. Consistent palette, lighting and atmosphere across the set. \
+                 No text, no logos, no user interface, no watermark.\n{}",
+                tone.join("\n")
+            ))
+        })
+        .collect()
+}
+
+/// The world and tone an image model is told about: the set, the pitch, the brief and an
+/// optional art direction.
+pub fn tone(defn: &Definition, direction: &str) -> Vec<String> {
     let b = &defn.brief;
     let mut tone = Vec::new();
     if !defn.stage.summary.is_empty() {
@@ -378,17 +462,7 @@ pub fn prompts(defn: &Definition, direction: &str) -> Vec<(String, String)> {
     if !direction.trim().is_empty() {
         tone.push(format!("Art direction: {}", direction.trim()));
     }
-    FRAMES
-        .iter()
-        .map(|(key, what)| {
-            (key.to_string(), format!(
-                "A cinematic still frame for a video game teaser, 16:9, shot as if inside the game engine. \
-                 {what}. Consistent palette, lighting and atmosphere across the set. \
-                 No text, no logos, no user interface, no watermark.\n{}",
-                tone.join("\n")
-            ))
-        })
-        .collect()
+    tone
 }
 
 /// Mood-board images for the planner (image blocks), newest last, within the size limit.

@@ -247,6 +247,37 @@ fn cut_over_http_links_outputs() {
     assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[]).code, 200);
 }
 
+#[test]
+fn files_serve_byte_ranges_and_revalidate() {
+    let s = srv();
+    render(&s, "previz");
+    jcall(&s, "POST", "/api/cut", Some(json!({"quality": "best", "video": false})));
+    let whole = call(&s, "GET", "/files/cut/best/index.html", None, &[]);
+    assert_eq!(whole.code, 200);
+    assert_eq!(whole.header("accept-ranges"), "bytes");
+    let n = whole.body.len();
+    let part = call(&s, "GET", "/files/cut/best/index.html", None, &[("Range", "bytes=10-19")]);
+    assert_eq!(part.code, 206);
+    assert_eq!(part.header("content-range"), format!("bytes 10-19/{n}"));
+    assert_eq!(part.body, whole.body[10..20]);
+    let tail = call(&s, "GET", "/files/cut/best/index.html", None, &[("Range", "bytes=-5")]);
+    assert_eq!(tail.body, whole.body[n - 5..]);
+    assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[("Range", &format!("bytes={n}-"))]).code, 416);
+    let tag = whole.header("etag").to_string();
+    assert_eq!(call(&s, "GET", "/files/cut/best/index.html", None, &[("If-None-Match", &tag)]).code, 304);
+}
+
+#[test]
+fn log_revalidates_like_status() {
+    let s = srv();
+    let first = call(&s, "GET", "/api/log?n=5", None, &[]);
+    assert_eq!(first.code, 200);
+    let tag = first.header("etag").to_string();
+    assert_eq!(call(&s, "GET", "/api/log?n=5", None, &[("If-None-Match", &tag)]).code, 304);
+    render(&s, "previz"); // writes state.json: the history changed
+    assert_eq!(call(&s, "GET", "/api/log?n=5", None, &[("If-None-Match", &tag)]).code, 200);
+}
+
 // --------------------------------------------------------------------------- chat (revise)
 
 struct Recorder {
@@ -533,6 +564,29 @@ fn mood_board_over_http() {
     assert_eq!(out["images"].as_array().unwrap().len(), 2);
     // outside moodboard/ is never served
     assert_eq!(call(&s, "GET", "/files/moodboard/../shots.yaml", None, &[]).code, 404);
+}
+
+#[test]
+fn storyboard_over_http() {
+    let f = ws();
+    let srv = Server::bind_with(&f.path(), "127.0.0.1", 0, shotpilot::server::default_claude(), None).unwrap()
+        .with_images(Box::new(|_| Ok(Box::new(OnePng) as Box<dyn shotpilot::moodboard::ImageGen>)));
+    let port = srv.port();
+    srv.spawn();
+    let s = Srv { port, f };
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert!(st["shots"].as_array().unwrap().iter().all(|x| x["storyboard"].is_null()));
+    let (code, out) = jcall(&s, "POST", "/api/storyboard", Some(json!({"shots": ["s02_well"]})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["made"], json!(["s02_well"]));
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let well = st["shots"].as_array().unwrap().iter().find(|x| x["id"] == "s02_well").unwrap().clone();
+    assert_eq!(well["storyboard"]["fresh"], true);
+    let url = well["storyboard"]["url"].as_str().unwrap();
+    assert!(url.starts_with("/files/storyboard/s02_well/"), "{url}");
+    assert_eq!(call(&s, "GET", url, None, &[]).code, 200);
+    // painting a storyboard frame never renders a take
+    assert!(st["shots"].as_array().unwrap().iter().all(|x| x["thumbs"]["previz"]["url"].is_null()));
 }
 
 #[test]

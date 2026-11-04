@@ -26,6 +26,7 @@ pub mod sound;
 pub mod soundcheck;
 pub mod sounddesign;
 pub mod state;
+pub mod storyboard;
 pub mod sync;
 pub mod templates;
 pub mod workspace;

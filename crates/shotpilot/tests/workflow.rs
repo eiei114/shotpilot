@@ -247,6 +247,74 @@ fn the_mood_board_is_editorial_and_reaches_the_planner() {
     assert_eq!(blocks[0]["source"]["media_type"], "image/png");
 }
 
+struct BoardImages(std::cell::RefCell<Vec<shotpilot::moodboard::ImageJob>>);
+impl shotpilot::moodboard::ImageGen for BoardImages {
+    fn generate(&self, job: &shotpilot::moodboard::ImageJob) -> shotpilot::Result<Vec<u8>> {
+        self.0.borrow_mut().push(job.clone());
+        Ok(PNG.to_vec())
+    }
+}
+
+#[test]
+fn storyboard_frames_are_a_preview_outside_the_takes() {
+    use shotpilot::storyboard;
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    f.ws.take_scout(&[]).unwrap();
+    f.ws.add_moodboard_image("mood.png", PNG).unwrap();
+    let before_launches = launches(&f.ws).len();
+    let before_yaml = f.text();
+    let gen = BoardImages(Default::default());
+
+    let out = f.ws.generate_storyboard(&gen, &[], "冷たい青", false).unwrap();
+    assert_eq!(out.len(), 6);
+    assert!(out.iter().all(|o| o.action == "made" && o.file.starts_with(f.ws.root.join("storyboard"))));
+    {
+        let jobs = gen.0.borrow();
+        assert_eq!(jobs.len(), 6);
+        for j in jobs.iter() {
+            assert!(j.layout && j.base.as_ref().unwrap().to_string_lossy().ends_with(".layout.png"));
+            assert!(j.base.as_ref().unwrap().is_file());
+            assert!(j.prompt.contains("photorealistic") && j.prompt.contains("No text") && j.prompt.contains("Art direction: 冷たい青"));
+            assert!(j.refs.last().unwrap().to_string_lossy().contains("moodboard")); // the mood board sets the palette
+        }
+        // the scout photos of what is in frame come along as references
+        assert!(jobs.iter().any(|j| j.refs.iter().any(|r| r.starts_with(f.ws.root.join("scout")))));
+        let (ins, _) = shotpilot::moodboard::CodexImages::instruction(&jobs[..1]);
+        assert!(ins.contains("Attached image #1 is a wireframe layout") && ins.contains("frames from the actual game"));
+        assert!(jobs[0].attachment_note().starts_with("The first attached image is a wireframe layout"));
+    }
+    // a preview only: no engine launch, no take, shots.yaml untouched, nothing goes stale
+    assert_eq!(launches(&f.ws).len(), before_launches);
+    assert_eq!(f.text(), before_yaml);
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+    assert!(!f.ws.root.join("render").join("s01_gate").join("storyboard").exists());
+
+    // frames that match their shot are kept
+    let again = f.ws.generate_storyboard(&gen, &[], "", false).unwrap();
+    assert!(again.iter().all(|o| o.action == "kept"));
+    assert_eq!(gen.0.borrow().len(), 6);
+
+    // editorial edits keep the frame; a picture edit makes only that shot's frame stale
+    f.ws.set_fields("s02_well", &set(&[("purpose", json!("別の説明")), ("notes", json!("memo"))])).unwrap();
+    f.ws.set_fields("s03_window", &set(&[("camera.lens.focal_length", json!(85))])).unwrap();
+    let fresh = |f: &common::Fixture, id: &str| {
+        let s = f.ws.resolved().unwrap().into_iter().find(|s| s.id == id).unwrap();
+        storyboard::current(&f.ws.defn, &s).unwrap().fresh
+    };
+    assert!(fresh(&f, "s02_well"));
+    assert!(!fresh(&f, "s03_window")); // the old frame is still shown, marked stale
+    let out = f.ws.generate_storyboard(&gen, &[], "", false).unwrap();
+    let made: Vec<&str> = out.iter().filter(|o| o.action == "made").map(|o| o.shot_id.as_str()).collect();
+    assert_eq!(made, ["s03_window"]);
+    assert!(fresh(&f, "s03_window"));
+    // forcing repaints in place
+    let out = f.ws.generate_storyboard(&gen, &ids(&["s01_gate"]), "", true).unwrap();
+    assert_eq!(out[0].action, "made");
+    let files = std::fs::read_dir(f.ws.root.join("storyboard").join("s01_gate")).unwrap().count();
+    assert_eq!(files, 2); // one frame and its layout
+}
+
 #[test]
 fn base64_round_trips() {
     for data in [&b""[..], b"a", b"ab", b"abc", b"abcd", PNG] {
@@ -271,7 +339,7 @@ fn codex_output_is_read_back_from_its_image_folder() {
     assert_eq!(imgs.len(), 2);
     assert_eq!(imgs[1], second); // oldest first: the order they were asked for
     use shotpilot::moodboard::{CodexImages, ImageJob};
-    let shot = |p: &str, b: Option<&str>| ImageJob { prompt: p.into(), base: b.map(std::path::PathBuf::from) };
+    let shot = |p: &str, b: Option<&str>| ImageJob { prompt: p.into(), base: b.map(std::path::PathBuf::from), ..Default::default() };
     let (ins, attach) = CodexImages::instruction(&[shot("one", Some("a.png")), shot("two", None), shot("three", Some("a.png"))]);
     assert!(ins.contains("exactly 3 image(s)") && ins.contains("--- Image 2 ---\ntwo") && ins.contains("Do not write"));
     assert_eq!(attach.len(), 1); // the same scout photo is attached once
