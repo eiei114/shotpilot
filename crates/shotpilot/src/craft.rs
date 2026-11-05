@@ -196,13 +196,32 @@ pub fn skeleton_text(slots: &[Slot]) -> String {
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n\n## Skeleton\n{}\n\n## Craft rules\n{}\n\n{}\n## Framing\n{}",
+        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n\n{}{}{}\n## Framing\n{}",
         brief_text(&defn.brief),
+        plan_text(&defn.brief),
         skeleton_text(slots),
         rules_text(),
         crate::refs::planner_text(&defn.brief),
+        crate::designsys::planner_text(defn),
+        crate::skills::planner_text(&defn.brief),
         framing_table(defn)
     )
+}
+
+/// The planning turn's plan (D-43): production follows it; the latest direction wins.
+fn plan_text(b: &BriefCfg) -> String {
+    if b.plan.trim().is_empty() && b.direction.trim().is_empty() {
+        return String::new();
+    }
+    let mut out =
+        String::from("\n## The plan\nAgreed before production. Carry it out; the director's latest direction outranks it.\n");
+    if !b.direction.trim().is_empty() {
+        out.push_str(&format!("Direction: {}\n", b.direction.trim()));
+    }
+    if !b.plan.trim().is_empty() {
+        out.push_str(&format!("\n{}\n", b.plan.trim()));
+    }
+    out
 }
 
 /// What the planner is told about writing the script first (the text is the spine of the

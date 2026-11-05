@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "command-room",
+  "name": "作戦室",
+  "category": "strategy",
+  "description": "1つの決断から帝国へ。動詞と数え上げで仕組みと広がりを見せる。色調なし、ゴシック。",
+  "genres": [
+    "strategy"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

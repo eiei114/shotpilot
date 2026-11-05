@@ -465,9 +465,10 @@ _SKIP_CLASS = ("Light", "Camera", "Volume", "Sky", "Fog", "PostProcess", "Player
                "LevelSequence", "Emitter", "Niagara", "Audio", "Sound", "Trigger", "Blocking", "HLOD")
 
 
-def _auto_anchors(limit):
-    """Landmarks picked from the level when nothing is tagged: medium-to-large visible meshes,
-    one per kind (by label), spread out so the scout photos cover the level."""
+def _candidates(limit):
+    """Landmark candidates when nothing is tagged: medium-to-large visible meshes, one per kind
+    (by label), largest first. shotpilot picks among them (Claude, by the plan; else the most
+    spread-out ones)."""
     cands = []
     for a in all_actors():
         cls = a.get_class().get_name()
@@ -491,36 +492,19 @@ def _auto_anchors(limit):
         # floors, ceilings and whole buildings frame nothing; tiny clutter is not a place
         if big < 40 or big > 2500 or sz < 15:
             continue
-        name = _anchor_name(a.get_actor_label())
+        label = a.get_actor_label()
+        name = _anchor_name(label)
         if not name:
             continue
         score = min((sx * sy * sz) ** (1.0 / 3.0), 400.0) * (0.5 if flat < 25 else 1.0)
-        cands.append((score, name, e))
+        cands.append(dict(e, name=name, label=label, cls=cls, score=round(score, 1)))
     best = {}
     for c in cands:  # one per kind: six chairs are one landmark
-        if c[1] not in best or c[0] > best[c[1]][0]:
-            best[c[1]] = c
-    pool = sorted(best.values(), key=lambda c: -c[0])
-    picked = []
-
-    def dist(e, f):
-        a, b = e["center"], f["center"]
-        return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) ** 0.5
-
-    while pool and len(picked) < limit:
-        if not picked:
-            c = pool[0]
-        else:
-            # far from what is picked, weighted by how much it is there; nothing closer than 3 m
-            far = [(c[0] * min(dist(c[2], p[2]) for p in picked), c) for c in pool]
-            far = [x for x in far if min(dist(x[1][2], p[2]) for p in picked) >= 300]
-            if not far:
-                break
-            c = max(far, key=lambda x: x[0])[1]
-        picked.append(c)
-        pool.remove(c)
-    log("scan: %d landmark candidates, picked %s" % (len(cands), [c[1] for c in picked]))
-    return {c[1]: c[2] for c in picked}
+        if c["name"] not in best or c["score"] > best[c["name"]]["score"]:
+            best[c["name"]] = c
+    out = sorted(best.values(), key=lambda c: -c["score"])[:limit]
+    log("scan: %d landmark candidates (%d kinds), returning %d" % (len(cands), len(best), len(out)))
+    return out
 
 
 def run_scan(job):
@@ -535,12 +519,12 @@ def run_scan(job):
             anchors[name.lower().replace(" ", "_")] = _actor_entry(a)
     if anchors or not job.get("auto"):
         return {"anchors": anchors}
-    return {"anchors": _auto_anchors(int(job.get("limit", 6))), "auto": True}
+    return {"anchors": {}, "candidates": _candidates(int(job.get("limit", 60)))}
 
 
 def run_survey(job):
-    """Stage 0 in one launch: the anchors (tagged, else picked from the level) and, when asked,
-    the mesh inventory."""
+    """Stage 0 in one launch: the tagged anchors (else landmark candidates to pick from) and, when
+    asked, the mesh inventory."""
     out = run_scan(dict(job, auto=True))
     if job.get("assets"):
         out["assets"] = run_assets(job)["assets"]

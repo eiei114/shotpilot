@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "cold-scifi",
+  "name": "冷たい SF",
+  "category": "action",
+  "description": "整った幾何と冷たい光、広い沈黙。機械の言葉で書く。寒色、帯 2.39、ゴシック。",
+  "genres": [
+    "action",
+    "adventure",
+    "strategy"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

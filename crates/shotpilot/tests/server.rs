@@ -766,3 +766,31 @@ fn home_creates_opens_and_switches_projects() {
     // without a native picker the home falls back to typed paths
     assert_eq!(jcall(&s, "POST", "/api/projects/pick", Some(json!({"kind": "open"}))).0, 400);
 }
+
+#[test]
+fn the_planning_turn_runs_over_http() {
+    // the catalogues for the app
+    let s = srv();
+    let (code, kits) = jcall(&s, "GET", "/api/kits", None);
+    assert_eq!(code, 200);
+    assert_eq!(kits["design_systems"].as_array().unwrap().len(), 12);
+    assert_eq!(kits["skills"].as_array().unwrap().len(), 18);
+
+    // a plan lands in the brief, with the form answers handed to Claude
+    let (s, calls) = srv_with_claude(common::discovery_reply());
+    let answers = json!([{"id": "genre", "label": "ジャンル", "value": "horror"}, {"id": "show", "label": "見せたいもの", "value": ["well", "door"]}]);
+    let (code, out) = jcall(&s, "POST", "/api/discover", Some(json!({"request": "規則のホラー", "answers": answers})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["route"], "plan");
+    assert_eq!(out["design"], "quiet-dread");
+    let user = calls.lock().unwrap()[0]["messages"][0]["content"].as_str().unwrap().to_string();
+    assert!(user.contains("[form answers — discovery]") && user.contains("見せたいもの [show]: well, door"), "{user}");
+    // the chat shows the turn from the history
+    let (_, log) = jcall(&s, "GET", "/api/log", None);
+    let last = log.as_array().unwrap().last().unwrap().clone();
+    assert_eq!(last["action"], "discover");
+    assert_eq!(last["note"], "規則のホラー");
+    assert_eq!(last["route"], "plan");
+    let text = std::fs::read_to_string(s.f.path()).unwrap();
+    assert!(text.contains("design: quiet-dread") && text.contains("rules-teaser"), "{text}");
+}

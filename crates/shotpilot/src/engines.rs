@@ -55,9 +55,9 @@ pub trait Engine {
         -> Result<Value>;
     fn pull(&self, items: &[Value]) -> Result<Value>;
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value>;
-    /// Stage 0 in one launch: {"anchors": ..., "auto": bool, "assets"?: [...]}. The anchors are
-    /// the tagged ones as in [`Engine::scan`]; with none tagged, landmarks the engine picks from
-    /// the level (`auto: true`). The mesh inventory comes along when `assets` is set.
+    /// Stage 0 in one launch: {"anchors": ..., "candidates"?: [...], "assets"?: [...]}. The anchors
+    /// are the tagged ones as in [`Engine::scan`]; with none tagged, `candidates` lists landmarks
+    /// in the level to pick from (scout::Candidate). The mesh inventory comes along when `assets`.
     fn survey(&self, tag: &str, prefix: &str, assets: bool) -> Result<Value>;
     /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
     fn assets(&self) -> Result<Value>;
@@ -293,13 +293,26 @@ impl Engine for MockEngine {
     fn survey(&self, _tag: &str, _prefix: &str, assets: bool) -> Result<Value> {
         self.launch("survey", json!({"assets": assets}))?;
         let mut out = self.level()?;
-        // the mock level: `level.json` holds what is tagged, `landmarks.json` what a level
-        // without tags would offer (as the real engine picks from its actors)
+        // the mock level: `level.json` holds what is tagged, `landmarks.json` ({name: entry})
+        // what a level without tags offers, scored by size as the real engine does
         let tagged = out["anchors"].as_object().is_some_and(|m| !m.is_empty());
         let marks = self.store.join("landmarks.json");
-        out["auto"] = json!(!tagged && marks.exists());
         if !tagged && marks.exists() {
-            out["anchors"] = read_json(&marks)?;
+            let cands: Vec<Value> = read_json(&marks)?
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(name, e)| {
+                    let size = e["size"].as_array().map(|a| a.iter().filter_map(Value::as_f64).product::<f64>()).unwrap_or(0.0);
+                    let mut c = e.clone();
+                    c["name"] = json!(name);
+                    c["label"] = json!(format!("SM_{name}"));
+                    c["cls"] = json!("StaticMeshActor");
+                    c["score"] = json!(size.cbrt().min(400.0));
+                    c
+                })
+                .collect();
+            out["candidates"] = json!(cands);
         }
         if assets {
             out["assets"] = self.inventory()?["assets"].take();

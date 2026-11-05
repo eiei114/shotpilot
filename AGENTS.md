@@ -34,7 +34,10 @@ shotpilot approve --script        # 台本を承認（文字・並び・各カ�
 shotpilot brief genre=ホラー       # brief: を見る・書く
 shotpilot moodboard               # ブリーフからムードボードを4枚生成（Codex か OpenAI キー）
 shotpilot storyboard [s03]        # previz の線画を下絵に、リアル寄りの絵コンテを生成（確認用。Cut には入らない）
-shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
+shotpilot discover "規則で見せるホラー"  # 企画（D-43）: 足りないときだけ質問し、方向・ルック・スキル・企画を brief: に書く
+shotpilot design [id] [--fork]    # ルック（デザインシステム）の一覧・指定。--fork でプロジェクトに DESIGN.md を写す
+shotpilot skills                  # ティザーの型の手順書（スキル）の一覧
+shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（企画→ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
 shotpilot produce --review        # 同じだが、台本とカットの previz で止める（アプリの既定）。確かめて直したら produce --resume で音→撮影→Cut
 shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）。アンカーが無ければ、同じ UE の起動でレベルから取り込み、アセットも棚卸しする
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
@@ -61,6 +64,8 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/storyboard.rs   絵コンテ（D-33）。previz の線画を下絵に、ロケハン写真とムードボードを参照して画像生成で描く確認用の1枚
   src/produce.rs      初回の一気通し（D-28）。足りない下ごしらえを埋め、plan を1回、最安の品質で撮って仕上げ込みで Cut
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
+  src/designsys.rs    ルック（D-43）。references/design-systems/<id>/ の DESIGN.md・tokens・manifest を埋め込み、plan に全文を渡し、tokens で仕上げを決める
+  src/skills.rs       スキル（D-43）。references/skills/<id>/SKILL.md を埋め込み、企画で選ばれたものの本文を plan に渡す
   src/refs.rs         実測リファレンス（references/craft/ と genres/<id>/、流行りの型 20 本を埋め込み）。plan に渡す文と、骨格の hook・title の長さと密度の形
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
@@ -105,6 +110,8 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
+- 企画（`ai::discover`、D-43）は open-design の OD Next の計画ターンを写す。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。
+- ルック（`references/design-systems/`）とスキル（`references/skills/`）も plan に全文が渡るので、D-22 の語を書かない（`cargo test --test planning` が守る）。ルックは汎用に限り、実在のゲームやスタジオの名前・ロゴ・固有の色を写さない。ルックの tokens（色調・帯・書体）は Claude の提案より優先してコードで書く。
 - 流行りの型（`refs::STYLES`、D-39）は実在ティザーの構成とリズムだけを真似させる。話の筋・キャラクター・文言は真似させない。分析文（TEASER.md の 1〜7 節）も plan に渡るので、D-22 の語を書かない（`cargo test --test styles` が守る）。
 - `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。
 - ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。

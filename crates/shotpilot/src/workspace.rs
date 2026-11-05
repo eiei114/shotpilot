@@ -152,9 +152,16 @@ pub struct ScanReport {
     pub added: Vec<String>,
     pub moved: Vec<String>,
     pub same: Vec<String>,
-    /// The engine picked these anchors from the level (nothing was tagged).
+    /// The anchors were picked among the level's landmarks (nothing was tagged).
     pub auto: bool,
+    /// Who picked them: "claude" (by the plan) or "spread" (the fallback); empty for tags.
+    pub picked_by: String,
+    /// Why the fallback was used, when Claude failed.
+    pub note: Option<String>,
 }
+
+/// How many places the location scout picks when nothing in the level is tagged.
+pub const SCOUT_PICKS: usize = 6;
 
 /// What [`Workspace::scout`] gathered before taking the photos.
 #[derive(Debug, Default)]
@@ -1298,12 +1305,12 @@ impl Workspace {
     /// Stage 0 from one button: gather what is missing, then photograph. With no anchors yet,
     /// one engine launch brings them in from the level (tagged actors, else landmarks the
     /// engine picks) together with the mesh inventory when there is none; then the photos.
-    pub fn scout(&mut self, only: &[String]) -> Result<ScoutReport> {
+    pub fn scout(&mut self, only: &[String], claude: Option<&dyn crate::ai::Claude>) -> Result<ScoutReport> {
         let mut report = ScoutReport::default();
         if self.defn.anchors.is_empty() {
             let want_assets = crate::scout::load_assets(&self.root).is_empty();
             let engine = make_engine(&self.defn)?;
-            let found = engine.survey("shotpilot", "SP_", want_assets)?;
+            let mut found = engine.survey("shotpilot", "SP_", want_assets)?;
             if let Some(list) = found["assets"].as_array() {
                 let mut list: Vec<crate::scout::AssetInfo> = list.iter().filter_map(crate::scout::AssetInfo::from_json).collect();
                 list.sort_by(|a, b| a.asset.cmp(&b.asset));
@@ -1313,7 +1320,38 @@ impl Workspace {
                 self.state.save()?;
                 report.assets = Some(list.len());
             }
-            let rep = self.apply_scan(&found)?;
+            // nothing tagged: pick among the landmarks (Claude, by the plan; else spread out)
+            let mut picked_by = String::new();
+            let mut note = None;
+            if !found["anchors"].as_object().is_some_and(|m| !m.is_empty()) {
+                let cands: Vec<crate::scout::Candidate> =
+                    found["candidates"].as_array().into_iter().flatten().filter_map(crate::scout::Candidate::from_json).collect();
+                let by_claude = match claude.filter(|_| !cands.is_empty()) {
+                    Some(c) => match crate::ai::pick_locations(&self.defn, &cands, SCOUT_PICKS, c) {
+                        Ok(p) if !p.is_empty() => Some(p),
+                        Ok(_) => None,
+                        Err(e) => {
+                            note = Some(format!("Claude could not pick the places ({}); picked the most spread-out ones", e.msg));
+                            None
+                        }
+                    },
+                    None => None,
+                };
+                picked_by = if by_claude.is_some() { "claude" } else { "spread" }.to_string();
+                let names = by_claude.unwrap_or_else(|| {
+                    crate::scout::spread(&cands, SCOUT_PICKS).into_iter().map(|c| c.name).collect()
+                });
+                let picks: Map<String, Value> = names
+                    .iter()
+                    .filter_map(|n| cands.iter().find(|c| &c.name == n))
+                    .map(|c| (c.name.clone(), c.entry()))
+                    .collect();
+                found["anchors"] = Value::Object(picks);
+                found["auto"] = json!(true);
+            }
+            let mut rep = self.apply_scan(&found)?;
+            rep.picked_by = picked_by;
+            rep.note = note;
             if self.defn.anchors.is_empty() {
                 bail!(
                     "found nothing in the level to scout: tag actors `shotpilot` (or name them SP_...) in UE, or write \

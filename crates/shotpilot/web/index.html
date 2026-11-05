@@ -63,6 +63,27 @@ button:disabled { opacity: .45; cursor: default; }
 .suggest button { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; color: var(--ink); font-size: 12.5px; }
 .suggest button + button { border-top: 1px solid var(--line); }
 .suggest button:hover { background: var(--soft); }
+.qform { display: grid; gap: 12px; margin-top: 8px; }
+.qform .q { display: grid; gap: 6px; }
+.qform .q > b { font-size: 12.5px; }
+.qform .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.qform .opts label { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; background: var(--card); }
+.qform .opts label:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.qform .opts input { margin: 0; }
+.qform input[type=text], .qform textarea, .qform select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--soft); font: inherit; font-size: 12.5px; color: var(--ink); }
+.qform .btns { display: flex; gap: 8px; }
+.plan-card { display: grid; gap: 6px; }
+.plan-card .dir { font-weight: 600; }
+.plan-card details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.plan-card details pre { white-space: pre-wrap; font: inherit; font-size: 12px; color: var(--ink); margin: 6px 0 0; max-height: 320px; overflow: auto; }
+.kitchips { display: flex; flex-wrap: wrap; gap: 5px; }
+.skchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.skchip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; background: var(--card); color: var(--ink); }
+.skchip:hover { border-color: var(--ink); }
+.skchip.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.skchip.auto { border-style: dashed; }
+.dscard .sw { display: flex; gap: 3px; margin: 2px 0; }
+.dscard .sw i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
 .event { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
 .event b { color: var(--ink); font-weight: 600; }
 .thinking .state::after { content: "…"; animation: blink 1s infinite; }
@@ -809,9 +830,19 @@ function startFromHome() {
   if (!raw) return;
   sessionStorage.removeItem("shotpilot.produce");
   if (ui.busy || !ui.status?.ai?.ready) return;
-  try { $("note").value = JSON.parse(raw).note || ""; } catch { return; }
-  produceAll({ review: true });
+  let note = "";
+  try { note = JSON.parse(raw).note || ""; } catch { return; }
+  // plan first (it may ask), then the first pass up to the review (D-43, D-38)
+  runDiscover(note, null, { thenProduce: true });
 }
+
+$("log").addEventListener("submit", (e) => {
+  const form = e.target.closest("[data-discover-form]");
+  if (!form) return;
+  e.preventDefault();
+  const asked = (ui.log || []).filter((x) => x.action === "discover").pop();
+  runDiscover(asked?.note || "", formAnswers(form), { thenProduce: !(ui.status?.shots || []).length });
+});
 
 async function fetchSound() {
   ui.mixing = true; drawSoundBits();
@@ -1314,7 +1345,7 @@ async function scoutAction(kind, body, path, busy, done) {
 
 function briefField(key, label, hint, value, { area = false, ph = "" } = {}) {
   const v = Array.isArray(value) ? value.join(area ? "\n" : ", ") : value ?? "";
-  const input = area ? `<textarea data-bf="${key}" rows="${key === "notes" ? 3 : 2}" placeholder="${esc(ph)}" data-orig="${esc(v)}">${esc(v)}</textarea>`
+  const input = area ? `<textarea data-bf="${key}" rows="${key === "plan" ? 8 : key === "notes" ? 3 : 2}" placeholder="${esc(ph)}" data-orig="${esc(v)}">${esc(v)}</textarea>`
     : `<input type="text" data-bf="${key}" placeholder="${esc(ph)}" value="${esc(v)}" data-orig="${esc(v)}">`;
   return `<label>${esc(label)}<small>${esc(hint)}</small></label><div>${input}</div>`;
 }
@@ -1344,6 +1375,27 @@ function genrePicker(b) {
       <b>${esc(g.name)}</b><span>${esc(g.headline)}</span><small>${g.n} 本 · 毎分 ${Math.round(g.edits_per_min)} カット</small></button>`).join("")}</div>`;
 }
 
+function designPicker(b) {
+  const ds = ui.kits?.design_systems;
+  if (!ds) return `<div class="sp-hint">読み込み中…</div>`;
+  const fits = (d) => (b.genre_id && d.genres.includes(b.genre_id) ? 1 : 0);
+  const sorted = [...ds].sort((x, y) => fits(y) - fits(x));
+  const own = ui.status.own_design ? `<div class="sp-hint" style="margin-bottom:6px">このプロジェクトには自分の DESIGN.md があります。文章はそちらが優先され、数値（色調・帯・書体）は選んだルックから取ります。</div>` : "";
+  const card = (d) => `<button type="button" class="gcard dscard${b.design === d.id ? " on" : ""}" data-design="${esc(d.id)}" title="${esc(d.title)}">
+      <b>${esc(d.name)}</b><span class="sw">${Object.values(d.palette || {}).map((c) => `<i style="background:${esc(c)}"></i>`).join("")}</span><span>${esc(d.description)}</span>
+      <small>${esc(GRADE_LABEL[d.finish.grade] || d.finish.grade)} · ${d.finish.letterbox ? `帯 ${d.finish.letterbox}` : "帯なし"} · ${d.finish.typeface === "mincho" ? "明朝" : "ゴシック"}</small></button>`;
+  return `${own}<div class="gcards">${sorted.map(card).join("")}<button type="button" class="gcard${b.design ? "" : " on"}" data-design=""><b>ルックを使わない</b><span>色調と帯は、Claude がジャンルと型から選びます</span></button></div>`;
+}
+
+function skillPicker(b) {
+  const ks = ui.kits?.skills;
+  if (!ks) return `<div class="sp-hint">読み込み中…</div>`;
+  const on = new Set(b.skills || []), act = new Set(b.active_skills || []);
+  const chip = (k) => `<button type="button" class="skchip${on.has(k.id) ? " on" : act.has(k.id) ? " auto" : ""}" data-skill="${esc(k.id)}" title="${esc(k.description)}">${esc(k.name)}</button>`;
+  return `<div class="sp-hint">全体の型</div><div class="skchips">${ks.filter((k) => k.mode === "main").map(chip).join("")}</div>
+    <div class="sp-hint" style="margin-top:8px">部分の型（冒頭・タイトル・エンドカード・数え上げ）</div><div class="skchips">${ks.filter((k) => k.mode !== "main").map(chip).join("")}</div>`;
+}
+
 function stylePicker(b) {
   const g = ui.genres?.genres.find((x) => x.id === b.genre_id);
   if (!ui.genres) return `<div class="sp-hint">読み込み中…</div>`;
@@ -1357,10 +1409,11 @@ function stylePicker(b) {
 
 function drawBrief() {
   const st = ui.status, b = st.brief || {};
-  const key = JSON.stringify([{ ...b, images: undefined }, st.pitch, !!ui.genres]);
+  const key = JSON.stringify([{ ...b, images: undefined }, st.pitch, !!ui.genres, !!ui.kits, st.own_design]);
   if (drawBrief.key === key && $("briefpanel").childElementCount) { drawMood(); return; } // keep what is being typed
   drawBrief.key = key;
   if (!ui.genres) fetchGenres();
+  if (!ui.kits) fetchKits();
   const kind = (k, t, d) => `<label class="${b.kind === k ? "on" : ""}"><input type="radio" name="bkind" value="${k}"${b.kind === k ? " checked" : ""}><b>${t}</b><span>${d}</span></label>`;
   $("briefpanel").innerHTML = `<h3>ブリーフ</h3>
     <div class="lead">撮る前に「何のための映像か」を決めます。トレーラー制作では最初の打ち合わせで決める項目で、Claude はカットを組むときにこれを読みます。shots.yaml の <span class="mono">brief:</span> に書かれ、直しても撮り直しは起きません。</div>
@@ -1373,6 +1426,12 @@ function drawBrief() {
       <div>${genrePicker(b)}</div>
       <label>流行りの型<small>そのジャンルで最近よく見られたティザー。選ぶと、その構成とリズムを真似て組みます（中身は真似しません）。帯は、縦線がカット、濃い部分が黒味です</small></label>
       <div>${stylePicker(b)}</div>
+      ${briefField("direction", "方向（1文）", "企画で Claude が決めた方向。直すと、次に組むときにそれに沿います", b.direction, { ph: "例: 動かないカメラと規則のカードで、静かに怖がらせる" })}
+      ${briefField("plan", "企画", "目的・方向・手順・ビート表・前提。構成を組むときに Claude が読みます", b.plan, { area: true })}
+      <label>ルック<small>デザインシステム（open-design 式）。色調・帯・書体・カードの間・カメラの言葉をまとめて決めます。DESIGN.md を Claude が全文読みます</small></label>
+      <div>${designPicker(b)}</div>
+      <label>スキル<small>ティザーの型の手順書。企画で Claude が選び、構成を組むときに全文を読みます。押して足し外し（点線は既定で効いているもの）</small></label>
+      <div>${skillPicker(b)}</div>
       ${briefField("core", "コア体験", "見た人に残したい1つの感情や体験。1文で", b.core, { area: true, ph: "例: 見慣れた中庭が、少しずつ見知らぬ場所に変わっていく" })}
       ${briefField("audience", "誰に向けて", "比較対象のゲームや、遊ぶ人の像", b.audience, { ph: "例: 静かに怖いホラーが好きな PC プレイヤー" })}
       ${briefField("must_show", "必ず見せるもの", "場所・仕掛け・キャラクター。カンマ区切り", b.must_show, { ph: "例: 井戸, 2階の窓, 提灯" })}
@@ -2578,7 +2637,71 @@ function suggestHtml(stale) {
   return `<div class="suggest">${items.join("")}</div>`;
 }
 
+const GRADE_LABEL = { horror: "冷たい・粒子", red: "赤", warm: "暖色", vivid: "鮮やか", cool: "寒色", none: "色調なし" };
+const skillName = (id) => ui.kits?.skills.find((s) => s.id === id)?.name || id;
+
+async function fetchKits() {
+  if (fetchKits.busy || ui.kits) return;
+  fetchKits.busy = true;
+  try { ui.kits = await api("GET", "/api/kits"); drawBrief.key = ""; draw(); drawChat(); }
+  catch (e) { toast(e.message, true); }
+  finally { fetchKits.busy = false; }
+}
+
+/** The planning turn's question form (open-design's question-form): defaults prefilled, an "other" field on choices. */
+function formHtml(e) {
+  const q = (x) => {
+    const id = esc(x.id), opts = x.options || [];
+    const defs = String(x.default ?? "").split(",").map((v) => v.trim());
+    const other = `<input type="text" data-other placeholder="その他（自由に書く）">`;
+    let input;
+    if (x.type === "radio" || x.type === "checkbox") {
+      input = `<div class="opts">${opts.map((o) => `<label><input type="${x.type}" name="q-${id}" value="${esc(o.value)}"${(x.type === "radio" ? defs[0] === o.value : defs.includes(o.value)) ? " checked" : ""}>${esc(o.label)}</label>`).join("")}</div>${other}`;
+    } else if (x.type === "select") {
+      input = `<select data-q>${opts.map((o) => `<option value="${esc(o.value)}"${defs[0] === o.value ? " selected" : ""}>${esc(o.label)}</option>`).join("")}</select>${other}`;
+    } else if (x.type === "textarea") {
+      input = `<textarea data-q rows="3" placeholder="${esc(x.placeholder || "")}">${esc(x.default || "")}</textarea>`;
+    } else input = `<input type="text" data-q placeholder="${esc(x.placeholder || "")}" value="${esc(x.default || "")}">`;
+    return `<div class="q" data-qid="${id}" data-type="${esc(x.type)}" data-label="${esc(x.label)}"><b>${esc(x.label)}</b>${input}</div>`;
+  };
+  return `<form class="qform" data-discover-form>${e.form?.title ? `<div class="sp-hint">${esc(e.form.title)}</div>` : ""}${(e.form?.questions || []).map(q).join("")}
+    <div class="btns"><button class="btn dark" type="submit"${ui.busy ? " disabled" : ""}>この内容で進める</button></div></form>`;
+}
+
+function formAnswers(form) {
+  return [...form.querySelectorAll(".q")].map((el) => {
+    const { qid: id, type, label } = el.dataset;
+    const other = el.querySelector("[data-other]")?.value.trim();
+    let value;
+    if (type === "radio") value = other || el.querySelector("input:checked")?.value || "";
+    else if (type === "checkbox") { value = [...el.querySelectorAll("input[type=checkbox]:checked")].map((i) => i.value); if (other) value.push(other); }
+    else if (type === "select") value = other || el.querySelector("select")?.value || "";
+    else value = el.querySelector("[data-q]")?.value.trim() || "";
+    return { id, label, value };
+  });
+}
+
+function discoverHtml(e) {
+  const last = (ui.log || []).filter((x) => x.action === "discover").pop() === e;
+  const answered = (e.answers || []).length
+    ? `<div class="ctx">${esc(e.answers.map((a) => `${a.label}: ${Array.isArray(a.value) ? a.value.join("、") : a.value}`).join(" / "))}</div>` : "";
+  const user = `<div class="msg-user"><div class="bubble">${esc((e.answers || []).length ? "質問に答えた" : e.note || "企画する")}</div><div class="ctx">🧭 企画</div>${answered}</div>`;
+  const head = `<div class="who"><span class="logo">C</span>Claude</div>${e.say ? `<div>${esc(e.say)}</div>` : ""}`;
+  if (e.route === "question") {
+    return `${user}<div class="msg-ai">${head}${last ? formHtml(e) : `<div class="sp-hint">${(e.form?.questions || []).length} 問の質問（答え済み）</div>`}</div>`;
+  }
+  const ds = ui.kits?.design_systems.find((d) => d.id === e.design);
+  const chips = [ds ? `<span class="chip">ルック: ${esc(ds.name)}</span>` : "", ...(e.skills || []).map((id) => `<span class="chip">${esc(skillName(id))}</span>`)].join("");
+  const go = last && !ui.busy && !(ui.status?.shots || []).length
+    ? `<div class="suggest"><button data-produce-now>⚡ この企画で作る（ロケハン → 台本と構成 → previz で止まる）</button><button data-goto-stage="brief">↗ ブリーフでルックとスキルを直す</button></div>` : "";
+  return `${user}<div class="msg-ai">${head}<div class="plan-card">
+      ${e.direction ? `<div class="dir">方向: ${esc(e.direction)}</div>` : ""}${chips ? `<div class="kitchips">${chips}</div>` : ""}
+      <details${last ? " open" : ""}><summary>企画を読む</summary><pre>${esc(e.plan || "")}</pre></details></div>
+      <div class="done-row"><span class="ok"><span class="dot"></span>ブリーフに書いた（撮り直しなし）</span><span class="t">${esc(timeOf(e.at))}</span></div>${go}</div>`;
+}
+
 function entryHtml(e, isLast) {
+  if (e.action === "discover") return discoverHtml(e);
   if (e.action === "revise") {
     const ctx = e.label || e.pointer ? `<div class="ctx">${esc(e.label || e.pointer)}</div>` : "";
     return `<div class="msg-user"><div class="bubble">${esc(e.note)}</div>${ctx}</div>
@@ -2658,7 +2781,8 @@ function entryHtml(e, isLast) {
 }
 
 function drawChat() {
-  const keep = new Set(["produce", "plan", "revise", "set", "render", "cut", "order", "sound", "nudge", "script", "undo"]);
+  const keep = new Set(["discover", "produce", "plan", "revise", "set", "render", "cut", "order", "sound", "nudge", "script", "undo"]);
+  if (!ui.kits) fetchKits();
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
     ? Math.max(items.map((e) => e.action).lastIndexOf("revise"), items.map((e) => e.action).lastIndexOf("set")) : -1;
@@ -2666,9 +2790,9 @@ function drawChat() {
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
   if (ui.produce) {
-    const order = { review: ["scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "cut"] }[ui.produce.mode]
-      || ["scout", "stage", "mood", "plan", "sound", "render", "cut"];
-    const names = { scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
+    const order = { review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "cut"] }[ui.produce.mode]
+      || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "cut"];
+    const names = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
     const rows = order.map((k) => {
       const d = ui.produce.steps[k];
       const icon = d ? STEP_ICON[d.status] : "　";
@@ -2680,6 +2804,11 @@ function drawChat() {
   if (ui.pending) {
     html += `<div class="msg-user"><div class="bubble">${esc(ui.pending.note)}</div><div class="ctx">${esc(ui.pending.ctx)}</div></div>
       <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="think-state">考えています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div></div>`;
+  }
+  if (!html && !(ui.status?.shots || []).length) {
+    html = `<div class="empty-chat"><b>どんなティザーを撮りたいかを書いてください</b>
+      下の欄に、ゲームのことと撮りたいものを書いて「企画する」を押します。Claude が企画（方向・ルック・型）を立て、足りないことがあるときだけ質問します。そのあとロケハン、台本と構成、previz まで進んで止まります。
+      <div class="suggest" style="margin-top:10px"><button data-discover-now>🧭 企画する</button></div></div>`;
   }
   if (!html) {
     html = `<div class="empty-chat"><b>直したいところを言葉で伝えてください</b>
@@ -2717,6 +2846,22 @@ async function planShots() {
 }
 
 const STEP_ICON = { start: "…", done: "✓", skipped: "–", failed: "✕" };
+
+/** The planning turn (D-43): a plan, or a question form; with `thenProduce` a plan goes straight on to the first pass. */
+async function runDiscover(request, answers = null, { thenProduce = false } = {}) {
+  if (ui.busy || !ui.status?.ai?.ready) { if (!ui.status?.ai?.ready) toast("Claude に接続すると企画できます（接続設定）", true); return; }
+  ui.busy = "discover"; ui.pending = { note: answers ? "質問に答えた" : request || "企画する", ctx: "🧭 企画" }; ui.started = Date.now();
+  draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `企画しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
+  let out = null;
+  try { out = await api("POST", "/api/discover", { request, answers }); }
+  catch (e) { toast(e.message, true); }
+  finally { clearInterval(tick); ui.busy = null; ui.pending = null; ui.logKey = ""; drawBrief.key = ""; await refresh(); }
+  if (!out) return;
+  if (out.route === "question") { toast("Claude から質問があります。会話欄で答えてください"); return; }
+  toast(`企画ができました${out.direction ? `: ${out.direction}` : ""}`);
+  if (thenProduce) { $("note").value = ""; produceAll({ review: true }); }
+}
 
 async function produceAll({ review = true, resume = false } = {}) {
   const st = ui.status; if (ui.busy || !st?.ai?.ready) return;
@@ -3080,6 +3225,8 @@ $("chips").addEventListener("click", (e) => {
 });
 $("log").addEventListener("click", (e) => {
   const g = e.target.closest("[data-goto-stage]"); if (g) { goStage(g.dataset.gotoStage); return; }
+  if (e.target.closest("[data-produce-now]")) { $("note").value = ""; produceAll({ review: true }); return; }
+  if (e.target.closest("[data-discover-now]")) { const note = $("note").value.trim(); $("note").value = ""; runDiscover(note, null, { thenProduce: true }); return; }
   const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render);
 });
 function openConn() {
@@ -3177,8 +3324,19 @@ $("scoutpanel").addEventListener("click", (e) => {
 });
 $("scoutpanel").addEventListener("input", (e) => { if (e.target.id === "asset-filter") { ui.assetFilter = e.target.value; filterAssets(); } });
 for (const id of ["briefpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
-  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label,[data-genre],[data-style]");
+  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label,[data-genre],[data-style],[data-design],[data-skill]");
   if (!t) return;
+  if (t.dataset.design !== undefined) {
+    const want = t.dataset.design || null;
+    if ((ui.status.brief?.design || null) !== want) saveBrief({ design: want });
+    return;
+  }
+  if (t.dataset.skill !== undefined) {
+    const cur = new Set(ui.status.brief?.skills || []);
+    if (cur.has(t.dataset.skill)) cur.delete(t.dataset.skill); else cur.add(t.dataset.skill);
+    saveBrief({ skills: cur.size ? [...cur] : null });
+    return;
+  }
   if (t.dataset.genre !== undefined) {
     const g = ui.genres?.genres.find((x) => x.id === t.dataset.genre); const b = ui.status.brief || {};
     if (!g || b.genre_id === g.id) return;

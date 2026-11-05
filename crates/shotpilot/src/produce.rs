@@ -1,6 +1,7 @@
 //! The first pass: everything constrained up front, then one go to a teaser you can watch.
 //!
-//! Like open-design's production turn: gather what is missing (scout photos, the stage,
+//! Like open-design's production turn: plan first when there is no plan (D-43), gather what
+//! is missing (scout photos at the places the plan needs, the stage,
 //! a mood board), hand the planner every constraint at once (brief, stage, craft rules,
 //! skeleton, scout photos, mood board, finish), write the shot list and the finish, render
 //! at the cheapest quality, and cut with the finish burned in. No step looks back at its
@@ -45,6 +46,7 @@ impl ProduceOpts {
 }
 
 pub const STEPS: &[(&str, &str)] = &[
+    ("discover", "企画"),
     ("scout", "ロケハン写真"),
     ("stage", "ステージの理解"),
     ("mood", "ムードボード"),
@@ -72,12 +74,29 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         }
     };
 
-    // 1. scout photos
+    // 0. the plan (D-43): the app runs the planning turn first, where it may ask; here it
+    // plans with stated assumptions when there is no plan yet
+    if ws.defn.brief.plan.trim().is_empty() {
+        step("discover", "start", String::new(), emit, &mut steps);
+        let d = ai::discover(&ws.defn, &opts.direction, "", false, claude)?;
+        ws.set_brief(&d.brief)?;
+        ws.state.log("discover", d.to_json());
+        ws.state.save()?;
+        step("discover", "done", d.direction.clone(), emit, &mut steps);
+    } else {
+        step("discover", "skipped", "企画済み".into(), emit, &mut steps);
+    }
+
+    // 1. scout photos (the places picked by the plan when nothing in the level is tagged)
     if crate::scout::summary(&ws.root).is_empty() {
         step("scout", "start", String::new(), emit, &mut steps);
-        let rep = ws.scout(&[])?;
+        let rep = ws.scout(&[], Some(claude))?;
+        if let Some(n) = rep.scan.as_ref().and_then(|s| s.note.clone()) {
+            notes.push(n);
+        }
         let n = rep.index["anchors"].as_object().map(|m| m.len()).unwrap_or(0);
         let from = match &rep.scan {
+            Some(s) if s.picked_by == "claude" => "（企画に合わせて Claude が選んだ場所）",
             Some(s) if s.auto => "（レベルから自動で選んだ場所）",
             Some(_) => "（レベルのタグから取り込み）",
             None => "",

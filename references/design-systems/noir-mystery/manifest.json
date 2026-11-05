@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "noir-mystery",
+  "name": "ノワール",
+  "category": "adventure",
+  "description": "雨と街灯と秘密。手がかりを1つずつ、問いを1つだけ。寒色、帯 2.39、明朝。",
+  "genres": [
+    "adventure",
+    "horror"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

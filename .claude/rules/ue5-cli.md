@@ -50,11 +50,12 @@ paths:
 
 ## ロケハンの下ごしらえ（survey、D-42）
 
-- `survey` は1回の commandlet で、アンカー（`scan` と同じくタグ `shotpilot` か `SP_` 接頭辞のアクター）と、頼まれたときはアセットの棚卸しを返す。タグ付きのアクターが無ければ、レベルから目印を自動で選び `auto: true` を付ける。
-- 自動の選び方: メッシュを持ち、ライト・カメラ・ボリューム・空などではないアクターのうち、最大辺 40〜2500 cm・高さ 15 cm 以上のもの。ラベルから名前を作り（`SM_Old_Well3` → `old_well`）、同じ名前は1つに絞る。大きさで重みを付け、3 m 以上離れたものを遠い順に最大 6 か所選ぶ。
+- `survey` は1回の commandlet で、アンカー（`scan` と同じくタグ `shotpilot` か `SP_` 接頭辞のアクター）と、頼まれたときはアセットの棚卸しを返す。タグ付きのアクターが無ければ、目印の候補 `candidates`（最大 60）を返す。選ぶのは UE ではなく Rust 側（D-43）。
+- 候補の条件: メッシュを持ち、ライト・カメラ・ボリューム・空などではないアクターのうち、最大辺 40〜2500 cm・高さ 15 cm 以上のもの。ラベルから名前を作り（`SM_Old_Well3` → `old_well`）、同じ名前は大きいもの1つに絞る。各候補は `{name, label, cls, score, at, size, center}`。
+- 選び方（`Workspace::scout`）: Claude に繋がっていれば、企画（`brief.plan` の Scout targets）に合う場所を最大 6 か所 Claude が選ぶ（`ai::pick_locations`、候補にない名前は捨てる）。繋がっていないか失敗したら、大きさで重みを付けて 3 m 以上離れたものを遠い順に選ぶ（`scout::spread`）。
 - エディタのレベルを読むだけなので、実行時にレベルを組むゲーム（七号室の `/Engine/Maps/Entry`）では何も見つからない。そのときは「タグを付けるか anchors を書く」と返す。World Partition のマップは、読み込まれていないセルのアクターを拾えない。
 - mock は `level.json`（タグ付き）と `landmarks.json`（自動の候補）で同じ形を返す。
-- **実機では未確認（2026-11-05）。** 最初に実機で走らせるときは、ログの `scan: N landmark candidates, picked [...]` と、選ばれた場所が妥当かを確かめる。
+- **実機では未確認（2026-11-05）。** 最初に実機で走らせるときは、ログの `scan: N landmark candidates (K kinds), returning M` と、選ばれた場所が妥当かを確かめる。
 
 ## 検証
 

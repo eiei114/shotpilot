@@ -398,9 +398,10 @@ fn scouting_an_empty_project_brings_the_level_in_one_launch() {
     });
     std::fs::write(store.join("landmarks.json"), marks.to_string()).unwrap();
 
-    let rep = f.ws.scout(&[]).unwrap();
+    let rep = f.ws.scout(&[], None).unwrap();
     let scan = rep.scan.as_ref().unwrap();
     assert!(scan.auto);
+    assert_eq!(scan.picked_by, "spread"); // no Claude: the most spread-out landmarks
     assert_eq!(scan.added, ids(&["bed", "wardrobe"]));
     assert_eq!(f.ws.defn.known_box("wardrobe").unwrap().size, [120.0, 60.0, 200.0]);
     assert_eq!(rep.assets, Some(2)); // the inventory came along
@@ -412,7 +413,7 @@ fn scouting_an_empty_project_brings_the_level_in_one_launch() {
     assert_eq!(launches(&f.ws)[0]["assets"], true);
 
     // with anchors in shots.yaml, scouting again only takes photos
-    let rep = f.ws.scout(&ids(&["bed"])).unwrap();
+    let rep = f.ws.scout(&ids(&["bed"]), None).unwrap();
     assert!(rep.scan.is_none() && rep.assets.is_none());
     assert_eq!(launches(&f.ws).len(), 1);
 }
@@ -425,7 +426,7 @@ fn scouting_prefers_tagged_actors_and_keeps_the_inventory() {
     std::fs::write(store.join("level.json"), json!({"altar": {"at": [0, 0, 0], "size": [100, 100, 100], "center": [0, 0, 50]}}).to_string()).unwrap();
     std::fs::write(store.join("landmarks.json"), json!({"bed": [500, 0, 0]}).to_string()).unwrap();
     f.ws.scan_assets().unwrap();
-    let rep = f.ws.scout(&[]).unwrap();
+    let rep = f.ws.scout(&[], None).unwrap();
     let scan = rep.scan.unwrap();
     assert!(!scan.auto);
     assert_eq!(scan.added, ids(&["altar"]));
@@ -437,7 +438,7 @@ fn scouting_prefers_tagged_actors_and_keeps_the_inventory() {
 fn scouting_a_level_with_nothing_to_find_says_what_to_do() {
     let mut f = empty_project();
     let before = f.text();
-    let err = f.ws.scout(&[]).unwrap_err();
+    let err = f.ws.scout(&[], None).unwrap_err();
     assert!(err.msg.contains("anchors:"), "{}", err.msg);
     assert_eq!(f.text(), before);
 }
@@ -592,6 +593,10 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     impl Claude for Director {
         fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
             let props = &request["output_config"]["format"]["schema"]["properties"];
+            if common::is_discover(request) {
+                self.0.borrow_mut().push("discover".into());
+                return Ok(common::discovery_reply().to_string());
+            }
             if props.get("summary").is_some() {
                 self.0.borrow_mut().push("stage".into());
                 return Ok(json!({"summary": "中庭", "anchors": [{"name": "well", "description": "井戸"}],
@@ -622,18 +627,22 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     let mut on = |e: &str, d: &serde_json::Value| events.push((e.to_string(), d.clone()));
     let out = shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on).unwrap();
 
-    assert_eq!(*claude.0.borrow(), vec!["stage".to_string(), "plan".to_string()]); // one call each, no self-review rounds
+    assert_eq!(*claude.0.borrow(), ids(&["discover", "stage", "plan"])); // one call each, no self-review rounds
     let done: Vec<String> = events.iter().filter(|(e, d)| e == "step" && d["status"] != "start")
         .map(|(_, d)| format!("{}:{}", d["key"].as_str().unwrap(), d["status"].as_str().unwrap())).collect();
-    assert_eq!(done, ["scout:done", "stage:done", "mood:done", "plan:done", "sound:skipped", "render:done", "cut:done"]);
+    assert_eq!(done, ["discover:done", "scout:done", "stage:done", "mood:done", "plan:done", "sound:skipped", "render:done", "cut:done"]);
     assert_eq!(f.ws.defn.shot_ids(), ids(&["h", "e", "x", "x2", "t"]));
     assert_eq!(f.ws.defn.brief.images.len(), 4);
     // the script came with the shots: cards between them, a line over one, a broken line left out
     let script: Vec<(&str, &str)> = f.ws.defn.script.iter().map(|l| (l.id.as_str(), l.kind.as_str())).collect();
     assert_eq!(script, [("intro", "card"), ("gone", "caption"), ("gap", "black"), ("ttl", "title")]);
     assert_eq!(f.ws.defn.script[1].on.as_deref(), Some("e"));
+    // the planning turn chose the look; its tokens set the finish
+    assert_eq!(f.ws.defn.brief.design, "quiet-dread");
+    assert_eq!(f.ws.defn.brief.skills, ids(&["rules-teaser", "title-drop"]));
     assert_eq!(f.ws.defn.finish.grade, "horror");
     assert_eq!(f.ws.defn.finish.letterbox, Some(2.39));
+    assert_eq!(f.ws.defn.finish.typeface, "mincho");
     assert!(f.ws.defn.finish.title.is_none() && f.ws.defn.finish.end_card.is_none()); // the title is a script slot now
     assert_eq!(f.ws.defn.find("x").unwrap()["transition"], json!("flash"));
     assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
@@ -646,7 +655,7 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on2).unwrap();
     let skipped: Vec<String> = events2.iter().filter(|(e, d)| e == "step" && d["status"] == "skipped")
         .map(|(_, d)| d["key"].as_str().unwrap().to_string()).collect();
-    assert_eq!(skipped, ["scout", "stage", "mood", "sound"]);
+    assert_eq!(skipped, ["discover", "scout", "stage", "mood", "sound"]);
 }
 
 #[test]
