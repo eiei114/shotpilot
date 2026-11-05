@@ -180,8 +180,21 @@ impl State {
         meta.insert("created".into(), json!(now_iso()));
         meta.extend(extra);
         std::fs::write(dir.join("take.json"), serde_json::to_string_pretty(&meta)?)?;
+        // what was seen in the shot's earlier take at this quality no longer applies (D-50)
+        if self.seen(shot_id).is_some_and(|s| s["quality"].as_str() == Some(quality)) {
+            self.shot(shot_id).remove("seen");
+        }
         self.mark_current(shot_id, quality, fp);
         Ok(dir)
+    }
+
+    /// What the look after the shoot saw in a shot's take (D-50), with the take it looked at.
+    pub fn set_seen(&mut self, shot_id: &str, rec: Value) {
+        self.shot(shot_id).insert("seen".into(), rec);
+    }
+
+    pub fn seen(&self, shot_id: &str) -> Option<&Value> {
+        self.data["shots"][shot_id].get("seen").filter(|v| v.is_object())
     }
 
     pub fn mark_current(&mut self, shot_id: &str, quality: &str, fp: &str) {

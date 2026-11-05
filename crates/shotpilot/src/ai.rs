@@ -1992,6 +1992,86 @@ pub fn match_frames(defn: &Definition, frames: &[(String, String, String, std::p
     Ok(res)
 }
 
+// --------------------------------------------------------------------------- after the shoot
+
+pub fn seen_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "shots": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "shot": {"type": "string", "description": "the shot id exactly as labelled"},
+                    "subject_visible": {"type": "string", "enum": ["yes", "partly", "no"]},
+                    "blocked_by": {"type": "string", "description": "what is in front of the subject or fills the frame instead, or empty"},
+                    "note": {"type": "string", "description": "one short sentence on what the frame shows"},
+                },
+                "required": ["shot", "subject_visible", "blocked_by", "note"], "additionalProperties": false,
+            }},
+        },
+        "required": ["shots"],
+        "additionalProperties": false,
+    })
+}
+
+/// What one rendered frame shows (D-50): whether the shot's subject is in the picture.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Seen {
+    pub shot: String,
+    /// yes | partly | no
+    pub visible: String,
+    pub blocked_by: String,
+    pub note: String,
+}
+
+/// One look at the frames the engine rendered, once after the first shoot (D-50, open-design's
+/// bounded video exception): for each shot, whether its subject is actually in the picture and
+/// what hides it. Facts about the engine's render, not a score. `frames`: (shot id, subject,
+/// purpose, image path). Shot ids are checked in code.
+pub fn see_frames(frames: &[(String, String, String, std::path::PathBuf)], claude: &dyn Claude) -> Result<Vec<Seen>> {
+    const BUDGET: usize = 20_000_000;
+    let system = "You assist the camera crew on a game teaser shoot. Each image is a frame the game engine rendered for \
+                  one shot, labelled with the shot id and the subject the shot is meant to show. Say what is in the \
+                  picture, as plain facts. `subject_visible`: `yes` when the subject is in the frame and can be made out; \
+                  `partly` when it is cut off, very small or half hidden; `no` when it is not in the frame or something \
+                  stands in front of it (a wall, a door, a pillar, foliage, the camera inside an object, darkness). \
+                  `blocked_by`: what is in the way or fills the frame instead. Say nothing about taste or quality.";
+    let mut content: Vec<Value> = Vec::new();
+    let mut used = 0usize;
+    let mut sent: Vec<String> = Vec::new();
+    for (id, subject, purpose, path) in frames {
+        let Ok(bytes) = std::fs::read(path) else { continue };
+        let Some((_, media)) = crate::moodboard::image_type(&bytes) else { continue };
+        if bytes.len() > MAX_IMAGE_BYTES || used + bytes.len() > BUDGET {
+            continue;
+        }
+        used += bytes.len();
+        content.push(json!({"type": "text", "text": format!("Shot `{id}`: meant to show `{subject}` ({purpose})")}));
+        content.push(json!({"type": "image", "source": {"type": "base64", "media_type": media, "data": base64(&bytes)}}));
+        sent.push(id.clone());
+    }
+    if sent.is_empty() {
+        return Ok(Vec::new());
+    }
+    content.push(json!({"type": "text", "text": format!("Answer once per shot ({}). Write `note` and `blocked_by` in Japanese.", sent.join(", "))}));
+    let out = ask_json(claude, system, Value::Array(content), seen_schema())?;
+    let mut res: Vec<Seen> = Vec::new();
+    for s in out["shots"].as_array().into_iter().flatten() {
+        let Some(shot) = s["shot"].as_str().filter(|x| sent.iter().any(|y| y == x)) else { continue };
+        if res.iter().any(|r| r.shot == shot) {
+            continue;
+        }
+        let visible = s["subject_visible"].as_str().filter(|v| ["yes", "partly", "no"].contains(v)).unwrap_or("yes");
+        res.push(Seen {
+            shot: shot.to_string(),
+            visible: visible.to_string(),
+            blocked_by: s["blocked_by"].as_str().unwrap_or("").trim().to_string(),
+            note: s["note"].as_str().unwrap_or("").trim().to_string(),
+        });
+    }
+    Ok(res)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

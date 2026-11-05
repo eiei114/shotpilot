@@ -151,7 +151,7 @@ pub fn framing_table(defn: &Definition) -> String {
 pub fn rules_text() -> String {
     let mut out = Vec::new();
     for sev in [Severity::P0, Severity::P1, Severity::P2] {
-        for r in RULES.iter().filter(|r| r.severity == sev) {
+        for r in RULES.iter().filter(|r| r.severity == sev && r.basis != "observed") {
             out.push(format!("- {}", r.summary));
         }
     }

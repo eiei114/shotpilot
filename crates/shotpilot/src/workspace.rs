@@ -233,7 +233,78 @@ impl Workspace {
 
     /// The shot check (see shotcheck.rs), most severe first.
     pub fn check(&self) -> Result<Vec<Finding>> {
-        Ok(shotcheck::check(&self.defn, &self.resolved()?))
+        let shots = self.resolved()?;
+        let mut found = shotcheck::check(&self.defn, &shots);
+        let seen = self.seen_findings(&shots)?;
+        if seen.is_empty() {
+            return Ok(found);
+        }
+        // the look's findings go in with the rest, most severe first (a stable sort keeps the order within)
+        found.extend(seen);
+        found.sort_by_key(|f| (f.severity, f.shot.as_ref().and_then(|id| shots.iter().position(|s| &s.id == id))));
+        Ok(found)
+    }
+
+    // ------------------------------------------------------------------ after the shoot (D-50)
+
+    /// The fresh take of a shot at a quality, if there is one.
+    fn fresh_take(&self, s: &ResolvedShot, quality: &str) -> Result<Option<Take>> {
+        let rfp = fp::render_fingerprint(&self.defn, s, quality)?;
+        Ok(match self.current_take(&s.id, quality, &rfp) {
+            TakeMatch::Fresh(t) => Some(t),
+            _ => None,
+        })
+    }
+
+    /// Look once at the middle frame of each shot's fresh take at `quality` (empty `ids`: every
+    /// shot) and record what it shows, tied to that take: a new take of the shot drops it.
+    pub fn see(&mut self, quality: &str, ids: &[String], claude: &dyn crate::ai::Claude) -> Result<Vec<crate::ai::Seen>> {
+        let shots = self.select(ids)?;
+        let mut frames = Vec::new();
+        let mut takes = HashMap::new();
+        for s in &shots {
+            let Some(t) = self.fresh_take(s, quality)? else { continue };
+            let Some(thumb) = t.thumb() else { continue };
+            let subject = shotcheck::subject_name(&self.defn, s).unwrap_or_else(|| "the shot's subject".into());
+            frames.push((s.id.clone(), subject, s.purpose.clone(), thumb));
+            takes.insert(s.id.clone(), t.dir.to_string_lossy().replace('\\', "/"));
+        }
+        let seen = crate::ai::see_frames(&frames, claude)?;
+        for x in &seen {
+            let Some(take) = takes.get(&x.shot) else { continue };
+            let rec = json!({"quality": quality, "take": take, "visible": x.visible, "blocked_by": x.blocked_by, "note": x.note});
+            self.state.set_seen(&x.shot, rec);
+        }
+        self.state.save()?;
+        Ok(seen)
+    }
+
+    /// What the look after the shoot found, for shots whose recorded take is still the one in use.
+    fn seen_findings(&self, shots: &[ResolvedShot]) -> Result<Vec<Finding>> {
+        let mut out = Vec::new();
+        for s in shots {
+            let Some(rec) = self.state.seen(&s.id) else { continue };
+            let visible = rec["visible"].as_str().unwrap_or("yes");
+            if visible == "yes" {
+                continue;
+            }
+            let quality = rec["quality"].as_str().unwrap_or("");
+            let Some(t) = self.fresh_take(s, quality)? else { continue };
+            if t.dir.to_string_lossy().replace('\\', "/") != rec["take"].as_str().unwrap_or("") {
+                continue; // filmed again since
+            }
+            let subject = shotcheck::subject_name(&self.defn, s).unwrap_or_else(|| "the subject".into());
+            let by = rec["blocked_by"].as_str().filter(|b| !b.is_empty()).map(|b| format!(" ({b})")).unwrap_or_default();
+            let what = if visible == "no" { "is not in the rendered frame" } else { "is only partly in the rendered frame" };
+            out.push(Finding {
+                rule: "frame.blocked",
+                severity: Severity::P1,
+                shot: Some(s.id.clone()),
+                message: format!("`{subject}` {what}{by}"),
+                fix: "Move the camera so nothing stands between it and the subject (point at the camera and ask Claude).".into(),
+            });
+        }
+        Ok(out)
     }
 
     /// P0 and P1 findings as one-line notes (the CLI's `note:` lines).

@@ -55,6 +55,8 @@ pub const RULES: &[Rule] = &[
            summary: "30-degree rule: consecutive shots of one subject change angle >= 30 deg or shot size" },
     Rule { id: "text.hold", severity: Severity::P1, basis: "sourced",
            summary: "Text stays long enough to read: at least 1.5 s, about 1 s per 4 Japanese characters or 3 English words plus 0.5 s" },
+    Rule { id: "frame.blocked", severity: Severity::P1, basis: "observed",
+           summary: "The rendered frame shows the subject (looked at once after the first shoot)" },
     Rule { id: "runtime.target", severity: Severity::P1, basis: "inferred",
            summary: "Runtime within 10% of the target" },
     Rule { id: "hook.long", severity: Severity::P1, basis: "inferred",
@@ -177,7 +179,8 @@ pub fn size_name(fill: f64) -> &'static str {
     }
 }
 
-fn subject_name(defn: &Definition, shot: &ResolvedShot) -> Option<String> {
+/// The anchor a shot is about: the one it looks at, else the one it is placed from.
+pub fn subject_name(defn: &Definition, shot: &ResolvedShot) -> Option<String> {
     let cam = &defn.shots.get(shot.index)?["camera"];
     let look = cam.get("look_at").and_then(Value::as_str).filter(|n| defn.anchor(n).is_some());
     look.or_else(|| cam.get("anchor").and_then(Value::as_str)).map(str::to_string)

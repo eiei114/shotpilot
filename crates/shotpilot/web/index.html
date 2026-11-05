@@ -3106,9 +3106,11 @@ function drawChat() {
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
   if (ui.produce) {
-    const order = { review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "cut"] }[ui.produce.mode]
-      || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "cut"];
-    const names = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
+    const order = ({ review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "see", "repair", "cut"] }[ui.produce.mode]
+      || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "see", "repair", "cut"])
+      // the look after the shoot only runs on engine takes (D-50): show it once it starts
+      .filter((k) => !["see", "repair"].includes(k) || ui.produce.steps[k]);
+    const names = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", see: "撮れた画の確認", repair: "写っていないカットの撮り直し", cut: "Cut（仕上げを焼き込む）" };
     const rows = order.map((k) => {
       const d = ui.produce.steps[k];
       const icon = d ? STEP_ICON[d.status] : "　";
