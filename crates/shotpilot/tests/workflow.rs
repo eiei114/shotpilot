@@ -375,6 +375,73 @@ fn scouting_photographs_anchors_without_touching_shots() {
     assert_eq!(blocks[1]["type"], "image");
 }
 
+/// A new project with no anchors, as the home makes it.
+fn empty_project() -> common::Fixture {
+    use shotpilot::templates::{self, EMPTY};
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path().join("shots.yaml");
+    std::fs::write(&p, templates::render(EMPTY, "t", "mock", "null", "/Game/Maps/Courtyard")).unwrap();
+    let ws = shotpilot::Workspace::open(&p).unwrap();
+    common::Fixture { dir, ws }
+}
+
+#[test]
+fn scouting_an_empty_project_brings_the_level_in_one_launch() {
+    let mut f = empty_project();
+    assert!(f.ws.defn.anchors.is_empty());
+    // nothing tagged in the level: the engine offers landmarks it picked
+    let store = f.ws.root.join(".shotpilot/mock_engine");
+    std::fs::create_dir_all(&store).unwrap();
+    let marks = json!({
+        "bed": {"at": [0, 0, 0], "size": [200, 140, 60], "center": [0, 0, 30]},
+        "wardrobe": {"at": [600, 300, 0], "size": [120, 60, 200], "center": [600, 300, 100]},
+    });
+    std::fs::write(store.join("landmarks.json"), marks.to_string()).unwrap();
+
+    let rep = f.ws.scout(&[]).unwrap();
+    let scan = rep.scan.as_ref().unwrap();
+    assert!(scan.auto);
+    assert_eq!(scan.added, ids(&["bed", "wardrobe"]));
+    assert_eq!(f.ws.defn.known_box("wardrobe").unwrap().size, [120.0, 60.0, 200.0]);
+    assert_eq!(rep.assets, Some(2)); // the inventory came along
+    assert_eq!(shotpilot::scout::load_assets(&f.ws.root).len(), 2);
+    assert_eq!(rep.index["anchors"]["bed"].as_array().unwrap().len(), 4);
+    // one launch gathered both, then the photos (previz, no engine)
+    let kinds: Vec<String> = launches(&f.ws).iter().map(|l| l["kind"].as_str().unwrap().to_string()).collect();
+    assert_eq!(kinds, ids(&["survey"]));
+    assert_eq!(launches(&f.ws)[0]["assets"], true);
+
+    // with anchors in shots.yaml, scouting again only takes photos
+    let rep = f.ws.scout(&ids(&["bed"])).unwrap();
+    assert!(rep.scan.is_none() && rep.assets.is_none());
+    assert_eq!(launches(&f.ws).len(), 1);
+}
+
+#[test]
+fn scouting_prefers_tagged_actors_and_keeps_the_inventory() {
+    let mut f = empty_project();
+    let store = f.ws.root.join(".shotpilot/mock_engine");
+    std::fs::create_dir_all(&store).unwrap();
+    std::fs::write(store.join("level.json"), json!({"altar": {"at": [0, 0, 0], "size": [100, 100, 100], "center": [0, 0, 50]}}).to_string()).unwrap();
+    std::fs::write(store.join("landmarks.json"), json!({"bed": [500, 0, 0]}).to_string()).unwrap();
+    f.ws.scan_assets().unwrap();
+    let rep = f.ws.scout(&[]).unwrap();
+    let scan = rep.scan.unwrap();
+    assert!(!scan.auto);
+    assert_eq!(scan.added, ids(&["altar"]));
+    assert!(rep.assets.is_none()); // already inventoried: not asked again
+    assert_eq!(launches(&f.ws).last().unwrap()["assets"], false);
+}
+
+#[test]
+fn scouting_a_level_with_nothing_to_find_says_what_to_do() {
+    let mut f = empty_project();
+    let before = f.text();
+    let err = f.ws.scout(&[]).unwrap_err();
+    assert!(err.msg.contains("anchors:"), "{}", err.msg);
+    assert_eq!(f.text(), before);
+}
+
 #[test]
 fn assets_become_props_and_props_in_use_stay() {
     let mut f = ws();

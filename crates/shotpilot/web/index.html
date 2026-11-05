@@ -1260,8 +1260,10 @@ function drawScout() {
     <div class="lead">撮る前に、プロジェクトの中に何があるかを集めます。場所（アンカー）を4方向から撮った写真と、カットに出せるもの（props）です。写真は人間が確かめるためのもので、「構成を組む」ときに各アンカーの中心側からの1枚を Claude にも見せます。ここで集めたものは shots.yaml の anchors と props に入り、カットの撮り直しは起きません。</div>
     <h4 class="sec">場所の写真</h4>
     <div class="capbar"><button class="btn dark" data-scout${ui.busy ? " disabled" : ""}>${ui.busy === "scout" ? "撮影中…" : "ロケハン写真を撮る"}</button>
-      <span class="sp-hint">${ue ? "UE を起動して still で撮ります（アンカー×4方向。数分）" : "mock エンジン: previz で数秒"}。アンカーは shots.yaml の anchors（scan で UE から取り込めます）。</span></div>
-    ${rows || `<div class="mood-empty">まだありません。「ロケハン写真を撮る」で、各アンカーを4方向から撮ります。</div>`}
+      <span class="sp-hint">${ue
+        ? "UE を裏で起動し、アンカーを4方向から still で撮ります（数分）。アンカーがまだ無ければ、同じ起動でレベルから取り込み（タグ shotpilot か SP_ の付いたアクター。無ければ目立つものを自動で選ぶ）、アセットも棚卸しします。"
+        : "mock エンジン: previz で数秒。アンカーは shots.yaml の anchors。"}</span></div>
+    ${rows || `<div class="mood-empty">${ui.busy === "scout" && ue ? "UE を起動して、レベルの場所を集めて撮っています…（数分）" : "まだありません。「ロケハン写真を撮る」で、各アンカーを4方向から撮ります。"}</div>`}
     <h4 class="sec">ステージの理解</h4>
     <div class="lead">Claude がロケハン写真を見て、このステージが何か（全体の空間、各アンカーに何があるか、カメラを置ける向き、光）を書きます。ムードボードの生成と「構成を組む」の両方がこれを読み、ムードボードはここで選んだ写真を下敷きにします。shots.yaml の stage: に入るので、手で直せます。</div>
     <div class="capbar"><button class="btn dark" data-stage-read${ui.busy || !anchors.length || !st.ai?.ready ? " disabled" : ""}>${ui.busy === "stage" ? "読み取り中…" : st.stage?.summary ? "読み直す" : "Claude にステージを読ませる"}</button>
@@ -1278,6 +1280,23 @@ function drawScout() {
       <span class="sp-hint">${assets.length ? `${assets.length} 件` : ue ? "UE の Asset Registry から mesh を寸法付きで一覧にします（UE 起動あり）" : ""}</span></div>
     ${assets.length ? `<div class="assets-wrap"><table class="assets"><thead><tr><th>種類</th><th>アセット</th><th>大きさ</th><th>prop 名</th></tr></thead><tbody>${arows}</tbody></table></div>` : ""}`;
   filterAssets();
+  // UE5: the first visit with nothing scouted starts it (once per project in this session,
+  // so a failure is shown, not retried in a loop)
+  if (ue && !anchors.length && !ui.busy && !autoScouted.has(st.path)) {
+    autoScouted.add(st.path);
+    runScout();
+  }
+}
+
+const autoScouted = new Set();
+
+function runScout() {
+  scoutAction("scout", {}, "/api/scout", "scout", (o) => {
+    const n = Object.keys(o.anchors || {}).length;
+    const got = o.scanned ? `レベルから${o.scanned.auto ? "自動で選んだ" : "取り込んだ"} ${o.scanned.added.length} か所を、` : "";
+    toast(`${got}${n} か所×4方向で撮りました${o.assets != null ? `（アセット ${o.assets} 件も棚卸し）` : ""}`);
+    if (o.assets != null) ui.assetsCount = -1;
+  });
 }
 
 function filterAssets() {
@@ -3147,7 +3166,7 @@ $("next").addEventListener("click", (e) => {
 $("scoutpanel").addEventListener("click", (e) => {
   const t = e.target.closest("[data-scout],[data-stage-read],[data-assets-scan],[data-prop-add],[data-prop-rm]");
   if (!t) return;
-  if (t.matches("[data-scout]")) scoutAction("scout", {}, "/api/scout", "scout", (idx) => toast(`${Object.keys(idx.anchors || {}).length} か所を撮りました`));
+  if (t.matches("[data-scout]")) runScout();
   else if (t.matches("[data-stage-read]")) scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
   else if (t.matches("[data-assets-scan]")) scoutAction("assets", {}, "/api/assets/scan", "assets", (o) => { toast(`${o.count} 件のアセット`); ui.assetsCount = -1; });
   else if (t.dataset.propAdd) {

@@ -55,6 +55,10 @@ pub trait Engine {
         -> Result<Value>;
     fn pull(&self, items: &[Value]) -> Result<Value>;
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value>;
+    /// Stage 0 in one launch: {"anchors": ..., "auto": bool, "assets"?: [...]}. The anchors are
+    /// the tagged ones as in [`Engine::scan`]; with none tagged, landmarks the engine picks from
+    /// the level (`auto: true`). The mesh inventory comes along when `assets` is set.
+    fn survey(&self, tag: &str, prefix: &str, assets: bool) -> Result<Value>;
     /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
     fn assets(&self) -> Result<Value>;
 }
@@ -278,6 +282,34 @@ impl Engine for MockEngine {
 
     fn assets(&self) -> Result<Value> {
         self.launch("assets", json!({}))?;
+        self.inventory()
+    }
+
+    fn scan(&self, _tag: &str, _prefix: &str) -> Result<Value> {
+        self.launch("scan", json!({}))?;
+        self.level()
+    }
+
+    fn survey(&self, _tag: &str, _prefix: &str, assets: bool) -> Result<Value> {
+        self.launch("survey", json!({"assets": assets}))?;
+        let mut out = self.level()?;
+        // the mock level: `level.json` holds what is tagged, `landmarks.json` what a level
+        // without tags would offer (as the real engine picks from its actors)
+        let tagged = out["anchors"].as_object().is_some_and(|m| !m.is_empty());
+        let marks = self.store.join("landmarks.json");
+        out["auto"] = json!(!tagged && marks.exists());
+        if !tagged && marks.exists() {
+            out["anchors"] = read_json(&marks)?;
+        }
+        if assets {
+            out["assets"] = self.inventory()?["assets"].take();
+        }
+        Ok(out)
+    }
+}
+
+impl MockEngine {
+    fn inventory(&self) -> Result<Value> {
         let f = self.store.join("assets.json");
         if f.exists() {
             return Ok(json!({"assets": read_json(&f)?}));
@@ -293,8 +325,7 @@ impl Engine for MockEngine {
         Ok(json!({"assets": list}))
     }
 
-    fn scan(&self, _tag: &str, _prefix: &str) -> Result<Value> {
-        self.launch("scan", json!({}))?;
+    fn level(&self) -> Result<Value> {
         let level = self.store.join("level.json");
         if level.exists() {
             return Ok(json!({"anchors": read_json(&level)?}));
@@ -476,6 +507,10 @@ impl Engine for Ue5Engine {
 
     fn scan(&self, tag: &str, prefix: &str) -> Result<Value> {
         self.run("scan", json!({"tag": tag, "prefix": prefix}))
+    }
+
+    fn survey(&self, tag: &str, prefix: &str, assets: bool) -> Result<Value> {
+        self.run("survey", json!({"tag": tag, "prefix": prefix, "assets": assets}))
     }
 }
 

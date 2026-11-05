@@ -1105,8 +1105,11 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 .unwrap_or_default();
             let _guard = app.mutate()?;
             let mut ws = app.ws()?;
-            let idx = ws.take_scout(&only)?;
-            send_json(stream, false, 200, &idx).map_err(io)
+            let rep = ws.scout(&only)?;
+            let mut out = rep.index;
+            out["scanned"] = json!(rep.scan.map(|s| json!({"added": s.added, "auto": s.auto})));
+            out["assets"] = json!(rep.assets);
+            send_json(stream, false, 200, &out).map_err(io)
         }
         ("POST", "/api/moodboard/generate") => {
             let body = req.json()?;

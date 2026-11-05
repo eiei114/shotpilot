@@ -36,7 +36,7 @@ shotpilot moodboard               # ブリーフからムードボードを4枚�
 shotpilot storyboard [s03]        # previz の線画を下絵に、リアル寄りの絵コンテを生成（確認用。Cut には入らない）
 shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
 shotpilot produce --review        # 同じだが、台本とカットの previz で止める（アプリの既定）。確かめて直したら produce --resume で音→撮影→Cut
-shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）
+shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）。アンカーが無ければ、同じ UE の起動でレベルから取り込み、アセットも棚卸しする
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する

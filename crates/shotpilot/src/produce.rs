@@ -75,9 +75,14 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     // 1. scout photos
     if crate::scout::summary(&ws.root).is_empty() {
         step("scout", "start", String::new(), emit, &mut steps);
-        let idx = ws.take_scout(&[])?;
-        let n = idx["anchors"].as_object().map(|m| m.len()).unwrap_or(0);
-        step("scout", "done", format!("{n} か所"), emit, &mut steps);
+        let rep = ws.scout(&[])?;
+        let n = rep.index["anchors"].as_object().map(|m| m.len()).unwrap_or(0);
+        let from = match &rep.scan {
+            Some(s) if s.auto => "（レベルから自動で選んだ場所）",
+            Some(_) => "（レベルのタグから取り込み）",
+            None => "",
+        };
+        step("scout", "done", format!("{n} か所{from}"), emit, &mut steps);
     } else {
         step("scout", "skipped", "撮影済み".into(), emit, &mut steps);
     }

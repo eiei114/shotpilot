@@ -9,7 +9,7 @@ paths:
 ## 起動経路（実測済み・D-09）
 
 - Editor の GUI は開かない。`UnrealEditor-Cmd` から CLI で動かす。owner が sharehouse-horror で本番運用している経路なので、リスクとして扱わない。
-- `build` / `pull` / `scan` は `-run=pythonscript -script=<sp_entry.py>` で動かす（commandlet で軽い）。
+- `build` / `pull` / `scan` / `assets` / `survey` は `-run=pythonscript -script=<sp_entry.py>` で動かす（commandlet で軽い）。
 - `render` は `-ExecutePythonScript=<sp_entry.py>` で動かす。フルエディタを起動して MRQ を PIE executor で回し、終わったら終了する。
 - 既定では、隔離した `-UserDir` で起動する（`project.isolate_userdir`）。owner の普段のエディタ設定を汚さない。
 - Remote Control HTTP は使わない（Beta 扱いで、Sequencer 編集の汎用 API ではないため）。
@@ -47,6 +47,14 @@ paths:
 - 見ないもの: エディタのレベルでの配置（World Partition の `__ExternalActors__` は PIE から戻せない）、ゲームのコード。シャドウだけに写ったアクターも含まれる（撮り直しすぎる側に倒している）。
 - **実機では未確認（2026-11-05）。** API 名は 5.7 の Python リファレンスで確かめ、ロジックは偽の `unreal` モジュールで通した。最初に実機で撮るときは、result の `deps` と `deps_error` を確かめる。
 - 品質プリセットの `render_warmup_frames`（描画するウォームアップの枚数）と `warmup_camera_cut`（ショットのカメラでウォームアップする）は、書いたときだけ MRQ に渡す。既定は変えていない（画が変わらないので RENDERER_VERSION は上げていない）。Lumen の影が出そろわないときに試す。
+
+## ロケハンの下ごしらえ（survey、D-42）
+
+- `survey` は1回の commandlet で、アンカー（`scan` と同じくタグ `shotpilot` か `SP_` 接頭辞のアクター）と、頼まれたときはアセットの棚卸しを返す。タグ付きのアクターが無ければ、レベルから目印を自動で選び `auto: true` を付ける。
+- 自動の選び方: メッシュを持ち、ライト・カメラ・ボリューム・空などではないアクターのうち、最大辺 40〜2500 cm・高さ 15 cm 以上のもの。ラベルから名前を作り（`SM_Old_Well3` → `old_well`）、同じ名前は1つに絞る。大きさで重みを付け、3 m 以上離れたものを遠い順に最大 6 か所選ぶ。
+- エディタのレベルを読むだけなので、実行時にレベルを組むゲーム（七号室の `/Engine/Maps/Entry`）では何も見つからない。そのときは「タグを付けるか anchors を書く」と返す。World Partition のマップは、読み込まれていないセルのアクターを拾えない。
+- mock は `level.json`（タグ付き）と `landmarks.json`（自動の候補）で同じ形を返す。
+- **実機では未確認（2026-11-05）。** 最初に実機で走らせるときは、ログの `scan: N landmark candidates, picked [...]` と、選ばれた場所が妥当かを確かめる。
 
 ## 検証
 

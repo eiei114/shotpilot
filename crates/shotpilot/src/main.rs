@@ -106,7 +106,8 @@ enum Cmd {
         #[arg(long)]
         script: bool,
     },
-    /// photograph every anchor from four sides into scout/ (stage 0, location scouting)
+    /// photograph every anchor from four sides into scout/ (stage 0, location scouting).
+    /// With no anchors yet, brings them in from the level first (and the mesh inventory)
     Scout {
         anchors: Vec<String>,
     },
@@ -519,8 +520,15 @@ fn run(cli: Cli) -> Result<u8> {
         }
         Cmd::Scout { anchors } => {
             let mut ws = ws(file)?;
-            let idx = ws.take_scout(&anchors)?;
-            for (name, views) in idx["anchors"].as_object().into_iter().flatten() {
+            let rep = ws.scout(&anchors)?;
+            if let Some(s) = &rep.scan {
+                let how = if s.auto { "picked from the level" } else { "tagged in the level" };
+                println!("anchors {how}: {}", dash(&s.added));
+            }
+            if let Some(n) = rep.assets {
+                println!("assets inventoried: {n}");
+            }
+            for (name, views) in rep.index["anchors"].as_object().into_iter().flatten() {
                 let files: Vec<&str> = views.as_array().into_iter().flatten().filter_map(|v| v["file"].as_str()).collect();
                 println!("{name:<16} {}", files.join("  "));
             }

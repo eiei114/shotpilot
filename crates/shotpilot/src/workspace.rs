@@ -152,6 +152,19 @@ pub struct ScanReport {
     pub added: Vec<String>,
     pub moved: Vec<String>,
     pub same: Vec<String>,
+    /// The engine picked these anchors from the level (nothing was tagged).
+    pub auto: bool,
+}
+
+/// What [`Workspace::scout`] gathered before taking the photos.
+#[derive(Debug, Default)]
+pub struct ScoutReport {
+    /// Anchors brought in from the level (None: shots.yaml already had anchors).
+    pub scan: Option<ScanReport>,
+    /// Meshes inventoried in the same launch (None: the inventory was already there).
+    pub assets: Option<usize>,
+    /// scout/index.json after the photos.
+    pub index: Value,
 }
 
 pub struct Workspace {
@@ -648,10 +661,15 @@ impl Workspace {
     pub fn scan(&mut self, tag: &str, prefix: &str) -> Result<ScanReport> {
         let engine = make_engine(&self.defn)?;
         let found = engine.scan(tag, prefix)?;
+        self.apply_scan(&found)
+    }
+
+    /// Write the anchors an engine found into shots.yaml (new ones added, moved ones updated).
+    fn apply_scan(&mut self, found: &Value) -> Result<ScanReport> {
         let mut names: Vec<(String, Value)> =
             found["anchors"].as_object().map(|m| m.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
         names.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut report = ScanReport::default();
+        let mut report = ScanReport { auto: found["auto"].as_bool().unwrap_or(false), ..Default::default() };
         let mut updates = Vec::new();
         for (name, found) in names {
             let Ok((at, b)) = model::parse_anchor(&found) else { continue };
@@ -681,7 +699,7 @@ impl Workspace {
             model::parse(&doc.value()?, &self.path)?;
             doc.save(&self.path)?;
             self.reload()?;
-            self.state.log("scan", json!({"added": report.added, "moved": report.moved}));
+            self.state.log("scan", json!({"added": report.added, "moved": report.moved, "auto": report.auto}));
             self.state.save()?;
         }
         Ok(report)
@@ -1275,6 +1293,37 @@ impl Workspace {
         self.reload()?;
         self.state.log("prop", json!({"removed": name}));
         self.state.save()
+    }
+
+    /// Stage 0 from one button: gather what is missing, then photograph. With no anchors yet,
+    /// one engine launch brings them in from the level (tagged actors, else landmarks the
+    /// engine picks) together with the mesh inventory when there is none; then the photos.
+    pub fn scout(&mut self, only: &[String]) -> Result<ScoutReport> {
+        let mut report = ScoutReport::default();
+        if self.defn.anchors.is_empty() {
+            let want_assets = crate::scout::load_assets(&self.root).is_empty();
+            let engine = make_engine(&self.defn)?;
+            let found = engine.survey("shotpilot", "SP_", want_assets)?;
+            if let Some(list) = found["assets"].as_array() {
+                let mut list: Vec<crate::scout::AssetInfo> = list.iter().filter_map(crate::scout::AssetInfo::from_json).collect();
+                list.sort_by(|a, b| a.asset.cmp(&b.asset));
+                list.dedup_by(|a, b| a.asset == b.asset);
+                crate::scout::save_assets(&self.root, &list)?;
+                self.state.log("assets", json!({"count": list.len()}));
+                self.state.save()?;
+                report.assets = Some(list.len());
+            }
+            let rep = self.apply_scan(&found)?;
+            if self.defn.anchors.is_empty() {
+                bail!(
+                    "found nothing in the level to scout: tag actors `shotpilot` (or name them SP_...) in UE, or write \
+                     `anchors:` in shots.yaml. A level built at runtime has nothing in the editor to find"
+                );
+            }
+            report.scan = Some(rep);
+        }
+        report.index = self.take_scout(only)?;
+        Ok(report)
     }
 
     /// Photograph anchors from four sides (all anchors when `only` is empty) into scout/.
