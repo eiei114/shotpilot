@@ -93,6 +93,14 @@ fn picker(window: Arc<OnceLock<WebviewWindow>>) -> shotpilot::server::Picker {
                 }
                 d.pick_file()
             }
+            Pick::Video { start } => {
+                d = d.set_title("Shotpilot: 参照にするティザーの動画を選ぶ（180 秒まで）")
+                    .add_filter("動画", &["mp4", "mov", "m4v", "webm", "mkv"]);
+                if let Some(s) = start {
+                    d = d.set_directory(s);
+                }
+                d.pick_file()
+            }
         }
     })
 }
