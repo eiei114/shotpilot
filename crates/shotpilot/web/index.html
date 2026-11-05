@@ -372,12 +372,25 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .quick button:hover:not(:disabled) { border-color: var(--ink); }
 .quick .lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
 .quick .gap { width: 8px; }
+/* examples of a note: pressing one only fills the box (dashed, unlike the one-tap buttons that act at once) */
+.examples { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; min-width: 0; }
+.examples .lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
+.examples button { border: 1px dashed color-mix(in srgb, var(--muted) 45%, var(--line)); background: transparent; border-radius: 999px;
+  padding: 2px 10px; font-size: 12px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.examples button:hover, .examples button:focus-visible { border-style: solid; border-color: var(--ink); color: var(--ink); }
+.examples .cost { margin-left: auto; font-size: 11px; color: var(--faint); white-space: nowrap; }
+.examples .cost.free { color: color-mix(in srgb, var(--accent) 45%, var(--ink)); font-weight: 600; }
+.composer .examples button { font-size: 11.5px; padding: 1px 9px; }
+.ask { flex-wrap: wrap; }
+.ask .only { flex: none; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
+.lchip.fin { color: var(--muted); cursor: pointer; }
+.lchip.fin:hover { color: var(--ink); }
 .change { font-size: 12px; display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; padding: 6px 10px; border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); }
 .change .what { font-weight: 600; }
 .change .k { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .change .b { color: var(--faint); text-decoration: line-through; }
-.change .mini { margin-left: auto; }
+.change .acts { margin-left: auto; display: flex; gap: 6px; }
 .sheet-empty { border: 1px dashed var(--line); border-radius: 12px; padding: 28px; display: grid; gap: 10px; justify-items: center; text-align: center; color: var(--muted); }
 .sheet-empty b { color: var(--ink); font-size: 15px; }
 .sheet-keys { color: var(--faint); font-size: 11px; display: flex; gap: 6px 16px; flex-wrap: wrap; }
@@ -606,6 +619,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <div class="conn-row"><button class="btn dark" id="conn-save">保存</button><button class="btn" id="conn-close">閉じる</button><span class="st" id="conn-st"></span></div>
       </div>
       <div class="chips" id="chips"></div>
+      <div class="examples" id="examples" hidden></div>
       <textarea id="note" rows="3" placeholder="どう直す？ 例: もう少し手すりに寄せて"></textarea>
       <div id="ai-warn" class="warn-ai" hidden><span id="ai-err">Claude に接続されていません。</span> <button id="ai-open">接続を設定する</button>（数値を直接直す「調整」はこのままでも使えます）</div>
       <div class="comp-row">
@@ -1083,17 +1097,17 @@ function drawDesign() {
   const lb = f.letterbox ?? "";
   const opt = (v, t) => `<option value="${v}"${String(lb) === String(v) ? " selected" : ""}>${t}</option>`;
   const t = f.title || {}, e = f.end_card || {};
-  const capOf = (s) => typeof s.node.caption === "string" ? { text: s.node.caption } : s.node.caption || {};
   const rows = st.shots.map((s, i) => {
-    const c = capOf(s), tr = s.node.transition || "cut";
+    const c = capOf(s) || {}, tr = s.node.transition || "cut";
     const last = i === st.shots.length - 1;
     return `<tr data-shot="${esc(s.id)}"><td class="id">${s.index + 1}. ${esc(s.id)}<br><small style="color:var(--muted)">${esc(s.beat || "-")} · ${s.duration}s</small></td>
       <td><input data-k="cap" value="${esc(c.text || "")}" placeholder="字幕（任意）"></td>
       <td><input data-k="at" type="number" step="0.1" min="0" value="${esc(c.at ?? "")}" placeholder="0.3" style="width:70px"></td>
-      <td>${last ? `<span class="sp-hint">最後</span>` : `<select data-k="tr">${["cut", "dip", "flash"].map((x) => `<option value="${x}"${x === tr ? " selected" : ""}>${{ cut: "カット", dip: "黒をはさむ", flash: "白をはさむ" }[x]}</option>`).join("")}</select>`}</td></tr>`;
+      <td>${last ? `<span class="sp-hint">最後</span>` : `<select data-k="tr">${["cut", "dip", "flash"].map((x) => `<option value="${x}"${x === tr ? " selected" : ""}>${TRANSITION_JA[x]}</option>`).join("")}</select>`}</td></tr>`;
   }).join("");
   $("designpanel").innerHTML = `<h3>デザイン</h3>
     <div class="lead">帯・タイトル・字幕・エンドカード・カットのつなぎ方を決めます。どれも shots.yaml に書かれ、Cut のときに焼き込まれます。直しても撮り直しは起きません（Cut をやり直すだけ）。クロスフェードは尺が縮んで SE がずれるので、つなぎは黒か白をはさむ形だけです。${f.font ? "" : " <b style='color:var(--err)'>日本語フォントが見つかりません。finish.font にフォントのパスを書いてください。</b>"}</div>
+    <div class="sp-hint">言葉で直すなら左の欄へ。この画面から送る指示は、文字（台本のカード・重ね文字・字幕）・つなぎ・明るさ・色調・帯だけを直し、カメラ・光・音には触れません。1カットだけなら、構成のカット表で行を選んで「文字・つなぎだけ」を使います。</div>
     <div class="form">
       <label>帯<small>映画の上下の黒帯。画面比で指定</small></label>
       <div><select id="d-lb">${opt("", "なし")}${opt(1.85, "1.85（ビスタ）")}${opt(2, "2.00")}${opt(2.39, "2.39（シネスコ）")}</select></div>
@@ -1421,14 +1435,77 @@ const TOD_JA = { dawn: "夜明け", morning: "朝", noon: "昼", afternoon: "午
 const KIND_JA = { card: "カード", rule: "決まり", title: "タイトル", message: "メッセージ", black: "黒", caption: "字幕", count: "数え上げ" };
 const NUDGE_JA = { closer: "寄る", farther: "引く", wider: "広角に", tighter: "望遠に", shorter: "−0.5秒", longer: "+0.5秒" };
 const NUDGE_DONE = { closer: "寄せた", farther: "引いた", wider: "広角にした", tighter: "望遠にした", shorter: "0.5秒短くした", longer: "0.5秒長くした" };
-const ASPECTS = ["shot", "camera", "light", "sound"];
-const ASPECT_JA = { shot: "このカット", camera: "カメラだけ", light: "光だけ", sound: "音だけ" };
+const ASPECTS = ["shot", "camera", "light", "sound", "finish"];
+const ASPECT_JA = { shot: "このカット", camera: "カメラだけ", light: "光だけ", sound: "音だけ", finish: "文字・つなぎだけ" };
+const ASPECT_TIP = {
+  shot: "このカットの何でも（画が変われば、このカットだけ撮り直します）",
+  camera: "位置・向き・レンズ・動きだけ。ほかはコードで守ります",
+  light: "時間帯と光の向きだけ。ほかはコードで守ります",
+  sound: "このカットの SE だけ。映像は変わりません",
+  finish: "重ねる文字・字幕・次へのつなぎ（黒/白）・明るさだけ。Cut で焼き込み、撮り直しは起きません",
+};
 const ASPECT_PH = {
   shot: "このカットをどう直す？ 例: 人影が映るところまで待ってから切る",
   camera: "カメラをどう直す？ 例: もう少し低い位置から見上げる",
   light: "光をどう直す？ 例: 夕方にして、窓だけ明るく",
   sound: "このカットの音をどう直す？ 例: 人影の瞬間に低い一撃",
+  finish: "文字やつなぎをどう直す？ 例: 字幕を0.5秒遅れて出して、長めに残す",
 };
+/** What a note costs, said before it is sent: [text, editorial (nothing re-renders)]. */
+const ASPECT_COST = {
+  shot: ["画が変われば、このカットだけ撮り直し", false], camera: ["このカットだけ撮り直し", false],
+  light: ["このカットだけ撮り直し", false], sound: ["撮り直しなし", true], finish: ["撮り直しなし · Cut で焼き込み", true],
+};
+const TRANSITION_JA = { cut: "カット", dip: "黒をはさむ", flash: "白をはさむ" };
+const capOf = (s) => typeof s.node?.caption === "string" ? { text: s.node.caption } : s.node?.caption || null;
+
+/** Notes worth trying on a cut, for the part it is about. Pressing one fills the box; nothing is sent. */
+function rowExamples(aspect, s) {
+  if (aspect === "camera") return ["もう少し低い位置から見上げる", "ゆっくり前に進みながら寄る", "被写体を画面の右3分の1に置く"];
+  if (aspect === "light") return ["夕方にして、影を長く伸ばす", "夜にする", "逆光にして輪郭を立てる"];
+  if (aspect === "sound") return ["カットの頭に低い一撃", "切り替わる直前に whoosh", "ここは無音にして溜める"];
+  if (aspect === "finish") return finishExamples(s);
+  return [s.purpose ? "見せたいものが一目で伝わるように" : "何を見せるカットか、はっきりさせる", "見せ場が映るまで待ってから切る", "1秒短くしてテンポを上げる"];
+}
+
+/** The finishing of one cut: its words, their motion (when and how long they show), the hand-over, the look.
+ * The words are named by their kind, not quoted: the row shows them just above. */
+function finishExamples(s) {
+  const st = ui.status, ex = [];
+  const last = s.index === st.shots.length - 1;
+  const over = (st.script || []).find((l) => l.on === s.id);
+  const noun = over ? KIND_JA[over.kind] || "文字" : capOf(s)?.text ? "字幕" : "";
+  if (noun) ex.push(`${noun}の文字を「」に変える`, `${noun}を0.5秒遅れて出し、長めに残す`);
+  else ex.push("字幕「」を重ねる");
+  const tr = s.node?.transition || "cut";
+  if (!last) ex.push(tr === "cut" ? "次のカットへ白く飛ばしてつなぐ" : "黒や白をはさまず、すぱっと切る");
+  ex.push(Number(s.node?.exposure || 0) ? "明るさを撮ったままに戻す" : "このカットだけ少し暗く沈める");
+  return ex;
+}
+
+/** A card between shots: its words, its length, its form. */
+function slotExamples(l) {
+  if (l.kind === "black") return ["もう少し長く溜める", "短くして間を詰める"];
+  const en = l.en ? "英語の小さな行を消す" : "英語の小さな行を添える";
+  if (l.kind === "title") return ["タイトルをあと1秒長く見せる", l.en ? "英語の副題を消す" : "英語の副題を添える"];
+  if (l.kind === "message") return ["もっと短いメッセージにする", "送り主を「」にする", "0.5秒長くして読ませる"];
+  if (l.kind === "rule") return ["もっと短く言い切る", "小見出しを「」にする", "0.5秒長くして読ませる"];
+  return ["もっと短く言い切る", "0.5秒長くして、ゆっくり読ませる", en];
+}
+
+const examplesHtml = (list, cost) => !list.length ? "" : `<div class="examples"><span class="lbl">例</span>${list.map((t) =>
+  `<button type="button" data-row-ex="${esc(t)}" title="押すと欄に入ります（送る前に直せます）">${esc(t)}</button>`).join("")}${cost
+  ? `<span class="cost${cost[1] ? " free" : ""}">${esc(cost[0])}</span>` : ""}</div>`;
+
+/** Put an example in a note box, the caret where it is worth typing (inside an empty 「」). */
+function fillNote(el, text) {
+  if (!el) return;
+  el.value = text;
+  el.focus();
+  const i = text.indexOf("「」");
+  const at = i >= 0 ? i + 1 : text.length;
+  el.setSelectionRange(at, at);
+}
 const shotById = (id) => ui.status?.shots.find((s) => s.id === id);
 /** The game content that changed under a shot's takes: {qualities, names} (or null). */
 function gameChanged(s) {
@@ -1525,11 +1602,13 @@ function drawStructure() {
       <button class="btn" data-cams${ai && !ui.busy ? "" : " disabled"} title="台本・目的・秒数はそのまま（コードで守ります）、カメラだけを全カット組み直します。左の欄に方向を書いてから押すと、それに沿って組み直します">📷 カメラだけ組み直す</button>
       <button class="btn" data-plan${ai && !ui.busy ? "" : " disabled"} title="ブリーフ・骨格・セオリーから組み直します（いまのカットは置き換わります）">📐 組み直す</button></div>
     ${scriptBar(st)}
-    <div class="sheet-lead">Cut に出る順に 1 行 1 カット。<b>○</b> で承認、文字と秒数は押せばその場で直せます。カメラの欄を押すと、カメラだけを Claude に頼めます。
+    <div class="sheet-lead">Cut に出る順に 1 行 1 カット。<b>○</b> で承認、文字と秒数は押せばその場で直せます。行を選ぶと、カメラ・光・音・文字とつなぎのどれか<b>だけ</b>を Claude に頼めます（文字・つなぎ・音は撮り直しなし）。
       ${whole.map((x) => `<button class="fchip ${x.severity}" data-fix-all="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("")}</div>
     <div class="sheet" role="list">${rows || `<div class="sheet-empty">この絞り込みに当てはまるカットはありません</div>`}</div>
     <div class="sheet-keys"><span><kbd>↑</kbd><kbd>↓</kbd> 選ぶ</span><span><kbd>Enter</kbd> 承認して次へ</span><span><kbd>Space</kbd> 大きく見る・範囲を囲む</span>
-      <span><kbd>/</kbd> 直す</span><span><kbd>1</kbd>〜<kbd>4</kbd> 直す範囲</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</span></div>`;
+      <span><kbd>/</kbd> 直す</span><span><kbd>1</kbd>〜<kbd>${ASPECTS.length}</kbd> 直す範囲</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</span></div>`;
+  // what an edit just did shows under its row: bring it into view (it can fall below the fold)
+  if (ui.flash?.fresh) box.querySelector(".item.sel .change")?.scrollIntoView({ block: "nearest" });
   if (ui.edit) {
     const el = box.querySelector(".inl");
     if (el) { el.focus(); el.select?.(); }
@@ -1569,7 +1648,8 @@ function shotRow(s, it) {
     ? `<input class="inl" data-k="purpose" value="${esc(s.purpose)}" placeholder="このカットで見せるもの">`
     : `<div class="purpose cell${s.purpose ? "" : " empty"}" data-edit="purpose" title="押して直す（撮り直しは起きません）">${esc(s.purpose || "見せるものを書く")}</div>`;
   const overlays = (st.script || []).filter((l) => l.on === s.id).map((l) => editing("line", l.id) ? lineEditor(l)
-    : `<span class="lchip cell" data-edit="line" data-id="${esc(l.id)}" title="${esc(KIND_JA[l.kind] || l.kind)}（押して直す。撮り直しは起きません）">${esc(l.ja || l.en || "…")}<small>${esc(KIND_JA[l.kind] || l.kind)} ${l.at ? `+${l.at}s` : ""}</small></span>`).join("");
+    : `<span class="lchip cell" data-edit="line" data-id="${esc(l.id)}" title="${esc(KIND_JA[l.kind] || l.kind)}（押して直す。撮り直しは起きません）">${esc(l.ja || l.en || "…")}<small>${esc(KIND_JA[l.kind] || l.kind)} ${l.at ? `+${l.at}s` : ""}</small></span>`).join("")
+    + finishChips(s);
   const fr = s.framing;
   const env = s.node?.environment?.time_of_day;
   const mv = moveOf(s);
@@ -1598,6 +1678,19 @@ function shotRow(s, it) {
     ${sel ? shotTools(s) : ""}</div>`;
 }
 
+/** What the cut burns in besides the script: its caption, how it hands over, its brightness. Each points at 文字・つなぎだけ. */
+function finishChips(s) {
+  const tip = "押すと「文字・つなぎだけ」を直す指示になります（撮り直しは起きません）";
+  const out = [];
+  const cap = capOf(s);
+  if (cap?.text) out.push([`${cap.text}`, "字幕"]);
+  const tr = s.node?.transition || "cut";
+  if (tr !== "cut" && s.index < ui.status.shots.length - 1) out.push([`→ ${TRANSITION_JA[tr] || tr}`, "つなぎ"]);
+  const ex = Number(s.node?.exposure || 0);
+  if (ex) out.push([`明るさ ${ex > 0 ? "+" : ""}${ex}`, "Cut"]);
+  return out.map(([t, k]) => `<span class="lchip fin cell" data-aspect="finish" title="${esc(tip)}">${esc(t)}<small>${esc(k)}</small></span>`).join("");
+}
+
 function lineEditor(l) {
   const en = l.en || ["card", "title"].includes(l.kind);
   return `<span style="display:block;flex:1 1 100%"><input class="inl" data-k="ja" value="${esc(l.ja)}" placeholder="${esc(KIND_JA[l.kind] || l.kind)}の文字">
@@ -1616,20 +1709,36 @@ function slotRow(it) {
   const dur = editing("ldur")
     ? `<div class="dur"><input class="inl" data-k="dur" type="number" step="0.1" min="0.2" value="${esc(l.dur ?? it.duration)}"></div>`
     : `<div class="dur cell" data-edit="ldur" data-id="${esc(l.id)}" title="秒数（押して直す）"><span><b>${esc(it.duration)}</b>s</span></div>`;
-  return `<div class="item slot${sel ? " sel" : ""}${ui.flash?.id === l.id && ui.flash.fresh ? " flash" : ""}" data-row="${esc(l.id)}" role="listitem">
+  const cls = ["item slot", sel ? "sel" : "", ui.rowBusy === l.id ? "busy" : "", ui.flash?.id === l.id && ui.flash.fresh ? "flash" : ""].join(" ");
+  return `<div class="${cls}" data-row="${esc(l.id)}" role="listitem">
     <div class="row"><div class="okc"></div><div class="thumb">${mini}</div>
       <div class="body"><div class="l1"><span class="slot-kind">${esc(KIND_JA[l.kind] || l.kind)}</span><span>${fmtTC(it.start)}–${fmtTC(it.start + it.duration)}</span><span class="sid">${esc(l.id)}</span></div>${text}</div>
       <div></div>${dur}</div>
-    ${sel && ui.flash?.id === l.id ? `<div class="tools">${flashHtml()}</div>` : ""}</div>`;
+    ${sel && lineById(l.id) ? slotTools(l) : sel && ui.flash?.id === l.id ? `<div class="tools">${flashHtml()}</div>` : ""}</div>`;
+}
+
+/** A selected card's tools: only its words, form and length go to Claude (code holds the rest). */
+function slotTools(l) {
+  const ai = ui.status.ai?.ready, busy = !!ui.busy;
+  const what = l.kind === "black" ? "この間" : `この${KIND_JA[l.kind] || "カード"}`;
+  const ph = !ai ? "Claude が未接続です（文字と秒数は、押せばその場で直せます）"
+    : l.kind === "black" ? "この間をどう直す？ 例: もう少し長く溜める" : `${what}をどう直す？ 例: もっと短く言い切る`;
+  return `<div class="tools">
+    <div class="ask"><span class="only" title="${esc(`${what}の文字・形・長さだけを Claude に直させます。ほかのカットとカメラはコードで守ります`)}">文字・長さだけ</span>
+      <input id="row-ask" autocomplete="off" placeholder="${esc(ph)}" value="${esc(ui.rowNote)}"${ai ? "" : " disabled"}>
+      <button class="send" data-row-send title="送る (Enter)"${ai && !busy ? "" : " disabled"}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+    ${ai ? examplesHtml(slotExamples(l), ASPECT_COST.finish) : ""}
+    ${ui.flash?.id === l.id ? flashHtml() : ""}</div>`;
 }
 
 function shotTools(s) {
   const ai = ui.status.ai?.ready, busy = !!ui.busy;
   const ph = ai ? ASPECT_PH[ui.aspect] : "Claude が未接続です（すぐ直す と、文字・秒数の直接編集は使えます）";
   return `<div class="tools">
-    <div class="ask"><div class="seg">${ASPECTS.map((a, i) => `<button data-aspect="${a}" class="${ui.aspect === a ? "on" : ""}" title="${i + 1}">${ASPECT_JA[a]}</button>`).join("")}</div>
+    <div class="ask"><div class="seg">${ASPECTS.map((a, i) => `<button data-aspect="${a}" class="${ui.aspect === a ? "on" : ""}" title="${esc(`${ASPECT_TIP[a]}（${i + 1}）`)}">${ASPECT_JA[a]}</button>`).join("")}</div>
       <input id="row-ask" autocomplete="off" placeholder="${esc(ph)}" value="${esc(ui.rowNote)}"${ai ? "" : " disabled"}>
       <button class="send" data-row-send title="送る (Enter)"${ai && !busy ? "" : " disabled"}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+    ${ai ? examplesHtml(rowExamples(ui.aspect, s), ASPECT_COST[ui.aspect]) : ""}
     <div class="quick"><span class="lbl">すぐ直す</span>${["closer", "farther", "wider", "tighter"].map((k) => `<button data-nudge="${k}"${busy ? " disabled" : ""}>${NUDGE_JA[k]}</button>`).join("")}
       <span class="gap"></span>${["shorter", "longer"].map((k) => `<button data-nudge="${k}"${busy ? " disabled" : ""}>${NUDGE_JA[k]}</button>`).join("")}
       <span class="gap"></span><button data-open-big>大きく見る・範囲を囲む ↗</button></div>
@@ -1642,14 +1751,20 @@ function flashHtml() {
   const pv = fl.previz === "running" ? "（previz を撮っています…）" : fl.previz === "done" ? "（previz を更新しました）" : "";
   const again = stale.length ? `撮り直し: <b>${esc(stale.join(", "))}</b> だけ${pv}` : "撮り直しなし";
   const detail = changeText(fl.changes);
+  // nothing to re-take: the change shows once the cut is assembled again (seconds, no render).
+  // A flash is only left by an edit that changed something.
+  const see = !stale.length && ui.status.cut
+    ? `<button class="mini" data-cut-now title="撮り直さず、いまの take をつなぎ直して焼き込みます"${ui.busy ? " disabled" : ""}>✂ Cut で見る</button>` : "";
+  const undo = ui.status.undo ? `<button class="mini" data-undo${ui.busy ? " disabled" : ""}>↶ 元に戻す</button>` : "";
   return `<div class="change"><span class="what">✓ ${esc(fl.text)}</span>${detail ? `<span>${detail}</span>` : ""}<span>· ${again}</span>
-    ${ui.status.undo ? `<button class="mini" data-undo${ui.busy ? " disabled" : ""}>↶ 元に戻す</button>` : ""}</div>`;
+    ${see || undo ? `<span class="acts">${see}${undo}</span>` : ""}</div>`;
 }
 
 /** Select a row of the sheet (a shot row also selects the shot everywhere else). */
 function pickRow(id, scroll = true) {
   if (!id) return;
-  if (ui.row !== id) { ui.aspect = "shot"; ui.edit = null; }
+  // a note (and an example quoting a cut's words) belongs to its row
+  if (ui.row !== id) { ui.aspect = "shot"; ui.edit = null; ui.rowNote = ""; }
   ui.row = id;
   if (shotById(id)) { if (ui.sel !== id) ui.region = null; ui.sel = id; }
   draw();
@@ -1704,21 +1819,25 @@ async function approveRow(id, on = true) {
 }
 
 async function sendRowNote() {
-  const s = shotById(ui.row);
+  const s = shotById(ui.row), l = !s && lineById(ui.row);
   const note = ($("row-ask")?.value ?? ui.rowNote).trim();
-  if (!s || !note || ui.busy || !ui.status?.ai?.ready) return;
-  const body = { note, shot: s.id };
-  if (ui.aspect === "sound") body.sound = true;
-  else if (ui.aspect !== "shot") body.aspect = ui.aspect;
-  ui.busy = "revise"; ui.rowBusy = s.id; ui.rowNote = "";
-  ui.pending = { note, ctx: `${s.index + 1}. ${s.id} · ${ASPECT_JA[ui.aspect]}` }; ui.started = Date.now();
+  if ((!s && !l) || !note || ui.busy || !ui.status?.ai?.ready) return;
+  // a card's note changes only its words, form and length (the server and Claude's scope hold it)
+  const body = s ? { note, shot: s.id } : { note, line: l.id, aspect: "finish" };
+  if (s && ui.aspect === "sound") body.sound = true;
+  else if (s && ui.aspect !== "shot") body.aspect = ui.aspect;
+  const owner = s ? s.id : l.id;
+  ui.busy = "revise"; ui.rowBusy = owner; ui.rowNote = "";
+  ui.pending = { note, ctx: s ? `${s.index + 1}. ${s.id} · ${ASPECT_JA[ui.aspect]}` : `${KIND_JA[l.kind] || l.kind} ${l.id} · 文字・長さだけ` };
+  ui.started = Date.now();
   draw(); drawChat();
   const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
   let out = null;
   try {
     out = await api("POST", "/api/revise", { ...body, label: ui.pending.ctx });
-    afterEdit(s.id, out, out.summary || "Claude が直しました");
-    if (!out.edited?.length && !Object.keys(out.changes || {}).length) toast("Claude は何も変えませんでした");
+    // nothing changed (e.g. a logo, which cannot be burned in): no ✓ on the row; Claude's reason is in the chat
+    if (!out.edited?.length && !Object.keys(out.changes || {}).length) { ui.flash = null; toast("Claude は何も変えませんでした（理由は左の会話に）"); }
+    else afterEdit(owner, out, out.summary || "Claude が直しました");
   } catch (e) { ui.rowNote = note; toast(e.message, true); }
   finally { clearInterval(tick); ui.busy = null; ui.rowBusy = null; ui.pending = null; ui.logKey = ""; await refresh(); }
   if (out) refreshPreviz(out.stale);
@@ -1776,8 +1895,9 @@ function sheetKey(e) {
     return true;
   }
   if (e.key === " " && s) { selectShot(s.id); return true; }
-  if ((e.key === "/" || e.key === "e") && s) { $("row-ask")?.focus(); return true; }
-  if (/^[1-4]$/.test(e.key) && s) { ui.aspect = ASPECTS[Number(e.key) - 1]; draw(); $("row-ask")?.focus(); return true; }
+  if ((e.key === "/" || e.key === "e") && $("row-ask")) { $("row-ask").focus(); return true; }
+  const n = /^[1-9]$/.test(e.key) ? Number(e.key) : 0;
+  if (n && n <= ASPECTS.length && s) { ui.aspect = ASPECTS[n - 1]; draw(); $("row-ask")?.focus(); return true; }
   if (e.key === "Escape") { ui.aspect = "shot"; ui.edit = null; draw(); return true; }
   return false;
 }
@@ -1789,6 +1909,7 @@ $("structpanel").addEventListener("click", (e) => {
   if (t.closest("[data-plan]")) { planShots(); return; }
   if (t.closest("[data-produce]")) { produceAll(); return; }
   if (t.closest("[data-undo]")) { undo(); return; }
+  if (t.closest("[data-cut-now]")) { cut(); return; }
   if (t.closest("[data-cams]")) { rebuildCameras(); return; }
   if (t.closest("[data-resume]")) { resumeAll(); return; }
   const sc = t.closest("[data-script]"); if (sc) { approveScript(sc.dataset.script === "on"); return; }
@@ -1805,6 +1926,8 @@ $("structpanel").addEventListener("click", (e) => {
   if (ap) { const s = shotById(id); if (s) { if (ui.row !== id) pickRow(id, false); approveRow(id, s.approval !== "approved"); } return; }
   if (ui.row !== id) pickRow(id, false);
   if (t.closest("[data-row-send]")) { sendRowNote(); return; }
+  const rx = t.closest("[data-row-ex]");
+  if (rx) { ui.rowNote = rx.dataset.rowEx; fillNote($("row-ask"), ui.rowNote); return; }
   const nd = t.closest("[data-nudge]"); if (nd) { nudge(id, nd.dataset.nudge); return; }
   const as = t.closest("[data-aspect]");
   if (as) {
@@ -2496,8 +2619,46 @@ function seek(t) {
 const planning = () => ui.tab === "brief" || (ui.tab === "structure" && !ui.status?.shots.length);
 
 function drawChips() {
+  drawScope();
+  drawExamples();
+}
+
+/** Notes worth trying in the composer, for what it is pointed at now. Short: the box is narrow,
+ * and every line of examples is a line less of the conversation. */
+function composerExamples() {
+  if (planning()) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
+  if (ui.tab === "sound") {
+    const it = ui.snd && soundItem(ui.snd);
+    return it?.p.role === "sfx" ? ["カットの頭に合わせる", "もう少し小さく", "別の衝撃音に替える"]
+      : ["タイトル前で音を抜く", "BGM を少し下げる", "カードに低い一撃"];
+  }
+  if (ui.tab === "design") return ["カードを全部0.5秒長く", "title の前だけ白く飛ばす", "色をもっと冷たく", "帯を外す"];
+  const whole = ui.scopeAll || ui.tab === "structure";
+  if (whole && ui.tab === "teaser") return ["title の前だけ白く飛ばす", "字幕を全部0.3秒遅らせる", "30秒に収める"];
+  if (whole) return ["30秒に収める", "hook のテンポを上げる", "カードの文字を短く"];
+  if (ui.region && ui.tab === "shot") return ["ここが邪魔。避けて撮る", "ここに目が行くように寄る"];
+  return ["被写体にもう少し寄る", "1秒短くする", "字幕「」を重ねる"];
+}
+
+/** The composer's examples, while its box is empty (they make way for what is being typed). */
+function drawExamples() {
+  const box = $("examples");
+  const list = ui.status?.ai?.ready && !ui.busy && !$("note").value.trim() ? composerExamples() : [];
+  box.hidden = !list.length;
+  const html = list.length ? `<span class="lbl">例</span>${list.map((t) => `<button type="button" data-ex="${esc(t)}" title="押すと欄に入ります（送る前に直せます）">${esc(t)}</button>`).join("")}` : "";
+  if (box.innerHTML !== html) box.innerHTML = html;
+}
+
+function drawScope() {
   const s = shot();
   const chips = [];
+  if (ui.tab === "design") {
+    chips.push(`<span class="chip">✎ 文字・つなぎ・色だけ（撮り直しなし）</span>`);
+    $("chips").innerHTML = chips.join("");
+    $("scope").textContent = "✎ 全体の仕上げに指示";
+    $("note").placeholder = "仕上げをどう直す？ 文字・つなぎ・明るさ・色調・帯だけを直し、カメラ・光・音は変えません";
+    return;
+  }
   if (planning()) {
     const b = ui.status?.brief || {};
     chips.push(`<span class="chip">📐 構成を組む</span>`);
@@ -2772,7 +2933,10 @@ async function sendNote() {
   if (!note || ui.busy || !ui.status?.ai?.ready) return;
   const body = { note };
   const ctx = [];
-  if (ui.tab === "sound") {
+  if (ui.tab === "design") {
+    // the finishing of the whole teaser: text, hand-overs, grade and bars; cameras, light and sound stay (code holds it)
+    body.aspect = "finish"; body.all = true; ctx.push("✎ 文字・つなぎ・色だけ");
+  } else if (ui.tab === "sound") {
     body.sound = true; ctx.push("🔊 音だけ");
     const it = ui.snd && soundItem(ui.snd);
     if (it?.p.role === "sfx") {
@@ -2916,8 +3080,15 @@ $("tl-fold").addEventListener("click", () => {
 });
 $("reload").addEventListener("click", () => { ui.logKey = ""; ui.soundKey = ""; refresh(); });
 $("send").addEventListener("click", sendNote);
+$("note").addEventListener("input", drawExamples);
+$("examples").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ex]"); if (!b) return;
+  fillNote($("note"), b.dataset.ex);
+  drawExamples();
+});
 $("scope").addEventListener("click", () => {
-  if (planning() || ui.tab === "structure") return; // a plan (and the sheet's composer) covers the whole list
+  // a plan, the sheet's composer and the design tab's finishing cover the whole teaser
+  if (planning() || ui.tab === "structure" || ui.tab === "design") return;
   if (ui.tab === "sound") { ui.snd = null; drawSoundBits(); drawChips(); return; } // sound notes: drop to BGM + all SE
   ui.scopeAll = !ui.scopeAll; drawChips();
 });

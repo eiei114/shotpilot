@@ -94,7 +94,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - **take は fingerprint で管理し、上書きしない。** 定義を元に戻したら、古い take を再利用する。`render/` 以下を手で編集しない。
 - **ゲームの中身の変化は fingerprint に入れず、take の `deps` で見る（D-37）。** エンジンはレンダ中に写っていたもののパッケージを報告し、take はそのファイルの大きさ・時刻・SHA-256 を持つ。中身が変わったカットだけが古くなり、撮り直した take は `<fp12>~N/` に置く（前の take は消さない。中身を戻せば前の take が使われる）。fingerprint は定義だけのまま（Python 版との互換と、撮った take を守るため）。迷ったら「写っている」側に倒す（撮り直しすぎる方が、見落とすより安全）。
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
-- Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。カメラだけ・光だけの指示（`Pointer::fields`、`ai::ASPECTS`）では、そのキーだけを取り込む。ショットに絞った指示では BGM を変えさせない。
+- Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。カメラだけ・光だけの指示（`Pointer::fields`、`ai::ASPECTS`）では、そのキーだけを取り込む。文字・つなぎだけの指示（`finish`）では、ショットの `caption`・`transition`・`exposure` と、`Pointer::texts` に挙げた台本の行の文字・種類・タイミング（`ai::LINE_TEXT_FIELDS`）だけを取り込み、行の置き場所（`after` / `on`）は変えさせない。`finish:` は全体への指示（`Pointer::finish`）でだけ、色調・帯・書体（`ai::FINISH_FIELDS`）に限って変えさせる（タイトルとエンドカードは人間が書く）。ショットに絞った指示では BGM を変えさせない。
 - 定義の編集は `Workspace::write_definition` の1か所を通し、変えた部分の前後を履歴（`undo`）に残す。元に戻すは、その部分が後から変わっていたら上書きせずに止める。戻した画は fingerprint が同じなので、古い take をそのまま使う（撮り直さない）。
 - 台本の承認は `state.json` に script fingerprint（台本の文字と位置、各カットの id・beat・purpose・duration と並び）で残す（D-38）。カメラ・光・音では外れない。
 - 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
