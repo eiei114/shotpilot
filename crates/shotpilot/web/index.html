@@ -515,6 +515,8 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .fields .pair { display: flex; gap: 8px; align-items: center; }
 .fields .pair input[type=range] { flex: 1; accent-color: var(--ink); padding: 0; background: none; border: 0; }
 .fields .pair input[type=number] { width: 74px; flex: none; }
+.fields .pair.cut { flex-wrap: wrap; gap: 4px 6px; }
+.fields .pair.cut .mini.on { border-color: var(--ink); background: var(--soft); }
 .btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn.danger { color: var(--err); }
 .lib-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -745,7 +747,7 @@ const ui = {
   started: 0,
   sound: null,          // /api/sound: placements, files, mix (lanes + check)
   soundKey: "",         // what the last sound fetch was for
-  snd: null,            // selected sound: {kind: "bgm"} | {kind: "sfx", shot, index}
+  snd: null,            // selected sound: {kind: "bgm"} | {kind: "music", index} | {kind: "sfx", shot (or script line), index}
   playT: null,          // teaser seconds of the sound player
   mixing: false,
   lib: null,            // /api/library: the global sound library (search results)
@@ -2116,11 +2118,16 @@ function wave(peaks) {
 const laneKey = (p) => `${p.role}:${p.shot ?? ""}:${p.index}`;
 const isShotId = (id) => !!ui.status?.shots.some((s) => s.id === id);
 const sfxList = (id) => JSON.parse(JSON.stringify(ui.status?.shots.find((s) => s.id === id)?.node?.sfx || []));
+/** The `sfx` of a script line (a card, a caption). */
+const lineSfx = (id) => JSON.parse(JSON.stringify((ui.status?.script || []).find((l) => l.id === id)?.sfx || []));
+/** The selection of a placement: BGM, one music cue (index in audio.music) or one effect. */
+const selOf = (p) => p.role === "bgm" ? (p.index ? { kind: "music", index: p.index - 1 } : { kind: "bgm" }) : { kind: "sfx", shot: p.shot, index: p.index };
+const sameSel = (a, b) => !!a && !!b && a.kind === b.kind && (a.kind === "bgm" || (a.index === b.index && (a.kind === "music" || a.shot === b.shot)));
 
 /** The placement (with its mixed lane, when there is one) of a selection. */
 function soundItem(sel) {
   const ps = ui.sound?.placements || [];
-  const p = sel.kind === "bgm" ? ps.find((x) => x.role === "bgm") : ps.find((x) => x.role === "sfx" && x.shot === sel.shot && x.index === sel.index);
+  const p = ps.find((x) => sameSel(selOf(x), sel));
   if (!p) return null;
   const lane = (ui.sound.mix?.lanes || []).find((l) => laneKey(l) === laneKey(p));
   return { p, lane };
@@ -2137,14 +2144,14 @@ function drawLanes() {
     // unmixed (missing file): a short stub at its start
     return l && l.to > l.from ? { from: l.from, to: l.to, peaks: l.peaks } : { from: Math.max(p.start, 0), to: Math.max(p.start, 0) + 0.6, peaks: null };
   };
-  const isSel = (p) => ui.snd && (ui.snd.kind === "bgm" ? p.role === "bgm" : p.shot === ui.snd.shot && p.index === ui.snd.index);
+  const isSel = (p) => sameSel(selOf(p), ui.snd);
   const block = (p, top) => {
     const s = span(p);
     const left = xOf(s.from), w = Math.max(xOf(s.to) - left, 8);
-    // music cues and effects on script lines are set in shots.yaml (or by Claude), not dragged here
+    // music cues and effects on script lines follow their piece of the cut: tuned in the inspector, not dragged
     const ro = (p.role === "bgm" && p.index > 0) || (p.role === "sfx" && !isShotId(p.shot));
     const cls = ["sblock", p.role, isSel(p) ? "sel" : "", p.missing ? "missing" : "", ro ? "ro" : ""].join(" ");
-    const title = `${p.label} · ${p.file}${p.missing ? "（ファイルがありません）" : ""} · ${p.gain} dB${p.shot ? ` · ${p.shot}` : ""}`;
+    const title = `${p.label} · ${p.file}${p.missing ? "（ファイルがありません）" : ""} · ${p.gain} dB${cutText(p)}${p.shot ? ` · ${p.shot}` : ""}`;
     return `<div class="${cls}" data-k="${esc(laneKey(p))}" style="left:${left}px;width:${w}px;${top != null ? `top:${top}px` : ""}" title="${esc(title)}">${wave(s.peaks)}<span>${esc(p.label)}</span></div>`;
   };
   // BGM lane
@@ -2279,12 +2286,33 @@ const gainRow = (name, label, v, lo, hi) => `<label>${esc(label)}</label><div cl
   <input type="range" min="${lo}" max="${hi}" step="0.5" value="${esc(v)}" data-mirror="${name}">
   <input type="number" min="${lo}" max="${hi}" step="0.5" value="${esc(v)}" data-f="${name}"> dB</div>`;
 
+/** One-click corners for a filter (Hz). */
+const CUT_PRESETS = { high_cut: [[8000, "8k"], [4000, "4k"], [1500, "1.5k"]], low_cut: [[100, "100"], [300, "300"]] };
+const CUT_HINTS = {
+  high_cut: "これより上の音を消す。8000 でシャリつきだけ取る、4000 で丸く、1500 で壁の向こうのようにこもる",
+  low_cut: "これより下の音を消す。100 で低いうなりを取る、300 で軽くして他の音の下に収める",
+};
+const cutRow = (name, label, v) => `<label title="${esc(CUT_HINTS[name])}">${esc(label)}</label><div class="pair cut">
+  <input type="number" min="20" max="20000" step="10" value="${esc(v ?? "")}" placeholder="なし" data-f="${name}" title="${esc(CUT_HINTS[name])}"> Hz
+  ${CUT_PRESETS[name].map(([hz, t]) => `<button type="button" class="mini${Number(v) === hz ? " on" : ""}" data-preset="${name}:${hz}">${t}</button>`).join("")}
+  <button type="button" class="mini${v ? "" : " on"}" data-preset="${name}:">なし</button></div>`;
+const cutRows = (o) => cutRow("high_cut", "高域カット", o.high_cut) + cutRow("low_cut", "低域カット", o.low_cut);
+const cutText = (p) => [p.high_cut ? ` · 高域 ${p.high_cut}Hz↓` : "", p.low_cut ? ` · 低域 ${p.low_cut}Hz↑` : ""].join("");
+/** Write the filter fields of the inspector onto a sound (an empty field removes the filter). */
+function setCuts(o, v) {
+  for (const k of ["high_cut", "low_cut"]) {
+    const x = Number(v[k]);
+    if (String(v[k] ?? "").trim() && x > 0) o[k] = Math.round(x); else delete o[k];
+  }
+  return o;
+}
+
 function drawInspector() {
   const box = $("sp-insp"), snd = ui.sound;
   if (!snd) { box.innerHTML = ""; return; }
   const sel = ui.snd && soundItem(ui.snd);
   const files = snd.files.map((f) => f.file);
-  const key = JSON.stringify([ui.snd, sel?.p, files, ui.status?.audio, sel && sfxList(sel.p.shot ?? "")]);
+  const key = JSON.stringify([ui.snd, sel?.p, files, ui.status?.audio, sel && sfxList(sel.p.shot ?? ""), sel && lineSfx(sel.p.shot ?? "")]);
   // do not wipe a field being typed into; rebuild when the selection or its data changed
   if (box.dataset.key === key && box.childElementCount) return;
   if (box.contains(document.activeElement) && box.dataset.sel === JSON.stringify(ui.snd)) return;
@@ -2294,18 +2322,34 @@ function drawInspector() {
        <div class="btns"><button class="btn" data-act="folder">audio フォルダを開く</button></div>` : "";
   if (!sel) {
     box.innerHTML = `<h3>音を選ぶ</h3>
-      <div class="sp-hint">タイムラインの BGM / SE をクリックすると、ここで直せます。SE はドラッグで動かせます（カットの境目に吸着。Alt で吸着なし）。レーンをダブルクリックすると、その位置に SE を足します。</div>
+      <div class="sp-hint">タイムラインの BGM・曲・SE をクリックすると、ここで音量と高域・低域のカットを直せます。SE はドラッグで動かせます（カットの境目に吸着。Alt で吸着なし）。レーンをダブルクリックすると、その位置に SE を足します。</div>
       ${noFiles}
       <div class="btns">${files.length ? `<button class="btn" data-act="add-sfx">＋ ${esc(shot()?.id || "")} に SE</button>` : ""}
         <button class="btn" data-act="sel-bgm">BGM の設定</button></div>`;
     return;
   }
-  if (ui.snd.kind === "bgm" || sel.p.role === "bgm") {
+  if (ui.snd.kind === "music") {
+    const cue = (ui.status.audio?.music || [])[ui.snd.index] || {};
+    box.innerHTML = `<h3>曲 <small>${esc(sel.p.label)} · ${esc(cue.from || "start")} → ${esc(cue.until || "end")}</small></h3>
+      <div class="fields">
+        <label>ファイル</label><select data-f="file">${files.includes(cue.file) ? "" : opt(cue.file || "", cue.file || "", `${cue.file || ""}（見つかりません）`)}${files.map((f) => opt(f, cue.file)).join("")}</select>
+        ${gainRow("gain", "音量", cue.gain ?? 0, -40, 12)}
+        ${cutRows(cue)}
+        <label>フェードイン</label><input type="number" step="0.1" min="0" max="30" value="${esc(cue.fade_in ?? 0)}" data-f="fade_in">
+        <label>フェードアウト</label><input type="number" step="0.1" min="0" max="30" value="${esc(cue.fade_out ?? 0)}" data-f="fade_out">
+      </div>
+      <div class="sp-hint">区間（どのカットから、どこまで）は台本とカットに付いて動きます。区間を変えるときは下の入力欄から Claude に伝えてください。</div>
+      <div class="btns"><button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button><button class="btn" data-act="desel">閉じる</button></div>`;
+    box.dataset.kind = "music";
+    return;
+  }
+  if (ui.snd.kind === "bgm") {
     const a = ui.status.audio || {}, b = a.bgm || {};
     box.innerHTML = `<h3>BGM <small>ティザー全体に流れる</small></h3>
       <div class="fields">
         <label>ファイル</label><select data-f="file">${opt("", b.file || "", "（なし）")}${files.map((f) => opt(f, b.file)).join("")}</select>
         ${gainRow("gain", "音量", b.gain ?? 0, -40, 12)}
+        ${cutRows(b)}
         <label>開始（秒）</label><input type="number" step="0.1" min="0" value="${esc(b.start ?? 0)}" data-f="start">
         <label>頭出し（秒）</label><input type="number" step="0.1" min="0" value="${esc(b.offset ?? 0)}" data-f="offset" title="ファイルの何秒目から使うか">
         <label>フェードイン</label><input type="number" step="0.1" min="0" max="30" value="${esc(b.fade_in ?? 0)}" data-f="fade_in">
@@ -2318,15 +2362,19 @@ function drawInspector() {
   }
   if (!isShotId(ui.snd.shot)) {
     const line = (ui.status.script || []).find((l) => l.id === ui.snd.shot);
+    const it = lineSfx(ui.snd.shot)[ui.snd.index] || {};
     box.innerHTML = `<h3>SE <small>${esc(sel.p.label)} · 台本 ${esc(ui.snd.shot)}</small></h3>
       <div class="fields">
         <label>台本</label><div>${esc(line ? `${line.kind}: ${line.ja}` : ui.snd.shot)}</div>
-        <label>ファイル</label><div>${esc(sel.p.file)}</div>
-        <label>位置</label><div>${esc(fmtT(sel.p.start))}</div>
-        <label>音量</label><div>${esc(sel.p.gain)} dB</div>
+        <label>ファイル</label><select data-f="file">${files.includes(it.file) ? "" : opt(it.file || "", it.file || "", `${it.file || ""}（見つかりません）`)}${files.map((f) => opt(f, it.file)).join("")}</select>
+        <label>位置（秒）</label><input type="number" step="0.01" min="${-ui.sound.lead_max}" value="${esc(it.at ?? 0)}" data-f="at" title="文字が出てからの秒。マイナスにすると少し前から鳴り始める">
+        ${gainRow("gain", "音量", it.gain ?? 0, -40, 12)}
+        ${cutRows(it)}
+        <label>ラベル</label><input value="${esc(it.label ?? "")}" data-f="label" placeholder="${esc(sel.p.label)}">
       </div>
-      <div class="sp-hint">台本の行に付いた SE です。下の入力欄から Claude に直し方を伝えてください（例: もう少し小さく / 別の衝撃音に）。</div>
-      <div class="btns"><button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button><button class="btn" data-act="desel">閉じる</button></div>`;
+      <div class="sp-hint">台本の行に付いた SE です。行が動くと一緒に動きます。</div>
+      <div class="btns"><button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button>
+        <button class="btn danger" data-act="del-sfx">削除</button><button class="btn" data-act="desel">閉じる</button></div>`;
     box.dataset.kind = "line-sfx";
     return;
   }
@@ -2339,6 +2387,7 @@ function drawInspector() {
       <label>カット</label><select data-f="shot">${shotsOpt}</select>
       <label>位置（秒）</label><input type="number" step="0.01" min="${-ui.sound.lead_max}" max="${owner ? owner.duration : 99}" value="${esc(it.at ?? 0)}" data-f="at" title="カットの頭からの秒。マイナスにすると前のカットから鳴り始める（ウーッシュなど）">
       ${gainRow("gain", "音量", it.gain ?? 0, -40, 12)}
+      ${cutRows(it)}
       <label>ラベル</label><input value="${esc(it.label ?? "")}" data-f="label" placeholder="${esc(sel.p.label)}">
     </div>
     <div class="btns"><button class="btn" data-act="preview" data-url="${esc(sel.p.url || "")}">▶ 元の音</button>
@@ -2431,10 +2480,17 @@ function fieldVals(box) {
 function saveSfx() {
   const s = ui.snd; if (!s || s.kind !== "sfx") return;
   const v = fieldVals($("sp-insp"));
-  const list = sfxList(s.shot);
+  const onLine = !isShotId(s.shot);
+  const list = onLine ? lineSfx(s.shot) : sfxList(s.shot);
   const it = { ...(list[s.index] || {}) };
   it.file = v.file; it.at = n3(v.at || 0); it.gain = n3(v.gain || 0);
+  setCuts(it, v);
   if (v.label.trim()) it.label = v.label.trim(); else delete it.label;
+  if (onLine) {
+    list[s.index] = it;
+    postSound({ lines: { [s.shot]: list }, note: `${it.label || it.file} @ ${s.shot}` });
+    return;
+  }
   const sfx = {};
   if (v.shot && v.shot !== s.shot) {
     // moving to another shot keeps the moment in the teaser when it can
@@ -2456,7 +2512,7 @@ function saveBgm() {
   const a = JSON.parse(JSON.stringify(ui.status.audio || {}));
   if (!v.file) delete a.bgm;
   else {
-    const b = { ...(a.bgm || {}), file: v.file, gain: n3(v.gain || 0) };
+    const b = setCuts({ ...(a.bgm || {}), file: v.file, gain: n3(v.gain || 0) }, v);
     for (const k of ["start", "offset", "fade_in", "fade_out"]) {
       const x = n3(v[k] || 0);
       if (x) b[k] = x; else delete b[k];
@@ -2465,6 +2521,23 @@ function saveBgm() {
   }
   a.gain = n3(v.master || 0);
   postSound({ audio: a, note: v.file ? `BGM ${v.file}` : "BGM なし" });
+}
+
+function saveMusic() {
+  const s = ui.snd; if (!s || s.kind !== "music") return;
+  const v = fieldVals($("sp-insp"));
+  const a = JSON.parse(JSON.stringify(ui.status.audio || {}));
+  const cue = a.music?.[s.index]; if (!cue) return;
+  cue.file = v.file; cue.gain = n3(v.gain || 0);
+  for (const k of ["fade_in", "fade_out"]) { const x = n3(v[k] || 0); if (x) cue[k] = x; else delete cue[k]; }
+  setCuts(cue, v);
+  postSound({ audio: a, note: `曲 ${cue.label || cue.file}` });
+}
+
+/** Save whatever the inspector shows. */
+function saveInspector() {
+  const k = $("sp-insp").dataset.kind;
+  if (k === "bgm") saveBgm(); else if (k === "music") saveMusic(); else saveSfx();
 }
 
 function addSfxAt(t) {
@@ -2482,8 +2555,10 @@ function addSfxAt(t) {
 
 function deleteSfx() {
   const s = ui.snd; if (!s || s.kind !== "sfx") return;
-  const list = sfxList(s.shot); const gone = list.splice(s.index, 1)[0];
-  postSound({ sfx: { [s.shot]: list }, note: `${gone?.label || gone?.file || "SE"} を削除` }, () => (ui.snd = null));
+  const onLine = !isShotId(s.shot);
+  const list = onLine ? lineSfx(s.shot) : sfxList(s.shot); const gone = list.splice(s.index, 1)[0];
+  const body = onLine ? { lines: { [s.shot]: list.length ? list : null } } : { sfx: { [s.shot]: list } };
+  postSound({ ...body, note: `${gone?.label || gone?.file || "SE"} を削除` }, () => (ui.snd = null));
 }
 
 function seek(t) {
@@ -2510,11 +2585,13 @@ function drawChips() {
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
     chips.push(`<span class="chip">🔊 音だけ（映像は変えない）</span>`);
-    if (it) chips.push(`<span class="chip">${esc(it.p.role === "bgm" ? "BGM" : `SE ${it.p.label} · ${it.p.shot}`)} <button data-clear="snd" title="選択を外す">✕</button></span>`);
+    const what = !it ? "" : ui.snd.kind === "bgm" ? "BGM" : ui.snd.kind === "music" ? `曲 ${it.p.label}` : `SE ${it.p.label} · ${it.p.shot}`;
+    if (it) chips.push(`<span class="chip">${esc(what)} <button data-clear="snd" title="選択を外す">✕</button></span>`);
     if (ui.playT) chips.push(`<span class="chip">${esc(fmtT(ui.playT))}</span>`);
     $("chips").innerHTML = chips.join("");
-    $("scope").textContent = it?.p.role === "sfx" ? `🔊 ${it.p.shot} の SE に指示` : "🔊 BGM と全カットの SE に指示";
-    $("note").placeholder = it?.p.role === "sfx" ? "この SE をどう直す？ 例: もう少し早く、カットの頭に合わせて"
+    $("scope").textContent = it ? `🔊 ${what} に指示` : "🔊 BGM と全カットの SE に指示";
+    $("note").placeholder = it?.p.role === "sfx" ? "この SE をどう直す？ 例: もう少し大きく / 高域を消してこもらせて / カットの頭に合わせて"
+      : it ? "この曲をどう直す？ 例: 少し下げて / 低音を削って軽く"
       : "音をどう直す？ 例: タイトルの前で一瞬音を抜いて / BGM をもう少し下げて";
     return;
   }
@@ -2780,7 +2857,8 @@ async function sendNote() {
       if (isShotId(it.p.shot)) body.shot = it.p.shot; else body.line = it.p.shot;
       body.sfx_index = it.p.index; ctx.push(`${it.p.shot} の ${it.p.label}`);
     }
-    else if (it) ctx.push("BGM");
+    else if (it && ui.snd.kind === "music") { body.music_index = ui.snd.index; ctx.push(`曲 ${it.p.label}`); }
+    else if (it) { body.bgm = true; ctx.push("BGM"); }
     if (ui.playT) { body.time = ui.playT; ctx.push(fmtT(ui.playT)); }
   } else if (!ui.scopeAll && s && ui.tab !== "structure") {
     body.shot = s.id; ctx.push(s.id);
@@ -2928,7 +3006,7 @@ $("lanes").addEventListener("pointerdown", (e) => {
   const b = e.target.closest(".sblock"); if (!b || e.button !== 0) return;
   const p = ui.sound.placements.find((x) => laneKey(x) === b.dataset.k); if (!p) return;
   const ro = b.classList.contains("ro");
-  if (ro && p.role !== "sfx") return; // music cues are set in shots.yaml or by Claude
+  // read-only blocks (music cues, effects on script lines) are selected, never dragged
   sdrag = { b, p, ro, x0: e.clientX, moved: false, left0: xOf(p.start), t: p.start };
   if (p.role === "sfx" && !ro) b.setPointerCapture(e.pointerId);
 });
@@ -2960,7 +3038,7 @@ $("lanes").addEventListener("pointerup", () => {
   if (!d) return;
   $("lanes").querySelector(".drag-t")?.remove();
   if (!d.moved) {
-    ui.snd = d.p.role === "bgm" ? { kind: "bgm" } : { kind: "sfx", shot: d.p.shot, index: d.p.index };
+    ui.snd = selOf(d.p);
     if (d.p.shot && isShotId(d.p.shot)) ui.sel = d.p.shot;
     ui.tab = ui.fin = "sound"; draw(); return;
   }
@@ -3004,10 +3082,18 @@ $("sp-insp").addEventListener("input", (e) => {
 });
 $("sp-insp").addEventListener("change", (e) => {
   if (!e.target.matches("[data-f], [data-mirror]")) return;
-  if ($("sp-insp").dataset.kind === "bgm") saveBgm(); else saveSfx();
+  saveInspector();
 });
 let previewAudio = null;
 $("sp-insp").addEventListener("click", async (e) => {
+  const pre = e.target.closest("[data-preset]");
+  if (pre) {
+    // a one-click corner (or none) for a filter, saved at once
+    const [f, hz] = pre.dataset.preset.split(":");
+    const el = $("sp-insp").querySelector(`[data-f="${f}"]`);
+    if (el) { el.value = hz; saveInspector(); }
+    return;
+  }
   const b = e.target.closest("[data-act]"); if (!b) return;
   const act = b.dataset.act;
   if (act === "desel") { ui.snd = null; drawSoundBits(); drawChips(); }
