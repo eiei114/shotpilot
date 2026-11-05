@@ -775,49 +775,87 @@ impl Workspace {
     pub fn edit_definition_full(&mut self, edits: &[(String, Value)], line_sfx: &[(String, Value)],
                                 order: Option<&[String]>, audio: Option<&Map<String, Value>>, action: &str,
                                 note: &str) -> Result<EditReport> {
-        let lines = if line_sfx.is_empty() {
+        let rev = crate::ai::Revision {
+            edits: edits.to_vec(),
+            order: order.map(<[String]>::to_vec),
+            audio: audio.cloned(),
+            lines: line_sfx.to_vec(),
+            texts: Vec::new(),
+            finish: Vec::new(),
+            summary: String::new(),
+        };
+        self.apply_revision(&rev, action, note)
+    }
+
+    /// Write what a note changed ([`crate::ai::Revision`]) as one edit that can be undone:
+    /// whole shots, the sound and the words of script lines (the rest of each line stays as
+    /// written), the order, `audio:` and `finish:` entries.
+    pub fn apply_revision(&mut self, rev: &crate::ai::Revision, action: &str, note: &str) -> Result<EditReport> {
+        let touched: Vec<&String> = rev.lines.iter().map(|(id, _)| id).chain(rev.texts.iter().map(|(id, _)| id)).collect();
+        let lines = if touched.is_empty() {
             Vec::new()
         } else {
             Doc::load(&self.path)?.value()?["script"].as_array().cloned().unwrap_or_default()
         };
-        let mut line_nodes = Vec::new();
-        for (id, list) in line_sfx {
-            let Some(cur) = lines.iter().find(|l| model::str_of(&l["id"]) == *id) else {
+        let mut line_nodes: Vec<(String, Value)> = Vec::new();
+        for id in &touched {
+            if line_nodes.iter().any(|(k, _)| k == *id) {
+                continue;
+            }
+            let Some(cur) = lines.iter().find(|l| model::str_of(&l["id"]) == **id) else {
                 bail!("unknown script line '{id}'");
             };
             let mut node = cur.clone();
             let Some(m) = node.as_object_mut() else { bail!("script line '{id}' is not a mapping") };
-            match list {
-                Value::Array(a) if !a.is_empty() => {
-                    m.insert("sfx".into(), list.clone());
+            for (_, list) in rev.lines.iter().filter(|(k, _)| k == *id) {
+                match list {
+                    Value::Array(a) if !a.is_empty() => {
+                        m.insert("sfx".into(), list.clone());
+                    }
+                    Value::Null | Value::Array(_) => {
+                        m.remove("sfx");
+                    }
+                    _ => bail!("sfx for script line '{id}' must be a list"),
                 }
-                Value::Null | Value::Array(_) => {
-                    m.remove("sfx");
-                }
-                _ => bail!("sfx for script line '{id}' must be a list"),
             }
-            line_nodes.push((id.clone(), node));
+            for (_, set) in rev.texts.iter().filter(|(k, _)| k == *id) {
+                for (k, v) in set {
+                    if !crate::ai::LINE_TEXT_FIELDS.contains(&k.as_str()) {
+                        bail!("script line field '{k}' cannot be set here (one of {})", crate::ai::LINE_TEXT_FIELDS.join(", "));
+                    }
+                    if v.is_null() || v.as_str() == Some("") {
+                        m.remove(k);
+                    } else {
+                        m.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+            line_nodes.push(((*id).clone(), node));
         }
-        let rep = self.write_definition(edits, &line_nodes, order, audio, action, note)?;
-        if !line_sfx.is_empty() {
+        let rep = self.write_definition(&rev.edits, &line_nodes, rev.order.as_deref(), rev.audio.as_ref(), &rev.finish,
+                                        action, note)?;
+        if !line_nodes.is_empty() {
             let mut extra = Map::new();
-            extra.insert("lines".into(), json!(line_sfx.iter().map(|(id, _)| id).collect::<Vec<_>>()));
+            extra.insert("lines".into(), json!(line_nodes.iter().map(|(id, _)| id).collect::<Vec<_>>()));
             self.state.annotate_last(extra);
             self.state.save()?;
         }
         Ok(rep)
     }
 
-    /// The one write path for edits: whole shots, whole script lines, the shot order and
-    /// `audio:`, checked as a whole before anything is written. The log entry keeps each
-    /// changed piece as it was before and after (`undo`), so the edit can be taken back.
+    /// The one write path for edits: whole shots, whole script lines, the shot order,
+    /// `audio:` and `finish:` entries, checked as a whole before anything is written. The log
+    /// entry keeps each changed piece as it was before and after (`undo`), so the edit can be
+    /// taken back.
+    #[allow(clippy::too_many_arguments)]
     fn write_definition(&mut self, edits: &[(String, Value)], line_nodes: &[(String, Value)],
-                        order: Option<&[String]>, audio: Option<&Map<String, Value>>, action: &str, note: &str)
-        -> Result<EditReport> {
+                        order: Option<&[String]>, audio: Option<&Map<String, Value>>, finish: &[(String, Value)],
+                        action: &str, note: &str) -> Result<EditReport> {
         let before = self.render_fps()?;
         let audio_before = self.defn.audio.clone();
         let mut doc = Doc::load(&self.path)?;
         let current = doc.value()?;
+        let finish_before = current.get("finish").cloned().unwrap_or(Value::Null);
         let ids: Vec<String> = current["shots"]
             .as_array()
             .map(|a| a.iter().map(|s| model::str_of(&s["id"])).collect())
@@ -873,11 +911,15 @@ impl Workspace {
             doc.upsert_entries("audio", &entries)?;
             audio_changed = true;
         }
+        if !finish.is_empty() {
+            doc.upsert_entries("finish", finish)?;
+        }
         // validate before writing anything
         let written = doc.value()?;
         model::parse(&written, &self.path)?;
         doc.save(&self.path)?;
         self.reload()?;
+        let finish_changed = written.get("finish").cloned().unwrap_or(Value::Null) != finish_before;
 
         // each changed piece as it is now, next to what it was, so the edit can be undone
         let find = |list: &str, id: &str| -> Value {
@@ -899,6 +941,9 @@ impl Workspace {
         if audio_changed {
             undo.insert("audio".into(), pair(Value::Object(audio_before), written["audio"].clone()));
         }
+        if finish_changed {
+            undo.insert("finish".into(), pair(finish_before, written["finish"].clone()));
+        }
 
         let mut stale = Vec::new();
         for s in self.resolved()? {
@@ -917,6 +962,9 @@ impl Workspace {
         let mut entry = json!({"edited": edited, "reordered": order.is_some(), "stale": stale, "note": note});
         if audio_changed {
             entry["audio"] = json!(true);
+        }
+        if finish_changed {
+            entry["finish"] = json!(true);
         }
         if action != "undo" {
             entry["undo"] = Value::Object(undo);
@@ -956,7 +1004,7 @@ impl Workspace {
         }
         let changes = field_changes(cur, &node);
         let note: Vec<&str> = assignments.iter().map(|(k, _)| k.as_str()).collect();
-        let rep = self.write_definition(&[], &[(line_id.to_string(), node)], None, None, "script", &note.join(", "))?;
+        let rep = self.write_definition(&[], &[(line_id.to_string(), node)], None, None, &[], "script", &note.join(", "))?;
         let mut extra = Map::new();
         extra.insert("line".into(), json!(line_id));
         extra.insert("changes".into(), json!({ line_id: changes }));
@@ -1061,7 +1109,7 @@ impl Workspace {
         None
     }
 
-    /// Take back the newest edit: its shots, script lines, order and `audio:` go back to
+    /// Take back the newest edit: its shots, script lines, order, `audio:` and `finish:` go back to
     /// what they were. Takes are kept by fingerprint, so a shot put back reuses the take it
     /// had (nothing re-renders). Refuses when a piece changed again since (a hand edit, the
     /// CLI), so nothing written later is lost.
@@ -1104,10 +1152,23 @@ impl Workspace {
             }
             None => None,
         };
+        // `finish:` goes back key by key; a key the edit added is written as null
+        let finish: Vec<(String, Value)> = match u.get("finish") {
+            Some(p) => {
+                if now["finish"] != p["after"] {
+                    bail!("the finishing (finish:) changed again after that edit; nothing undone");
+                }
+                let before = p["before"].as_object().cloned().unwrap_or_default();
+                let added = p["after"].as_object().into_iter().flatten().filter(|(k, _)| !before.contains_key(*k));
+                let gone: Vec<(String, Value)> = added.map(|(k, _)| (k.clone(), Value::Null)).collect();
+                before.into_iter().chain(gone).collect()
+            }
+            None => Vec::new(),
+        };
         let what = entry["note"].as_str().unwrap_or("").to_string();
         let action = entry["action"].as_str().unwrap_or("").to_string();
         let line_ids: Vec<String> = lines.iter().map(|(id, _)| id.clone()).collect();
-        let rep = self.write_definition(&shots, &lines, order.as_deref(), audio.as_ref(), "undo", &what)?;
+        let rep = self.write_definition(&shots, &lines, order.as_deref(), audio.as_ref(), &finish, "undo", &what)?;
         let mut extra = Map::new();
         extra.insert("of".into(), json!(idx));
         extra.insert("undid".into(), json!(action));
