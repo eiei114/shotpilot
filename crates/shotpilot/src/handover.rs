@@ -9,8 +9,8 @@
 //! added, so no shot changes length. The planner names a hand-over (`transition:`); the recipe,
 //! the look's motion profile and its energy decide how long each side runs and how it moves.
 //!
-//! The `base` profile (no `finish.motion`) keeps the hand-overs the cut had before the recipes:
-//! straight fades and the old glitch (`plain`, the D-53 invariant).
+//! A cut with no `finish.motion` keeps the hand-overs it had before the recipes: straight fades
+//! and the old glitch (`plain`, the D-53 invariant).
 
 use std::sync::OnceLock;
 
@@ -233,7 +233,7 @@ fn broken(a: f64, b: f64, s: f64) -> String {
     )
 }
 
-/// The hand-overs as the cut drew them before the recipes (the `base` profile): straight fades,
+/// The hand-overs as the cut drew them before the recipes (no `finish.motion`): straight fades,
 /// the old glitch. Kept expression for expression.
 fn plain(m: &Motion, kind: &str, side: Side, d: f64, h: i64) -> Vec<String> {
     let s = h as f64 / 1080.0;
@@ -465,6 +465,15 @@ mod tests {
         // a short shot gives each side at most half of itself
         let short = filters(&m, "dip", Side::In, 0.8, 1080, 30).join(",");
         assert!(short.contains("/0.400,0,1)"), "{short}");
+    }
+
+    #[test]
+    fn a_flash_holds_white_for_its_length_then_lets_go() {
+        // measured flash lengths are how long the white is seen (D-59 measures them that way)
+        let m = motion(json!("horror")); // flash 0.12 s
+        let inn = filters(&m, "flash", Side::In, 3.0, 1080, 30).join(",");
+        assert!(inn.contains("clip((t-0.120)/0.050,0,1)") && inn.contains("between(t,0.000,0.170)"), "{inn}");
+        assert!(filters(&m, "flash", Side::Out, 3.0, 1080, 30).is_empty(), "the shot going out just cuts");
     }
 
     #[test]

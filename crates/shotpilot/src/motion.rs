@@ -76,7 +76,7 @@ pub struct Motion {
     pub whiteout: Whiteout,
     /// Seconds a glitch hand-over breaks on each side of the cut.
     pub glitch: f64,
-    /// Hand-overs drawn as before the recipes (straight fades): the `base` profile.
+    /// Hand-overs drawn as before the recipes (straight fades): a cut with no `finish.motion`.
     pub plain: bool,
     /// The hand-over the profile uses for a jolt.
     pub accent: String,
@@ -108,7 +108,6 @@ pub struct Profile {
     pub flash: f64,
     pub whiteout: Whiteout,
     pub glitch: f64,
-    pub plain: bool,
     pub accent: String,
     pub avoid: Vec<String>,
 }
@@ -137,7 +136,6 @@ pub fn profiles() -> &'static [Profile] {
                     Whiteout { rise: w("rise"), peak: w("peak"), decay: w("decay"), burn: w("burn") }
                 },
                 glitch: num(&p["glitch"]).unwrap_or_else(|| crate::handover::default_length("glitch")),
-                plain: p["plain"].as_bool().unwrap_or(false),
                 accent: p["accent"].as_str().unwrap_or("flash").to_string(),
                 avoid: p["avoid"].as_array().into_iter().flatten().map(str_of).collect(),
             })
@@ -162,6 +160,10 @@ pub struct MotionCfg {
     /// Role overrides (`card: {in: fade, in_s: 0.8}`), as written.
     pub roles: Vec<(String, Map<String, Value>)>,
     pub dip: Option<f64>,
+    /// Seconds of a flash from white, as measured (D-59; not scaled by the energy).
+    pub flash: Option<f64>,
+    /// A whiteout's `rise`, `peak`, `decay` (seconds) and `burn`, as written (D-59).
+    pub whiteout: Map<String, Value>,
     pub accent: Option<String>,
 }
 
@@ -187,6 +189,12 @@ impl MotionCfg {
         }
         if let Some(d) = self.dip {
             m.insert("dip".into(), json!(d));
+        }
+        if let Some(f) = self.flash {
+            m.insert("flash".into(), json!(f));
+        }
+        if !self.whiteout.is_empty() {
+            m.insert("whiteout".into(), Value::Object(self.whiteout.clone()));
         }
         if let Some(a) = &self.accent {
             m.insert("accent".into(), json!(a));
@@ -249,6 +257,30 @@ pub fn parse(v: Option<&Value>, errs: &mut Vec<String>) -> MotionCfg {
                 Some(d) if (0.05..=1.5).contains(&d) => cfg.dip = Some(d),
                 _ => errs.push("finish.motion.dip: seconds on each side of the cut, 0.05..1.5".into()),
             },
+            "flash" => match num(v) {
+                Some(f) if (0.03..=0.5).contains(&f) => cfg.flash = Some(f),
+                _ => errs.push("finish.motion.flash: seconds of a flash from white, 0.03..0.5".into()),
+            },
+            "whiteout" => match v.as_object() {
+                Some(o) => {
+                    for (k, x) in o {
+                        let ok = match k.as_str() {
+                            "rise" | "peak" => num(x).is_some_and(|s| (0.0..=1.5).contains(&s)),
+                            "decay" => num(x).is_some_and(|s| (0.0..=2.0).contains(&s)),
+                            "burn" => num(x).is_some_and(|b| (1.0..=3.0).contains(&b)),
+                            _ => false,
+                        };
+                        if ok {
+                            cfg.whiteout.insert(k.clone(), x.clone());
+                        } else {
+                            errs.push(format!(
+                                "finish.motion.whiteout.{k}: rise / peak (0..1.5 s), decay (0..2 s), burn (1..3)"
+                            ));
+                        }
+                    }
+                }
+                None => errs.push("finish.motion.whiteout: {rise, peak, decay, burn}".into()),
+            },
             "accent" => {
                 let a = str_of(v);
                 if ACCENTS.contains(&a.as_str()) {
@@ -279,7 +311,10 @@ pub fn parse(v: Option<&Value>, errs: &mut Vec<String>) -> MotionCfg {
                 }
                 cfg.roles.push((role.to_string(), o.clone()));
             }
-            other => errs.push(format!("finish.motion.{other}: unknown (profile, energy, avoid, dip, accent, {})", ROLES.join(", "))),
+            other => errs.push(format!(
+                "finish.motion.{other}: unknown (profile, energy, avoid, dip, flash, whiteout, accent, {})",
+                ROLES.join(", ")
+            )),
         }
     }
     cfg
@@ -338,13 +373,16 @@ pub fn resolve(cfg: &MotionCfg) -> Motion {
             avoid.push(a.clone());
         }
     }
-    // hand-overs (D-58) follow the energy like the text; the plain ones keep their old seconds
-    let plain = p.is_some_and(|p| p.plain);
+    // hand-overs (D-58) follow the energy like the text. With no finish.motion at all the cut
+    // draws them as before the recipes (plain), with their old seconds; what a reference
+    // measured (D-59) is written in seconds and kept as it is
+    let plain = !cfg.is_set();
     let k = if plain { 1.0 } else { scale };
     let w = p.map_or(
         Whiteout { rise: 0.3, peak: 0.0, decay: 0.8, burn: 1.0 },
         |p| p.whiteout,
     );
+    let wo = |key: &str, profile: f64| cfg.whiteout.get(key).and_then(num).unwrap_or(profile * k);
     let mut m = Motion {
         profile: p.map_or("base".into(), |p| p.id.clone()),
         energy: energy.clone(),
@@ -354,8 +392,13 @@ pub fn resolve(cfg: &MotionCfg) -> Motion {
         title: role("title"),
         end: role("end"),
         dip: cfg.dip.unwrap_or(p.map_or(0.25, |p| p.dip) * scale),
-        flash: p.map_or(0.12, |p| p.flash) * k,
-        whiteout: Whiteout { rise: w.rise * k, peak: w.peak * k, decay: w.decay * k, burn: w.burn },
+        flash: cfg.flash.unwrap_or(p.map_or(0.12, |p| p.flash) * k),
+        whiteout: Whiteout {
+            rise: wo("rise", w.rise),
+            peak: wo("peak", w.peak),
+            decay: wo("decay", w.decay),
+            burn: cfg.whiteout.get("burn").and_then(num).unwrap_or(w.burn),
+        },
         glitch: p.map_or(0.1, |p| p.glitch) * k,
         plain,
         accent: cfg.accent.clone().unwrap_or_else(|| p.map_or("flash".into(), |p| p.accent.clone())),

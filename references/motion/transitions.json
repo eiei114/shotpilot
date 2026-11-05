@@ -27,7 +27,7 @@
     "flash": {
       "means": "from white: the instant of a hit",
       "steps": [
-        {"side": "in", "cover": "white", "len": "flash", "max": 0.5, "ease": "power2.out"}
+        {"side": "in", "cover": "white", "hold": "flash", "len": 0.05, "max": 0.5, "ease": "power2.out"}
       ]
     },
     "whiteout": {
