@@ -79,9 +79,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     if ws.defn.brief.plan.trim().is_empty() {
         step("discover", "start", String::new(), emit, &mut steps);
         let d = ai::discover(&ws.defn, &opts.direction, "", false, claude)?;
-        ws.set_brief(&d.brief)?;
-        ws.state.log("discover", d.to_json());
-        ws.state.save()?;
+        ws.apply_discovery(&d, &opts.direction, &Value::Null)?;
         step("discover", "done", d.direction.clone(), emit, &mut steps);
     } else {
         step("discover", "skipped", "企画済み".into(), emit, &mut steps);
@@ -94,6 +92,11 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         if let Some(n) = rep.scan.as_ref().and_then(|s| s.note.clone()) {
             notes.push(n);
         }
+        if let Some(m) = &rep.matched {
+            if !m.open.is_empty() {
+                notes.push(format!("構成画に合う場所が見つからなかった: {}（雰囲気だけを使う）", m.open.join(", ")));
+            }
+        }
         let n = rep.index["anchors"].as_object().map(|m| m.len()).unwrap_or(0);
         let from = match &rep.scan {
             Some(s) if s.picked_by == "claude" => "（企画に合わせて Claude が選んだ場所）",
@@ -102,6 +105,14 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
             None => "",
         };
         step("scout", "done", format!("{n} か所{from}"), emit, &mut steps);
+    } else if crate::concept::load(&ws.root).iter().any(crate::concept::Frame::open) {
+        // the photos exist; the concept frames made since still look for their places (D-44)
+        step("scout", "start", "構成画に合う場所".into(), emit, &mut steps);
+        let m = ws.match_concept(claude, None)?;
+        if !m.open.is_empty() {
+            notes.push(format!("構成画に合う場所が見つからなかった: {}（雰囲気だけを使う）", m.open.join(", ")));
+        }
+        step("scout", "done", format!("構成画 {} 枚に場所（{} 周、足した場所 {}）", m.found, m.rounds, m.added.len()), emit, &mut steps);
     } else {
         step("scout", "skipped", "撮影済み".into(), emit, &mut steps);
     }
@@ -117,7 +128,11 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     }
 
     // 3. mood board (optional: a failure is noted, the pass goes on)
+    let concept_made = crate::concept::load(&ws.root).iter().any(|f| f.file.is_some());
     match (opts.mood, images) {
+        _ if concept_made && ws.defn.brief.images.is_empty() => {
+            step("mood", "skipped", "構成画で代用".into(), emit, &mut steps)
+        }
         (true, Some(gen)) if ws.defn.brief.images.is_empty() => {
             step("mood", "start", String::new(), emit, &mut steps);
             match ws.generate_moodboard(gen, &opts.direction, 4) {

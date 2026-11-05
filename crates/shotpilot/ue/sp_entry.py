@@ -517,9 +517,10 @@ def run_scan(job):
         if tagged or label.startswith(prefix):
             name = label[len(prefix):] if label.startswith(prefix) else label
             anchors[name.lower().replace(" ", "_")] = _actor_entry(a)
-    if anchors or not job.get("auto"):
-        return {"anchors": anchors}
-    return {"anchors": {}, "candidates": _candidates(int(job.get("limit", 60)))}
+    out = {"anchors": anchors}
+    if (job.get("auto") and not anchors) or job.get("candidates"):
+        out["candidates"] = [c for c in _candidates(int(job.get("limit", 60))) if c["name"] not in anchors]
+    return out
 
 
 def run_survey(job):

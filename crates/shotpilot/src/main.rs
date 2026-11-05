@@ -128,6 +128,11 @@ enum Cmd {
     },
     /// the teaser playbooks the planning turn can pick from
     Skills,
+    /// concept frames (D-44): make the pictures the plan describes | --match: find their places in the level
+    Concept {
+        #[arg(long)]
+        r#match: bool,
+    },
     /// the first pass in one go: plan, scout, stage, mood board, script + shots, render, cut
     Produce {
         /// first render quality (previz needs no engine)
@@ -658,9 +663,7 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("\nanswer with: shotpilot discover \"<request>\" --answers \"<id>: <answer>; ...\"");
                 return Ok(1);
             }
-            ws.set_brief(&d.brief)?;
-            ws.state.log("discover", d.to_json());
-            ws.state.save()?;
+            ws.apply_discovery(&d, &request, &serde_json::Value::Null)?;
             println!("\ndirection: {}\ndesign:    {}\nskills:    {}\n\n{}", d.direction, dash(std::slice::from_ref(&d.design)), dash(&d.skills), d.plan);
         }
         Cmd::Design { id, fork } => {
@@ -690,6 +693,23 @@ fn run(cli: Cli) -> Result<u8> {
                     }
                     println!("design: {} ({})", d.id, d.name);
                 }
+            }
+        }
+        Cmd::Concept { r#match } => {
+            let mut ws = ws(file)?;
+            let settings = Settings::load(Settings::default_path().as_deref());
+            if r#match {
+                let claude = connect::make_claude(&settings)?;
+                let m = ws.match_concept(claude.as_ref(), None)?;
+                println!("rounds: {}; places added: {}; frames with a place: {}; still open: {}", m.rounds, dash(&m.added), m.found, dash(&m.open));
+            } else {
+                let gen = connect::make_image_gen(&settings)?;
+                let made = ws.generate_concept(gen.as_ref())?;
+                println!("made {} picture(s)", made.len());
+            }
+            for f in shotpilot::concept::load(&ws.root) {
+                let at = f.found.as_ref().map(|p| format!("{}/{} ({})", p.anchor, p.side, p.fit)).unwrap_or_else(|| "-".into());
+                println!("  {:<4} {:<10} {:<40} {}", f.id, f.beat, f.file.as_deref().unwrap_or("(no picture)"), at);
             }
         }
         Cmd::Skills => {

@@ -220,3 +220,131 @@ fn spread_skips_landmarks_on_top_of_each_other() {
     let names: Vec<&str> = picked.iter().map(|c| c.name.as_str()).collect();
     assert_eq!(names, ["big", "far"]);
 }
+
+// --------------------------------------------------------------------------- concept frames (D-44)
+
+const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
+
+struct Painter(RefCell<Vec<String>>);
+
+impl shotpilot::moodboard::ImageGen for Painter {
+    fn generate(&self, job: &shotpilot::moodboard::ImageJob) -> Result<Vec<u8>> {
+        self.0.borrow_mut().push(job.prompt.clone());
+        Ok(PNG.to_vec())
+    }
+}
+
+fn with_frames(reply: &mut Value) {
+    reply["frames"] = json!([
+        {"beat": "hook", "look": "暗い祭壇に一本の蝋燭"},
+        {"beat": "establish", "look": "長い廊下の奥に扉"},
+        {"beat": "escalate", "look": "背の高い衣装箪笥が少し開いている"},
+    ]);
+}
+
+#[test]
+fn the_plan_describes_concept_frames_and_pictures_come_on_request() {
+    let mut f = ws();
+    let before = f.text();
+    let status_before: Vec<String> = f.ws.status().unwrap().iter().map(|r| r.quality("previz").to_string()).collect();
+    let mut reply = common::discovery_reply();
+    with_frames(&mut reply);
+    reply["frames"].as_array_mut().unwrap().push(json!({"beat": "credits", "look": "x"})); // not a beat: dropped
+    let claude = Script::new(vec![reply]);
+    let d = ai::discover(&f.ws.defn, "規則のホラー", "", true, &claude).unwrap();
+    assert_eq!(d.frames.len(), 3);
+    f.ws.apply_discovery(&d, "規則のホラー", &Value::Null).unwrap();
+    let frames = shotpilot::concept::load(&f.ws.root);
+    assert_eq!(frames.iter().map(|x| x.id.as_str()).collect::<Vec<_>>(), ["c1", "c2", "c3"]);
+    assert!(frames.iter().all(|x| x.file.is_none())); // no picture until asked
+
+    // pictures are made when the human asks, in the look of the plan
+    let painter = Painter(Default::default());
+    let made = f.ws.generate_concept(&painter).unwrap();
+    assert_eq!(made.len(), 3);
+    assert!(made.iter().all(|m| m.starts_with("concept/") && f.ws.root.join(m).is_file()));
+    assert!(painter.0.borrow()[0].contains("暗い祭壇に一本の蝋燭") && painter.0.borrow()[0].contains("Look: Design System Inspired by Quiet Dread"));
+    assert!(f.ws.generate_concept(&painter).unwrap().is_empty()); // nothing left to make
+    // references only: no take, no fingerprint, shots.yaml only got the brief
+    let status_after: Vec<String> = f.ws.status().unwrap().iter().map(|r| r.quality("previz").to_string()).collect();
+    assert_eq!(status_before, status_after);
+    assert!(!f.ws.root.join("render").exists() || f.ws.root.join("render").read_dir().unwrap().count() == 0);
+    assert!(f.text().len() > before.len() && f.text().contains("design: quiet-dread"));
+
+    // a new plan keeps the pictures of the frames it did not change
+    let kept = shotpilot::concept::replace(&f.ws.root, &[("hook".into(), "暗い祭壇に一本の蝋燭".into()), ("title".into(), "夜明け".into())]).unwrap();
+    assert!(kept[0].file.is_some() && kept[1].file.is_none());
+}
+
+#[test]
+fn the_scout_finds_a_place_for_each_frame_and_tries_others_when_none_fits() {
+    let mut f = untagged_level();
+    let mut reply = common::discovery_reply();
+    with_frames(&mut reply);
+    let d = ai::discover(&f.ws.defn, "", "", true, &Script::new(vec![reply])).unwrap();
+    f.ws.apply_discovery(&d, "", &Value::Null).unwrap();
+    f.ws.generate_concept(&Painter(Default::default())).unwrap();
+
+    let claude = Script::new(vec![
+        // the first places, picked with the pictures in mind
+        json!({"picks": [{"candidate": "altar", "why": "蝋燭"}, {"candidate": "door", "why": "廊下"}]}),
+        // the photos against the frames: c3 finds nothing
+        json!({"matches": [
+            {"frame": "c1", "photo": "altar/front", "fit": "good", "why": "暗い祭壇"},
+            {"frame": "c2", "photo": "door/left", "fit": "rough", "why": "扉はあるが廊下が短い"},
+            {"frame": "c3", "photo": "", "fit": "none", "why": "箪笥がない"},
+            {"frame": "c9", "photo": "altar/front", "fit": "good", "why": "unknown frame"}]}),
+        // other places for c3
+        json!({"picks": [{"candidate": "wardrobe", "why": "箪笥"}]}),
+        json!({"matches": [{"frame": "c3", "photo": "wardrobe/back", "fit": "good", "why": "背の高い箪笥"}]}),
+    ]);
+    let rep = f.ws.scout(&[], Some(&claude)).unwrap();
+    let m = rep.matched.unwrap();
+    assert_eq!(m.rounds, 2);
+    assert_eq!(m.added, ids(&["wardrobe"]));
+    assert_eq!(m.found, 3);
+    assert!(m.open.is_empty());
+    let frames = shotpilot::concept::load(&f.ws.root);
+    let at = |id: &str| frames.iter().find(|x| x.id == id).unwrap().found.clone().unwrap();
+    assert_eq!((at("c1").anchor.as_str(), at("c1").side.as_str(), at("c1").fit.as_str()), ("altar", "front", "good"));
+    assert_eq!(at("c2").fit, "rough");
+    assert_eq!((at("c3").anchor.as_str(), at("c3").side.as_str()), ("wardrobe", "back"));
+    assert!(f.ws.root.join(&at("c3").file).is_file());
+    assert_eq!(frames.iter().find(|x| x.id == "c3").unwrap().tried, ids(&["altar", "door"]));
+    // the first pick saw the pictures' looks; the second only the one still open
+    assert!(claude.user(0).contains("Pictures still without a place") && claude.user(0).contains("暗い祭壇"));
+    assert!(claude.user(2).contains("衣装箪笥") && !claude.user(2).contains("暗い祭壇"));
+    // the second comparison only looked at the new place's photos
+    let second = claude.user(3);
+    assert!(second.contains("Scout photo `wardrobe/front`") && !second.contains("altar/front"), "{second}");
+    assert!(second.contains("Concept frame `c3`") && !second.contains("Concept frame `c1`"));
+    // one survey for the level, no second one: the candidates were already known
+    assert_eq!(launches(&f.ws).iter().filter(|l| l["kind"] == "survey").count(), 1);
+
+    // the planner gets each frame with its place
+    let (blocks, text) = shotpilot::concept::planner_blocks(&f.ws.defn);
+    assert!(text.contains("film it at anchor `wardrobe`, framed like its back scout photo"), "{text}");
+    assert_eq!(blocks.iter().filter(|b| b["type"] == "image").count(), 6); // three frames, three places
+}
+
+#[test]
+fn frames_with_no_place_stay_mood_only() {
+    let mut f = untagged_level();
+    let mut reply = common::discovery_reply();
+    with_frames(&mut reply);
+    let d = ai::discover(&f.ws.defn, "", "", true, &Script::new(vec![reply])).unwrap();
+    f.ws.apply_discovery(&d, "", &Value::Null).unwrap();
+    f.ws.generate_concept(&Painter(Default::default())).unwrap();
+    // scouted before: all four places are anchors already, nothing else to try
+    f.ws.scout(&[], None).unwrap();
+    let none = json!({"matches": [
+        {"frame": "c1", "photo": "", "fit": "none", "why": ""}, {"frame": "c2", "photo": "", "fit": "none", "why": ""},
+        {"frame": "c3", "photo": "crate/front", "fit": "good", "why": "x"}]});
+    let claude = Script::new(vec![none]);
+    let m = f.ws.match_concept(&claude, None).unwrap();
+    assert_eq!(m.rounds, 1);
+    assert_eq!(m.open, ids(&["c1", "c2"]));
+    assert_eq!(launches(&f.ws).iter().filter(|l| l["kind"] == "survey").count(), 2); // asked the level for others once
+    let (_, text) = shotpilot::concept::planner_blocks(&f.ws.defn);
+    assert!(text.contains("`c1` (hook): no place in the level looks like it; take its mood"), "{text}");
+}

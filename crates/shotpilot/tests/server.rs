@@ -794,3 +794,24 @@ fn the_planning_turn_runs_over_http() {
     let text = std::fs::read_to_string(s.f.path()).unwrap();
     assert!(text.contains("design: quiet-dread") && text.contains("rules-teaser"), "{text}");
 }
+
+#[test]
+fn concept_frames_find_their_places_over_http() {
+    let (mut s, calls) = srv_with_claude(json!({"matches": [{"frame": "c1", "photo": "well/front", "fit": "good", "why": "井戸"}]}));
+    s.f.ws.take_scout(&[]).unwrap();
+    let png: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
+    let root = s.f.ws.root.clone();
+    let mut frames = shotpilot::concept::replace(&root, &[("hook".into(), "暗い井戸".into())]).unwrap();
+    frames[0].file = Some(shotpilot::concept::store(&root, &frames[0], png).unwrap());
+    shotpilot::concept::save(&root, &frames).unwrap();
+
+    let (code, m) = jcall(&s, "POST", "/api/concept/match", Some(json!({})));
+    assert_eq!(code, 200, "{m}");
+    assert_eq!(m["found"], 1);
+    assert_eq!(m["open"], json!([]));
+    assert_eq!(calls.lock().unwrap().len(), 1); // one comparison, nothing else to try
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["concept"][0]["found"]["anchor"], "well");
+    let file = st["concept"][0]["file"].as_str().unwrap().to_string();
+    assert_eq!(call(&s, "GET", &format!("/files/{file}"), None, &[]).code, 200);
+}

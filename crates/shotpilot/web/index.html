@@ -84,6 +84,18 @@ button:disabled { opacity: .45; cursor: default; }
 .skchip.auto { border-style: dashed; }
 .dscard .sw { display: flex; gap: 3px; margin: 2px 0; }
 .dscard .sw i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
+.cframes { display: grid; gap: 10px; }
+.cframe { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr); gap: 8px; align-items: center; }
+.cframe figure { margin: 0; display: grid; gap: 4px; }
+.cframe img, .cframe .noimg { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); }
+.cframe .noimg { display: grid; place-items: center; color: var(--faint); font-size: 11.5px; text-align: center; padding: 6px; }
+.cframe figcaption { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.cframe .arrow { color: var(--faint); text-align: center; }
+.fit { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); margin-right: 4px; }
+.fit.good { border-color: var(--ok, #2e7d32); color: var(--ok, #2e7d32); }
+.fit.rough { border-color: var(--warn, #b26a00); color: var(--warn, #b26a00); }
+.cstrip { display: flex; gap: 6px; overflow-x: auto; margin-top: 4px; }
+.cstrip img { height: 64px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
 .event { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
 .event b { color: var(--ink); font-weight: 600; }
 .thinking .state::after { content: "…"; animation: blink 1s infinite; }
@@ -1267,7 +1279,7 @@ async function fetchAssets() {
 function drawScout() {
   const st = ui.status;
   if (ui.assetsCount !== st.assets_count) { ui.assetsCount = st.assets_count; fetchAssets(); }
-  const key = JSON.stringify([st.scout, st.props, ui.busy, (ui.assets || []).length, st.engine, st.stage, st.ai?.ready]);
+  const key = JSON.stringify([st.scout, st.props, ui.busy, (ui.assets || []).length, st.engine, st.stage, st.ai?.ready, st.concept, st.ai?.image_active]);
   if (drawScout.key === key && $("scoutpanel").childElementCount) return;
   drawScout.key = key;
   const ue = st.engine === "ue5";
@@ -1289,6 +1301,9 @@ function drawScout() {
   }).join("");
   $("scoutpanel").innerHTML = `<h3>ロケハン</h3>
     <div class="lead">撮る前に、プロジェクトの中に何があるかを集めます。場所（アンカー）を4方向から撮った写真と、カットに出せるもの（props）です。写真は人間が確かめるためのもので、「構成を組む」ときに各アンカーの中心側からの1枚を Claude にも見せます。ここで集めたものは shots.yaml の anchors と props に入り、カットの撮り直しは起きません。</div>
+    ${(st.concept || []).length ? `<h4 class="sec">構成画と見つけた場所</h4>
+    <div class="lead">企画のビートごとのざっくりした画（構成画）と、それに似たレベルの場所です。ロケハンは、まず構成画に近そうな場所を撮り、撮った写真と見比べて、合わないビートには別の候補を足して撮ります（最大3周）。見つかった場所と向きは、台本と構成を組むときにそのビートのカットの置き場になります。構成画は参照用で、撮影や Cut には使いません。</div>
+    ${conceptButtons("scout")}${conceptRows(st.concept)}` : ""}
     <h4 class="sec">場所の写真</h4>
     <div class="capbar"><button class="btn dark" data-scout${ui.busy ? " disabled" : ""}>${ui.busy === "scout" ? "撮影中…" : "ロケハン写真を撮る"}</button>
       <span class="sp-hint">${ue
@@ -1325,7 +1340,8 @@ function runScout() {
   scoutAction("scout", {}, "/api/scout", "scout", (o) => {
     const n = Object.keys(o.anchors || {}).length;
     const got = o.scanned ? `レベルから${o.scanned.auto ? "自動で選んだ" : "取り込んだ"} ${o.scanned.added.length} か所を、` : "";
-    toast(`${got}${n} か所×4方向で撮りました${o.assets != null ? `（アセット ${o.assets} 件も棚卸し）` : ""}`);
+    const m = o.matched ? ` 構成画は ${o.matched.found} 枚に場所が見つかりました${o.matched.open.length ? `（見つからない: ${o.matched.open.join(", ")}）` : ""}。` : "";
+    toast(`${got}${n} か所×4方向で撮りました${o.assets != null ? `（アセット ${o.assets} 件も棚卸し）` : ""}。${m}`);
     if (o.assets != null) ui.assetsCount = -1;
   });
 }
@@ -2681,6 +2697,57 @@ function formAnswers(form) {
   });
 }
 
+const FIT_JA = { good: "合う", rough: "だいたい" };
+const conceptImg = (rel) => `/files/${esc(rel)}?v=${encodeURIComponent(rel)}`;
+
+/** Concept frames (D-44): the picture of each beat and the place the scout found for it. */
+function conceptRows(frames) {
+  return `<div class="cframes">${frames.map((f) => {
+    const pic = f.file ? `<img alt="" loading="lazy" src="${conceptImg(f.file)}">` : `<div class="noimg">まだ画像なし</div>`;
+    const place = f.found
+      ? `<figure><img alt="" loading="lazy" src="${conceptImg(f.found.file)}"><figcaption><span class="fit ${esc(f.found.fit)}">${esc(FIT_JA[f.found.fit] || f.found.fit)}</span><b class="mono">${esc(f.found.anchor)}</b>（${esc({ front: "中心側から", right: "右", back: "反対側", left: "左" }[f.found.side] || f.found.side)}） ${esc(f.found.why || "")}</figcaption></figure>`
+      : `<figure><div class="noimg">${f.file ? (f.tried?.length ? `合う場所なし（${esc(f.tried.join(", "))} は違った）。雰囲気だけ使う` : "まだ探していない") : "画像を作ると探せます"}</div><figcaption>&nbsp;</figcaption></figure>`;
+    return `<div class="cframe"><figure>${pic}<figcaption><b class="mono">${esc(f.beat)}</b> ${esc(f.look)}</figcaption></figure><span class="arrow">→</span>${place}</div>`;
+  }).join("")}</div>`;
+}
+
+function conceptButtons(where) {
+  const st = ui.status, frames = st.concept || [], ai = st.ai || {};
+  if (!frames.length) return "";
+  const missing = frames.filter((f) => !f.file).length;
+  const open = frames.filter((f) => f.file && !f.found).length;
+  const btns = [];
+  if (missing) {
+    btns.push(ai.image_active
+      ? `<button data-concept-gen${ui.busy ? " disabled" : ""}>🖼 ${ui.busy === "concept" ? "構成画を作っています…" : `構成画を作る（${missing} 枚、ビートごとにざっくり）`}</button>`
+      : `<button data-mood-key>🖼 構成画を作るには画像の生成先を設定（Codex か OpenAI）</button>`);
+  }
+  if (open && Object.keys(st.scout || {}).length && ai.ready) {
+    btns.push(`<button data-concept-match${ui.busy ? " disabled" : ""}>🔎 ${ui.busy === "match" ? "探しています…" : `構成画に似た場所をレベルで探す（${open} 枚。無ければ別の候補も撮る）`}</button>`);
+  }
+  if (!btns.length) return "";
+  return where === "chat" ? `<div class="suggest">${btns.join("")}</div>` : `<div class="suggest" style="margin:8px 0">${btns.join("")}</div>`;
+}
+
+async function generateConcept() {
+  if (ui.busy) return;
+  ui.busy = "concept"; drawScout.key = ""; draw(); drawChat();
+  toast("構成画を作っています（枚数によって数分かかります）");
+  try { const out = await api("POST", "/api/concept/generate", {}); toast(`${out.made.length} 枚の構成画を作りました。ロケハンで似た場所を探します`); }
+  catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; drawScout.key = ""; ui.logKey = ""; await refresh(); }
+}
+
+async function matchConcept() {
+  if (ui.busy) return;
+  ui.busy = "match"; drawScout.key = ""; draw(); drawChat();
+  try {
+    const m = await api("POST", "/api/concept/match", {});
+    toast(`${m.found} 枚に場所が見つかりました${m.added.length ? `（別の候補 ${m.added.join(", ")} も撮りました）` : ""}${m.open.length ? `。見つからない: ${m.open.join(", ")}` : ""}`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; drawScout.key = ""; ui.logKey = ""; await refresh(); }
+}
+
 function discoverHtml(e) {
   const last = (ui.log || []).filter((x) => x.action === "discover").pop() === e;
   const answered = (e.answers || []).length
@@ -2693,15 +2760,25 @@ function discoverHtml(e) {
   const ds = ui.kits?.design_systems.find((d) => d.id === e.design);
   const chips = [ds ? `<span class="chip">ルック: ${esc(ds.name)}</span>` : "", ...(e.skills || []).map((id) => `<span class="chip">${esc(skillName(id))}</span>`)].join("");
   const go = last && !ui.busy && !(ui.status?.shots || []).length
-    ? `<div class="suggest"><button data-produce-now>⚡ この企画で作る（ロケハン → 台本と構成 → previz で止まる）</button><button data-goto-stage="brief">↗ ブリーフでルックとスキルを直す</button></div>` : "";
+    ? `${conceptButtons("chat")}<div class="suggest"><button data-produce-now>⚡ この企画で作る（ロケハン → 台本と構成 → previz で止まる）</button><button data-goto-stage="brief">↗ ブリーフでルックとスキルを直す</button></div>` : "";
+  const frames = last ? (ui.status?.concept || []) : (e.frames || []).map((f) => ({ ...f }));
+  const looks = frames.length ? `<details${last ? " open" : ""}><summary>構成画にする画（${frames.length} 枚）</summary>${last && frames.some((f) => f.file) ? conceptRows(frames)
+    : `<div class="changes">${frames.map((f) => `<div><span class="k">${esc(f.beat)}</span> ${esc(f.look)}</div>`).join("")}</div>`}</details>` : "";
   return `${user}<div class="msg-ai">${head}<div class="plan-card">
       ${e.direction ? `<div class="dir">方向: ${esc(e.direction)}</div>` : ""}${chips ? `<div class="kitchips">${chips}</div>` : ""}
-      <details${last ? " open" : ""}><summary>企画を読む</summary><pre>${esc(e.plan || "")}</pre></details></div>
+      <details${last ? " open" : ""}><summary>企画を読む</summary><pre>${esc(e.plan || "")}</pre></details>${looks}</div>
       <div class="done-row"><span class="ok"><span class="dot"></span>ブリーフに書いた（撮り直しなし）</span><span class="t">${esc(timeOf(e.at))}</span></div>${go}</div>`;
 }
 
 function entryHtml(e, isLast) {
   if (e.action === "discover") return discoverHtml(e);
+  if (e.action === "concept") {
+    return `<div class="event"><span class="dot"></span><span>🖼 構成画を ${(e.made || []).length} 枚作った（参照用。撮影には使わない）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
+      <div class="cstrip">${(e.made || []).map((m) => `<img alt="" loading="lazy" src="${conceptImg(m)}">`).join("")}</div>`;
+  }
+  if (e.action === "concept-match") {
+    return `<div class="event"><span class="dot${(e.open || []).length ? " warn" : ""}"></span><span>🔎 構成画の場所: ${e.found} 枚見つかった${(e.added || []).length ? ` · 別の候補を撮った: ${esc(e.added.join(", "))}` : ""}${(e.open || []).length ? ` · 見つからない: ${esc(e.open.join(", "))}` : ""}（${e.rounds} 周）</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
+  }
   if (e.action === "revise") {
     const ctx = e.label || e.pointer ? `<div class="ctx">${esc(e.label || e.pointer)}</div>` : "";
     return `<div class="msg-user"><div class="bubble">${esc(e.note)}</div>${ctx}</div>
@@ -2781,7 +2858,7 @@ function entryHtml(e, isLast) {
 }
 
 function drawChat() {
-  const keep = new Set(["discover", "produce", "plan", "revise", "set", "render", "cut", "order", "sound", "nudge", "script", "undo"]);
+  const keep = new Set(["discover", "concept", "concept-match", "produce", "plan", "revise", "set", "render", "cut", "order", "sound", "nudge", "script", "undo"]);
   if (!ui.kits) fetchKits();
   const items = ui.log.filter((e) => keep.has(e.action));
   const lastEdit = items.map((e) => e.action).lastIndexOf("revise") >= 0 || items.some((e) => e.action === "set")
@@ -3226,6 +3303,9 @@ $("chips").addEventListener("click", (e) => {
 $("log").addEventListener("click", (e) => {
   const g = e.target.closest("[data-goto-stage]"); if (g) { goStage(g.dataset.gotoStage); return; }
   if (e.target.closest("[data-produce-now]")) { $("note").value = ""; produceAll({ review: true }); return; }
+  if (e.target.closest("[data-concept-gen]")) { generateConcept(); return; }
+  if (e.target.closest("[data-concept-match]")) { matchConcept(); return; }
+  if (e.target.closest("[data-mood-key]")) { openConn(); return; }
   if (e.target.closest("[data-discover-now]")) { const note = $("note").value.trim(); $("note").value = ""; runDiscover(note, null, { thenProduce: true }); return; }
   const b = e.target.closest("[data-render]"); if (b) render(b.dataset.render);
 });
@@ -3311,6 +3391,8 @@ $("next").addEventListener("click", (e) => {
   if (sk) { localStorage.setItem(skipKey(sk.dataset.nextSkip), "1"); draw(); }
 });
 $("scoutpanel").addEventListener("click", (e) => {
+  if (e.target.closest("[data-concept-gen]")) { generateConcept(); return; }
+  if (e.target.closest("[data-concept-match]")) { matchConcept(); return; }
   const t = e.target.closest("[data-scout],[data-stage-read],[data-assets-scan],[data-prop-add],[data-prop-rm]");
   if (!t) return;
   if (t.matches("[data-scout]")) runScout();

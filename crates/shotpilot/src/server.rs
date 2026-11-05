@@ -36,7 +36,7 @@ use crate::workspace::Workspace;
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 pub const HOME_HTML: &str = include_str!("../web/home.html");
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard", "concept"];
 /// Loopback only; large enough for a mood-board image sent as base64.
 const MAX_BODY: usize = 20 << 20;
 
@@ -559,6 +559,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "review": review_json(ws),
         "brief": brief_json(&ws.defn.brief),
         "own_design": crate::designsys::project_doc(&ws.root).is_some(),
+        "concept": crate::concept::load(&ws.root).iter().map(crate::concept::Frame::to_json).collect::<Vec<_>>(),
         "scout": scout["anchors"].as_object().cloned().unwrap_or_default(), // scout::summary
         "scout_taken": scout["taken"],
         "finish": {
@@ -1114,6 +1115,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut out = rep.index;
             out["scanned"] = json!(rep.scan.map(|s| json!({"added": s.added, "auto": s.auto, "picked_by": s.picked_by, "note": s.note})));
             out["assets"] = json!(rep.assets);
+            out["matched"] = json!(rep.matched.map(|m| json!({"rounds": m.rounds, "added": m.added, "found": m.found, "open": m.open})));
             send_json(stream, false, 200, &out).map_err(io)
         }
         ("POST", "/api/discover") => {
@@ -1125,15 +1127,24 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let _guard = app.mutate()?;
             let mut ws = app.ws()?;
             let d = ai::discover(&ws.defn, &request, &answers, true, claude.as_ref())?;
-            if !d.is_question() {
-                ws.set_brief(&d.brief)?;
-            }
-            let mut entry = d.to_json();
-            entry["note"] = json!(request);
-            entry["answers"] = body.get("answers").cloned().unwrap_or(Value::Null);
-            ws.state.log("discover", entry.clone());
-            ws.state.save()?;
+            let entry = ws.apply_discovery(&d, &request, body.get("answers").unwrap_or(&Value::Null))?;
             send_json(stream, false, 200, &entry).map_err(io)
+        }
+        ("POST", "/api/concept/generate") => {
+            // the concept frames' pictures (D-44), only when the human asks
+            let gen = (app.images)(&app.settings())?; // say what is missing before taking the lock
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let made = ws.generate_concept(gen.as_ref())?;
+            send_json(stream, false, 200, &json!({"made": made})).map_err(io)
+        }
+        ("POST", "/api/concept/match") => {
+            // find the frames' places in the level; may photograph other candidates (UE)
+            let claude = (app.claude)(&app.settings())?;
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let m = ws.match_concept(claude.as_ref(), None)?;
+            send_json(stream, false, 200, &json!({"rounds": m.rounds, "added": m.added, "found": m.found, "open": m.open})).map_err(io)
         }
         ("GET" | "HEAD", "/api/kits") => send_json(stream, head, 200, &kits_json()).map_err(io),
         ("POST", "/api/moodboard/generate") => {
