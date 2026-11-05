@@ -208,7 +208,7 @@ pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     )
 }
 
-/// The planning turn's plan (D-43): production follows it; the latest direction wins.
+/// The planning turn's plan (D-45): production follows it; the latest direction wins.
 fn plan_text(b: &BriefCfg) -> String {
     if b.plan.trim().is_empty() && b.direction.trim().is_empty() {
         return String::new();

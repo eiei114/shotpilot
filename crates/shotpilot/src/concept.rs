@@ -1,4 +1,4 @@
-//! Concept frames (D-44): a rough picture per beat of the plan, made by an image model when the
+//! Concept frames (D-46): a rough picture per beat of the plan, made by an image model when the
 //! human asks, then matched against the level by the location scout.
 //!
 //! The planning turn describes what each beat should look like (`frames`). The human presses

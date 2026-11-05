@@ -150,9 +150,9 @@ pub struct BriefCfg {
     /// Mood-board images (paths under moodboard/): palette, light and tone, not shot designs.
     pub images: Vec<String>,
     pub notes: String,
-    /// The look: a bundled design system id (designsys, D-43). A project `DESIGN.md` wins for the prose.
+    /// The look: a bundled design system id (designsys, D-45). A project `DESIGN.md` wins for the prose.
     pub design: String,
-    /// Skill ids the planning turn picked (skills, D-43).
+    /// Skill ids the planning turn picked (skills, D-45).
     pub skills: Vec<String>,
     /// The planning turn's plan, in prose (goal, deliverable, direction, steps, assumptions).
     pub plan: String,

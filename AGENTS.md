@@ -34,10 +34,10 @@ shotpilot approve --script        # 台本を承認（文字・並び・各カ�
 shotpilot brief genre=ホラー       # brief: を見る・書く
 shotpilot moodboard               # ブリーフからムードボードを4枚生成（Codex か OpenAI キー）
 shotpilot storyboard [s03]        # previz の線画を下絵に、リアル寄りの絵コンテを生成（確認用。Cut には入らない）
-shotpilot discover "規則で見せるホラー"  # 企画（D-43）: 足りないときだけ質問し、方向・ルック・スキル・企画を brief: に書く
+shotpilot discover "規則で見せるホラー"  # 企画（D-45）: 足りないときだけ質問し、方向・ルック・スキル・企画を brief: に書く
 shotpilot design [id] [--fork]    # ルック（デザインシステム）の一覧・指定。--fork でプロジェクトに DESIGN.md を写す
 shotpilot skills                  # ティザーの型の手順書（スキル）の一覧
-shotpilot concept [--match]       # 構成画（D-44）: 企画のビートごとの画を生成する / --match でレベルに似た場所を探す（無ければ別の候補を撮る）
+shotpilot concept [--match]       # 構成画（D-46）: 企画のビートごとの画を生成する / --match でレベルに似た場所を探す（無ければ別の候補を撮る）
 shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（企画→ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
 shotpilot produce --review        # 同じだが、台本とカットの previz で止める（アプリの既定）。確かめて直したら produce --resume で音→撮影→Cut
 shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）。アンカーが無ければ、同じ UE の起動でレベルから取り込み、アセットも棚卸しする
@@ -65,9 +65,9 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/storyboard.rs   絵コンテ（D-33）。previz の線画を下絵に、ロケハン写真とムードボードを参照して画像生成で描く確認用の1枚
   src/produce.rs      初回の一気通し（D-28）。足りない下ごしらえを埋め、plan を1回、最安の品質で撮って仕上げ込みで Cut
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
-  src/designsys.rs    ルック（D-43）。references/design-systems/<id>/ の DESIGN.md・tokens・manifest を埋め込み、plan に全文を渡し、tokens で仕上げを決める
-  src/concept.rs      構成画（D-44）。企画のビートごとの画（concept/）と、ロケハンで見つけた場所の記録。plan に画と場所の写真を渡す
-  src/skills.rs       スキル（D-43）。references/skills/<id>/SKILL.md を埋め込み、企画で選ばれたものの本文を plan に渡す
+  src/designsys.rs    ルック（D-45）。references/design-systems/<id>/ の DESIGN.md・tokens・manifest を埋め込み、plan に全文を渡し、tokens で仕上げを決める
+  src/concept.rs      構成画（D-46）。企画のビートごとの画（concept/）と、ロケハンで見つけた場所の記録。plan に画と場所の写真を渡す
+  src/skills.rs       スキル（D-45）。references/skills/<id>/SKILL.md を埋め込み、企画で選ばれたものの本文を plan に渡す
   src/refs.rs         実測リファレンス（references/craft/ と genres/<id>/、流行りの型 20 本を埋め込み）。plan に渡す文と、骨格の hook・title の長さと密度の形
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
@@ -101,19 +101,19 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - **take は fingerprint で管理し、上書きしない。** 定義を元に戻したら、古い take を再利用する。`render/` 以下を手で編集しない。
 - **ゲームの中身の変化は fingerprint に入れず、take の `deps` で見る（D-37）。** エンジンはレンダ中に写っていたもののパッケージを報告し、take はそのファイルの大きさ・時刻・SHA-256 を持つ。中身が変わったカットだけが古くなり、撮り直した take は `<fp12>~N/` に置く（前の take は消さない。中身を戻せば前の take が使われる）。fingerprint は定義だけのまま（Python 版との互換と、撮った take を守るため）。迷ったら「写っている」側に倒す（撮り直しすぎる方が、見落とすより安全）。
 - `shots.yaml` を機械的に書き換えるときは、必ず `yamlio::Doc` を通す（変えるショットの行だけを差し替え、再パースして意図どおりか確かめてから書く）。人間が書いたコメントとキー順を消さない。
-- Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。カメラだけ・光だけの指示（`Pointer::fields`、`ai::ASPECTS`）では、そのキーだけを取り込む。ショットに絞った指示では BGM を変えさせない。
+- Claude（`ai.rs`）が返した編集は、`shots.yaml` に書く前に resolve して検証する。編集してよいショットの範囲は、プロンプトではなくコードで強制する。音だけの指示（`Pointer::sound`）では `sfx` と `audio` だけを取り込む。カメラだけ・光だけの指示（`Pointer::fields`、`ai::ASPECTS`）では、そのキーだけを取り込む。文字・つなぎだけの指示（`finish`）では、ショットの `caption`・`transition`・`exposure` と、`Pointer::texts` に挙げた台本の行の文字・種類・タイミング（`ai::LINE_TEXT_FIELDS`）だけを取り込み、行の置き場所（`after` / `on`）は変えさせない。`finish:` は全体への指示（`Pointer::finish`）でだけ、色調・帯・書体（`ai::FINISH_FIELDS`）に限って変えさせる（タイトルとエンドカードは人間が書く）。ショットに絞った指示では BGM を変えさせない。
 - 定義の編集は `Workspace::write_definition` の1か所を通し、変えた部分の前後を履歴（`undo`）に残す。元に戻すは、その部分が後から変わっていたら上書きせずに止める。戻した画は fingerprint が同じなので、古い take をそのまま使う（撮り直さない）。
 - 台本の承認は `state.json` に script fingerprint（台本の文字と位置、各カットの id・beat・purpose・duration と並び）で残す（D-38）。カメラ・光・音では外れない。
 - 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
 - 絵コンテ（`storyboard/`）は確認用で、take ではない。`render/` にも state の take にも入れず、Cut には使わない。look fingerprint を名前にして、画が変わる編集で古くなり、編集的な変更では古くならない。生成するのは人間が頼んだときだけ（produce やレンダでは自動で描かない）。
-- 構成画（`concept/`、D-44）はムードボードと同じく参照に限る。take にも Cut にも fingerprint にも入れない。生成するのは人間が頼んだとき（ボタンか `shotpilot concept`）だけで、企画や produce では自動で描かない。構成画と撮った写真の見比べは「本物の写真の中から選ぶ」ことで、Claude が自分の出力を見直すこと（D-22）ではない。選べる写真の id はコードで確かめる。
+- 構成画（`concept/`、D-46）はムードボードと同じく参照に限る。take にも Cut にも fingerprint にも入れない。生成するのは人間が頼んだとき（ボタンか `shotpilot concept`）だけで、企画や produce では自動で描かない。構成画と撮った写真の見比べは「本物の写真の中から選ぶ」ことで、Claude が自分の出力を見直すこと（D-22）ではない。選べる写真の id はコードで確かめる。
 - ロケハンのカメラはショットではない。shots.yaml にも take の状態にも入れない（UE では content_root/Scout/ にシーケンスを作るだけ）。
 - ムードボードの画像は雰囲気の参照に限る。生成画像をティザーの画として使わない（実際のゲームと違うものを見せない）。`brief.images` は編集的で、撮り直しを起こさない。
 - 台本（`script:`）と、そこに付く音（`audio.music`、行の `sfx`）は編集的で、fingerprint に入れない。位置は必ず `script::layout` / `sound::spans` から出す（カードを足したり並べ替えたりしても音がずれないように）。
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
-- 企画（`ai::discover`、D-43）は open-design の OD Next の計画ターンを写す。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。
+- 企画（`ai::discover`、D-45）は open-design の OD Next の計画ターンを写す。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。
 - ルック（`references/design-systems/`）とスキル（`references/skills/`）も plan に全文が渡るので、D-22 の語を書かない（`cargo test --test planning` が守る）。ルックは汎用に限り、実在のゲームやスタジオの名前・ロゴ・固有の色を写さない。ルックの tokens（色調・帯・書体）は Claude の提案より優先してコードで書く。
 - 流行りの型（`refs::STYLES`、D-39）は実在ティザーの構成とリズムだけを真似させる。話の筋・キャラクター・文言は真似させない。分析文（TEASER.md の 1〜7 節）も plan に渡るので、D-22 の語を書かない（`cargo test --test styles` が守る）。
 - `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。

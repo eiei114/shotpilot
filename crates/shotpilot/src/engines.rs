@@ -58,7 +58,7 @@ pub trait Engine {
     /// Stage 0 in one launch: {"anchors": ..., "candidates"?: [...], "assets"?: [...]}. The anchors
     /// are the tagged ones as in [`Engine::scan`]; with none tagged, `candidates` lists landmarks
     /// in the level to pick from (scout::Candidate); with `candidates`, always (to find other
-    /// places for concept frames, D-44). The mesh inventory comes along when `assets`.
+    /// places for concept frames, D-46). The mesh inventory comes along when `assets`.
     fn survey(&self, tag: &str, prefix: &str, assets: bool, candidates: bool) -> Result<Value>;
     /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
     fn assets(&self) -> Result<Value>;

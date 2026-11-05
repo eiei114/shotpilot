@@ -1,4 +1,4 @@
-//! Design systems for teasers (D-43), after open-design's `design-systems/`.
+//! Design systems for teasers (D-45), after open-design's `design-systems/`.
 //!
 //! A design system is one look a teaser can wear: `DESIGN.md` (prose in nine sections, the
 //! planner reads it whole and treats it as authoritative), `tokens.json` (the numbers code

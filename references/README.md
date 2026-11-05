@@ -12,10 +12,10 @@ Claude when the planning turn picked them.
 | Genre package | `design-systems/<brand>/` | `genres/<id>/` | one genre: prose + measured numbers + aliases (D-29) |
 | Style package | `design-systems/<brand>/` | `teasers/<id>/` | one real teaser: "Inspired by" prose + measured numbers |
 | Shape | `design-templates/` | `craft.rs` skeleton | `hook → establish → escalate → title` |
-| Look | `design-systems/<brand>/` | `design-systems/<id>/` | one look a teaser wears: `DESIGN.md` + `tokens.json` + `manifest.json` (D-43) |
-| Playbook | `skills/<id>/SKILL.md` | `skills/<id>/SKILL.md` | one kind of teaser, or one part of it (D-43) |
+| Look | `design-systems/<brand>/` | `design-systems/<id>/` | one look a teaser wears: `DESIGN.md` + `tokens.json` + `manifest.json` (D-45) |
+| Playbook | `skills/<id>/SKILL.md` | `skills/<id>/SKILL.md` | one kind of teaser, or one part of it (D-45) |
 
-## Design systems and skills (D-43)
+## Design systems and skills (D-45)
 
 The planning turn (`ai::discover`, after open-design's OD Next planning turn) reads two
 catalogues and picks from them; the picks go to `brief.design` and `brief.skills`. When the

@@ -1,4 +1,4 @@
-//! The planning turn (D-43): a question only for an essential gap, otherwise a plan with a
+//! The planning turn (D-45): a question only for an essential gap, otherwise a plan with a
 //! one-sentence direction, a design system (the look) and skills (playbooks) the planner then
 //! reads in full. The location scout picks the places the plan needs. Ids are enforced by code.
 
@@ -221,7 +221,7 @@ fn spread_skips_landmarks_on_top_of_each_other() {
     assert_eq!(names, ["big", "far"]);
 }
 
-// --------------------------------------------------------------------------- concept frames (D-44)
+// --------------------------------------------------------------------------- concept frames (D-46)
 
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
 

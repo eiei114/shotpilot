@@ -1,4 +1,4 @@
-//! Teaser skills (D-43), after open-design's skills: one playbook per kind of teaser
+//! Teaser skills (D-45), after open-design's skills: one playbook per kind of teaser
 //! (`references/skills/<id>/SKILL.md`, YAML front matter + a Markdown body).
 //!
 //! The planning turn reads the catalogue (name and description) and picks the skills that fit

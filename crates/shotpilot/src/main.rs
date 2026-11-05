@@ -128,7 +128,7 @@ enum Cmd {
     },
     /// the teaser playbooks the planning turn can pick from
     Skills,
-    /// concept frames (D-44): make the pictures the plan describes | --match: find their places in the level
+    /// concept frames (D-46): make the pictures the plan describes | --match: find their places in the level
     Concept {
         #[arg(long)]
         r#match: bool,

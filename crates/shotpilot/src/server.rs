@@ -564,6 +564,8 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "scout_taken": scout["taken"],
         "finish": {
             "letterbox": ws.defn.finish.letterbox,
+            "grade": ws.defn.finish.grade,
+            "typeface": ws.defn.finish.typeface,
             "title": ws.defn.finish.title.as_ref().map(|t| json!({"text": t.text, "at": t.at, "duration": t.duration})),
             "end_card": ws.defn.finish.end_card.as_ref().map(|(l, d)| json!({"lines": l, "duration": d})),
             "font": crate::finish::font(&ws.defn.finish).map(|p| p.display().to_string()),
@@ -622,7 +624,7 @@ fn undo_json(e: &Value) -> Value {
 
 fn line_json(l: &crate::script::Line) -> Value {
     json!({"id": l.id, "kind": l.kind, "ja": l.ja, "en": l.en, "head": l.head, "from": l.from, "dur": l.dur,
-           "after": l.after, "on": l.on, "at": l.at})
+           "after": l.after, "on": l.on, "at": l.at, "sfx": l.sfx})
 }
 
 fn brief_json(b: &crate::model::BriefCfg) -> Value {
@@ -947,6 +949,11 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                     sfx.push((sid, Some(list.clone())));
                 }
             }
+            let mut lines = Vec::new();
+            if let Some(m) = body.get("lines") {
+                let Some(m) = m.as_object() else { bail!("lines: {{\"<script line id>\": [ ... ] | null}}") };
+                lines.extend(m.iter().map(|(id, list)| (id.clone(), list.clone())));
+            }
             let audio = match body.get("audio") {
                 None => None,
                 Some(Value::Object(a)) => Some(a.clone()),
@@ -954,7 +961,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 Some(_) => bail!("audio: a mapping like {{\"bgm\": {{\"file\": \"audio/bgm.wav\"}}}}"),
             };
             let note = body.get("note").and_then(Value::as_str).unwrap_or("");
-            let rep = ws.edit_sound(&sfx, audio.as_ref(), note)?;
+            let rep = ws.edit_sound_full(&sfx, &lines, audio.as_ref(), note)?;
             let mut out = rep.to_json();
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
@@ -1119,7 +1126,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, false, 200, &out).map_err(io)
         }
         ("POST", "/api/discover") => {
-            // the planning turn (D-43): a question form, or a plan written to brief:
+            // the planning turn (D-45): a question form, or a plan written to brief:
             let body = req.json()?;
             let request = body.get("request").and_then(Value::as_str).unwrap_or("").to_string();
             let answers = answers_text(body.get("answers"));
@@ -1131,7 +1138,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             send_json(stream, false, 200, &entry).map_err(io)
         }
         ("POST", "/api/concept/generate") => {
-            // the concept frames' pictures (D-44), only when the human asks
+            // the concept frames' pictures (D-46), only when the human asks
             let gen = (app.images)(&app.settings())?; // say what is missing before taking the lock
             let _guard = app.mutate()?;
             let mut ws = app.ws()?;
@@ -1251,18 +1258,25 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     let _guard = app.mutate()?;
     let mut ws = app.ws()?;
     let aspect = body.get("aspect").and_then(Value::as_str).filter(|a| !a.is_empty() && *a != "shot");
+    // the finishing: the text, the hand-overs and the look burned in at the cut (never re-renders)
+    let finishing = aspect == Some("finish");
+    let all = body.get("all").and_then(Value::as_bool) == Some(true);
+    let line_id = body.get("line").and_then(Value::as_str).filter(|s| !s.is_empty());
+    let shot_given = body.get("shot").and_then(Value::as_str).is_some_and(|s| !s.is_empty());
     let scope = match body.get("shot").and_then(Value::as_str).filter(|s| !s.is_empty()) {
         Some(s) => Some(vec![ws.select_one(s)?.id]),
         // one part of every shot (e.g. the cameras, keeping the script) is still a scoped note
-        None if aspect.is_some() && body.get("all").and_then(Value::as_bool) == Some(true) => Some(ws.defn.shot_ids()),
+        None if aspect.is_some() && all => Some(ws.defn.shot_ids()),
+        // the words of one card between shots: no shot changes
+        None if finishing && line_id.is_some() => Some(Vec::new()),
         None => None,
     };
     let mut context = Vec::new();
     let mut pointer = ai::Pointer { sound: body.get("sound").and_then(Value::as_bool).unwrap_or(false), ..Default::default() };
     match scope.as_deref() {
+        Some([]) | None => {}
         Some([one]) => context.push(format!("shot {one}")),
         Some(many) => context.push(format!("all {} shots", many.len())),
-        None => {}
     }
     if let Some(a) = aspect {
         let Some(fields) = ai::aspect_fields(a) else {
@@ -1271,22 +1285,45 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
         if scope.is_none() || pointer.sound {
             bail!("a note on one part of a shot needs that shot");
         }
-        context.push(format!("the director points at this part of the shot: {a}"));
-        pointer.fields = Some(fields);
-    }
-    if let Some(l) = body.get("line").and_then(Value::as_str).filter(|s| !s.is_empty()) {
-        let Some(line) = ws.defn.script.iter().find(|x| x.id == l) else { bail!("unknown script line '{l}'") };
-        if scope.is_some() || !pointer.sound {
-            bail!("a note on a script line's sound takes no shot");
+        if scope.as_ref().is_some_and(|s| !s.is_empty()) {
+            context.push(format!("the director points at this part of the shot: {a}"));
+            pointer.fields = Some(fields);
         }
-        context.push(format!("script line {} ({}: {})", line.id, line.kind, line.ja));
-        pointer.line = Some(line.id.clone());
+    }
+    if let Some(l) = line_id {
+        let Some(line) = ws.defn.script.iter().find(|x| x.id == l) else { bail!("unknown script line '{l}'") };
+        if finishing {
+            if shot_given {
+                bail!("a note on a script line's text takes no shot");
+            }
+            context.push(format!("the words and timing of script line {} ({}: {})", line.id, line.kind, line.ja));
+            pointer.texts = Some(vec![line.id.clone()]);
+        } else {
+            if scope.is_some() || !pointer.sound {
+                bail!("a note on a script line's sound takes no shot");
+            }
+            context.push(format!("script line {} ({}: {})", line.id, line.kind, line.ja));
+            pointer.line = Some(line.id.clone());
+        }
+    }
+    // the script's words go with the shots a note is about (every line for the whole teaser), and
+    // the teaser's look with notes on the whole teaser; a note on the camera, light or sound keeps them
+    if pointer.texts.is_none() && !pointer.sound && (aspect.is_none() || finishing) {
+        let whole = scope.is_none() || (finishing && all);
+        let on_scope = |l: &crate::script::Line| l.on.as_ref().is_some_and(|o| scope.as_ref().is_some_and(|s| s.contains(o)));
+        pointer.texts = Some(ws.defn.script.iter().filter(|l| whole || on_scope(l)).map(|l| l.id.clone()).collect());
+        pointer.finish = whole;
     }
     if pointer.sound {
         context.push("working on the sound (background music and sound effects)".into());
         if let Some(i) = body.get("sfx_index").and_then(Value::as_u64) {
             let owner = if pointer.line.is_some() { "that script line's" } else { "that shot's" };
             context.push(format!("sound effect #{} of {owner} sfx list", i + 1));
+        }
+        if let Some(i) = body.get("music_index").and_then(Value::as_u64) {
+            context.push(format!("music cue #{} of audio.music (keep the other cues as they are)", i + 1));
+        } else if body.get("bgm").and_then(Value::as_bool) == Some(true) {
+            context.push("the background music audio.bgm".into());
         }
         for o in sound::orphans(&ws.defn, &ws.resolved()?) {
             context.push(o.text());
@@ -1348,7 +1385,28 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
         let new = json!({"sfx": if list.is_null() { json!([]) } else { list.clone() }});
         changes.insert(id.clone(), Value::Array(field_changes(&old, &new)));
     }
-    let rep = ws.edit_definition_full(&rev.edits, &rev.lines, rev.order.as_deref(), rev.audio.as_ref(), "revise", note)?;
+    for (id, set) in &rev.texts {
+        let Some(l) = ws.defn.script.iter().find(|l| l.id == *id) else { continue };
+        let old = json!({"ja": l.ja, "en": l.en, "head": l.head, "from": l.from, "kind": l.kind, "at": l.at, "dur": l.dur});
+        let mut new = old.clone();
+        for (k, v) in set {
+            new[k] = if v.is_null() { json!("") } else { v.clone() };
+        }
+        let list = changes.entry(id.clone()).or_insert_with(|| json!([]));
+        if let Some(a) = list.as_array_mut() {
+            a.extend(field_changes(&old, &new));
+        }
+    }
+    if !rev.finish.is_empty() {
+        let f = &ws.defn.finish;
+        let old = json!({"grade": f.grade, "letterbox": f.letterbox, "typeface": f.typeface});
+        let mut new = old.clone();
+        for (k, v) in &rev.finish {
+            new[k] = v.clone();
+        }
+        changes.insert("finish".into(), Value::Array(field_changes(&old, &new)));
+    }
+    let rep = ws.apply_revision(&rev, "revise", note)?;
     let mut extra = Map::new();
     extra.insert("summary".into(), json!(rev.summary));
     extra.insert("changes".into(), Value::Object(changes.clone()));
@@ -1389,7 +1447,7 @@ fn answers_text(v: Option<&Value>) -> String {
     }
 }
 
-/// The design systems and skills the app can show and pick from (D-43).
+/// The design systems and skills the app can show and pick from (D-45).
 pub fn kits_json() -> Value {
     json!({
         "design_systems": crate::designsys::all().iter().map(|d| d.to_json()).collect::<Vec<_>>(),

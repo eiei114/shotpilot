@@ -1,6 +1,6 @@
 //! The first pass: everything constrained up front, then one go to a teaser you can watch.
 //!
-//! Like open-design's production turn: plan first when there is no plan (D-43), gather what
+//! Like open-design's production turn: plan first when there is no plan (D-45), gather what
 //! is missing (scout photos at the places the plan needs, the stage,
 //! a mood board), hand the planner every constraint at once (brief, stage, craft rules,
 //! skeleton, scout photos, mood board, finish), write the shot list and the finish, render
@@ -74,7 +74,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         }
     };
 
-    // 0. the plan (D-43): the app runs the planning turn first, where it may ask; here it
+    // 0. the plan (D-45): the app runs the planning turn first, where it may ask; here it
     // plans with stated assumptions when there is no plan yet
     if ws.defn.brief.plan.trim().is_empty() {
         step("discover", "start", String::new(), emit, &mut steps);
@@ -106,7 +106,7 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         };
         step("scout", "done", format!("{n} か所{from}"), emit, &mut steps);
     } else if crate::concept::load(&ws.root).iter().any(crate::concept::Frame::open) {
-        // the photos exist; the concept frames made since still look for their places (D-44)
+        // the photos exist; the concept frames made since still look for their places (D-46)
         step("scout", "start", "構成画に合う場所".into(), emit, &mut steps);
         let m = ws.match_concept(claude, None)?;
         if !m.open.is_empty() {

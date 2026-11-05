@@ -181,7 +181,7 @@ pub fn summary(root: &Path) -> Map<String, Value> {
     load_index(root)["anchors"].as_object().cloned().unwrap_or_default()
 }
 
-/// A landmark the engine offers when nothing in the level is tagged (D-42, D-43).
+/// A landmark the engine offers when nothing in the level is tagged (D-44, D-45).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Candidate {
     /// An anchor id made from the label (SM_Old_Well3 -> old_well).

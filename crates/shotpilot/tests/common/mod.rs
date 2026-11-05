@@ -56,7 +56,7 @@ pub fn set(pairs: &[(&str, Value)]) -> Vec<(String, Value)> {
     pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
 }
 
-/// Whether a fake Claude is being asked the planning turn (D-43).
+/// Whether a fake Claude is being asked the planning turn (D-45).
 pub fn is_discover(request: &Value) -> bool {
     request["output_config"]["format"]["schema"]["properties"].get("route").is_some()
 }
