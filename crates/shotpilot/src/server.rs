@@ -620,7 +620,7 @@ fn undo_json(e: &Value) -> Value {
 
 fn line_json(l: &crate::script::Line) -> Value {
     json!({"id": l.id, "kind": l.kind, "ja": l.ja, "en": l.en, "head": l.head, "from": l.from, "dur": l.dur,
-           "after": l.after, "on": l.on, "at": l.at})
+           "after": l.after, "on": l.on, "at": l.at, "sfx": l.sfx})
 }
 
 fn brief_json(b: &crate::model::BriefCfg) -> Value {
@@ -943,6 +943,11 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                     sfx.push((sid, Some(list.clone())));
                 }
             }
+            let mut lines = Vec::new();
+            if let Some(m) = body.get("lines") {
+                let Some(m) = m.as_object() else { bail!("lines: {{\"<script line id>\": [ ... ] | null}}") };
+                lines.extend(m.iter().map(|(id, list)| (id.clone(), list.clone())));
+            }
             let audio = match body.get("audio") {
                 None => None,
                 Some(Value::Object(a)) => Some(a.clone()),
@@ -950,7 +955,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 Some(_) => bail!("audio: a mapping like {{\"bgm\": {{\"file\": \"audio/bgm.wav\"}}}}"),
             };
             let note = body.get("note").and_then(Value::as_str).unwrap_or("");
-            let rep = ws.edit_sound(&sfx, audio.as_ref(), note)?;
+            let rep = ws.edit_sound_full(&sfx, &lines, audio.as_ref(), note)?;
             let mut out = rep.to_json();
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
@@ -1248,6 +1253,11 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
         if let Some(i) = body.get("sfx_index").and_then(Value::as_u64) {
             let owner = if pointer.line.is_some() { "that script line's" } else { "that shot's" };
             context.push(format!("sound effect #{} of {owner} sfx list", i + 1));
+        }
+        if let Some(i) = body.get("music_index").and_then(Value::as_u64) {
+            context.push(format!("music cue #{} of audio.music (keep the other cues as they are)", i + 1));
+        } else if body.get("bgm").and_then(Value::as_bool) == Some(true) {
+            context.push("the background music audio.bgm".into());
         }
         for o in sound::orphans(&ws.defn, &ws.resolved()?) {
             context.push(o.text());
