@@ -53,6 +53,8 @@ pub const RULES: &[Rule] = &[
            summary: "Beats run hook -> establish -> escalate -> title" },
     Rule { id: "cut.jump", severity: Severity::P1, basis: "sourced",
            summary: "30-degree rule: consecutive shots of one subject change angle >= 30 deg or shot size" },
+    Rule { id: "text.hold", severity: Severity::P1, basis: "sourced",
+           summary: "Text stays long enough to read: at least 1.5 s, about 1 s per 4 Japanese characters or 3 English words plus 0.5 s" },
     Rule { id: "runtime.target", severity: Severity::P1, basis: "inferred",
            summary: "Runtime within 10% of the target" },
     Rule { id: "hook.long", severity: Severity::P1, basis: "inferred",
@@ -299,6 +301,30 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
     let title: f64 = shots.iter().filter(|s| s.beat.as_deref() == Some("title")).map(|s| s.duration).sum();
     if beats.contains(&Some("title")) && title < 2.0 {
         out.push("title.short", None, format!("title beat holds {}s", fmt_g(title)), "Hold the title shot at least 2s.");
+    }
+
+    // ---- text that has to be read (D-49): the hold the script and captions get
+    let hold = |out: &mut Out, shot: Option<&str>, what: String, text: &str, shown: f64, need: f64| {
+        if need > 0.0 && shown + 0.05 < need {
+            out.push("text.hold", shot,
+                     format!("{what} 「{text}」 shows for {}s; reading it takes about {}s", fmt_g(round_to(shown, 1)), fmt_g((need * 10.0).ceil() / 10.0)),
+                     format!("Hold it about {}s, or shorten the words.", fmt_g((need * 10.0).ceil() / 10.0)));
+        }
+    };
+    for l in &defn.script {
+        let shown = match &l.on {
+            // an overlay ends with its shot
+            Some(on) => shots.iter().find(|s| &s.id == on).map_or(l.dur, |s| l.dur.min((s.duration - l.at).max(0.0))),
+            None => l.dur,
+        };
+        let need = crate::script::reading_secs(&l.kind, &l.ja, &l.en);
+        hold(&mut out, l.on.as_deref(), format!("script line `{}`", l.id), &l.ja, shown, need);
+    }
+    for s in shots {
+        if let Some(c) = defn.shots.get(s.index).and_then(crate::finish::caption) {
+            let shown = c.duration.min((s.duration - c.at).max(0.0));
+            hold(&mut out, Some(&s.id), "the caption".into(), &c.text, shown, crate::script::reading_secs("caption", &c.text, ""));
+        }
     }
 
     // ---- camera and framing

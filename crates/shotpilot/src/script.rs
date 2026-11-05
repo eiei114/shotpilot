@@ -59,6 +59,25 @@ fn default_dur(kind: &str) -> f64 {
     }
 }
 
+/// Seconds a line must stay on screen to be read (D-49, from open-design's video profile):
+/// at least 1.5 s; Japanese 1 s per 4 characters, English 1 s per 3 words, plus 0.5 s. A
+/// count is a running number read at a glance (1 s). A black gap has no text. The values
+/// live here only; the plan, the edits and the shot check all use this.
+pub fn reading_secs(kind: &str, ja: &str, en: &str) -> f64 {
+    match kind {
+        "black" => 0.0,
+        "count" => 1.0,
+        _ => {
+            let chars = ja.chars().filter(|c| !c.is_whitespace()).count() as f64;
+            let words = en.split_whitespace().count() as f64;
+            if chars == 0.0 && words == 0.0 {
+                return 0.0;
+            }
+            (chars / 4.0 + 0.5).max(words / 3.0 + 0.5).max(1.5)
+        }
+    }
+}
+
 /// `script:` from shots.yaml. Problems go to `errs`; ids of shots let lines refer to them.
 pub fn parse(v: Option<&Value>, shot_ids: &[String], errs: &mut Vec<String>) -> Vec<Line> {
     let items = match v {

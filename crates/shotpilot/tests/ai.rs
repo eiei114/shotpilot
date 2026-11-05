@@ -188,14 +188,15 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         ("skill", "## Active skill — count-run"),
         ("craft rules", "## Craft rules"),
         ("framing", "## Framing"),
+        ("baseline", "## Teaser baseline"),
     ];
-    // which blocks each path must carry: picture notes get all of it, text notes the look,
-    // sound notes the brief and the direction only
+    // which blocks each path must carry: picture notes get all of it, text notes the look and
+    // the baseline, sound notes the brief and the direction only
     let want = |name: &str| -> &[&str] {
         match name {
-            "revise: its finishing" => &["brief", "direction", "look", "skill"],
+            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline"],
             "revise: the sound" => &["brief", "direction"],
-            _ => &["brief", "direction", "look", "skill", "craft rules", "framing"],
+            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline"],
         }
     };
     for (name, text) in &paths {
@@ -204,6 +205,39 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         }
         assert!(shotpilot::craft::self_review_words(text).is_empty(), "{name}: {:?}", shotpilot::craft::self_review_words(text));
     }
+}
+
+#[test]
+fn text_stays_long_enough_to_read() {
+    // D-49: code gives a planned line the time it takes to read; the check points at hand-written ones
+    assert_eq!(shotpilot::script::reading_secs("card", "七号室", ""), 1.5);
+    assert_eq!(shotpilot::script::reading_secs("card", "今日から、ここに住む。", ""), 3.25);
+    assert_eq!(shotpilot::script::reading_secs("count", "コップ、七つ。", ""), 1.0);
+    assert_eq!(shotpilot::script::reading_secs("black", "", ""), 0.0);
+
+    let mut f = ws();
+    let line = |id: &str, kind: &str, ja: &str, dur: f64, after: &str, on: &str| json!({"id": id, "kind": kind, "ja": ja,
+        "en": "", "head": "", "from": "", "dur": dur, "after": after, "on": on, "at": 0.3});
+    let fake = FakeClaude::new(json!({"rationale": "r",
+        "script": [line("intro", "card", "今日から、ここに住む。", 1.0, "start", ""), line("ok", "card", "七号室", 2.0, "a", "")],
+        "shots": [plan_shot("a", "hook", 4.0, "well"), plan_shot("b", "title", 4.0, "gate")]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    assert_eq!(p.script[0]["dur"], json!(3.3));
+    assert_eq!(p.script[1]["dur"], json!(2.0)); // already long enough
+    assert!(p.adjustments.iter().any(|a| a.contains("`intro` from 1s to 3.3s")), "{:?}", p.adjustments);
+
+    // a line written by hand is left as written, and the shot check names it
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let mut text = f.text();
+    text.push_str("\nscript:\n  - {id: intro, kind: card, ja: 今日から、ここに住む。, dur: 1, after: start}\n");
+    f.write(&text);
+    f.ws.reload().unwrap();
+    let found = f.ws.check().unwrap();
+    let hold: Vec<_> = found.iter().filter(|x| x.rule == "text.hold").collect();
+    assert_eq!(hold.len(), 1, "{found:?}");
+    assert!(hold[0].message.contains("3.3"), "{}", hold[0].message);
+    // editorial: nothing re-renders
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
 }
 
 #[test]

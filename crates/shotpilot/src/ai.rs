@@ -613,7 +613,15 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
                 m.insert(k.into(), json!(t));
             }
         }
-        m.insert("dur".into(), json!(r1(num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0))));
+        // a line stays long enough to be read (D-49); overlays are capped by their shot below
+        let asked = num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0);
+        let text = |k: &str| m.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+        let need = crate::script::reading_secs(&kind, &text("ja"), &text("en"));
+        let dur = r1(asked.max((need * 10.0).ceil() / 10.0).min(8.0));
+        if dur > asked + 0.05 {
+            notes.push(format!("lengthened script line `{id}` from {}s to {}s so it can be read", model::fmt_g(r1(asked)), model::fmt_g(dur)));
+        }
+        m.insert("dur".into(), json!(dur));
         if slot {
             let after = map(l["after"].as_str().unwrap_or("start"));
             let after = if after.is_empty() { "start".to_string() } else { after };
@@ -1452,6 +1460,22 @@ fn line_text_changes(cur: &crate::script::Line, m: &Map<String, Value>) -> Resul
             }
         };
         set.push((f.to_string(), new));
+    }
+    // new words on a slot keep it on screen long enough to be read (D-49); an overlay is
+    // bounded by its shot, so the shot check points at it instead
+    if cur.is_slot() && set.iter().any(|(k, _)| k == "ja" || k == "en" || k == "kind") {
+        let now = |k: &str, old: &str| -> String {
+            match set.iter().find(|(f, _)| f == k) {
+                Some((_, v)) => v.as_str().unwrap_or("").to_string(),
+                None => old.to_string(),
+            }
+        };
+        let dur = set.iter().find(|(f, _)| f == "dur").and_then(|(_, v)| num(v)).unwrap_or(cur.dur);
+        let need = crate::script::reading_secs(&now("kind", &cur.kind), &now("ja", &cur.ja), &now("en", &cur.en));
+        if dur + 0.05 < need {
+            set.retain(|(f, _)| f != "dur");
+            set.push(("dur".into(), seconds(((need * 10.0).ceil() / 10.0).min(10.0))));
+        }
     }
     Ok(set)
 }
