@@ -215,6 +215,22 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// the release plan (D-43): promo  |  promo post <shot> [--clip]  |  promo derive <video> [--shots]
+    ///  |  promo update [version]  (an update trailer made from these shots; only changed cuts re-render)
+    Promo {
+        /// post | derive | update (none = show the checklists)
+        action: Option<String>,
+        /// the shot (post), the video row (derive) or the version name (update)
+        target: Option<String>,
+        /// post: a one-cut clip instead of a still
+        #[arg(long)]
+        clip: bool,
+        /// derive: carry the shots and takes over, not only the groundwork
+        #[arg(long)]
+        shots: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// list takes of one shot
     Takes { shot: String },
     /// history of builds, renders, pulls and edits
@@ -229,6 +245,45 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
+}
+
+/// The release plan as text: one block per video with its checklist, then the posts.
+fn print_promo(v: &Value) {
+    let s = |x: &Value| x.as_str().unwrap_or("").to_string();
+    println!("release plan: {}{}", s(&v["plan"]), if v["saved"] == false { " (not saved yet)" } else { "" });
+    for video in v["videos"].as_array().into_iter().flatten() {
+        let due = match video["days"].as_i64() {
+            Some(d) if d < 0 => format!("  {} ({} days late)", s(&video["due"]), -d),
+            Some(d) => format!("  {} (in {d} days)", s(&video["due"])),
+            None => String::new(),
+        };
+        let here = if video["here"] == true { "  [this project]" } else if video["project"].is_null() { "  [not started]" } else { "" };
+        println!("
+{} {} — {}  {}/{}{due}{here}", s(&video["id"]), s(&video["title"]), s(&video["kind_ja"]),
+                 video["done"], video["total"]);
+        for c in video["checks"].as_array().into_iter().flatten() {
+            let mark = if c["done"] == true { "x" } else { " " };
+            let auto = if c["auto"] == true { " (auto)" } else { "" };
+            let detail = Some(s(&c["detail"])).filter(|d| !d.is_empty()).map(|d| format!(" — {d}")).unwrap_or_default();
+            println!("  [{mark}] {}{auto}{detail}", s(&c["text"]));
+        }
+    }
+    let changed = v["changed"].as_array().cloned().unwrap_or_default();
+    if !changed.is_empty() {
+        println!("
+game changed under {} cut(s): {}", changed.len(),
+                 changed.iter().map(|c| s(&c["id"])).collect::<Vec<_>>().join(", "));
+        println!("  `shotpilot promo update v1.1` starts an update trailer from these shots");
+    }
+    let p = &v["posting"];
+    println!("
+posts: every {} days{}; next {} (in {} days)", p["every_days"],
+             Some(s(&p["channel"])).filter(|c| !c.is_empty()).map(|c| format!(" on {c}")).unwrap_or_default(),
+             s(&p["next"]), p["days"]);
+    for c in p["candidates"].as_array().into_iter().flatten().take(3) {
+        let tag = if c["retake"] == true { " (retaken: the game changed)" } else if c["new"] == true { " (new)" } else { "" };
+        println!("  candidate {}{tag}: `shotpilot promo post {}`", s(&c["shot"]), s(&c["shot"]));
+    }
 }
 
 fn main() -> ExitCode {
@@ -457,6 +512,34 @@ fn run(cli: Cli) -> Result<u8> {
             let mut ws = ws(file)?;
             let rep = ws.scan(&tag, &prefix)?;
             println!("anchors added: {}; moved: {}; unchanged: {}", dash(&rep.added), dash(&rep.moved), rep.same.len());
+        }
+        Cmd::Promo { action, target, clip, shots, json } => {
+            use shotpilot::promo;
+            let ws = ws(file)?;
+            let today = promo::today();
+            let target = target.unwrap_or_default();
+            match action.as_deref() {
+                None => {}
+                Some("post") => {
+                    let id = promo::export_post(&ws, &target, clip, today)?;
+                    println!("post {id}: {} exported to {}/", target, promo::POSTS_DIR);
+                }
+                Some("derive") => {
+                    let carry = if shots { promo::Carry::Shots } else { promo::Carry::Groundwork };
+                    println!("made {}", promo::derive(&ws, &target, carry)?.display());
+                }
+                Some("update") => {
+                    let (id, p) = promo::start_update(&ws, &target, "")?;
+                    println!("made {id}: {}", p.display());
+                }
+                Some(other) => bail!("promo: unknown action '{other}' (post / derive / update)"),
+            }
+            let v = promo::view(&ws, today)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&v)?);
+            } else if action.is_none() {
+                print_promo(&v);
+            }
         }
         Cmd::Cut { quality, no_video } => {
             let mut ws = ws(file)?;
