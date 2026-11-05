@@ -92,6 +92,29 @@ fn shot_schema() -> Value {
     })
 }
 
+/// The entrances a line may ask for, with "" for the profile's own.
+fn motion_enum() -> Vec<&'static str> {
+    std::iter::once("").chain(crate::motion::ENTRANCES.iter().copied()).collect()
+}
+
+/// How the planner states the motion it wants for the whole cut (D-53): only what the
+/// brief or the direction asks for; the look's profile supplies the rest in code.
+fn plan_motion_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "energy": {"type": "string", "enum": ["", "calm", "measured", "driving"],
+                       "description": "how fast the text moves, when the brief or the direction asks for it; else empty"},
+            "variant": {"type": "string", "enum": ["", "ja"],
+                        "description": "ja: move like a Japanese PV (more text, impact lines), when asked; else empty"},
+            "avoid": {"type": "array", "items": {"type": "string", "enum": crate::motion::AVOIDABLE},
+                      "description": "moves the brief or the direction rules out (e.g. flash when it asks for nothing flashy)"},
+        },
+        "required": ["energy", "variant", "avoid"],
+        "additionalProperties": false,
+    })
+}
+
 fn script_line_schema() -> Value {
     let mut kinds: Vec<&str> = crate::script::SLOT_KINDS.to_vec();
     kinds.extend(crate::script::OVERLAY_KINDS);
@@ -108,8 +131,10 @@ fn script_line_schema() -> Value {
             "after": {"type": "string", "description": "slots: the shot id or slot id it follows, or start; overlays: empty"},
             "on": {"type": "string", "description": "overlays: the shot id it sits on; slots: empty"},
             "at": {"type": "number", "description": "overlays: seconds into that shot; slots: 0"},
+            "motion": {"type": "string", "enum": motion_enum(),
+                       "description": "this line's own entrance, or empty to move as the look's profile says"},
         },
-        "required": ["id", "kind", "ja", "en", "head", "from", "dur", "after", "on", "at"],
+        "required": ["id", "kind", "ja", "en", "head", "from", "dur", "after", "on", "at", "motion"],
         "additionalProperties": false,
     })
 }
@@ -131,8 +156,9 @@ pub fn plan_schema() -> Value {
             "shots": {"type": "array", "items": shot},
             "grade": {"type": "string", "enum": grades},
             "letterbox": {"type": "number", "description": "picture aspect inside black bars (2.39 = scope), or 0 for none"},
+            "motion": plan_motion_schema(),
         },
-        "required": ["rationale", "script", "shots", "grade", "letterbox"],
+        "required": ["rationale", "script", "shots", "grade", "letterbox", "motion"],
         "additionalProperties": false,
     })
 }
@@ -171,13 +197,13 @@ pub fn revise_schema() -> Value {
                 "type": "object",
                 "properties": {
                     "id": {"type": "string"},
-                    "yaml": {"type": "string", "description": "a YAML mapping of the line's fields that change (ja, en, head, from, kind, at, dur); an empty string removes en, head or from"},
+                    "yaml": {"type": "string", "description": "a YAML mapping of the line's fields that change (ja, en, head, from, kind, at, dur, motion); an empty string removes en, head, from or motion"},
                 },
                 "required": ["id", "yaml"],
                 "additionalProperties": false,
             }},
             "finish": {"type": "string",
-                       "description": "a YAML mapping of the top-level `finish` keys that change (grade, letterbox, typeface), or empty to keep them"},
+                       "description": "a YAML mapping of the top-level `finish` keys that change (grade, letterbox, typeface, motion: {energy, avoid}), or empty to keep them"},
         },
         "required": ["summary", "edits", "order", "audio", "lines", "texts", "finish"],
         "additionalProperties": false,
@@ -576,10 +602,14 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
         ("end_card".to_string(), Value::Null),
     ];
     // the active design system's tokens are authoritative for the look (D-45)
-    if let Some(d) = crate::designsys::get(&defn.brief.design) {
+    let look = crate::designsys::get(&defn.brief.design);
+    if let Some(d) = look {
         finish.retain(|(k, _)| k != "grade" && k != "letterbox");
         finish.extend(crate::designsys::finish_entries(d));
     }
+    // motion (D-53): the look's profile, else the genre's, then what the brief asked for
+    finish.retain(|(k, _)| k != "motion");
+    finish.push(("motion".to_string(), plan_motion(defn, look, &out["motion"])));
     let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
@@ -588,6 +618,40 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
         references.push(format!("style: {}", s.name));
     }
     Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references, script })
+}
+
+/// `finish.motion` for a planned cut: the look's motion tokens (or the genre's profile), with
+/// the energy, the Japanese-PV variant and the moves to avoid the planner asked for.
+fn plan_motion(defn: &Definition, look: Option<&crate::designsys::DesignSystem>, asked: &Value) -> Value {
+    let mut m = match look.map(|d| &d.tokens["motion"]) {
+        Some(Value::Object(m)) => m.clone(),
+        _ => Map::new(),
+    };
+    if !m.contains_key("profile") {
+        if let Some(g) = crate::refs::genre_for(&defn.brief.genre).filter(|g| crate::motion::profile(g.id).is_some()) {
+            m.insert("profile".into(), json!(g.id));
+        }
+    }
+    if let Some(e) = asked["energy"].as_str().filter(|e| crate::motion::ENERGIES.contains(e)) {
+        m.insert("energy".into(), json!(e));
+    }
+    if asked["variant"].as_str() == Some("ja") {
+        let p = m.get("profile").and_then(Value::as_str).unwrap_or("").to_string();
+        let ja = format!("{}-ja", p.trim_end_matches("-ja"));
+        if crate::motion::profile(&ja).is_some() {
+            m.insert("profile".into(), json!(ja));
+        }
+    }
+    let mut avoid: Vec<String> = m.get("avoid").and_then(Value::as_array).into_iter().flatten().map(model::str_of).collect();
+    for a in asked["avoid"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        if crate::motion::AVOIDABLE.contains(&a) && !avoid.iter().any(|x| x == a) {
+            avoid.push(a.to_string());
+        }
+    }
+    if !avoid.is_empty() {
+        m.insert("avoid".into(), json!(avoid));
+    }
+    if m.is_empty() { Value::Null } else { Value::Object(m) }
 }
 
 /// The script lines Claude wrote, as shots.yaml values: ids mapped to the cleaned shot ids,
@@ -612,6 +676,9 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
             if let Some(t) = l[k].as_str().map(str::trim).filter(|t| !t.is_empty()) {
                 m.insert(k.into(), json!(t));
             }
+        }
+        if let Some(e) = l["motion"].as_str().filter(|e| crate::motion::ENTRANCES.contains(e)) {
+            m.insert("motion".into(), json!(e));
         }
         // a line stays long enough to be read (D-49); overlays are capped by their shot below
         let asked = num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0);
@@ -814,28 +881,30 @@ const OPTIONAL_FIELDS: &[&str] = &["caption", "transition", "exposure"];
 
 /// Fields of a script line a note may change: its words, its kind (a slot stays a slot, an
 /// overlay an overlay) and its timing. Where it sits (`after`, `on`) and its sound stay.
-pub const LINE_TEXT_FIELDS: &[&str] = &["ja", "en", "head", "from", "kind", "at", "dur"];
+pub const LINE_TEXT_FIELDS: &[&str] = &["ja", "en", "head", "from", "kind", "at", "dur", "motion"];
 
 /// Top-level `finish:` keys a note on the whole teaser may change. The title and the end card
 /// are left to the director (the end card holds facts only they know, D-28).
-pub const FINISH_FIELDS: &[&str] = &["grade", "letterbox", "typeface"];
+pub const FINISH_FIELDS: &[&str] = &["grade", "letterbox", "typeface", "motion"];
 
 const FINISH_GUIDE: &str = "\
 Finishing is burned in when the cut is assembled; it never re-renders a shot.
 - Script lines are the teaser's text. Slots take their own time on black between shots: card (a centred \
-line fading in, a quiet English line under it), rule (a small heading over a line), title (large, \
-flickering in), message (a chat bubble with the room name and who sent it). Overlays sit on a shot: \
-caption (lower centre on a dark band, a slow fade in and out) and count (lower left, like a note under \
-a photograph, a quick fade). The motion of a line comes from its kind and its timing: `at` (overlays: \
-seconds into the shot it sits on) and `dur` (seconds it shows; for a slot, its length in the cut). \
-A slot can become another slot kind and an overlay another overlay kind; where a line sits stays.
+line, a quiet English line under it), rule (a small heading over a line), title (large), message (a chat \
+bubble with the room name and who sent it). Overlays sit on a shot: caption (lower centre on a dark band) \
+and count (lower left, like a note under a photograph). How a line moves comes from the look's motion \
+profile; a line may ask for its own entrance with `motion` (cut, fade, flicker, focus, slam, pop, type, \
+wipe, glitch; empty for the profile's). Its timing: `at` (overlays: seconds into the shot it sits on) and \
+`dur` (seconds it shows; for a slot, its length in the cut). A slot can become another slot kind and an \
+overlay another overlay kind; where a line sits stays.
 - On a shot: `caption` {text, at, duration} is one more lower-centre line; `transition` is how it hands \
-over to the next shot: cut, dip (through black, 0.25 s each side) or flash (from white); `exposure` \
-shifts its brightness at the cut (-0.5..0.5; leave it out for as shot).
+over to the next shot: cut, dip (through black), flash (from white), whiteout (up to white and back) or \
+glitch (a few broken frames); `exposure` shifts its brightness at the cut (-0.5..0.5; leave it out for as shot).
 - The whole teaser: `grade` (the colour of every shot), `letterbox` (picture aspect inside black bars, \
-e.g. 2.39, or null for none), `typeface` (mincho or gothic).
-- Images, logos and other motion cannot be added here; when the note asks for one, do what these allow \
-and say so in `summary`.";
+e.g. 2.39, or null for none), `typeface` (mincho or gothic), `motion` {energy: calm | measured | driving, \
+avoid: [moves never used]} (how fast the text moves, and what to rule out).
+- Images and logos cannot be added here; when the note asks for one, do what these allow and say so in \
+`summary`.";
 
 /// The keys a pointed-at part covers (`camera` -> [camera]).
 pub fn aspect_fields(aspect: &str) -> Option<Vec<String>> {
@@ -1442,11 +1511,16 @@ fn line_text_changes(cur: &crate::script::Line, m: &Map<String, Value>) -> Resul
                     "en" => cur.en.as_str(),
                     "head" => cur.head.as_str(),
                     "from" => cur.from.as_str(),
+                    "motion" => cur.motion.as_deref().unwrap_or(""),
                     _ => cur.kind.as_str(),
                 };
                 let s = model::str_of(v).trim().to_string();
                 if s == now.trim() {
                     continue;
+                }
+                if *f == "motion" && !s.is_empty() && !crate::motion::ENTRANCES.contains(&s.as_str()) {
+                    bail!("Claude gave script line '{}' the motion '{s}' (one of {}); nothing applied",
+                          cur.id, crate::motion::ENTRANCES.join(", "));
                 }
                 if *f == "kind" {
                     let same_family = (cur.is_slot() && SLOT_KINDS.contains(&s.as_str()))
@@ -1496,9 +1570,34 @@ fn finish_changes(defn: &Definition, yaml: &str) -> Result<Vec<(String, Value)>>
     now.insert("grade".into(), json!(f.grade));
     now.insert("letterbox".into(), f.letterbox.map_or(Value::Null, |x| json!(x)));
     now.insert("typeface".into(), json!(f.typeface));
+    now.insert("motion".into(), f.motion.to_value());
     let mut out = Vec::new();
     for k in FINISH_FIELDS {
         let Some(v) = m.get(*k) else { continue };
+        if *k == "motion" {
+            // a note sets the energy and the moves to avoid; the profile and its roles stay
+            let mut merged = match f.motion.to_value() {
+                Value::Object(o) => o,
+                _ => Map::new(),
+            };
+            let asked = v.as_object().cloned().unwrap_or_default();
+            for (key, val) in asked {
+                match key.as_str() {
+                    "energy" => {
+                        merged.insert(key, json!(model::str_of(&val)));
+                    }
+                    "avoid" => {
+                        merged.insert(key, Value::Array(val.as_array().cloned().unwrap_or_default()));
+                    }
+                    _ => {}
+                }
+            }
+            let merged = Value::Object(merged);
+            if merged != now["motion"] {
+                out.push(("motion".to_string(), merged));
+            }
+            continue;
+        }
         let v = match v {
             // no bars: null (0 and false are how people say it)
             Value::Bool(false) => Value::Null,

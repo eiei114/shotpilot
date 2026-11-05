@@ -24,6 +24,26 @@ pub fn baseline_text() -> String {
     format!("\n## Teaser baseline (checkable values, what to avoid, defect -> decision)\n{}\n", nested(body.trim_end()))
 }
 
+const TYPE_DOC: &str = include_str!("../../../references/craft/TEASER-TYPE.md");
+const MOTION_DOC: &str = include_str!("../../../references/motion/MOTION.md");
+
+/// The writing side of the motion rules (D-53): section 6 of references/motion/MOTION.md.
+/// The vocabulary's numbers stay with the code (motion.rs), like `type_text`.
+pub fn motion_text() -> String {
+    let body = MOTION_DOC.find("\n## 6.").map_or("", |i| &MOTION_DOC[i + 1..]);
+    let body = body.split_once('\n').map_or("", |(_, b)| b);
+    format!("\n## Text motion (which entrance a line asks for; the look's profile moves the rest)\n{}\n", nested(body.trim()))
+}
+
+/// The writing side of the type rules (D-52): section 10 of TEASER-TYPE.md, the only part a
+/// writer of the script acts on. Like open-design injecting the craft sections a skill
+/// requires, the rest of the file (sizes, faces, tracking) stays with the code that draws.
+pub fn type_text() -> String {
+    let body = TYPE_DOC.find("\n## 10.").map_or("", |i| &TYPE_DOC[i + 1..]);
+    let body = body.split_once('\n').map_or("", |(_, b)| b);
+    format!("\n## On-screen type (how the script's lines are written; the look sets the faces and sizes)\n{}\n", nested(body.trim()))
+}
+
 macro_rules! genre {
     ($id:literal) => {
         (

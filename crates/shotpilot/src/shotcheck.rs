@@ -53,6 +53,8 @@ pub const RULES: &[Rule] = &[
            summary: "Beats run hook -> establish -> escalate -> title" },
     Rule { id: "cut.jump", severity: Severity::P1, basis: "sourced",
            summary: "30-degree rule: consecutive shots of one subject change angle >= 30 deg or shot size" },
+    Rule { id: "flash.rate", severity: Severity::P0, basis: "sourced",
+           summary: "No more than 3 flashes in any one second (WCAG 2.3.1; NHK / JBA guideline for moving images)" },
     Rule { id: "text.hold", severity: Severity::P1, basis: "sourced",
            summary: "Text stays long enough to read: at least 1.5 s, about 1 s per 4 Japanese characters or 3 English words plus 0.5 s" },
     Rule { id: "frame.blocked", severity: Severity::P1, basis: "observed",
@@ -329,6 +331,51 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
         if let Some(c) = defn.shots.get(s.index).and_then(crate::finish::caption) {
             let shown = c.duration.min((s.duration - c.at).max(0.0));
             hold(&mut out, Some(&s.id), "the caption".into(), &c.text, shown, crate::script::reading_secs("caption", &c.text, ""));
+        }
+    }
+
+    // ---- flashes (D-53): white flashes, whiteouts and flickering text, counted where they
+    // fall in the cut; more than 3 in a second can set off a photosensitive seizure
+    let fps = shots.first().map_or(defn.teaser.fps, |s| s.fps).max(1);
+    let motion = crate::motion::resolve(&defn.finish.motion);
+    let mut events: Vec<(f64, Option<String>)> = Vec::new();
+    let items = crate::script::layout(&defn.script, shots, fps);
+    for (k, it) in items.iter().enumerate() {
+        let start = it.start as f64 / fps as f64;
+        let end = (it.start + it.frames) as f64 / fps as f64;
+        match &it.piece {
+            crate::script::Piece::Shot(i) => {
+                let s = &shots[*i];
+                let next_is_shot = matches!(items.get(k + 1).map(|n| &n.piece), Some(crate::script::Piece::Shot(_)));
+                let t = defn.shots.get(s.index).map(crate::finish::transition).unwrap_or_default();
+                if next_is_shot && matches!(motion.transition(&t).as_str(), "flash" | "whiteout") {
+                    events.push((end, Some(s.id.clone())));
+                }
+                for l in crate::script::overlays(&defn.script, &s.id) {
+                    let rm = motion.for_line(&l.kind, l.motion.as_deref());
+                    for _ in 0..crate::motion::flashes(&rm.enter) {
+                        events.push((start + l.at, Some(s.id.clone())));
+                    }
+                }
+            }
+            crate::script::Piece::Slot(j) => {
+                let l = &defn.script[*j];
+                let rm = motion.for_line(&l.kind, l.motion.as_deref());
+                for _ in 0..crate::motion::flashes(&rm.enter) {
+                    events.push((start, None));
+                }
+            }
+        }
+    }
+    events.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut flagged = false;
+    for (i, (t0, shot)) in events.iter().enumerate() {
+        let n = events[i..].iter().take_while(|(t, _)| *t < t0 + 1.0).count();
+        if n > 3 && !flagged {
+            flagged = true;
+            out.push("flash.rate", shot.as_deref(),
+                     format!("{n} flashes within one second from {}s (flash and whiteout hand-overs, flickering text)", fmt_g(round_to(*t0, 1))),
+                     "Turn some of these flashes into cuts or dips, or space the short shots out.");
         }
     }
 

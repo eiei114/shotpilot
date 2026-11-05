@@ -220,15 +220,28 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
 #[allow(clippy::too_many_arguments)]
 fn finish_pass(defn: &Definition, pieces: &[crate::finish::CutPiece], segments: &Path, mix: Option<&Path>, out_dir: &Path,
                out: &Path, w: i64, h: i64, fps: i64, notes: &mut Vec<String>) -> Result<f64> {
-    let fonts = crate::finish::fonts(&defn.finish);
+    let fonts = crate::finish::faces(&defn.finish, notes);
     if fonts.is_none() {
         // the text is left out (cards stay as black, bars and dips still apply) rather than failing the cut
         notes.push("no font with Japanese glyphs was found; text was left out (set finish.font)".into());
     }
-    let cfg = defn.finish.clone();
+    let mut cfg = defn.finish.clone();
+    // the logo is a file next to shots.yaml; without it, the title is set in type
+    cfg.logo = match &defn.finish.logo {
+        Some(rel) => {
+            let p = defn.root().join(rel);
+            if p.is_file() {
+                Some(p.display().to_string())
+            } else {
+                notes.push(format!("finish.logo: {} was not found; the title was set in type", p.display()));
+                None
+            }
+        }
+        None => None,
+    };
     let text_dir = out_dir.join("finish");
     std::fs::create_dir_all(&text_dir)?;
-    let (graph, total) = crate::finish::filter_graph(&cfg, pieces, w, h, fps, fonts.as_ref(), &text_dir)?;
+    let (graph, total) = crate::finish::filter_graph(&cfg, pieces, w, h, fps, fonts.as_ref(), &text_dir, notes)?;
     let mut graph = graph;
     let mut args: Vec<String> = ["-f", "concat", "-safe", "0", "-i", &segments.display().to_string()].map(String::from).to_vec();
     if let Some(m) = mix {

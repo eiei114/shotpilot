@@ -69,6 +69,8 @@ pub enum Pick {
     Folder { title: String, start: Option<PathBuf> },
     /// A .uproject file.
     Uproject { start: Option<PathBuf> },
+    /// An image (the game's logo for the title).
+    Image { start: Option<PathBuf> },
 }
 
 /// Shows a native file dialog. Only the desktop app has one; without it the home asks
@@ -580,6 +582,10 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
             "title": ws.defn.finish.title.as_ref().map(|t| json!({"text": t.text, "at": t.at, "duration": t.duration})),
             "end_card": ws.defn.finish.end_card.as_ref().map(|(l, d)| json!({"lines": l, "duration": d})),
             "font": crate::finish::font(&ws.defn.finish).map(|p| p.display().to_string()),
+            "fonts": crate::finish::describe(&ws.defn.finish, &[])["fonts"],
+            "title_size": ws.defn.finish.title_size,
+            "logo": ws.defn.finish.logo,
+            "motion": motion_json(&ws.defn.finish.motion),
         },
         "stage": {
             "summary": ws.defn.stage.summary,
@@ -637,6 +643,21 @@ fn undo_json(e: &Value) -> Value {
 fn line_json(l: &crate::script::Line) -> Value {
     json!({"id": l.id, "kind": l.kind, "ja": l.ja, "en": l.en, "head": l.head, "from": l.from, "dur": l.dur,
            "after": l.after, "on": l.on, "at": l.at, "sfx": l.sfx})
+}
+
+/// The cut's motion as the app shows it (D-53): the profile and its name, the energy, what is
+/// avoided. Null when `finish.motion` is not set (the base motion).
+fn motion_json(cfg: &crate::motion::MotionCfg) -> Value {
+    if !cfg.is_set() {
+        return Value::Null;
+    }
+    let m = crate::motion::resolve(cfg);
+    json!({
+        "profile": m.profile,
+        "name": crate::motion::profile(&m.profile).map(|p| p.name.clone()),
+        "energy": m.energy,
+        "avoid": m.avoid,
+    })
 }
 
 fn brief_json(b: &crate::model::BriefCfg) -> Value {
@@ -901,7 +922,12 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             };
             let _guard = app.mutate()?;
             let mut ws = app.ws()?;
+            let look = ws.defn.brief.design.clone();
             ws.set_brief(&entries)?;
+            // a look picked here brings its typefaces, title size and motion (D-52, D-53)
+            if ws.defn.brief.design != look {
+                ws.apply_look()?;
+            }
             send_json(stream, false, 200, &brief_json(&ws.defn.brief)).map_err(io)
         }
         ("POST", "/api/order") => {
@@ -1116,6 +1142,37 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut ws = app.ws()?;
             ws.set_finish(&entries)?;
             send_json(stream, false, 200, &json!({"ok": true})).map_err(io)
+        }
+        ("POST", "/api/finish/logo") => {
+            // {pick: true} opens the app's file dialog; {path: "art/logo.png"} names one inside
+            // the project; {clear: true} takes the logo off
+            let body = req.json()?;
+            let flag = |k: &str| body.get(k).and_then(Value::as_bool) == Some(true);
+            let picked = if flag("pick") {
+                let Some(picker) = &app.picker else {
+                    bail!("この画面では画像を選べません。プロジェクトの中の画像のパスを入力してください");
+                };
+                let start = app.current().and_then(|p| p.parent().map(Path::to_path_buf));
+                match picker(Pick::Image { start }) {
+                    None => return send_json(stream, false, 200, &json!({"cancelled": true})).map_err(io),
+                    Some(p) => Some(p),
+                }
+            } else {
+                None
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let rel = match picked {
+                Some(p) => Some(ws.import_logo(&p)?),
+                None if flag("clear") => None,
+                None => match body.get("path").and_then(Value::as_str).map(str::trim).filter(|p| !p.is_empty()) {
+                    Some(p) if ws.root.join(p).is_file() => Some(p.replace('\\', "/")),
+                    Some(p) => bail!("{p} がプロジェクトの中に見つかりません"),
+                    None => bail!("expected {{\"pick\": true}}, {{\"path\": \"art/logo.png\"}} or {{\"clear\": true}}"),
+                },
+            };
+            ws.set_finish(&[("logo".to_string(), json!(rel))])?;
+            send_json(stream, false, 200, &json!({"logo": ws.defn.finish.logo})).map_err(io)
         }
         ("POST", "/api/stage") => {
             let claude = (app.claude)(&app.settings())?;

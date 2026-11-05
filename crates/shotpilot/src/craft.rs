@@ -196,12 +196,14 @@ pub fn skeleton_text(slots: &[Slot]) -> String {
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}\n{}{}{}\n## Framing\n{}",
+        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}\n{}{}{}\n## Framing\n{}",
         brief_text(&defn.brief),
         plan_text(&defn.brief),
         skeleton_text(slots),
         rules_text(),
         crate::refs::baseline_text(),
+        crate::refs::type_text(),
+        crate::refs::motion_text(),
         crate::refs::planner_text(&defn.brief),
         crate::designsys::planner_text(defn),
         crate::skills::planner_text(&defn.brief),
@@ -237,6 +239,8 @@ pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
         out.push_str(&format!("\n## Craft rules\n{}\n", rules_text()));
     }
     out.push_str(&crate::refs::baseline_text());
+    out.push_str(&crate::refs::type_text());
+    out.push_str(&crate::refs::motion_text());
     out.push_str(&crate::designsys::planner_text(defn));
     out.push_str(&crate::skills::planner_text(b));
     if reach == Reach::Picture {
@@ -270,7 +274,7 @@ pub fn script_text(defn: &Definition) -> String {
          Write `script` before choosing shots: the lines the viewer reads, in order. Then pick each shot to show one \
          line, as evidence of it. A teaser told in text is read with the sound off.\n\
          - Slots take their own time on black between shots (`after`: the shot or slot they follow, or `start`): \
-           `card` a centred line, with a quiet English line under it; `rule` a rule of the world with a small `head`; \
+           `card` a centred line, optionally with a quiet English line under it; `rule` a rule of the world with a small `head`; \
            `black` a silent gap (0.5-1 s) before a reveal or the title; `title` the game's title{} (3-4 s, near the end); \
            `message` a last line from inside the world (`head` = where it is posted, `from` = who sends it).\n\
          - Overlays sit on a shot (`on`, `at` seconds into it): `caption` lower centre, `count` lower left like a note \

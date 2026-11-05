@@ -18,6 +18,8 @@ use shotpilot::server::{Pick, Server};
 use tauri::{WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 fn main() {
+    // the look's typefaces are fetched from Google Fonts the first time a cut needs them
+    shotpilot::fonts::allow_fetch(true);
     let window: Arc<OnceLock<WebviewWindow>> = Arc::new(OnceLock::new());
     let server = match Server::bind_home("127.0.0.1", 0) {
         Ok(s) => s.with_picker(picker(Arc::clone(&window))),
@@ -79,6 +81,13 @@ fn picker(window: Arc<OnceLock<WebviewWindow>>) -> shotpilot::server::Picker {
             }
             Pick::Uproject { start } => {
                 d = d.set_title("Shotpilot: UE プロジェクト（.uproject）を選ぶ").add_filter("Unreal Engine project", &["uproject"]);
+                if let Some(s) = start {
+                    d = d.set_directory(s);
+                }
+                d.pick_file()
+            }
+            Pick::Image { start } => {
+                d = d.set_title("Shotpilot: ロゴ画像を選ぶ（透明の背景の PNG がよい）").add_filter("画像", &["png", "jpg", "jpeg", "webp"]);
                 if let Some(s) = start {
                     d = d.set_directory(s);
                 }

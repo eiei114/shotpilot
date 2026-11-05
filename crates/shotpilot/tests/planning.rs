@@ -158,6 +158,44 @@ fn the_look_sets_the_finish() {
     assert!(entries.contains(&("grade".to_string(), json!("vivid"))));
     assert!(entries.contains(&("letterbox".to_string(), Value::Null)));
     assert!(entries.contains(&("typeface".to_string(), json!("gothic"))));
+    // D-52: its typefaces and title size, as the finish reads them
+    assert!(entries.contains(&("fonts".to_string(),
+        json!({"display": "Dela Gothic One:400", "body": "M PLUS 1:700", "latin": "Big Shoulders:800"}))));
+    assert!(entries.contains(&("title_size".to_string(), json!(0.15))));
+}
+
+#[test]
+fn every_look_names_catalogue_faces_that_are_not_overused() {
+    // D-52: the faces come from references/fonts/catalog.json, none of them a genre cliché or
+    // a language model's default, and the Japanese ones carry the kanji cards need
+    use shotpilot::fonts;
+    for d in designsys::all() {
+        let t = &d.tokens["type"];
+        for role in ["display", "body", "latin"] {
+            let raw = t[role].as_str().unwrap_or_else(|| panic!("{}: type.{role}", d.id));
+            let spec = fonts::Spec::parse(raw).unwrap_or_else(|e| panic!("{}: {e}", d.id));
+            assert_eq!(spec.label(), raw, "{}: {role} names a weight the family has", d.id);
+            assert!(fonts::overused(&spec.family).is_none(), "{}: {} is overused", d.id, spec.family);
+            let f = fonts::family(&spec.family).unwrap();
+            if role != "latin" {
+                assert!(["full", "level1"].contains(&f.kanji.as_str()), "{}: {} lacks kanji", d.id, spec.family);
+            }
+            // the prose names the same face
+            assert!(d.doc.contains(&format!("`{}` {}", spec.family, spec.weight)), "{}: DESIGN.md §3 names {raw}", d.id);
+        }
+        let size = t["title_size"].as_f64().unwrap();
+        assert!((0.04..=0.35).contains(&size), "{}", d.id);
+        // D-53: its motion builds on a measured profile, and the prose says which
+        let profile = d.tokens["motion"]["profile"].as_str().unwrap_or_else(|| panic!("{}: motion.profile", d.id));
+        assert!(shotpilot::motion::profile(profile).is_some(), "{}: {profile}", d.id);
+        assert!(d.doc.contains(&format!("the `{profile}` profile")), "{}: DESIGN.md §5 names its motion", d.id);
+        // and the finish accepts what the look writes
+        let entries: serde_json::Map<String, Value> = designsys::finish_entries(d).into_iter().collect();
+        let mut errs = Vec::new();
+        let cfg = shotpilot::finish::parse(Some(&Value::Object(entries)), &mut errs);
+        assert!(errs.is_empty(), "{}: {errs:?}", d.id);
+        assert!(cfg.fonts.display.is_some() && cfg.fonts.body.is_some() && cfg.fonts.latin.is_some(), "{}", d.id);
+    }
 }
 
 /// A new project with no anchors, its mock level offering landmarks.
