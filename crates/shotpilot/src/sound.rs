@@ -8,6 +8,7 @@
 //!   - id: s03_window
 //!     sfx:
 //!       - {file: audio/hit.wav, at: 0, gain: -3, label: hit}   # at: seconds from the shot's start
+//!       - {file: audio/rumble.wav, at: 1, high_cut: 4000, low_cut: 80}   # Hz, filters per sound
 //! ```
 //!
 //! Sound never changes pixels, so none of it is in a render or build fingerprint:
@@ -40,11 +41,15 @@ pub const LEAD_MAX: f64 = 3.0;
 pub const PEAKS_PER_S: f64 = 50.0;
 
 const AUDIO_KEYS: &[&str] = &["gain", "bgm", "music", "loudness"];
-const MUSIC_KEYS: &[&str] = &["file", "from", "until", "at", "offset", "gain", "fade_in", "fade_out", "label"];
+const MUSIC_KEYS: &[&str] =
+    &["file", "from", "until", "at", "offset", "gain", "fade_in", "fade_out", "high_cut", "low_cut", "label"];
 /// Integrated loudness the cut is brought to when it carries sound (LUFS).
 pub const DEFAULT_LOUDNESS: f64 = -16.0;
-const BGM_KEYS: &[&str] = &["file", "start", "offset", "gain", "fade_in", "fade_out"];
-const SFX_KEYS: &[&str] = &["file", "at", "gain", "label"];
+const BGM_KEYS: &[&str] = &["file", "start", "offset", "gain", "fade_in", "fade_out", "high_cut", "low_cut"];
+const SFX_KEYS: &[&str] = &["file", "at", "gain", "high_cut", "low_cut", "label"];
+/// Range of a sound's `high_cut` / `low_cut` (Hz).
+pub const CUT_MIN_HZ: f64 = 20.0;
+pub const CUT_MAX_HZ: f64 = 20_000.0;
 
 // --------------------------------------------------------------------------- definition
 
@@ -96,6 +101,18 @@ fn check_file(m: &Map<String, Value>, at: &str, errs: &mut Vec<String>) {
     }
 }
 
+/// `high_cut` (a low-pass: removes what is above it) and `low_cut` (a high-pass: removes
+/// what is below it), in Hz. A low cut above the high cut would leave nothing.
+fn check_cuts(m: &Map<String, Value>, at: &str, errs: &mut Vec<String>) {
+    check_num(m, "high_cut", CUT_MIN_HZ, CUT_MAX_HZ, at, errs);
+    check_num(m, "low_cut", CUT_MIN_HZ, CUT_MAX_HZ, at, errs);
+    if let (Some(hi), Some(lo)) = (m.get("high_cut").and_then(num), m.get("low_cut").and_then(num)) {
+        if lo >= hi {
+            errs.push(format!("{at}: low_cut ({}) must be below high_cut ({}) or nothing is left", fmt_g(lo), fmt_g(hi)));
+        }
+    }
+}
+
 /// Problems with `audio:` and every shot's `sfx:` (appended to `errs`).
 pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String>) {
     match top.get("audio") {
@@ -123,6 +140,7 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
                         check_num(m, "gain", -60.0, 12.0, &at, errs);
                         check_num(m, "fade_in", 0.0, 30.0, &at, errs);
                         check_num(m, "fade_out", 0.0, 30.0, &at, errs);
+                        check_cuts(m, &at, errs);
                     }
                 }
                 Some(_) => errs.push("audio.music: a list of cues {file, from, until, at, gain, fade_in, fade_out}".into()),
@@ -137,6 +155,7 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
                     check_num(b, "gain", -60.0, 12.0, "audio.bgm", errs);
                     check_num(b, "fade_in", 0.0, 30.0, "audio.bgm", errs);
                     check_num(b, "fade_out", 0.0, 30.0, "audio.bgm", errs);
+                    check_cuts(b, "audio.bgm", errs);
                 }
                 Some(_) => errs.push("audio.bgm: a mapping like {file: audio/bgm.wav, gain: -6}".into()),
             }
@@ -165,6 +184,7 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
                         )),
                     }
                     check_num(m, "gain", -60.0, 12.0, &at, errs);
+                    check_cuts(m, &at, errs);
                     if m.get("label").is_some_and(|l| !l.is_string() && !l.is_null()) {
                         errs.push(format!("{at}.label: text"));
                     }
@@ -190,6 +210,7 @@ pub fn validate_line_sfx(at: &str, v: Option<&Value>, errs: &mut Vec<String>) {
                 check_file(m, &at, errs);
                 check_num(m, "at", -LEAD_MAX, 600.0, &at, errs);
                 check_num(m, "gain", -60.0, 12.0, &at, errs);
+                check_cuts(m, &at, errs);
             }
         }
         Some(_) => errs.push(format!("{at}.sfx: a list of {{file, at, gain, label}}")),
@@ -239,16 +260,27 @@ pub struct Placement {
     pub gain_db: f64,
     pub fade_in: f64,
     pub fade_out: f64,
+    /// Low-pass corner (Hz): what is above it is removed. None = no filter.
+    pub high_cut: Option<f64>,
+    /// High-pass corner (Hz): what is below it is removed. None = no filter.
+    pub low_cut: Option<f64>,
 }
 
 impl Placement {
     pub fn to_json(&self) -> Value {
-        json!({
+        let mut v = json!({
             "role": if self.role == Role::Bgm { "bgm" } else { "sfx" },
             "shot": self.shot, "index": self.index, "label": self.label, "file": self.file,
             "start": r3(self.start), "offset": r3(self.offset), "until": self.until.map(r3), "gain": self.gain_db,
             "fade_in": self.fade_in, "fade_out": self.fade_out,
-        })
+        });
+        // only when set, so a mix without filters keeps its cache key
+        for (k, f) in [("high_cut", self.high_cut), ("low_cut", self.low_cut)] {
+            if let Some(f) = f {
+                v[k] = json!(f);
+            }
+        }
+        v
     }
 }
 
@@ -328,6 +360,11 @@ pub fn master_gain(defn: &Definition) -> f64 {
     defn.audio.get("gain").and_then(num).unwrap_or(0.0)
 }
 
+/// A filter corner as written (Hz), inside the range a mix can apply.
+fn cut_of(m: &Map<String, Value>, key: &str) -> Option<f64> {
+    m.get(key).and_then(num).filter(|f| (CUT_MIN_HZ..=CUT_MAX_HZ).contains(f))
+}
+
 /// Everything the definition says to play, BGM first, then effects in cut order.
 pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
     let (starts, total) = timing(defn, shots);
@@ -346,6 +383,8 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
             gain_db: g("gain", 0.0),
             fade_in: g("fade_in", 0.0),
             fade_out: g("fade_out", 0.0),
+            high_cut: cut_of(b, "high_cut"),
+            low_cut: cut_of(b, "low_cut"),
         });
     }
     // music cues: each from a piece of the cut until another (or the end)
@@ -374,6 +413,8 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
                 gain_db: g("gain", 0.0),
                 fade_in: g("fade_in", 0.0),
                 fade_out: g("fade_out", 0.0),
+                high_cut: c.as_object().and_then(|m| cut_of(m, "high_cut")),
+                low_cut: c.as_object().and_then(|m| cut_of(m, "low_cut")),
             });
         }
     }
@@ -397,6 +438,8 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
                 gain_db: it.get("gain").and_then(num).unwrap_or(0.0),
                 fade_in: 0.0,
                 fade_out: 0.0,
+                high_cut: it.as_object().and_then(|m| cut_of(m, "high_cut")),
+                low_cut: it.as_object().and_then(|m| cut_of(m, "low_cut")),
             });
         }
     }
@@ -419,6 +462,8 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
                 gain_db: it.get("gain").and_then(num).unwrap_or(0.0),
                 fade_in: 0.0,
                 fade_out: 0.0,
+                high_cut: it.as_object().and_then(|m| cut_of(m, "high_cut")),
+                low_cut: it.as_object().and_then(|m| cut_of(m, "low_cut")),
             });
         }
     }
@@ -688,6 +733,62 @@ fn db_to_gain(db: f64) -> f32 {
     10f64.powf(db / 20.0) as f32
 }
 
+/// One second-order section (RBJ cookbook), transposed direct form II.
+#[derive(Debug, Clone, Copy)]
+struct Biquad {
+    b: [f64; 3],
+    a: [f64; 2],
+    z: [f64; 2],
+}
+
+impl Biquad {
+    fn new(low_pass: bool, hz: f64, q: f64) -> Biquad {
+        let w = 2.0 * std::f64::consts::PI * hz.min(SR as f64 * 0.45) / SR as f64;
+        let (cw, alpha) = (w.cos(), w.sin() / (2.0 * q));
+        let a0 = 1.0 + alpha;
+        let b = if low_pass {
+            [(1.0 - cw) / 2.0, 1.0 - cw, (1.0 - cw) / 2.0]
+        } else {
+            [(1.0 + cw) / 2.0, -(1.0 + cw), (1.0 + cw) / 2.0]
+        };
+        Biquad { b: b.map(|x| x / a0), a: [-2.0 * cw / a0, (1.0 - alpha) / a0], z: [0.0; 2] }
+    }
+
+    fn run(&mut self, x: f64) -> f64 {
+        let y = self.b[0] * x + self.z[0];
+        self.z[0] = self.b[1] * x - self.a[0] * y + self.z[1];
+        self.z[1] = self.b[2] * x - self.a[1] * y;
+        y
+    }
+}
+
+/// The filters of one placement on one channel: a 4th-order Butterworth low-pass for
+/// `high_cut` and high-pass for `low_cut` (24 dB per octave, so a cut is heard as one).
+#[derive(Debug, Clone)]
+struct Filters(Vec<Biquad>);
+
+impl Filters {
+    /// Q of the two sections of a 4th-order Butterworth.
+    const QS: [f64; 2] = [0.541_196_1, 1.306_563];
+
+    fn of(p: &Placement) -> Filters {
+        let mut v = Vec::new();
+        for (low_pass, hz) in [(true, p.high_cut), (false, p.low_cut)] {
+            if let Some(hz) = hz {
+                v.extend(Self::QS.map(|q| Biquad::new(low_pass, hz, q)));
+            }
+        }
+        Filters(v)
+    }
+
+    fn run(&mut self, x: f32) -> f32 {
+        if self.0.is_empty() {
+            return x;
+        }
+        self.0.iter_mut().fold(x as f64, |x, f| f.run(x)) as f32
+    }
+}
+
 /// Mix the placements into a teaser-long stereo buffer. `sources` maps each placement's
 /// `file` to its decoded samples.
 pub fn mix<P: AsRef<Pcm>>(placements: &[Placement], sources: &HashMap<String, P>, total: f64, master_db: f64)
@@ -715,6 +816,7 @@ pub fn mix<P: AsRef<Pcm>>(placements: &[Placement], sources: &HashMap<String, P>
         let fi = (p.fade_in * sr) as i64;
         let fo = (p.fade_out * sr) as i64;
         let hop = (sr / PEAKS_PER_S) as i64;
+        let (mut fl, mut fr) = (Filters::of(p), Filters::of(p));
         let mut peaks = Vec::new();
         let mut peak = 0f32;
         for k in first..last {
@@ -727,7 +829,7 @@ pub fn mix<P: AsRef<Pcm>>(placements: &[Placement], sources: &HashMap<String, P>
             }
             let si = (off + k) as usize;
             let oi = (start + k) as usize;
-            let (l, r) = (src.l[si] * a, src.r[si] * a);
+            let (l, r) = (fl.run(src.l[si]) * a, fr.run(src.r[si]) * a);
             out.l[oi] += l;
             out.r[oi] += r;
             peak = peak.max(l.abs()).max(r.abs());
@@ -1067,7 +1169,7 @@ mod tests {
         src.insert("c.wav".to_string(), click);
         let p = Placement {
             role: Role::Sfx, shot: Some("a".into()), index: 0, label: "c".into(), file: "c.wav".into(),
-            start: 0.5, offset: 0.0, until: None, gain_db: -6.0206, fade_in: 0.0, fade_out: 0.0,
+            start: 0.5, offset: 0.0, until: None, gain_db: -6.0206, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
         };
         let (out, lanes) = mix(std::slice::from_ref(&p), &src, 1.0, 0.0);
         assert_eq!(out.len(), 48_000);
@@ -1086,7 +1188,7 @@ mod tests {
         let long = sine(220.0, 20.0, 0.5);
         let music = |start: f64, offset: f64, until: Option<f64>| Placement {
             role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
-            start, offset, until, gain_db: 0.0, fade_in: 0.3, fade_out: 1.0,
+            start, offset, until, gain_db: 0.0, fade_in: 0.3, fade_out: 1.0, high_cut: None, low_cut: None,
         };
         let ps = [music(1.0, 2.5, Some(4.0)), music(5.0, 0.0, Some(6.0))];
         let need = needed_secs(&ps)["m.wav"].expect("every placement stops: a known reach");
@@ -1106,8 +1208,54 @@ mod tests {
     fn mix_key_follows_until() {
         let p = |until: Option<f64>| Placement {
             role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
-            start: 0.0, offset: 0.0, until, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0,
+            start: 0.0, offset: 0.0, until, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
         };
         assert_ne!(p(Some(3.0)).to_json(), p(Some(4.0)).to_json());
+    }
+
+    fn rms(x: &[f32]) -> f64 {
+        (x.iter().map(|v| (*v as f64).powi(2)).sum::<f64>() / x.len() as f64).sqrt()
+    }
+
+    /// RMS of a sine mixed through `high_cut` / `low_cut`, past the filters' settling.
+    fn through(hz: f64, high_cut: Option<f64>, low_cut: Option<f64>) -> f64 {
+        let src: HashMap<String, Pcm> = [("s.wav".to_string(), sine(hz, 1.0, 0.5))].into();
+        let p = Placement {
+            role: Role::Sfx, shot: Some("a".into()), index: 0, label: "s".into(), file: "s.wav".into(),
+            start: 0.0, offset: 0.0, until: None, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut, low_cut,
+        };
+        let (out, _) = mix(&[p], &src, 1.0, 0.0);
+        rms(&out.l[SR as usize / 4..])
+    }
+
+    #[test]
+    fn high_cut_removes_the_highs_and_low_cut_the_lows() {
+        let open = rms(&sine(1000.0, 1.0, 0.5).l);
+        // well inside the band: untouched
+        assert!((through(1000.0, Some(8000.0), Some(100.0)) / open - 1.0).abs() < 0.02);
+        // two octaves past a corner: 24 dB/oct leaves well under -40 dB
+        assert!(through(8000.0, Some(2000.0), None) / open < 0.01);
+        assert!(through(100.0, None, Some(400.0)) / open < 0.01);
+        // at the corner: -3 dB (Butterworth)
+        let at = through(2000.0, Some(2000.0), None) / open;
+        assert!((at - std::f64::consts::FRAC_1_SQRT_2).abs() < 0.03, "{at}");
+    }
+
+    #[test]
+    fn filters_are_written_per_sound_and_checked() {
+        let mut errs = Vec::new();
+        let ok = json!({"file": "audio/a.wav", "at": 0, "high_cut": 4000, "low_cut": 80});
+        validate_line_sfx("x", Some(&json!([ok])), &mut errs);
+        assert!(errs.is_empty(), "{errs:?}");
+        let bad = json!({"file": "audio/a.wav", "at": 0, "high_cut": 300, "low_cut": 500});
+        validate_line_sfx("x", Some(&json!([bad, {"file": "audio/a.wav", "high_cut": 5}])), &mut errs);
+        assert_eq!(errs.len(), 2, "{errs:?}");
+        // a placement without filters keeps the json (and so the cache key) it had before
+        let p = Placement {
+            role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
+            start: 0.0, offset: 0.0, until: None, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
+        };
+        assert!(p.to_json().get("high_cut").is_none());
+        assert_eq!(Placement { high_cut: Some(3000.0), ..p }.to_json()["high_cut"], 3000.0);
     }
 }

@@ -910,13 +910,22 @@ const SOUND_GUIDE: &str = "\
 Sound never re-renders a shot: it is mixed when the cut is assembled.
 - The top-level `audio` mapping holds the music and the level:
   {loudness: LUFS the whole cut is brought to (-30..-8, default -16; this, not gain, sets how loud
-  the teaser is), gain: master dB, music: [cues], bgm: {file, gain, start, offset, fade_in, fade_out}}.
+  the teaser is), gain: master dB, music: [cues], bgm: {file, gain, start, offset, fade_in, fade_out,
+  high_cut, low_cut}}.
   A music cue is {file, from: the shot or script line id it starts on (or start), until: the id it
   stops after (or end), at: seconds after that start, offset: seconds into the file, gain dB,
-  fade_in, fade_out, label}. `from` and `until` must name pieces that are in the cut now.
-- A sound effect is {file, at, gain dB, label} in the `sfx` list of a shot (at: seconds from the
-  shot's start, negative up to -3 leads into the cut, e.g. a whoosh) or of a script line (at:
-  seconds from when the card or text appears). It moves with its shot or line when the cut is reordered.
+  fade_in, fade_out, high_cut, low_cut, label}. `from` and `until` must name pieces that are in the cut now.
+- A sound effect is {file, at, gain dB, high_cut, low_cut, label} in the `sfx` list of a shot (at:
+  seconds from the shot's start, negative up to -3 leads into the cut, e.g. a whoosh) or of a script
+  line (at: seconds from when the card or text appears). It moves with its shot or line when the cut is reordered.
+- Every sound can be filtered on its own, in Hz (20..20000, low_cut below high_cut; leave the key
+  out for no filter). high_cut removes everything above it (24 dB per octave): 6000-8000 takes off
+  the hiss and sizzle, 3000-4000 makes it duller, 800-1500 muffles it as if behind a wall or under
+  water. low_cut removes everything below it: 80-120 takes out rumble, 200-400 thins a sound so it
+  sits under a voice or another hit.
+- When a note fine-tunes a sound (louder, quieter, cut the highs, less bass), change only that sound's
+  gain or filter and keep its file, timing and every other sound as they are. Louder / quieter is
+  about 3 dB per step unless the note gives a number; \"remove the filter\" means deleting the key.
 - Hits, whooshes and risers usually land on a cut (at: 0), a card, or a marker inside the shot.
   Typical gains: music -14..-9 dB, effects -8..-1 dB.";
 

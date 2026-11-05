@@ -1,4 +1,4 @@
-//! The release plan (D-43): what a game puts out over its life, as a checklist.
+//! The release plan (D-44): what a game puts out over its life, as a checklist.
 //!
 //! A teaser is not the last video. After it come a gameplay trailer, a demo or festival
 //! cut, the launch trailer, one trailer per content update, sale and event reminders, and
@@ -644,7 +644,7 @@ fn repoint_deps(from_root: &Path, to_root: &Path, take_dir: &Path) -> Result<()>
     Ok(())
 }
 
-/// Start the project for a video row next to this one (D-43). Returns the new shots.yaml.
+/// Start the project for a video row next to this one (D-44). Returns the new shots.yaml.
 pub fn derive(ws: &Workspace, video: &str, carry: Carry) -> Result<PathBuf> {
     let mut plan = Plan::open(ws)?;
     let row = plan.videos().into_iter().find(|v| v["id"] == video);

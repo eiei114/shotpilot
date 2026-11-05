@@ -215,7 +215,7 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
-    /// the release plan (D-43): promo  |  promo post <shot> [--clip]  |  promo derive <video> [--shots]
+    /// the release plan (D-44): promo  |  promo post <shot> [--clip]  |  promo derive <video> [--shots]
     ///  |  promo update [version]  (an update trailer made from these shots; only changed cuts re-render)
     Promo {
         /// post | derive | update (none = show the checklists)
