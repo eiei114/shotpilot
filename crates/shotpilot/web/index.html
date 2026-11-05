@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/i18n.js"></script>
 <title>shotpilot</title>
 <style>
 :root {
@@ -354,7 +355,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .thumb .q.stale { background: var(--stale); color: #241900; }
 .thumb .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--accent); width: 0; }
 .thumb .none { position: absolute; inset: 0; display: grid; place-items: center; color: #8a9094; font-size: 10.5px; text-align: center; padding: 4px; }
-.item.rendering .thumb .box::after { content: "撮影中"; position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5);
+.item.rendering .thumb .box::after { content: var(--label-rendering, "撮影中"); position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5);
   color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; animation: pulse 1.2s ease-in-out infinite; }
 .cardmini { aspect-ratio: 16 / 9; background: #0a0a0a; border-radius: 7px; display: grid; place-items: center; align-content: center; gap: 2px; color: #e0dbcf;
   font: 500 10px/1.3 "Yu Mincho", "Hiragino Mincho ProN", serif; text-align: center; padding: 4px 6px; overflow: hidden; }
@@ -828,6 +829,7 @@ const RULE_JA = {
   "camera.inside": "カメラが被写体に近すぎる", "shot.length": "カットの長さ", "tempo.flat": "テンポが変わらない",
   "tempo.escalate": "escalate が establish より長い", "repeat.move": "同じ動きが続く", "repeat.lens": "同じレンズが続く",
   "title.short": "タイトルの尺が短い", "frame.lost": "被写体が小さすぎる", "frame.cropped": "被写体が大きすぎて切れている",
+  "text.hold": "文字が読み切れない長さ", "frame.blocked": "撮った画に被写体が写っていない",
 };
 const SIZE_JA = { detail: "ディテール", close: "寄り", medium: "ミディアム", full: "全身・全体", wide: "引き" };
 /** "well 62% · ミディアム": how much of the frame height the subject fills (from its box). */
@@ -1290,7 +1292,8 @@ function nextStep() {
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
   if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
-  if (!(b.images || []).length && !skipped("mood")) return { stage: "brief", what: "ムードボードを作る", why: "ロケハン写真を下敷きに、光と空気感だけを変えた参照画を作ります（任意）", act: "mood", skip: "mood", need: ai.image_active ? null : "画像の生成先（Codex か OpenAI キー）が未設定です" };
+  // the mood board is optional and goes before the cuts: once there are cuts, the next step is ahead, not back
+  if (!shots.length && !(b.images || []).length && !skipped("mood")) return { stage: "brief", what: "ムードボードを作る", why: "ロケハン写真を下敷きに、光と空気感だけを変えた参照画を作ります（任意）", act: "mood", skip: "mood", need: ai.image_active ? null : "画像の生成先（Codex か OpenAI キー）が未設定です" };
   const needAi = ai.ready ? null : "Claude が未接続です";
   if (!shots.length) return { stage: "structure", what: "Claude に構成を組ませる", why: "ステージ・ブリーフ・ムードボード・ロケハン写真を渡して組ませます", act: "plan", need: needAi };
   const planned = (ui.log || []).some((e) => e.action === "plan");
@@ -1298,7 +1301,7 @@ function nextStep() {
   if (p0.length) return { stage: "structure", what: `カット検査の P0 を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
   if (st.review?.stopped && shots.length) {
     if (st.script_approval !== "approved") {
-      return { stage: "structure", what: st.script_approval === "outdated" ? "直した台本を承認し直す" : "台本を確かめて承認する",
+      return { stage: "structure", what: st.script_approval === "outdated" ? "変わった台本を確かめて承認し直す" : "台本を確かめて承認する",
         why: "カット表で文字・秒数・見せるものを直せます。カメラだけ組み直すこともできます", act: "approve-script" };
     }
     return { stage: "structure", what: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", act: "resume" };
@@ -1456,7 +1459,9 @@ async function fetchGenres() {
   finally { fetchGenres.busy = false; }
 }
 
-const viewsJa = (v) => (v >= 1e4 ? `${Math.round(v / 1e4).toLocaleString()}万回` : `${v}回`);
+const viewsJa = (v) => window.SP_LANG === "en"
+  ? `${new Intl.NumberFormat("en", { notation: "compact" }).format(v)} views`
+  : (v >= 1e4 ? `${Math.round(v / 1e4).toLocaleString()}万回` : `${v}回`);
 
 /** Cuts as ticks and black as dark spans along the runtime. */
 function rhythmSvg(s) {
@@ -3035,7 +3040,8 @@ function drawChips() {
 /** Notes worth trying in the composer, for what it is pointed at now. Short: the box is narrow,
  * and every line of examples is a line less of the conversation. */
 function composerExamples() {
-  if (planning()) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
+  // before there is a cut, a note is about the plan, not a shot
+  if (planning() || !(ui.status?.shots || []).length) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
     return it?.p.role === "sfx" ? ["カットの頭に合わせる", "もう少し小さく", "別の衝撃音に替える"]
@@ -3055,7 +3061,8 @@ function drawExamples() {
   const list = ui.status?.ai?.ready && !ui.busy && !$("note").value.trim() ? composerExamples() : [];
   box.hidden = !list.length;
   const html = list.length ? `<span class="lbl">例</span>${list.map((t) => `<button type="button" data-ex="${esc(t)}" title="押すと欄に入ります（送る前に直せます）">${esc(t)}</button>`).join("")}` : "";
-  if (box.innerHTML !== html) box.innerHTML = html;
+  // compare with what was drawn, not the DOM: the English mode rewrites the text on screen
+  if (box._html !== html) { box._html = html; box.innerHTML = html; }
 }
 
 function drawScope() {
@@ -3288,7 +3295,9 @@ function entryHtml(e, isLast) {
     const c = e.checks || {};
     const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
     const steps = (e.steps || []).map((s) => `<div><span class="k">${esc(STEP_ICON[s.status] || "")} ${esc(s.label)}</span> ${esc(s.detail || "")}</div>`).join("");
-    const notes = (e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`).join("");
+    // what code shaped in the plan (beat order, lengths, a card held long enough to read) belongs here too
+    const notes = [...(e.adjustments || []).map((a) => `<div class="event"><span class="dot"></span><span><span class="k">コードが整えた:</span> ${esc(a)}</span></div>`),
+      ...(e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`)].join("");
     const isLast = (ui.log || []).filter((x) => x.action === "produce").pop() === e;
     if (e.stopped === "review") {
       return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る（確認で止める）</div></div>
@@ -3299,7 +3308,7 @@ function entryHtml(e, isLast) {
         ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ カット表で台本とカットを確かめる</button></div>` : ""}</div>`;
     }
     if (e.resumed) {
-      return `<div class="event"><span class="dot"></span><span>▶ 続き: ${esc((e.steps || []).map((s) => `${s.label} ${s.detail || ""}`.trim()).join(" → "))}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
+      return `<div class="event"><span class="dot"></span><span>▶ 続き: ${(e.steps || []).map((s) => `<span>${esc(s.label)}</span>${s.detail ? ` <span>${esc(s.detail)}</span>` : ""}`).join(" → ")}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
         ${notes}${isLast ? `<div class="suggest"><button data-goto-stage="finish">↗ できた1本を見る</button></div>` : ""}`;
     }
     return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
@@ -3345,16 +3354,18 @@ function drawChat() {
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
   if (ui.produce) {
-    const order = { review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "cut"] }[ui.produce.mode]
-      || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "cut"];
-    const names = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", cut: "Cut（仕上げを焼き込む）" };
+    const order = ({ review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "see", "repair", "cut"] }[ui.produce.mode]
+      || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "see", "repair", "cut"])
+      // the look after the shoot only runs on engine takes (D-50): show it once it starts
+      .filter((k) => !["see", "repair"].includes(k) || ui.produce.steps[k]);
+    const names = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", see: "撮れた画の確認", repair: "写っていないカットの撮り直し", cut: "Cut（仕上げを焼き込む）" };
     const rows = order.map((k) => {
       const d = ui.produce.steps[k];
       const icon = d ? STEP_ICON[d.status] : "　";
       return `<div><span class="k">${icon} ${esc(names[k])}</span> ${esc(d?.status === "start" ? "実行中…" : d?.detail || "")}</div>`;
     }).join("");
-    html += `<div class="msg-user"><div class="bubble">${esc(ui.produce.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
-      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state">作っています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div><div class="changes">${rows}</div></div>`;
+    html += `<div class="msg-user"><div class="bubble">${esc(ui.produce.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る${ui.produce.mode === "review" ? "（確認で止める）" : ui.produce.mode === "resume" ? "（続き）" : ""}</div></div>
+      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="produce-state">作っています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div><div class="changes">${rows}</div></div>`;
   }
   if (ui.pending) {
     html += `<div class="msg-user"><div class="bubble">${esc(ui.pending.note)}</div><div class="ctx">${esc(ui.pending.ctx)}</div></div>
@@ -3425,9 +3436,13 @@ async function produceAll({ review = true, resume = false } = {}) {
   ui.busy = "produce"; ui.produce = { steps: {}, note, mode: resume ? "resume" : review ? "review" : "full" }; ui.pending = null;
   if (!resume) $("note").value = "";
   ui.started = Date.now(); draw(); drawChat();
+  // a long step (a mood board, a shoot) sends nothing for a while: keep the clock moving
+  const tick = setInterval(() => { const el = $("produce-state"); if (el) el.textContent = `作っています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
   try {
     const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note, quality: "previz", mood: true, review, resume }) });
+      // the shoot after the review films with the engine (still) on a UE project, so what was
+      // filmed can be looked at once and a hidden subject fixed once (D-50); previz otherwise
+      body: JSON.stringify({ note, quality: resume && st.engine === "ue5" ? "still" : "previz", mood: true, review, resume }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
@@ -3448,7 +3463,7 @@ async function produceAll({ review = true, resume = false } = {}) {
       }
     }
   } catch (e) { if (!resume) $("note").value = note; toast(e.message, true); }
-  finally { ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
+  finally { clearInterval(tick); ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
 }
 
 async function approveScript(on = true) {

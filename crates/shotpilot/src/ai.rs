@@ -613,19 +613,27 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
                 m.insert(k.into(), json!(t));
             }
         }
-        m.insert("dur".into(), json!(r1(num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0))));
+        // a line stays long enough to be read (D-49); overlays are capped by their shot below
+        let asked = num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0);
+        let text = |k: &str| m.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+        let need = crate::script::reading_secs(&kind, &text("ja"), &text("en"));
+        let dur = r1(asked.max((need * 10.0).ceil() / 10.0).min(8.0));
+        if dur > asked + 0.05 {
+            notes.push(format!("文字が読めるように `{id}` を {}秒 → {}秒 に延ばした", model::fmt_g(r1(asked)), model::fmt_g(dur)));
+        }
+        m.insert("dur".into(), json!(dur));
         if slot {
             let after = map(l["after"].as_str().unwrap_or("start"));
             let after = if after.is_empty() { "start".to_string() } else { after };
             if after != "start" && !shot_ids.contains(&after) && !seen.contains(&after) && !v.as_array().into_iter().flatten().any(|o| o["id"] == after.as_str()) {
-                notes.push(format!("left out script line `{id}`: it follows `{after}`, which is not in the cut"));
+                notes.push(format!("台本の行 `{id}` を外した（続く先の `{after}` が Cut に無い）"));
                 continue;
             }
             m.insert("after".into(), json!(after));
         } else {
             let on = map(l["on"].as_str().unwrap_or(""));
             if !shot_ids.contains(&on) {
-                notes.push(format!("left out script line `{id}`: it sits on `{on}`, which is not a shot"));
+                notes.push(format!("台本の行 `{id}` を外した（重ねる先の `{on}` がカットではない）"));
                 continue;
             }
             m.insert("on".into(), json!(on));
@@ -651,12 +659,12 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
         let asked = num(&out[i]["at"]).unwrap_or(0.0);
         let at = asked.max(free_at.get(&on).copied().unwrap_or(0.0));
         if at > d - 0.6 {
-            notes.push(format!("left out script line `{id}`: no room left on `{on}` after the line before it"));
+            notes.push(format!("台本の行 `{id}` を外した（`{on}` には前の行のあとに出す余地が無い）"));
             drop.push(i);
             continue;
         }
         if (at - asked).abs() > 1e-6 {
-            notes.push(format!("moved script line `{id}` to {}s on `{on}` so it does not overlap the line before", model::fmt_g(r1(at))));
+            notes.push(format!("台本の行 `{id}` を `{on}` の {}秒 に動かした（前の行と重ならないように）", model::fmt_g(r1(at))));
         }
         let len = num(&out[i]["dur"]).unwrap_or(2.0).min(d - at);
         out[i]["at"] = json!(r1(at));
@@ -835,7 +843,7 @@ pub fn aspect_fields(aspect: &str) -> Option<Vec<String>> {
 }
 
 /// The stage as the location scout read it (empty when it has not been read).
-fn stage_section(defn: &Definition) -> String {
+pub(crate) fn stage_section(defn: &Definition) -> String {
     if defn.stage.is_empty() {
         return String::new();
     }
@@ -949,6 +957,23 @@ fn audio_files<'a>(audio: &'a Map<String, Value>, sfx_lists: impl Iterator<Item 
     files.filter_map(|it| it.get("file")).filter_map(Value::as_str).map(|f| f.replace('\\', "/")).collect()
 }
 
+/// What a note can change (D-48): the sound alone, text and finishing alone, or the picture
+/// (the camera or the light, or a free note on shots, which may move a camera).
+pub fn edit_reach(scope: Option<&[String]>, pointer: &Pointer) -> craft::Reach {
+    if pointer.sound || pointer.line.is_some() {
+        return craft::Reach::Sound;
+    }
+    let picture = match &pointer.fields {
+        Some(f) => f.iter().any(|k| k == "camera" || k == "environment"),
+        None => scope.map_or(true, |s| !s.is_empty()),
+    };
+    if picture {
+        craft::Reach::Picture
+    } else {
+        craft::Reach::Text
+    }
+}
+
 /// Nothing is written here; the caller applies the revision through the workspace.
 pub fn revise(defn: &Definition, instruction: &str, scope: Option<&[String]>, claude: &dyn Claude) -> Result<Revision> {
     revise_at(defn, instruction, scope, &Pointer::default(), claude)
@@ -1043,7 +1068,7 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          A shot may carry on-screen text burned in at the cut: `caption` {{text, at, duration}} (short, one line), \
          and `transition` into the next shot: cut, dip (through black) or flash (through white). They never re-render.
 
-         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
+         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Photos labelled \"Location scout\" show the          anchors as they really look in the level: place cameras where they show open space and a clear view.          Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );
@@ -1120,14 +1145,12 @@ Library sounds you may also use: write `file: lib:<id>` and it is copied into th
         ));
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
-    // a note on the cameras gets what the planner places cameras with: the stage and the framing table
-    let camera_help = if pointer.fields.as_ref().is_some_and(|f| f.iter().any(|k| k == "camera")) {
-        format!("{}\n## Framing\n{}\n\n", stage_section(defn), craft::framing_table(defn))
-    } else {
-        String::new()
-    };
+    // every edit is made against the spec the cut was planned from (D-48); how much of it
+    // depends on what the note can change
+    let reach = edit_reach(scope, pointer);
+    let spec = craft::edit_spec(defn, reach);
     let user = format!(
-        "{camera_help}Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}{texts_now}{finish_now}\n\nCurrent audio:\n{audio_now}\n\n\
+        "{spec}\nAnchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}{texts_now}{finish_now}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
          Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
@@ -1139,6 +1162,24 @@ Where the director is pointing: {c}")).unwrap_or_default();
     let mut content = Vec::new();
     if let Some((media_type, bytes)) = &pointer.image {
         content.push(json!({"type": "image", "source": {"type": "base64", "media_type": media_type, "data": base64(bytes)}}));
+    }
+    // the places the shots in question are filmed at, as the scout photographed them
+    if reach == craft::Reach::Picture {
+        let shots: Vec<&Value> = match scope {
+            Some(s) => defn.shots.iter().filter(|v| s.contains(&model::str_of(&v["id"]))).collect(),
+            None => defn.shots.iter().collect(),
+        };
+        let mut names: Vec<String> = Vec::new();
+        for v in shots {
+            for key in ["anchor", "look_at"] {
+                if let Some(n) = v["camera"][key].as_str().filter(|n| defn.anchor(n).is_some()) {
+                    if !names.iter().any(|x| x == n) {
+                        names.push(n.to_string());
+                    }
+                }
+            }
+        }
+        content.extend(crate::scout::planner_blocks_for(defn, &names, 6));
     }
     content.push(json!({"type": "text", "text": format!("{user}{context}")}));
     let out = ask_json(claude, &system, Value::Array(content), revise_schema())?;
@@ -1419,6 +1460,22 @@ fn line_text_changes(cur: &crate::script::Line, m: &Map<String, Value>) -> Resul
             }
         };
         set.push((f.to_string(), new));
+    }
+    // new words on a slot keep it on screen long enough to be read (D-49); an overlay is
+    // bounded by its shot, so the shot check points at it instead
+    if cur.is_slot() && set.iter().any(|(k, _)| k == "ja" || k == "en" || k == "kind") {
+        let now = |k: &str, old: &str| -> String {
+            match set.iter().find(|(f, _)| f == k) {
+                Some((_, v)) => v.as_str().unwrap_or("").to_string(),
+                None => old.to_string(),
+            }
+        };
+        let dur = set.iter().find(|(f, _)| f == "dur").and_then(|(_, v)| num(v)).unwrap_or(cur.dur);
+        let need = crate::script::reading_secs(&now("kind", &cur.kind), &now("ja", &cur.ja), &now("en", &cur.en));
+        if dur + 0.05 < need {
+            set.retain(|(f, _)| f != "dur");
+            set.push(("dur".into(), seconds(((need * 10.0).ceil() / 10.0).min(10.0))));
+        }
     }
     Ok(set)
 }
@@ -1930,6 +1987,86 @@ pub fn match_frames(defn: &Definition, frames: &[(String, String, String, std::p
             fit: if photo.is_some() { fit.to_string() } else { "none".into() },
             photo,
             why: m["why"].as_str().unwrap_or("").to_string(),
+        });
+    }
+    Ok(res)
+}
+
+// --------------------------------------------------------------------------- after the shoot
+
+pub fn seen_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "shots": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "shot": {"type": "string", "description": "the shot id exactly as labelled"},
+                    "subject_visible": {"type": "string", "enum": ["yes", "partly", "no"]},
+                    "blocked_by": {"type": "string", "description": "what is in front of the subject or fills the frame instead, or empty"},
+                    "note": {"type": "string", "description": "one short sentence on what the frame shows"},
+                },
+                "required": ["shot", "subject_visible", "blocked_by", "note"], "additionalProperties": false,
+            }},
+        },
+        "required": ["shots"],
+        "additionalProperties": false,
+    })
+}
+
+/// What one rendered frame shows (D-50): whether the shot's subject is in the picture.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Seen {
+    pub shot: String,
+    /// yes | partly | no
+    pub visible: String,
+    pub blocked_by: String,
+    pub note: String,
+}
+
+/// One look at the frames the engine rendered, once after the first shoot (D-50, open-design's
+/// bounded video exception): for each shot, whether its subject is actually in the picture and
+/// what hides it. Facts about the engine's render, not a score. `frames`: (shot id, subject,
+/// purpose, image path). Shot ids are checked in code.
+pub fn see_frames(frames: &[(String, String, String, std::path::PathBuf)], claude: &dyn Claude) -> Result<Vec<Seen>> {
+    const BUDGET: usize = 20_000_000;
+    let system = "You assist the camera crew on a game teaser shoot. Each image is a frame the game engine rendered for \
+                  one shot, labelled with the shot id and the subject the shot is meant to show. Say what is in the \
+                  picture, as plain facts. `subject_visible`: `yes` when the subject is in the frame and can be made out; \
+                  `partly` when it is cut off, very small or half hidden; `no` when it is not in the frame or something \
+                  stands in front of it (a wall, a door, a pillar, foliage, the camera inside an object, darkness). \
+                  `blocked_by`: what is in the way or fills the frame instead. Say nothing about taste or quality.";
+    let mut content: Vec<Value> = Vec::new();
+    let mut used = 0usize;
+    let mut sent: Vec<String> = Vec::new();
+    for (id, subject, purpose, path) in frames {
+        let Ok(bytes) = std::fs::read(path) else { continue };
+        let Some((_, media)) = crate::moodboard::image_type(&bytes) else { continue };
+        if bytes.len() > MAX_IMAGE_BYTES || used + bytes.len() > BUDGET {
+            continue;
+        }
+        used += bytes.len();
+        content.push(json!({"type": "text", "text": format!("Shot `{id}`: meant to show `{subject}` ({purpose})")}));
+        content.push(json!({"type": "image", "source": {"type": "base64", "media_type": media, "data": base64(&bytes)}}));
+        sent.push(id.clone());
+    }
+    if sent.is_empty() {
+        return Ok(Vec::new());
+    }
+    content.push(json!({"type": "text", "text": format!("Answer once per shot ({}). Write `note` and `blocked_by` in Japanese.", sent.join(", "))}));
+    let out = ask_json(claude, system, Value::Array(content), seen_schema())?;
+    let mut res: Vec<Seen> = Vec::new();
+    for s in out["shots"].as_array().into_iter().flatten() {
+        let Some(shot) = s["shot"].as_str().filter(|x| sent.iter().any(|y| y == x)) else { continue };
+        if res.iter().any(|r| r.shot == shot) {
+            continue;
+        }
+        let visible = s["subject_visible"].as_str().filter(|v| ["yes", "partly", "no"].contains(v)).unwrap_or("yes");
+        res.push(Seen {
+            shot: shot.to_string(),
+            visible: visible.to_string(),
+            blocked_by: s["blocked_by"].as_str().unwrap_or("").trim().to_string(),
+            note: s["note"].as_str().unwrap_or("").trim().to_string(),
         });
     }
     Ok(res)

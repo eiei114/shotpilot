@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/i18n.js"></script>
 <title>Shotpilot</title>
 <style>
 :root {
@@ -442,7 +443,8 @@ function drawRail() {
 
 function drawHome() {
   const k = KINDS[ui.kind];
-  $("kind-word").textContent = k.word;
+  // the word inside the heading reads in lower case in English ("What teaser will you make?")
+  $("kind-word").textContent = window.SP_LANG === "en" ? window.tr(k.word).toLowerCase() : k.word;
   $("kind-btn").innerHTML = `${ICON.film}${esc(k.label)}${ICON.chev}`;
   $("kind-menu").innerHTML = Object.entries(KINDS).map(([key, v]) => `<button data-kind="${key}"><span class="ck">${key === ui.kind ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
   const gs = ui.genres?.genres || [];
@@ -693,7 +695,7 @@ document.addEventListener("click", (e) => {
   const ex = t.closest("[data-ex]");
   if (ex) {
     const x = EXAMPLES[+ex.dataset.ex];
-    ui.kind = x.kind; if (x.genre) ui.genre = x.genre; savePrefs(); $("prompt").value = x.prompt; drawHome();
+    ui.kind = x.kind; if (x.genre) ui.genre = x.genre; savePrefs(); $("prompt").value = window.tr(x.prompt); drawHome();
     $("main").scrollTo({ top: 0, behavior: "smooth" }); $("prompt").focus(); return;
   }
   if (t.closest("#pick-loc")) { pickLocation(); return; }

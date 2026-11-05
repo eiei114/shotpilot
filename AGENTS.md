@@ -48,6 +48,7 @@ shotpilot promo                   # 発信計画（D-47）: 公開後の動画�
 shotpilot promo update v1.1       # このカットを引き継いだアップデートトレーラーを隣に作る（ゲームが変わったカットだけ撮り直し）
 shotpilot promo post s03 [--clip] # take をそのまま静止画か1カットの動画で promo/posts/ に書き出す
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければホーム（最近のプロジェクト・新規作成）を開く
+node tools/i18n_extract.js        # 英語モードの辞書に無い画面の文言を一覧する（D-51）
 ```
 
 `cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は、ログイン済みの Claude Code（`claude` コマンド）か API キー（アプリの設定、または `ANTHROPIC_API_KEY`）で Claude を呼ぶ（モデルは `SHOTPILOT_MODEL` で上書きできる。effort は `low`〜`max` をアプリの接続設定か `SHOTPILOT_EFFORT` で変えられ、既定は `medium`。Claude Code 経由でも API 経由でも同じ値が効く）。
@@ -92,6 +93,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/server.rs       アプリの裏側。Workspace の上に載る薄い HTTP + SSE 層（loopback 限定）
   web/index.html      アプリの studio 画面（ビルドなし、依存なし。バイナリに埋め込む）
   web/home.html       アプリのホーム画面（D-30。最近のプロジェクト、プロンプトからの新規作成、設定）
+  web/i18n.js         英語モード（D-51）。PC の言語が日本語でなければ、画面の日本語を i18n-en.json の辞書で英語に置き換える
   ue/sp_entry.py      Unreal の中で動くスクリプト。唯一の Python（別ルールあり。バイナリに埋め込む）
   tests/              mock エンジンでループ全体を検証する
 crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組み込み、ウィンドウ1枚で開く
@@ -119,12 +121,16 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
+- 仕様は、ショットを書かせる全経路に同じものを届ける（D-48）。revise は `craft::edit_spec` を通し、画が変わりうる指示（自由な指示・カメラ・光）には plan と同じ部品（ブリーフ・方向・ルック・スキル・規則・基準値・ステージ・距離表と、そのカットのロケハン写真）、文字の指示にはルックと基準値、音の指示にはブリーフと方向を渡す。どの経路に何が届くかは `every_path_that_writes_shots_gets_the_frozen_spec` が固定している。経路を足したら、この表にも足す。
+- 文字の読み時間は `script::reading_secs` の1か所に置く（D-49）。plan と文字の修正で書く行はコードで読める長さに延ばし、人間が書いた行は書き換えずに `text.hold` で示す。
+- 撮影後の確認は、produce の初回のエンジンでの撮影の直後に1回だけ（D-50。D-22 の唯一の例外で、open-design の動画の例外に倣う）。聞くのは「被写体が写っているか、何が遮っているか」という事実だけで、点数や好みは聞かない。写っていないカットだけカメラを1回直して撮り直し、そのカットだけを見直す。2周目はしない。結果は state.json に見た take と一緒に残し、そのカットを撮り直すと消える。previz と普段の render では走らせない。
 - 企画（`ai::discover`、D-45）は open-design の OD Next の計画ターンを写す。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。
 - ルック（`references/design-systems/`）とスキル（`references/skills/`）も plan に全文が渡るので、D-22 の語を書かない（`cargo test --test planning` が守る）。ルックは汎用に限り、実在のゲームやスタジオの名前・ロゴ・固有の色を写さない。ルックの tokens（色調・帯・書体）は Claude の提案より優先してコードで書く。
 - 流行りの型（`refs::STYLES`、D-39）は実在ティザーの構成とリズムだけを真似させる。話の筋・キャラクター・文言は真似させない。分析文（TEASER.md の 1〜7 節）も plan に渡るので、D-22 の語を書かない（`cargo test --test styles` が守る）。
 - `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。
 - ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。
 - `build` は、Sequencer 側で人間が加えた変更を黙って上書きしない（`--force` のときだけ上書きする）。
+- 画面の文言は日本語で書き、英語は `web/i18n-en.json` の辞書で出す（D-51）。描画コードに英語の分岐を書かない。文言を足したり変えたりしたら `node tools/i18n_extract.js` で辞書に無いものを出し、英訳を足す（`{0}` などの穴は日本語と同じ組にする。`the_pages_switch_to_english_with_a_dictionary` が守る）。ユーザーや Claude が書いた文は訳さない（辞書に無い文はそのまま残り、穴に入る自由な文は `i18n-free.json` が示す）。DOM の文字を読んで処理を分けるコードを書かない（英語モードでは中身が変わる）。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。
 - 座標系は UE 準拠（cm、Z が上、X が前、Y が右、左手系、回転は度）。`geometry.rs` は依存なしのまま保つ。
 

@@ -151,7 +151,7 @@ pub fn framing_table(defn: &Definition) -> String {
 pub fn rules_text() -> String {
     let mut out = Vec::new();
     for sev in [Severity::P0, Severity::P1, Severity::P2] {
-        for r in RULES.iter().filter(|r| r.severity == sev) {
+        for r in RULES.iter().filter(|r| r.severity == sev && r.basis != "observed") {
             out.push(format!("- {}", r.summary));
         }
     }
@@ -196,16 +196,54 @@ pub fn skeleton_text(slots: &[Slot]) -> String {
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n\n{}{}{}\n## Framing\n{}",
+        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}\n{}{}{}\n## Framing\n{}",
         brief_text(&defn.brief),
         plan_text(&defn.brief),
         skeleton_text(slots),
         rules_text(),
+        crate::refs::baseline_text(),
         crate::refs::planner_text(&defn.brief),
         crate::designsys::planner_text(defn),
         crate::skills::planner_text(&defn.brief),
         framing_table(defn)
     )
+}
+
+/// What a note can change, which decides how much of the frozen spec an edit gets (D-48).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reach {
+    /// The picture may change (the camera, the light, or a free note on a shot or the teaser).
+    Picture,
+    /// Only text, hand-overs and the finish burned in at the cut.
+    Text,
+    /// Only the sound.
+    Sound,
+}
+
+/// The spec an edit is made against: the same pieces the planner wrote the cut from, so a
+/// revised shot keeps the brief, the direction, the look and the craft (open-design's frozen
+/// Design Spec, shared by every path that writes the artifact).
+pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
+    let b = &defn.brief;
+    let mut out = format!(
+        "## The teaser's spec\nThe cut was written from this; keep every edit inside it.\n\n## Brief\n{}\n{}",
+        brief_text(b),
+        plan_text(b)
+    );
+    if reach == Reach::Sound {
+        return out;
+    }
+    if reach == Reach::Picture {
+        out.push_str(&format!("\n## Craft rules\n{}\n", rules_text()));
+    }
+    out.push_str(&crate::refs::baseline_text());
+    out.push_str(&crate::designsys::planner_text(defn));
+    out.push_str(&crate::skills::planner_text(b));
+    if reach == Reach::Picture {
+        out.push_str(&crate::ai::stage_section(defn));
+        out.push_str(&format!("\n## Framing\n{}\n", framing_table(defn)));
+    }
+    out
 }
 
 /// The planning turn's plan (D-45): production follows it; the latest direction wins.
@@ -280,7 +318,7 @@ pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {
     shots.sort_by_key(rank); // stable: keeps the planner's order within a beat
     let after: Vec<String> = shots.iter().map(|s| crate::model::str_of(&s["id"])).collect();
     if before != after {
-        notes.push("put the shots in beat order (hook -> establish -> escalate -> title)".into());
+        notes.push("カットをビートの順（hook → establish → escalate → title）に並べ替えた".into());
     }
     let dur = |s: &serde_json::Value| num(&s["duration"]).unwrap_or(3.0);
     let mut clamped = Vec::new();
@@ -293,7 +331,7 @@ pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {
         }
     }
     if !clamped.is_empty() {
-        notes.push(format!("kept durations within 1-8s: {}", clamped.join(", ")));
+        notes.push(format!("カットの長さを 1〜8 秒に収めた: {}", clamped.join(", ")));
     }
     let total: f64 = shots.iter().map(dur).sum();
     if target > 0.0 && total > 0.0 && (total - target).abs() > 0.1 * target {
@@ -303,7 +341,7 @@ pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {
             s["duration"] = serde_json::json!(d);
         }
         let now: f64 = shots.iter().map(dur).sum();
-        notes.push(format!("scaled durations from {}s to {}s to fit the {}s target", fmt_g(round_to(total, 2)), fmt_g(round_to(now, 2)), fmt_g(target)));
+        notes.push(format!("カットの合計を {}秒 から {}秒 に合わせた（台本のカードを除いた持ち時間 {}秒）", fmt_g(round_to(total, 2)), fmt_g(round_to(now, 2)), fmt_g(target)));
     }
     notes
 }

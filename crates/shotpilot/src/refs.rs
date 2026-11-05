@@ -15,6 +15,14 @@ use std::sync::OnceLock;
 
 const CRAFT_DOC: &str = include_str!("../../../references/craft/TEASER-CRAFT.md");
 const CRAFT_TOKENS: &str = include_str!("../../../references/craft/tokens.json");
+const BASELINE_DOC: &str = include_str!("../../../references/craft/TEASER-BASELINE.md");
+
+/// The teaser baseline (D-49): checkable values, what to avoid, and defect -> decision, as
+/// open-design's Design baseline. The header above the first `##` is for maintainers.
+pub fn baseline_text() -> String {
+    let body = BASELINE_DOC.find("\n## ").map_or(BASELINE_DOC, |i| &BASELINE_DOC[i + 1..]);
+    format!("\n## Teaser baseline (checkable values, what to avoid, defect -> decision)\n{}\n", nested(body.trim_end()))
+}
 
 macro_rules! genre {
     ($id:literal) => {

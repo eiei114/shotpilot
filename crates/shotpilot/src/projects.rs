@@ -279,6 +279,29 @@ pub struct NewProject {
     pub sample: bool,
 }
 
+/// A teaser length written in a prompt ("30秒", "45 秒", "60s", "40 sec"), 15..120 s.
+fn seconds_in(text: &str) -> Option<u32> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].is_ascii_digit() || (i > 0 && chars[i - 1].is_ascii_digit()) {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < chars.len() && chars[i].is_ascii_digit() {
+            i += 1;
+        }
+        let n: u32 = chars[start..i].iter().collect::<String>().parse().ok()?;
+        let rest: String = chars[i..].iter().collect::<String>().trim_start().chars().take(3).collect();
+        let unit = rest.starts_with('秒') || rest.starts_with("sec") || (rest.starts_with('s') && !rest[1..].starts_with(|c: char| c.is_alphabetic()));
+        if unit && (15..=120).contains(&n) {
+            return Some(n);
+        }
+    }
+    None
+}
+
 /// Write the new project's shots.yaml (and .gitignore, and the sample's placeholder
 /// audio). Never writes into a folder that already has a shots.yaml.
 pub fn create(p: &NewProject) -> Result<PathBuf> {
@@ -313,7 +336,12 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
         templates::render(templates::DEMO, &name, &p.engine, &uproject_yaml, &map_yaml)
     } else {
         let extra = templates::Extra { title: "", pitch: &p.pitch, kind: &p.kind, genre: &p.genre };
-        templates::render_with(templates::EMPTY, &name, &p.engine, &uproject_yaml, &map_yaml, &extra)
+        let text = templates::render_with(templates::EMPTY, &name, &p.engine, &uproject_yaml, &map_yaml, &extra);
+        // "…30秒。" in the prompt is the length the person asked for
+        match seconds_in(&p.pitch) {
+            Some(s) => text.replacen("target_duration: 45", &format!("target_duration: {s}"), 1),
+            None => text,
+        }
     };
     std::fs::write(&shots, text)?;
     if p.sample {
@@ -373,6 +401,16 @@ mod tests {
         std::fs::write(dir.path().join("last_project.txt"), "C:\\x\\shots.yaml\n").unwrap();
         let r = Recents::new(Some(dir.path().join("projects.json")));
         assert_eq!(r.list()[0].path, PathBuf::from("C:\\x\\shots.yaml"));
+    }
+
+    #[test]
+    fn the_prompt_sets_the_length() {
+        assert_eq!(seconds_in("最後に閉まる扉とタイトル。30秒。"), Some(30));
+        assert_eq!(seconds_in("45 秒、テンポは速め"), Some(45));
+        assert_eq!(seconds_in("a 60s teaser"), Some(60));
+        assert_eq!(seconds_in("3人の住人、2階の窓"), None);
+        assert_eq!(seconds_in("600秒"), None);
+        assert_eq!(seconds_in("5 shots"), None);
     }
 
     #[test]

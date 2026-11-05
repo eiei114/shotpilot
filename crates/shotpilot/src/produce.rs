@@ -54,6 +54,8 @@ pub const STEPS: &[(&str, &str)] = &[
     ("review", "確認（台本とカット）"),
     ("sound", "音の設計"),
     ("render", "撮影"),
+    ("see", "撮れた画の確認"),
+    ("repair", "写っていないカットの撮り直し"),
     ("cut", "Cut（仕上げを焼き込む）"),
 ];
 
@@ -205,6 +207,111 @@ pub fn resume(ws: &mut Workspace, claude: &dyn Claude, opts: &ProduceOpts, emit:
     finish(ws, claude, opts, emit, Vec::new(), Vec::new(), entry)
 }
 
+/// After the shoot (D-50): look once at each shot's frame; a shot whose subject is not in the
+/// picture gets its camera fixed once and is filmed again, and only that shot is looked at
+/// again. Never a second round: what is still wrong stays on the cut sheet for the human.
+fn see_and_repair(ws: &mut Workspace, claude: &dyn Claude, quality: &str, emit: &mut dyn FnMut(&str, &Value),
+                  steps: &mut Vec<Value>, notes: &mut Vec<String>) -> Result<()> {
+    let mut step = |key: &str, status: &str, detail: String, emit: &mut dyn FnMut(&str, &Value)| {
+        let v = json!({"key": key, "label": label(key), "status": status, "detail": detail});
+        emit("step", &v);
+        if status != "start" {
+            steps.push(v);
+        }
+    };
+    step("see", "start", String::new(), emit);
+    let seen = match ws.see(quality, &[], claude) {
+        Ok(s) => s,
+        Err(e) => {
+            notes.push(format!("撮れた画の確認はできませんでした: {}", e.msg));
+            step("see", "failed", e.msg, emit);
+            return Ok(());
+        }
+    };
+    let blocked: Vec<&ai::Seen> = seen.iter().filter(|s| s.visible == "no").collect();
+    let partly = seen.iter().filter(|s| s.visible == "partly").count();
+    let detail = match (blocked.len(), partly) {
+        (0, 0) => format!("{} カットとも被写体が写っている", seen.len()),
+        (b, p) => format!("写っていない {b} · 一部だけ {p}（{} カット中）", seen.len()),
+    };
+    step("see", "done", detail, emit);
+    if blocked.is_empty() {
+        step("repair", "skipped", "直すカットなし".into(), emit);
+        return Ok(());
+    }
+
+    step("repair", "start", blocked.iter().map(|s| s.shot.as_str()).collect::<Vec<_>>().join(", "), emit);
+    let mut redo: Vec<String> = Vec::new();
+    for s in &blocked {
+        let shot = ws.select_one(&s.shot)?;
+        let subject = crate::shotcheck::subject_name(&ws.defn, &shot).unwrap_or_else(|| "被写体".into());
+        let by = if s.blocked_by.is_empty() { String::new() } else { format!("（{}が遮っている）", s.blocked_by) };
+        let note = format!("撮った画に `{subject}` が写っていない{by}。被写体がはっきり見えるようにカメラを直す。");
+        let mut pointer = ai::Pointer {
+            fields: ai::aspect_fields("camera"),
+            context: Some(format!("shot {}; the rendered frame: {}", s.shot, s.note)),
+            ..Default::default()
+        };
+        if let Some(thumb) = crate::fingerprint::render_fingerprint(&ws.defn, &shot, quality)
+            .ok()
+            .and_then(|rfp| ws.state.takes_for(&shot.id, quality, &rfp).into_iter().next())
+            .and_then(|t| t.thumb())
+        {
+            if let Ok(bytes) = std::fs::read(&thumb) {
+                if bytes.len() <= ai::MAX_IMAGE_BYTES {
+                    if let Some((_, media)) = crate::moodboard::image_type(&bytes) {
+                        pointer.image = Some((media.to_string(), bytes));
+                    }
+                }
+            }
+        }
+        let rev = match ai::revise_at(&ws.defn, &note, Some(std::slice::from_ref(&s.shot)), &pointer, claude) {
+            Ok(r) => r,
+            Err(e) => {
+                notes.push(format!("{} のカメラは直せませんでした: {}", s.shot, e.msg));
+                continue;
+            }
+        };
+        if rev.edits.is_empty() {
+            notes.push(format!("{} のカメラは変わりませんでした", s.shot));
+            continue;
+        }
+        ws.edit_definition(&rev.edits, None, "repair", &note)?;
+        redo.push(s.shot.clone());
+    }
+    if redo.is_empty() {
+        step("repair", "failed", "直せたカットなし（カット表に残します）".into(), emit);
+        return Ok(());
+    }
+    let mut fwd = |e: &str, d: &Value| emit(&format!("render.{e}"), d);
+    ws.render(&redo, quality, false, Some(&mut fwd))?;
+    // the repaired shots only, once
+    let again = ws.see(quality, &redo, claude).unwrap_or_default();
+    let still: Vec<&str> = again.iter().filter(|s| s.visible != "yes").map(|s| s.shot.as_str()).collect();
+    if !still.is_empty() {
+        notes.push(format!("直しても被写体がはっきり写らないカット: {}（カット表で確かめてください）", still.join(", ")));
+    }
+    step("repair", "done", format!("{} カットを撮り直した{}", redo.len(),
+                                   if still.is_empty() { String::new() } else { format!("（まだ {} カット）", still.len()) }), emit);
+    Ok(())
+}
+
+/// Facts about the cut that code can read off it (the clock and the title), as notes.
+fn cut_facts(ws: &Workspace, info: &crate::cut::CutInfo) -> Vec<String> {
+    let mut out = Vec::new();
+    let target = ws.defn.teaser.target_duration;
+    if target > 0.0 && (info.seconds - target).abs() > 0.1 * target {
+        out.push(format!("Cut は {}s で、目標の {}s から 1 割以上ずれています", info.seconds, crate::model::fmt_g(target)));
+    }
+    let title = ws.defn.teaser.title.trim();
+    if !title.is_empty() && !ws.defn.script.iter().any(|l| l.kind == "title" && l.ja.trim() == title) {
+        if let Some(l) = ws.defn.script.iter().find(|l| l.kind == "title") {
+            out.push(format!("タイトルのカード「{}」が、タイトル「{title}」と一致していません", l.ja));
+        }
+    }
+    out
+}
+
 /// Whether the project has any sound placed yet (music, effects on shots or on lines).
 fn has_sound(ws: &Workspace) -> bool {
     let music = ws.defn.audio.get("music").and_then(Value::as_array).is_some_and(|a| !a.is_empty());
@@ -258,11 +365,18 @@ fn finish(ws: &mut Workspace, claude: &dyn Claude, opts: &ProduceOpts, emit: &mu
         step("render", "failed", format!("{} 本失敗", failed.len()), emit, &mut steps);
     }
 
-    // 7. cut, finish burned in
+    // 7. one look at what the engine filmed, and at most one repair (D-50, open-design's
+    // bounded video exception). Previz draws boxes, so there is nothing to look at there.
+    if !crate::fingerprint::is_previz(&crate::fingerprint::quality(&ws.defn, &opts.quality)?) {
+        see_and_repair(ws, claude, &opts.quality, emit, &mut steps, &mut notes)?;
+    }
+
+    // 8. cut, finish burned in
     step("cut", "start", String::new(), emit, &mut steps);
     let info = ws.cut("best", true)?;
     notes.extend(info.notes.iter().cloned());
     step("cut", "done", format!("{}s", info.seconds), emit, &mut steps);
+    notes.extend(cut_facts(ws, &info));
 
     entry.insert("steps".into(), json!(steps));
     entry.insert("quality".into(), json!(opts.quality));

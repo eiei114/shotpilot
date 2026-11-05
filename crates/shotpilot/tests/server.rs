@@ -892,6 +892,41 @@ fn finishing_notes_over_http() {
 }
 
 #[test]
+fn the_pages_switch_to_english_with_a_dictionary() {
+    // the pages load the English mode; it decides from the PC's language and keeps Japanese on a Japanese PC
+    let s = srv();
+    for page in ["/", "/home"] {
+        let r = call(&s, "GET", page, None, &[]);
+        assert!(String::from_utf8_lossy(&r.body).contains(r#"<script src="/i18n.js"></script>"#), "{page}");
+    }
+    let r = call(&s, "GET", "/i18n.js", None, &[]);
+    assert_eq!(r.code, 200);
+    assert!(r.header("content-type").starts_with("text/javascript"));
+    let js = String::from_utf8_lossy(&r.body).to_string();
+    assert!(js.starts_with("const SP_EN = {") && js.contains("window.SP_LANG"));
+
+    // every entry is English, with the same run-time holes as its Japanese key
+    let dict: serde_json::Map<String, Value> = serde_json::from_str(shotpilot::server::I18N_EN).unwrap();
+    assert!(dict.len() > 500, "{}", dict.len());
+    fn holes(s: &str) -> Vec<&str> {
+        let mut v: Vec<&str> = s.match_indices('{').filter_map(|(i, _)| s[i..].find('}').map(|j| &s[i..=i + j])).filter(|h| h[1..h.len() - 1].chars().all(|c| c.is_ascii_digit())).collect();
+        v.sort();
+        v
+    }
+    let kana = |s: &str| s.chars().any(|c| ('\u{3040}'..='\u{30ff}').contains(&c) || ('\u{4e00}'..='\u{9fff}').contains(&c));
+    for (k, v) in &dict {
+        let v = v.as_str().unwrap_or("");
+        assert!(!v.trim().is_empty(), "empty: {k}");
+        assert_eq!(holes(k), holes(v), "holes differ: {k} => {v}");
+        // a key is Japanese, or a pattern that joins translated parts ("{0} +{1}s")
+        assert!(kana(k) || !holes(k).is_empty(), "not Japanese: {k}");
+    }
+    for key in ["一気に作る", "カット表", "撮った画に被写体が写っていない"] {
+        assert!(dict.contains_key(key), "missing {key}");
+    }
+}
+
+#[test]
 fn the_release_plan_is_a_checklist_the_app_ticks() {
     let s = srv();
     let v = call(&s, "GET", "/api/promo", None, &[]).json();

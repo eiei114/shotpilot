@@ -437,6 +437,10 @@ fn scouting_prefers_tagged_actors_and_keeps_the_inventory() {
 #[test]
 fn scouting_a_level_with_nothing_to_find_says_what_to_do() {
     let mut f = empty_project();
+    // a level built at runtime: nothing tagged, no landmarks in the editor
+    let store = f.ws.root.join(".shotpilot").join("mock_engine");
+    std::fs::create_dir_all(&store).unwrap();
+    std::fs::write(store.join("landmarks.json"), "{}").unwrap();
     let before = f.text();
     let err = f.ws.scout(&[], None).unwrap_err();
     assert!(err.msg.contains("anchors:"), "{}", err.msg);
@@ -791,4 +795,91 @@ fn a_music_cue_on_a_missing_piece_is_reported() {
     let got: Vec<(usize, &str, &str)> = o.iter().map(|o| (o.cue, o.key, o.target.as_str())).collect();
     assert_eq!(got, vec![(0, "from", "s04_dining"), (1, "until", "gone")]);
     assert!(o[0].text().contains("never played"));
+}
+
+/// The engine's frames, once after the first shoot (D-50): Claude says whether each subject is
+/// in the picture; a shot whose subject is not gets its camera fixed once and only it is filmed
+/// again. A second miss stays on the cut sheet; there is no second round.
+struct Crew {
+    calls: std::cell::RefCell<Vec<String>>,
+    /// subject_visible for s03_window on each look
+    s03: std::cell::RefCell<Vec<&'static str>>,
+}
+
+impl shotpilot::ai::Claude for Crew {
+    fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
+        let props = &request["output_config"]["format"]["schema"]["properties"];
+        if props["shots"]["items"]["properties"].get("subject_visible").is_some() {
+            self.calls.borrow_mut().push("see".into());
+            let labels: Vec<String> = request["messages"][0]["content"].as_array().unwrap().iter()
+                .filter_map(|b| b["text"].as_str()).filter(|t| t.starts_with("Shot `"))
+                .map(|t| t["Shot `".len()..].split('`').next().unwrap().to_string()).collect();
+            let s03 = self.s03.borrow_mut().remove(0);
+            let shots: Vec<serde_json::Value> = labels.iter().map(|id| {
+                let v = if id == "s03_window" { s03 } else { "yes" };
+                json!({"shot": id, "subject_visible": v, "blocked_by": if v == "no" { "壁" } else { "" }, "note": "n"})
+            }).collect();
+            return Ok(json!({"shots": shots}).to_string());
+        }
+        if props.get("edits").is_some() {
+            self.calls.borrow_mut().push("revise".into());
+            let user = request["messages"][0]["content"].to_string();
+            assert!(user.contains("`window` が写っていない（壁が遮っている）"), "{user}");
+            assert_eq!(request["messages"][0]["content"][0]["type"], "image"); // the frame it saw
+            let yaml = "id: s03_window\npurpose: 2階の窓\nduration: 4\ncamera:\n  anchor: window\n  offset: [-500, -200, -100]\n  lens: {focal_length: 50}\n";
+            return Ok(json!({"summary": "引いた", "edits": [{"id": "s03_window", "yaml": yaml, "reason": "r"}], "order": [], "audio": ""}).to_string());
+        }
+        panic!("unexpected request");
+    }
+}
+
+fn rendered(ws: &shotpilot::workspace::Workspace, quality: &str) -> Vec<String> {
+    let tag = format!(":{quality}");
+    launches(ws).iter().filter_map(|l| l["shots"].as_array().cloned()).flatten()
+        .filter_map(|s| s.as_str().and_then(|s| s.strip_suffix(&tag)).map(str::to_string)).collect()
+}
+
+#[test]
+fn after_the_first_shoot_only_a_shot_whose_subject_is_hidden_is_fixed_once() {
+    let mut f = ws();
+    let crew = Crew { calls: Default::default(), s03: std::cell::RefCell::new(vec!["no", "no"]) };
+    let opts = shotpilot::produce::ProduceOpts { quality: "still".into(), mood: false, ..Default::default() };
+    let mut events = Vec::new();
+    let mut on = |e: &str, d: &serde_json::Value| events.push((e.to_string(), d.clone()));
+    let out = shotpilot::produce::resume(&mut f.ws, &crew, &opts, &mut on).unwrap();
+
+    // one look, one repair, one look at the repaired shot, and no more
+    assert_eq!(*crew.calls.borrow(), ids(&["see", "revise", "see"]));
+    let mut once = rendered(&f.ws, "still");
+    once.sort();
+    let mut want = f.ws.defn.shot_ids();
+    want.push("s03_window".into());
+    want.sort();
+    assert_eq!(once, want, "only s03_window is filmed twice");
+    let done: Vec<String> = events.iter().filter(|(e, d)| e == "step" && d["status"] != "start")
+        .map(|(_, d)| format!("{}:{}", d["key"].as_str().unwrap(), d["status"].as_str().unwrap())).collect();
+    assert!(done.contains(&"see:done".to_string()) && done.contains(&"repair:done".to_string()), "{done:?}");
+    assert!(out["notes"].to_string().contains("s03_window"), "{}", out["notes"]);
+    // still hidden after the repair: it stays on the cut sheet, tied to the take it was seen in
+    let blocked: Vec<_> = f.ws.check().unwrap().into_iter().filter(|x| x.rule == "frame.blocked").collect();
+    assert_eq!(blocked.len(), 1);
+    assert_eq!(blocked[0].shot.as_deref(), Some("s03_window"));
+    assert!(blocked[0].message.contains("(壁)"), "{}", blocked[0].message);
+    // filming it again drops what was seen in the old take
+    f.ws.render(&ids(&["s03_window"]), "still", true, None).unwrap();
+    assert!(f.ws.check().unwrap().iter().all(|x| x.rule != "frame.blocked"));
+}
+
+#[test]
+fn previz_and_clear_frames_need_no_repair() {
+    // previz draws boxes: nothing to look at
+    let mut f = ws();
+    let crew = Crew { calls: Default::default(), s03: std::cell::RefCell::new(vec!["yes"]) };
+    let mut on = |_: &str, _: &serde_json::Value| {};
+    shotpilot::produce::resume(&mut f.ws, &crew, &shotpilot::produce::ProduceOpts { mood: false, ..Default::default() }, &mut on).unwrap();
+    assert!(crew.calls.borrow().is_empty());
+    // every subject in the picture: one look, nothing filmed again
+    shotpilot::produce::resume(&mut f.ws, &crew, &shotpilot::produce::ProduceOpts { quality: "still".into(), mood: false, ..Default::default() }, &mut on).unwrap();
+    assert_eq!(*crew.calls.borrow(), ids(&["see"]));
+    assert_eq!(rendered(&f.ws, "still").len(), f.ws.defn.shot_ids().len());
 }
