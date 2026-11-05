@@ -331,3 +331,48 @@ fn a_music_cue_must_start_on_a_piece_of_the_cut() {
     let e = ai::revise_at(&f.ws.defn, "曲", None, &sound_pointer(), &c).unwrap_err();
     assert!(e.msg.contains("s09_nowhere"), "{}", e.msg);
 }
+
+#[test]
+fn tuning_one_sound_filters_it_and_never_rerenders() {
+    let mut f = with_script();
+    let before = launches(&f.ws).len();
+    let a = f.ws.mix().unwrap().unwrap();
+    // how much of the sound is heard: the area under its lane's peaks (the max is the
+    // onset's noise crack, which a low cut leaves)
+    let peak = |m: &sound::Mixed, shot: &str| -> f64 {
+        let l = m.lanes.iter().find(|l| l["shot"] == shot).unwrap();
+        l["peaks"].as_array().unwrap().iter().filter_map(Value::as_f64).sum()
+    };
+    // the hit on s03 loses its sub (the demo hit is mostly a 40-130 Hz thump), the card's hit
+    // gets louder and duller
+    let rep = f
+        .ws
+        .edit_sound_full(
+            &[("s03_window".into(), Some(json!([{"file": "audio/hit.wav", "at": 2.2, "gain": -3, "low_cut": 400}])))],
+            &[("seven".into(), json!([{"file": "audio/hit.wav", "at": 0, "gain": 0, "high_cut": 2000}]))],
+            None,
+            "duller hit, louder card",
+        )
+        .unwrap();
+    assert!(rep.stale.is_empty(), "sound made shots stale: {:?}", rep.stale);
+    let line = f.ws.defn.script.iter().find(|l| l.id == "seven").unwrap();
+    assert_eq!(line.sfx[0]["high_cut"], json!(2000));
+    assert!(f.text().contains("low_cut: 400"), "{}", f.text());
+
+    let b = f.ws.mix().unwrap().unwrap();
+    assert!(!b.reused && b.key != a.key);
+    assert!(peak(&b, "s03_window") < peak(&a, "s03_window") * 0.5, "the low cut did not take the thump off");
+    assert!(peak(&b, "seven") > peak(&a, "seven"), "the card's hit did not get louder");
+    let out = f.ws.render(&[], "previz", false, None).unwrap();
+    assert!(actions(&out).values().all(|a| a == "reused"), "{:?}", actions(&out));
+    assert_eq!(launches(&f.ws).len(), before, "the engine was launched for a sound edit");
+
+    // a low cut above the high cut leaves nothing: refused, nothing written
+    let text = f.text();
+    let e = f
+        .ws
+        .edit_sound(&[("s03_window".into(), Some(json!([{"file": "audio/hit.wav", "at": 2.2, "high_cut": 300, "low_cut": 900}])))], None, "")
+        .unwrap_err();
+    assert!(e.to_string().contains("low_cut"), "{e}");
+    assert_eq!(f.text(), text);
+}

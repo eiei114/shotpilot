@@ -1587,6 +1587,13 @@ impl Workspace {
     /// in their `sfx`, so nothing goes stale.
     pub fn edit_sound(&mut self, sfx: &[(String, Option<Value>)], audio: Option<&Map<String, Value>>, note: &str)
         -> Result<EditReport> {
+        self.edit_sound_full(sfx, &[], audio, note)
+    }
+
+    /// [`Self::edit_sound`], also replacing the `sfx` of script lines (line id -> a list,
+    /// or null for none): fine-tuning a card's hit is a sound edit like any other.
+    pub fn edit_sound_full(&mut self, sfx: &[(String, Option<Value>)], line_sfx: &[(String, Value)],
+                           audio: Option<&Map<String, Value>>, note: &str) -> Result<EditReport> {
         let mut edits = Vec::new();
         let mut changes = Map::new();
         for (id, list) in sfx {
@@ -1613,10 +1620,20 @@ impl Workspace {
                 changes.insert("audio".into(), json!(c));
             }
         }
-        if edits.is_empty() && !changes.contains_key("audio") {
+        let mut lines = Vec::new();
+        for (id, list) in line_sfx {
+            let Some(cur) = self.defn.script.iter().find(|l| l.id == *id) else { bail!("unknown script line '{id}'") };
+            let old = json!({"sfx": cur.sfx});
+            let new = json!({"sfx": if list.is_null() { json!([]) } else { list.clone() }});
+            if old != new {
+                changes.insert(id.clone(), json!(field_changes(&old, &new)));
+                lines.push((id.clone(), list.clone()));
+            }
+        }
+        if edits.is_empty() && lines.is_empty() && !changes.contains_key("audio") {
             return Ok(EditReport::default()); // nothing to write, nothing to log
         }
-        let rep = self.edit_definition_with(&edits, None, audio, "sound", note)?;
+        let rep = self.edit_definition_full(&edits, &lines, None, audio, "sound", note)?;
         let mut extra = Map::new();
         extra.insert("changes".into(), Value::Object(changes));
         self.state.annotate_last(extra);
