@@ -79,7 +79,8 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/cut.rs          take をショット順に連結してティザーにする（ミックスがあれば音を載せ、仕上げがあれば焼き込む）
   src/finish.rs       仕上げ: 帯・色調・台本のカードと重ね文字・タイトル・つなぎ（黒/白）を ffmpeg のフィルタにする
   src/fonts.rs        書体（D-52）。references/fonts/catalog.json の目録、Google Fonts からの取得とキャッシュ、書体が持つ字の判定
-  src/motion.rs       動き（D-53）。references/motion/profiles.json のジャンルごとの既定、finish.motion の解決、文字の入り・保ち・抜けとつなぎの式
+  src/motion.rs       動き（D-53）。references/motion/profiles.json のジャンルごとの既定、finish.motion の解決、文字の入り・保ち・抜けの式とつなぎの長さ
+  src/handover.rs     つなぎ（D-58）。references/motion/transitions.json のレシピ（open-design のつなぎの参照に倣う）を ffmpeg のフィルタにする。plan のつなぎを cut のほか 2 種に整える
   src/script.rs       台本（D-31）: ショットの間に入るカードと、ショットに重なる文字。Cut の並び（layout）を一か所で計算する
   src/sounddesign.rs  音の設計: Claude がライブラリから区間ごとの曲とカード・ショットの音を選び、取り込んで書き込む
   src/sound.rs        BGM と SE（`audio:` と各ショットの `sfx:`）の検証・配置・ミックス。cut/sound/ にキャッシュする
@@ -124,7 +125,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
-- 仕様は、ショットを書かせる全経路に同じものを届ける（D-48）。revise は `craft::edit_spec` を通し、画が変わりうる指示（自由な指示・カメラ・光）には plan と同じ部品（ブリーフ・方向・ルック・スキル・規則・基準値・文字の書き方・ステージ・距離表と、そのカットのロケハン写真）、文字の指示にはルックと基準値と文字の書き方、音の指示にはブリーフと方向を渡す。文字の書き方は `references/craft/TEASER-TYPE.md` の 10 節だけを `refs::type_text` で、動きの書き方は `references/motion/MOTION.md` の 6 節だけを `refs::motion_text` で渡し、書体・大きさ・動きの秒数はコードが決める（D-52、D-53）。どの経路に何が届くかは `every_path_that_writes_shots_gets_the_frozen_spec` が固定している。経路を足したら、この表にも足す。
+- 仕様は、ショットを書かせる全経路に同じものを届ける（D-48）。revise は `craft::edit_spec` を通し、画が変わりうる指示（自由な指示・カメラ・光）には plan と同じ部品（ブリーフ・方向・ルック・スキル・規則・基準値・文字の書き方・ステージ・距離表と、そのカットのロケハン写真）、文字の指示にはルックと基準値と文字の書き方、音の指示にはブリーフと方向を渡す。文字の書き方は `references/craft/TEASER-TYPE.md` の 10 節だけを `refs::type_text` で、動きの書き方は `references/motion/MOTION.md` の 6 節と、つなぎの書き方は `references/motion/TRANSITIONS.md` の 8 節だけを `refs::motion_text` で渡し、書体・大きさ・動きの秒数はコードが決める（D-52、D-53）。どの経路に何が届くかは `every_path_that_writes_shots_gets_the_frozen_spec` が固定している。経路を足したら、この表にも足す。
 - 文字の読み時間は `script::reading_secs` の1か所に置く（D-49）。plan と文字の修正で書く行はコードで読める長さに延ばし、人間が書いた行は書き換えずに `text.hold` で示す。
 - 撮影後の確認は、produce の初回のエンジンでの撮影の直後に1回だけ（D-50。D-22 の唯一の例外で、open-design の動画の例外に倣う）。聞くのは「被写体が写っているか、何が遮っているか」という事実だけで、点数や好みは聞かない。写っていないカットだけカメラを1回直して撮り直し、そのカットだけを見直す。2周目はしない。結果は state.json に見た take と一緒に残し、そのカットを撮り直すと消える。previz と普段の render では走らせない。
 - 企画（`ai::discover`、D-45）は open-design の OD Next の計画ターンを写す。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。
@@ -136,6 +137,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - 画面の文言は日本語で書き、英語は `web/i18n-en.json` の辞書で出す（D-51）。描画コードに英語の分岐を書かない。文言を足したり変えたりしたら `node tools/i18n_extract.js` で辞書に無いものを出し、英訳を足す（`{0}` などの穴は日本語と同じ組にする。`the_pages_switch_to_english_with_a_dictionary` が守る）。ユーザーや Claude が書いた文は訳さない（辞書に無い文はそのまま残り、穴に入る自由な文は `i18n-free.json` が示す）。DOM の文字を読んで処理を分けるコードを書かない（英語モードでは中身が変わる）。
 - **書体は目録（`references/fonts/catalog.json`）にあるものだけを取ってくる（D-52）。** どれも OFL（Kosugi と Kosugi Maru は Apache 2.0）で、`<config>/shotpilot/fonts`（`$SHOTPILOT_FONTS`）に置いて焼き込む。Windows などのシステム書体は読むだけで、写したり同梱したりしない。取得は CLI とアプリが `fonts::allow_fetch` で許したときだけで、ライブラリとテストはネットに出ない。書体に無い字を含む行は、その行だけシステム書体で描き、Cut の注記に出す。ルックの書体は目録のうち定番すぎるもの（`overused`）を使わず、カードと字幕の書体は漢字を持つものにする（`every_look_names_catalogue_faces_that_are_not_overused` が守る）。書体・タイトルの大きさ・ロゴ（`finish.fonts` / `title_size` / `logo`）は編集的で、撮り直しは起きない。
 - **動きは語彙から選ばせ、秒数はコードが決める（D-53）。** 文字の入り（`motion::ENTRANCES`）・保ち方・抜けとつなぎ（`finish::TRANSITIONS`）は閉じた語彙で、ルックの `motion`（`references/motion/profiles.json` のジャンルの既定と上書き）が `finish.motion` に入る。Claude が書けるのは、台本の行の `motion`（入り方だけ）と、plan と全体への指示での `energy`・`variant`・`avoid` だけ。どのつなぎもカットの尺を変えない（クロスフェードは入れない）。入りは行の表示時間の 35%、抜けは 25% までに収める。1 秒に 3 回を超えるフラッシュ（flash・whiteout のつなぎ、flicker の入り）はカット検査の P0（`flash.rate`、WCAG 2.3.1）。`finish.motion` が無いときは `base` で、動きを足す前と同じ式になる。どれも編集的で、撮り直しは起きない。
+- **つなぎはレシピから描き、入れ替えは覆った瞬間のカットの境目で行う（D-58）。** 描き方は `references/motion/transitions.json`（出ていくカットの終わりと入るカットの始めに分けた、覆いの色・長さ・緩急・露出）にだけ置き、`handover.rs` が ffmpeg のフィルタにする。`finish.rs` に描き方を直書きしない。2 つの画を重ねるつなぎ（クロスフェード、プッシュなど）は足さない。長さは `profiles.json` の `dip`・`flash`・`whiteout`・`glitch` と勢いで決まる。`base`（`plain: true`）は、レシピ以前と同じ `fade` の式で描く（`the_base_profile_draws_the_hand_overs_it_drew_before` が守る）。plan が書いたつなぎは、コードで `cut` のほか 2 種（`dip` とルックの差し色を先に）に整え、人間や修正で 3 種以上になったらカット検査の P2（`transition.mix`）で示す。つなぎの語を足すときは、`finish::TRANSITIONS` と `transitions.json` と `TRANSITIONS.md` を一緒に直す（`every_recipe_is_a_hand_over_with_known_parts` が守る）。どれも編集的で、撮り直しは起きない。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。
 - 座標系は UE 準拠（cm、Z が上、X が前、Y が右、左手系、回転は度）。`geometry.rs` は依存なしのまま保つ。
 
