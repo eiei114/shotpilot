@@ -569,10 +569,10 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .clip.slot::before { background: none; }
 .clip.slot .top { color: #9aa1a5; font-weight: 600; }
 .clip.slot .bot { white-space: normal; color: #e0dbcf; font-size: 10.5px; line-height: 1.3; overflow: hidden; }
-.tag { position: absolute; right: 6px; top: 22px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; }
-.tag.rendered { background: var(--accent); color: var(--accent-ink); }
-.tag.failed { background: var(--err); color: #fff; }
-.tag.stale { background: var(--stale); color: #241900; }
+.clip .tag { position: absolute; right: 6px; top: 22px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; }
+.clip .tag.rendered { background: var(--accent); color: var(--accent-ink); }
+.clip .tag.failed { background: var(--err); color: #fff; }
+.clip .tag.stale { background: var(--stale); color: #241900; }
 .clip.rendering::after { content: "rendering"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 700;
   font-size: 11px; letter-spacing: .08em; background: rgb(0 0 0 / .5); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { background: rgb(0 0 0 / .25); } }

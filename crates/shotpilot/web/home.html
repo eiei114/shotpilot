@@ -49,6 +49,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .rec { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; border: 0; background: none; width: 100%;
   color: var(--ink); text-align: left; font-size: 13.5px; }
 .rec:hover { background: color-mix(in srgb, var(--card) 45%, transparent); }
+.where { font-size: .82em; font-weight: 400; color: var(--muted); margin-left: 4px; }
 .rec .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec .live { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
 .rec.gone { color: var(--faint); }
@@ -405,6 +406,13 @@ function nameFromPrompt(text) {
 }
 // the project name is what the user typed when making it; the teaser title is shown under it
 const projName = (p) => p.name || p.title || p.folder || baseName(p.root);
+/** A project's folder, to tell apart projects that share a name (the parent folder when the folder is the name). */
+const projWhere = (p) => { const f = baseName(p.root); return f && f !== projName(p) ? f : baseName(String(p.root || "").replace(/[\\/][^\\/]+[\\/]?$/, "")); };
+/** The name, with the folder beside it when another project in the list has the same name. */
+const projLabel = (p, list) => {
+  const dup = list.filter((x) => projName(x) === projName(p)).length > 1;
+  return `${esc(projName(p))}${dup && projWhere(p) ? ` <small class="where">${esc(projWhere(p))}</small>` : ""}`;
+};
 const strip = (beats) => `<span class="strip">${(beats.length ? beats : ["hook", "establish", "escalate", "title"])
   .map((b) => `<i style="background:${BEAT[b] || "#555"}"></i>`).join("")}</span>`;
 
@@ -437,7 +445,7 @@ function drawRail() {
   $("recent-h").classList.toggle("closed", !ui.railOpen);
   $("recent").hidden = !ui.railOpen;
   $("recent").innerHTML = list.slice(0, 12).map((p) => `<button class="rec${p.missing || p.error ? " gone" : ""}" data-open="${esc(p.path)}" title="${esc(p.root)}">
-      ${ICON.folder}<span class="n">${esc(projName(p))}</span>${p.current ? '<span class="live" title="開いています"></span>' : ""}</button>`).join("")
+      ${ICON.folder}<span class="n">${projLabel(p, list)}</span>${p.current ? '<span class="live" title="開いています"></span>' : ""}</button>`).join("")
     || `<div class="rail-foot" style="padding:4px 12px">まだありません</div>`;
 }
 
@@ -530,7 +538,7 @@ function card(p) {
   return `<div class="card${gone ? " gone" : ""}" ${gone ? "" : `data-open="${esc(p.path)}"`} title="${esc(p.pitch || p.root)}">
     <div class="cover n${gone ? 1 : Math.max(1, covers.length)}">${cover}${flag}</div>
     <button class="more" data-act="menu" data-path="${esc(p.path)}" title="その他">${ICON.dots}</button>${menu}
-    <div class="name">${esc(projName(p))}</div>
+    <div class="name">${projLabel(p, ui.home?.projects || [])}</div>
     <div class="meta"><span class="m">${meta}</span>${badge}</div></div>`;
 }
 
