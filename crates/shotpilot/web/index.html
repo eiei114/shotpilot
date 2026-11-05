@@ -436,6 +436,69 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
   .tools { padding-left: 14px; }
 }
 
+/* ------------------------------------------------------------------ publish: the release plan as checklists (D-47) */
+.pub { max-width: 920px; display: grid; gap: 16px; }
+.pub-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.pub-head label, .pub-set label { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.pub input[type=text], .pub input[type=date], .pub input[type=number], .pub select { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px;
+  font: inherit; font-size: 12.5px; background: var(--card); color: var(--ink); }
+.pub input[type=number] { width: 64px; }
+.pub input:focus, .pub select:focus { outline: 0; border-color: var(--ink); }
+.pub-set { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.pill { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--soft); color: var(--muted); font-weight: 600; white-space: nowrap; }
+.pill.late { background: color-mix(in srgb, var(--err) 13%, var(--card)); color: var(--err); }
+.pill.soon { background: color-mix(in srgb, var(--stale) 24%, var(--card)); color: var(--ink); }
+.pill.ok { background: color-mix(in srgb, var(--accent) 28%, var(--card)); color: var(--ink); }
+.pill.here { background: var(--ink); color: var(--card); }
+.vlist { display: grid; gap: 8px; }
+.vcard { border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+.vcard[open] { box-shadow: var(--shadow); }
+.vcard > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 14px; }
+.vcard > summary::-webkit-details-marker { display: none; }
+.vcard > summary:hover { background: color-mix(in srgb, var(--ink) 2.5%, var(--card)); }
+.vdot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 12px; font-weight: 800; color: transparent; }
+.vdot.doing { border-color: var(--ink); background: conic-gradient(var(--ink) var(--p), transparent 0); }
+.vdot.done { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.vtitle { display: grid; gap: 3px; min-width: 0; }
+.vtitle b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtitle .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--muted); }
+.vprog { display: grid; justify-items: end; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.bar { width: 120px; height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.cl { margin: 0; padding: 2px 14px 8px; list-style: none; border-top: 1px solid var(--line); }
+.cl h5 { margin: 12px 0 2px; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
+.cl li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 7px 0; border-top: 1px solid var(--line); }
+.cl h5 + li { border-top: 0; }
+.cl label { display: contents; cursor: pointer; }
+.cl input[type=checkbox] { width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--accent); cursor: pointer; }
+.cl input[type=checkbox]:disabled { cursor: default; }
+.cl .t { font-size: 13px; }
+.cl li.done .t { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+.cl .h { display: block; font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+.cl .d { display: block; font-size: 11.5px; color: var(--err); margin-top: 1px; }
+.cl .tag { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.vfoot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--soft); font-size: 12px; }
+.vfoot .sp { flex: 1; }
+.vadd { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; font-size: 12.5px; }
+.callout { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; font-size: 12.5px; }
+.callout.warn { border-color: color-mix(in srgb, var(--stale) 55%, var(--line)); background: color-mix(in srgb, var(--stale) 9%, var(--card)); }
+.callout .rows { display: grid; gap: 4px; }
+.callout .rows div { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.callout .acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.cand { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: grid; background: var(--card); }
+.cand .img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--stage); }
+.cand .bd { padding: 7px 9px; display: grid; gap: 5px; font-size: 12px; }
+.cand .bd .row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.posts { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.posts li { display: grid; grid-template-columns: 20px 92px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12.5px; }
+.posts li:first-child { border-top: 0; }
+.posts li.done .what > span { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+.posts input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+.posts .what { display: grid; gap: 4px; min-width: 0; }
+.posts .what input { width: 100%; }
+.upcoming { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
 /* ------------------------------------------------------------------ stage */
 #stage { position: relative; background: var(--stage); min-height: 0; display: grid; grid-template-rows: 1fr auto; }
 #view { position: relative; min-height: 0; overflow: hidden; display: grid; place-items: center; }
@@ -676,6 +739,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <button class="stage-btn" data-stage="framing" title="安いプレビューで構図を決めて承認する"><span class="no">3</span><span class="lb">構図</span><span class="sub" id="sg-framing"></span></button>
         <button class="stage-btn" data-stage="capture" title="承認したカットを本番品質で撮る"><span class="no">4</span><span class="lb">撮影</span><span class="sub" id="sg-capture"></span></button>
         <button class="stage-btn" data-stage="finish" title="つなぐ・音・書き出し"><span class="no">5</span><span class="lb">仕上げ</span><span class="sub" id="sg-finish"></span></button>
+        <button class="stage-btn" data-stage="publish" title="公開後の動画と定期発信のチェックシート"><span class="no">6</span><span class="lb">公開</span><span class="sub" id="sg-publish"></span></button>
       </div>
       <div class="right">
         <span id="summary"></span>
@@ -711,6 +775,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div id="designpanel" class="panel main" hidden></div>
     <div id="structpanel" class="panel main" hidden></div>
     <div id="capturepanel" class="panel main" hidden></div>
+    <div id="publishpanel" class="panel main" hidden></div>
     <div id="stage" class="main">
       <div id="view"></div>
       <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
@@ -750,7 +815,7 @@ const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 // The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
-const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish" };
+const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish", publish: "publish" };
 const BEAT_JA = {
   hook: "最初の 2〜5 秒。スクロールを止める1枚か、問い",
   establish: "どこで、どんなゲームかを見せる",
@@ -928,11 +993,11 @@ function draw() {
   for (const b of document.querySelectorAll("#finish-seg button")) b.classList.toggle("on", b.dataset.fin === ui.tab);
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
   const snd = ui.tab === "sound";
-  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel" }[ui.tab];
+  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel", publish: "publishpanel" }[ui.tab];
   $("scoutpanel").hidden = ui.tab !== "scout";
   $("designpanel").hidden = ui.tab !== "design";
   const finishing = ui.tab === "teaser" || snd || ui.tab === "design";
-  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture";
+  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture"; $("publishpanel").hidden = ui.tab !== "publish";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
   $("toolbar").hidden = !!panel && ui.tab !== "design";
   for (const el of [$("quality"), $("mark"), $("mode-seg")]) el.hidden = finishing;
@@ -959,7 +1024,7 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""} · ${st.ai?.effort || ""}`;
-  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture();
+  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture(); else if (ui.tab === "publish") drawPublish();
   else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
@@ -1091,6 +1156,7 @@ function stageState() {
     framing: f.some((x) => x.severity === "P0" && x.shot) ? ["bad", `承認 ${approved}/${n}`] : n && approved === n ? ["ok", `承認 ${n}/${n}`] : ["", `承認 ${approved}/${n}`],
     capture: n && finalFresh === n ? ["ok", `final ${n}/${n}`] : ["", bestQ ? `${bestQ} まで済` : `final ${finalFresh}/${n}`],
     finish: st.cut ? ["ok", `cut · ${st.cut.quality}`] : ["", "未"],
+    publish: publishState(st.promo),
   };
 }
 
@@ -2105,6 +2171,180 @@ function drawCapture() {
     </div>
     <table class="cap"><thead><tr><th>#</th><th>カット</th><th>ビート</th><th>構図</th>${qh}</tr></thead><tbody>${rows}</tbody></table>`;
 }
+
+// ------------------------------------------------------------------ publish: the release plan as checklists (D-47)
+
+const shortDay = (d) => { const [, m, dd] = String(d).split("-").map(Number); return `${m}/${dd}`; };
+
+function dueHtml(days, date, finished) {
+  if (days == null) return "";
+  if (finished) return `<span class="pill">${esc(shortDay(date))}</span>`;
+  if (days < 0) return `<span class="pill late">${esc(shortDay(date))} · ${-days} 日遅れ</span>`;
+  if (days === 0) return `<span class="pill soon">${esc(shortDay(date))} · 今日</span>`;
+  return `<span class="pill${days <= 7 ? " soon" : ""}">${esc(shortDay(date))} · あと ${days} 日</span>`;
+}
+
+/** The stage bar's badge from the status (promo::summary). */
+function publishState(p) {
+  if (!p) return ["", "未"];
+  if (p.post_days != null && p.post_days < 0) return ["warn", `投稿 ${-p.post_days} 日遅れ`];
+  if (!p.saved) return ["", "未"];
+  return [p.videos && p.published === p.videos ? "ok" : "", `公開 ${p.published}/${p.videos}`];
+}
+
+async function loadPromo() {
+  try { ui.promo = await api("GET", "/api/promo"); }
+  catch (e) { toast(e.message, true); }
+  drawPublish.key = "";
+  if (ui.tab === "publish") drawPublish();
+}
+
+async function promoOp(body, done) {
+  if (ui.busy) return;
+  ui.busy = "promo";
+  let result = null;
+  try {
+    ui.promo = await api("POST", "/api/promo", body);
+    result = ui.promo.result || {};
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; drawPublish.key = ""; await refresh(); }
+  if (result && done) done(result);
+}
+
+async function openProject(path) {
+  try { await api("POST", "/api/projects/open", { path }); location.href = "/"; }
+  catch (e) { toast(e.message, true); }
+}
+
+function videoCard(v) {
+  const open = ui.pubOpen[v.id] ?? v.here;
+  const pct = Math.round((100 * v.done) / Math.max(1, v.total));
+  const dot = v.state === "done" ? `<span class="vdot done">✓</span>` : `<span class="vdot${v.done ? " doing" : ""}" style="--p:${pct}%"></span>`;
+  const where = v.here ? `<span class="pill here">このプロジェクト</span>`
+    : v.missing ? `<span class="pill late">プロジェクトが見つかりません</span>`
+    : !v.project ? `<span class="pill">未着手</span>` : "";
+  const meta = [`<span>${esc(v.kind_ja)}</span>`, v.update ? `<span class="pill">${esc(v.update)}</span>` : "", where,
+    v.changed ? `<span class="pill soon" title="ゲームの中身が変わって古くなったカット">ゲーム変更 ${v.changed}</span>` : "",
+    dueHtml(v.days, v.due, v.state === "done")].join("");
+  let sec = "", items = "";
+  for (const c of v.checks) {
+    if (c.section !== sec) { sec = c.section; items += `<h5>${esc(sec)}</h5>`; }
+    const detail = !c.detail ? "" : `<span class="${!c.done && v.exists ? "d" : "h"}">${esc(c.detail)}</span>`;
+    items += `<li class="${c.done ? "done" : ""}"><label><input type="checkbox" data-check="${esc(c.id)}" data-video="${esc(v.id)}"${c.done ? " checked" : ""}${c.auto ? " disabled" : ""}>
+      <span><span class="t">${esc(c.text)}</span><span class="h">${esc(c.hint)}</span>${detail}</span></label>
+      ${c.auto ? `<span class="tag" title="プロジェクトの状態から自動で判定します">自動</span>` : "<span></span>"}</li>`;
+  }
+  const update = v.kind === "update";
+  const make = v.project && !v.missing
+    ? (v.here ? "" : `<button class="btn dark" data-pub-open="${esc(v.id)}">このプロジェクトを開く</button>`)
+    : `<button class="btn dark" data-derive="${esc(v.id)}" data-carry="${update ? "shots" : "groundwork"}"
+         title="${update ? "カットと take も引き継ぎます。ゲームが変わったカットだけが撮り直しになります" : "ブリーフ・props・アンカー・ロケハン写真・ムードボードを引き継ぎます（カットは空）"}">プロジェクトを作る</button>
+       <button class="mini" data-derive="${esc(v.id)}" data-carry="${update ? "groundwork" : "shots"}"
+         title="${update ? "カットは空で、下ごしらえだけを引き継ぎます" : "このプロジェクトのカットと take も引き継ぎます"}">${update ? "下ごしらえだけで作る" : "カットも引き継いで作る"}</button>`;
+  return `<details class="vcard" data-vid="${esc(v.id)}"${open ? " open" : ""}>
+    <summary>${dot}<span class="vtitle"><b>${esc(v.title)}</b><span class="meta">${meta}</span></span>
+      <span class="vprog"><span>${v.done} / ${v.total}</span><span class="bar"><i style="width:${pct}%"></i></span></span></summary>
+    <ul class="cl">${items}</ul>
+    <div class="vfoot">${make}<span class="sp"></span>
+      <label>名前 <input type="text" data-vf="title" data-video="${esc(v.id)}" value="${esc(v.title)}" size="16"></label>
+      <label>公開日 <input type="date" data-vf="due" data-video="${esc(v.id)}" value="${esc(v.due)}"></label>
+      ${update ? `<label>版 <input type="text" data-vf="update" data-video="${esc(v.id)}" value="${esc(v.update)}" size="6" placeholder="v1.1"></label>` : ""}
+      <button class="mini" data-vrm="${esc(v.id)}" title="発信計画から外します（作ったプロジェクトは消えません）">行を消す</button></div>
+  </details>`;
+}
+
+function drawPublish() {
+  const st = ui.status, el = $("publishpanel");
+  ui.pubOpen = ui.pubOpen || {};
+  // the checklist reads the project's state: fetch the plan again when the cuts or the cut changed
+  const src = JSON.stringify([st.project, st.shots.map((s) => [s.id, s.qualities, s.approval, s.changed]), st.cut?.stamp, st.promo]);
+  if (ui.promoFor !== src) { ui.promoFor = src; loadPromo(); }
+  const p = ui.promo;
+  if (!p) { if (!el.childElementCount) el.innerHTML = `<h3>公開と発信</h3><div class="lead">読み込み中…</div>`; return; }
+  const key = JSON.stringify([p, ui.pubOpen, ui.busy]);
+  if (drawPublish.key === key && el.childElementCount) return;
+  // a poll must not wipe what is being typed
+  const typing = el.contains(document.activeElement) && document.activeElement.matches("input[type=text], input[type=number]");
+  if (typing && drawPublish.key) return;
+  drawPublish.key = key;
+
+  const nDone = p.videos.filter((v) => v.state === "done").length;
+  const rd = p.release_days;
+  const rel = !p.release ? "" : `<span class="pill${rd >= 0 && rd <= 14 ? " soon" : ""}">${rd < 0 ? "発売済み" : rd === 0 ? "今日が発売日" : `発売まで ${rd} 日`}</span>`;
+  const head = `<h3>公開と発信</h3>
+    <div class="lead">ティザーのあとに出す動画と、定期的な投稿のチェックシートです。動画はそれぞれ、このプロジェクトの隣に別のプロジェクトとして作ります。アップデートトレーラーはカットごと引き継ぐので、撮り直しになるのはゲームが変わったカットだけです。ここに書いたことは promo.json に残り、撮り直しは起きません。</div>
+    <div class="pub-head"><label>発売日 <input type="date" data-sched="release" value="${esc(p.release)}"></label>${rel}
+      <span class="pill${nDone && nDone === p.videos.length ? " ok" : ""}">公開済み ${nDone} / ${p.videos.length}</span>
+      ${p.linked ? `<span class="pill" title="${esc(p.plan)}">発信計画は元のプロジェクトと共有</span>` : ""}</div>`;
+
+  const add = `<div class="vadd"><b>動画を足す</b>
+    <select id="pub-kind">${p.kinds.map((k) => `<option value="${esc(k.id)}">${esc(k.ja)}</option>`).join("")}</select>
+    <input type="text" id="pub-title" placeholder="名前（空なら種類の名前）" size="18"><input type="date" id="pub-due" title="公開日">
+    <button class="btn" id="pub-add">追加</button><span class="sp-hint" id="pub-when">${esc(p.kinds[0]?.when || "")}</span></div>`;
+
+  const ch = p.changed;
+  const qs = [...new Set(ch.flatMap((c) => c.qualities))];
+  const q = ["final", "preview", "still"].find((x) => qs.includes(x)) || qs[0];
+  const updForm = `<input type="text" id="pub-upd" placeholder="版（例: v1.1）" size="10"><input type="date" id="pub-upd-due" title="公開日">
+    <button class="btn" id="pub-update" title="カットと take を引き継いだアップデートトレーラーのプロジェクトを、隣に作ります">アップデートトレーラーを作る</button>`;
+  const upd = ch.length
+    ? `<div class="callout warn"><b>前に撮ったときから、ゲームの中身が変わったカットが ${ch.length} 本あります</b>
+        <div class="rows">${ch.map((c) => `<div><span class="mono">${c.index + 1}. ${esc(c.id)}</span><span>${esc(c.purpose || "")}</span><span class="sp-hint">変わったもの: ${esc(c.packages.join(", "))}</span></div>`).join("")}</div>
+        <div class="acts"><button class="btn dark" id="pub-retake" data-q="${esc(q)}"${ui.busy ? " disabled" : ""}>変わったカットだけ ${esc(q)} で撮り直す</button><span class="sp-hint">または</span>${updForm}</div></div>`
+    : `<div class="callout"><span>前に撮ったときから、ゲームの中身が変わったカットはありません。ゲームを更新すると、変化が写っているカットだけがここに出ます。</span><div class="acts">${updForm}</div></div>`;
+
+  const ps = p.posting;
+  const next = ps.days < 0 ? `<span class="pill late">次の投稿 ${esc(shortDay(ps.next))} · ${-ps.days} 日遅れ</span>`
+    : ps.days === 0 ? `<span class="pill soon">次の投稿は今日</span>` : `<span class="pill">次の投稿 ${esc(shortDay(ps.next))} · あと ${ps.days} 日</span>`;
+  const set = `<div class="pub-set"><label><input type="number" min="1" max="90" data-sched="every_days" value="${ps.every_days}"> 日ごとに</label>
+    <label><input type="text" data-sched="channel" value="${esc(ps.channel)}" placeholder="X、Bluesky など" size="14"> に投稿する</label>${next}</div>
+    <div class="upcoming">この先の予定 ${ps.upcoming.map((u) => `<span class="pill">${esc(shortDay(u.date))}</span>`).join("")}</div>`;
+  const cands = ps.candidates.length
+    ? `<div class="cands">${ps.candidates.slice(0, 8).map((c) => `<div class="cand">${c.thumb ? `<img class="img" src="${esc(c.thumb)}" alt="" loading="lazy">` : `<div class="img"></div>`}<div class="bd">
+        <div class="row"><b class="mono">${c.index + 1}. ${esc(c.shot)}</b>${c.retake ? `<span class="pill soon" title="ゲームの変化で撮り直したカット">撮り直し</span>` : c.new ? `<span class="pill ok" title="前の投稿のあとに撮ったカット">新しい</span>` : ""}${c.posted ? `<span class="pill">投稿済み</span>` : ""}</div>
+        <span class="sp-hint">${esc(c.purpose || "")} · ${esc(c.quality)}</span>
+        <div class="row"><button class="mini" data-export="${esc(c.shot)}">静止画で書き出す</button><button class="mini" data-export="${esc(c.shot)}" data-clip="1"${ps.ffmpeg ? "" : ` disabled title="ffmpeg が見つかりません"`}>動画で書き出す</button></div></div></div>`).join("")}</div>`
+    : `<div class="sp-hint">撮った take がまだありません。構図か撮影の段で撮ると、ここに投稿の候補が出ます。</div>`;
+  const posts = !ps.posts.length ? "" : `<h4 class="sec">書き出した投稿</h4><ul class="posts">${ps.posts.map((x) => `<li class="${x.done ? "done" : ""}">
+      <input type="checkbox" data-post-done="${esc(x.id)}"${x.done ? " checked" : ""} title="投稿した">
+      <span class="sp-hint">${esc(x.date)}</span>
+      <span class="what"><span>${x.kind === "clip" ? "動画" : "静止画"} · <span class="mono">${esc(x.shot)}</span>${x.channel ? ` · ${esc(x.channel)}` : ""}</span>
+        <input type="text" data-post-text="${esc(x.id)}" value="${esc(x.text || "")}" placeholder="投稿文"></span>
+      <span>${x.url && x.exists ? `<button class="mini" data-pub-file="${esc(x.url)}">開く</button> ` : ""}<button class="mini" data-post-rm="${esc(x.id)}" title="一覧から外します（書き出したファイルは残ります）">✕</button></span></li>`).join("")}</ul>`;
+
+  el.innerHTML = `<div class="pub">${head}
+    <h4 class="sec">動画の予定</h4><div class="vlist">${p.videos.map(videoCard).join("")}</div>${add}
+    <h4 class="sec">アップデート連動</h4>${upd}
+    <h4 class="sec">定期発信</h4>
+    <div class="lead">決まった間隔で、撮った take をそのまま1枚（静止画）か1カット（動画）にして投稿します。ゲームの変化で撮り直したカットと、前の投稿のあとに撮ったカットが先に並びます。書き出したものは promo/posts/ に入ります（横長のまま。縦型の短尺はまだ作りません）。</div>
+    ${set}${cands}${posts}</div>`;
+}
+
+$("publishpanel").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t || t.disabled) return;
+  const d = t.dataset;
+  if (d.derive) promoOp({ op: "derive", video: d.derive, carry: d.carry }, () => toast("プロジェクトを作りました。「このプロジェクトを開く」で移れます"));
+  else if (d.pubOpen) { const v = ui.promo.videos.find((x) => x.id === d.pubOpen); if (v?.project) openProject(v.project); }
+  else if (d.vrm) { if (confirm("この行を発信計画から外しますか？（作ったプロジェクトは消えません）")) promoOp({ op: "remove", id: d.vrm }); }
+  else if (t.id === "pub-add") promoOp({ op: "add", kind: $("pub-kind").value, title: $("pub-title").value, due: $("pub-due").value }, (r) => { ui.pubOpen[r.id] = true; drawPublish.key = ""; drawPublish(); toast("動画を足しました"); });
+  else if (t.id === "pub-update") promoOp({ op: "update", update: $("pub-upd").value, due: $("pub-upd-due").value }, (r) => { ui.pubOpen[r.id] = true; drawPublish.key = ""; drawPublish(); toast("アップデートトレーラーのプロジェクトを作りました。カードの「このプロジェクトを開く」で移れます"); });
+  else if (t.id === "pub-retake") render(d.q, ui.promo.changed.map((c) => c.id), { keep: true });
+  else if (d.export) promoOp({ op: "export", shot: d.export, clip: !!d.clip }, () => toast("promo/posts/ に書き出しました"));
+  else if (d.pubFile) api("POST", "/api/open", { url: d.pubFile }).catch((err) => toast(err.message, true));
+  else if (d.postRm) promoOp({ op: "post.remove", id: d.postRm });
+});
+$("publishpanel").addEventListener("change", (e) => {
+  const t = e.target, d = t.dataset;
+  if (d.check) promoOp({ op: "check", video: d.video, check: d.check, done: t.checked });
+  else if (d.vf) promoOp({ op: "video", id: d.video, set: { [d.vf]: t.value } });
+  else if (d.sched) promoOp({ op: "schedule", set: { [d.sched]: t.type === "number" ? Number(t.value) : t.value } });
+  else if (d.postDone) promoOp({ op: "post", id: d.postDone, set: { done: t.checked } });
+  else if (d.postText) promoOp({ op: "post", id: d.postText, set: { text: t.value } });
+  else if (t.id === "pub-kind") { const k = ui.promo.kinds.find((x) => x.id === t.value); $("pub-when").textContent = k ? k.when : ""; }
+});
+// <details> toggles do not bubble: remember which cards are open across redraws
+$("publishpanel").addEventListener("toggle", (e) => { const v = e.target.dataset?.vid; if (v) ui.pubOpen[v] = e.target.open; }, true);
 
 async function approve(id, on) {
   if (ui.busy) return;

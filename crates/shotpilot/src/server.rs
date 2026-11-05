@@ -47,7 +47,7 @@ pub fn i18n_js() -> String {
     format!("const SP_EN = {};\nconst SP_FREE = {};\n{I18N_JS}", I18N_EN.trim(), I18N_FREE.trim())
 }
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard", "concept"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard", "concept", "promo"];
 /// Loopback only; large enough for a mood-board image sent as base64.
 const MAX_BODY: usize = 20 << 20;
 
@@ -593,6 +593,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "shots": shots,
         "audio": ws.defn.audio,
         "cut": latest_cut(&ws.root),
+        "promo": crate::promo::summary(ws, crate::promo::today()),
     }))
 }
 
@@ -747,7 +748,9 @@ fn etag(app: &App) -> String {
         }
         crate::content::stamp_files(&w.1)
     };
-    format!("\"{which}.{}.{state}.{content}.{settings}\"", stamp(shots))
+    // the release plan behind the stage badge (this project's promo.json, D-47)
+    let promo = stamp(root.join(crate::promo::FILE));
+    format!("\"{which}.{}.{state}.{content}.{settings}.{promo}\"", stamp(shots))
 }
 
 // --------------------------------------------------------------------------- routes
@@ -942,7 +945,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let body = req.json()?;
             let url = body.get("url").and_then(Value::as_str).unwrap_or("");
             let Some(file) = url.strip_prefix("/files/").and_then(|r| app.served_file(r)) else {
-                bail!("can only open files under render/, cut/ or audio/");
+                bail!("can only open files the app serves (render/, cut/, audio/, promo/ ...)");
             };
             open_with_os(&file)?;
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
@@ -979,6 +982,8 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             out["sound"] = sound_payload(&ws)?;
             send_json(stream, false, 200, &out).map_err(io)
         }
+        ("GET" | "HEAD", "/api/promo") => send_json(stream, head, 200, &crate::promo::view(&app.ws()?, crate::promo::today())?).map_err(io),
+        ("POST", "/api/promo") => promo_route(stream, app, req),
         ("GET" | "HEAD", "/api/genres") => send_json(stream, head, 200, &crate::refs::catalogue()).map_err(io),
         ("GET" | "HEAD", "/api/library") => {
             let lib = app.library()?;
@@ -1606,6 +1611,68 @@ fn home_payload(app: &App) -> Value {
 }
 
 /// `POST /api/projects/<action>`: open, create, forget, reveal, pick, maps.
+/// The release plan (D-47): one POST with an `op`, answered with the whole view again.
+fn promo_route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
+    use crate::promo::{self, Carry, Plan};
+    let io = |e: std::io::Error| Error::user(format!("io: {e}"));
+    let body = req.json()?;
+    let text = |k: &str| body.get(k).and_then(Value::as_str).map(str::trim).unwrap_or("").to_string();
+    let set = || match body.get("set") {
+        Some(Value::Object(m)) => Ok(m.clone()),
+        _ => Err(Error::user("expected {\"set\": {...}}")),
+    };
+    let today = promo::today();
+    let mut extra = Map::new();
+    {
+        let _guard = app.mutate()?;
+        let ws = app.ws()?;
+        match text("op").as_str() {
+            "derive" | "update" | "export" => {}
+            _ => {
+                let mut plan = Plan::open(&ws)?;
+                match text("op").as_str() {
+                    "add" => {
+                        let id = plan.add_video(&text("kind"), &text("title"), &text("due"), &text("update"))?;
+                        extra.insert("id".into(), json!(id));
+                    }
+                    "video" => plan.set_video(&text("id"), &set()?)?,
+                    "remove" => plan.remove_video(&text("id"))?,
+                    "check" => plan.set_check(&text("video"), &text("check"), body.get("done").and_then(Value::as_bool).unwrap_or(false))?,
+                    "schedule" => plan.set_schedule(&set()?)?,
+                    "post" => plan.set_post(&text("id"), &set()?)?,
+                    "post.remove" => plan.remove_post(&text("id"))?,
+                    other => bail!("unknown op '{other}' (add / video / remove / check / schedule / post / post.remove / export / derive / update)"),
+                }
+                plan.save()?;
+            }
+        }
+        match text("op").as_str() {
+            "derive" => {
+                let carry = if text("carry") == "shots" { Carry::Shots } else { Carry::Groundwork };
+                let p = promo::derive(&ws, &text("video"), carry)?;
+                extra.insert("path".into(), json!(p.display().to_string()));
+            }
+            "update" => {
+                let (id, p) = promo::start_update(&ws, &text("update"), &text("due"))?;
+                extra.insert("id".into(), json!(id));
+                extra.insert("path".into(), json!(p.display().to_string()));
+            }
+            "export" => {
+                let clip = body.get("clip").and_then(Value::as_bool).unwrap_or(false);
+                extra.insert("id".into(), json!(promo::export_post(&ws, &text("shot"), clip, today)?));
+            }
+            _ => {}
+        }
+    }
+    // a derived project goes on the home's recent list (it is opened from there or from the plan)
+    if let Some(p) = extra.get("path").and_then(Value::as_str) {
+        let _ = app.recents.touch(Path::new(p));
+    }
+    let mut out = promo::view(&app.ws()?, today)?;
+    out["result"] = Value::Object(extra);
+    send_json(stream, false, 200, &out).map_err(io)
+}
+
 fn projects_route(stream: &mut TcpStream, app: &App, action: &str, req: &Request) -> Result<()> {
     let io = |e: std::io::Error| Error::user(format!("io: {e}"));
     let body = req.json()?;
