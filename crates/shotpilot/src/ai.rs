@@ -835,7 +835,7 @@ pub fn aspect_fields(aspect: &str) -> Option<Vec<String>> {
 }
 
 /// The stage as the location scout read it (empty when it has not been read).
-fn stage_section(defn: &Definition) -> String {
+pub(crate) fn stage_section(defn: &Definition) -> String {
     if defn.stage.is_empty() {
         return String::new();
     }
@@ -949,6 +949,23 @@ fn audio_files<'a>(audio: &'a Map<String, Value>, sfx_lists: impl Iterator<Item 
     files.filter_map(|it| it.get("file")).filter_map(Value::as_str).map(|f| f.replace('\\', "/")).collect()
 }
 
+/// What a note can change (D-48): the sound alone, text and finishing alone, or the picture
+/// (the camera or the light, or a free note on shots, which may move a camera).
+pub fn edit_reach(scope: Option<&[String]>, pointer: &Pointer) -> craft::Reach {
+    if pointer.sound || pointer.line.is_some() {
+        return craft::Reach::Sound;
+    }
+    let picture = match &pointer.fields {
+        Some(f) => f.iter().any(|k| k == "camera" || k == "environment"),
+        None => scope.map_or(true, |s| !s.is_empty()),
+    };
+    if picture {
+        craft::Reach::Picture
+    } else {
+        craft::Reach::Text
+    }
+}
+
 /// Nothing is written here; the caller applies the revision through the workspace.
 pub fn revise(defn: &Definition, instruction: &str, scope: Option<&[String]>, claude: &dyn Claude) -> Result<Revision> {
     revise_at(defn, instruction, scope, &Pointer::default(), claude)
@@ -1043,7 +1060,7 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          A shot may carry on-screen text burned in at the cut: `caption` {{text, at, duration}} (short, one line), \
          and `transition` into the next shot: cut, dip (through black) or flash (through white). They never re-render.
 
-         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
+         When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Photos labelled \"Location scout\" show the          anchors as they really look in the level: place cameras where they show open space and a clear view.          Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );
@@ -1120,14 +1137,12 @@ Library sounds you may also use: write `file: lib:<id>` and it is copied into th
         ));
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
-    // a note on the cameras gets what the planner places cameras with: the stage and the framing table
-    let camera_help = if pointer.fields.as_ref().is_some_and(|f| f.iter().any(|k| k == "camera")) {
-        format!("{}\n## Framing\n{}\n\n", stage_section(defn), craft::framing_table(defn))
-    } else {
-        String::new()
-    };
+    // every edit is made against the spec the cut was planned from (D-48); how much of it
+    // depends on what the note can change
+    let reach = edit_reach(scope, pointer);
+    let spec = craft::edit_spec(defn, reach);
     let user = format!(
-        "{camera_help}Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}{texts_now}{finish_now}\n\nCurrent audio:\n{audio_now}\n\n\
+        "{spec}\nAnchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}{texts_now}{finish_now}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
          Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
@@ -1139,6 +1154,24 @@ Where the director is pointing: {c}")).unwrap_or_default();
     let mut content = Vec::new();
     if let Some((media_type, bytes)) = &pointer.image {
         content.push(json!({"type": "image", "source": {"type": "base64", "media_type": media_type, "data": base64(bytes)}}));
+    }
+    // the places the shots in question are filmed at, as the scout photographed them
+    if reach == craft::Reach::Picture {
+        let shots: Vec<&Value> = match scope {
+            Some(s) => defn.shots.iter().filter(|v| s.contains(&model::str_of(&v["id"]))).collect(),
+            None => defn.shots.iter().collect(),
+        };
+        let mut names: Vec<String> = Vec::new();
+        for v in shots {
+            for key in ["anchor", "look_at"] {
+                if let Some(n) = v["camera"][key].as_str().filter(|n| defn.anchor(n).is_some()) {
+                    if !names.iter().any(|x| x == n) {
+                        names.push(n.to_string());
+                    }
+                }
+            }
+        }
+        content.extend(crate::scout::planner_blocks_for(defn, &names, 6));
     }
     content.push(json!({"type": "text", "text": format!("{user}{context}")}));
     let out = ask_json(claude, &system, Value::Array(content), revise_schema())?;

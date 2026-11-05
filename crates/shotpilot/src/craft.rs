@@ -208,6 +208,42 @@ pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     )
 }
 
+/// What a note can change, which decides how much of the frozen spec an edit gets (D-48).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reach {
+    /// The picture may change (the camera, the light, or a free note on a shot or the teaser).
+    Picture,
+    /// Only text, hand-overs and the finish burned in at the cut.
+    Text,
+    /// Only the sound.
+    Sound,
+}
+
+/// The spec an edit is made against: the same pieces the planner wrote the cut from, so a
+/// revised shot keeps the brief, the direction, the look and the craft (open-design's frozen
+/// Design Spec, shared by every path that writes the artifact).
+pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
+    let b = &defn.brief;
+    let mut out = format!(
+        "## The teaser's spec\nThe cut was written from this; keep every edit inside it.\n\n## Brief\n{}\n{}",
+        brief_text(b),
+        plan_text(b)
+    );
+    if reach == Reach::Sound {
+        return out;
+    }
+    if reach == Reach::Picture {
+        out.push_str(&format!("\n## Craft rules\n{}\n", rules_text()));
+    }
+    out.push_str(&crate::designsys::planner_text(defn));
+    out.push_str(&crate::skills::planner_text(b));
+    if reach == Reach::Picture {
+        out.push_str(&crate::ai::stage_section(defn));
+        out.push_str(&format!("\n## Framing\n{}\n", framing_table(defn)));
+    }
+    out
+}
+
 /// The planning turn's plan (D-45): production follows it; the latest direction wins.
 fn plan_text(b: &BriefCfg) -> String {
     if b.plan.trim().is_empty() && b.direction.trim().is_empty() {

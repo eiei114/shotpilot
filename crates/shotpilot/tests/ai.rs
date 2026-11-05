@@ -137,6 +137,75 @@ fn prompts_never_ask_claude_to_inspect_its_own_output() {
     assert!(shotpilot::craft::self_review_words(&plan_user).is_empty(), "{:?}", shotpilot::craft::self_review_words(&plan_user));
 }
 
+/// Everything a request says: the system prompt and every text block of the user turn.
+fn request_text(req: &Value) -> String {
+    let user = match &req["messages"][0]["content"] {
+        Value::String(s) => s.clone(),
+        Value::Array(blocks) => blocks.iter().filter_map(|b| b["text"].as_str()).collect::<Vec<_>>().join("\n"),
+        _ => String::new(),
+    };
+    format!("{}\n{user}", req["system"].as_str().unwrap_or(""))
+}
+
+#[test]
+fn every_path_that_writes_shots_gets_the_frozen_spec() {
+    // D-48: open-design hands the same frozen spec to every path that writes the artifact.
+    // Each path that asks Claude for shots, and which parts of the spec it carries.
+    let mut f = ws();
+    f.ws.set_brief(&[
+        ("genre".into(), json!("一人称ホラー")),
+        ("design".into(), json!("quiet-dread")),
+        ("skills".into(), json!(["count-run"])),
+        ("direction".into(), json!("記録映像のふりをする。")),
+    ])
+    .unwrap();
+    let defn = &f.ws.defn;
+    let empty = || FakeClaude::new(json!({"summary": "x", "edits": [], "order": [], "audio": ""}));
+    let one = ids(&["s03_window"]);
+    let all = defn.shot_ids();
+    let fields = |a: &str| ai::Pointer { fields: ai::aspect_fields(a), ..Default::default() };
+    let plan = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
+    ai::plan(defn, None, None, None, None, &plan).unwrap();
+    let mut paths: Vec<(&str, String)> = vec![("plan", request_text(&plan.calls.borrow()[0]))];
+    let cases: Vec<(&str, Option<&[String]>, ai::Pointer)> = vec![
+        ("revise: the whole teaser", None, ai::Pointer::default()),
+        ("revise: one shot", Some(&one), ai::Pointer::default()),
+        ("revise: its camera", Some(&one), fields("camera")),
+        ("revise: its light", Some(&one), fields("light")),
+        ("revise: every camera", Some(&all), fields("camera")),
+        ("revise: its finishing", Some(&one), fields("finish")),
+        ("revise: the sound", Some(&one), ai::Pointer { sound: true, ..Default::default() }),
+    ];
+    for (name, scope, pointer) in cases {
+        let c = empty();
+        ai::revise_at(defn, "もっと怖く", scope, &pointer, &c).unwrap();
+        paths.push((name, request_text(&c.calls.borrow()[0])));
+    }
+    let blocks = [
+        ("brief", "Genre: 一人称ホラー"),
+        ("direction", "Direction: 記録映像のふりをする。"),
+        ("look", "## Active design system"),
+        ("skill", "## Active skill — count-run"),
+        ("craft rules", "## Craft rules"),
+        ("framing", "## Framing"),
+    ];
+    // which blocks each path must carry: picture notes get all of it, text notes the look,
+    // sound notes the brief and the direction only
+    let want = |name: &str| -> &[&str] {
+        match name {
+            "revise: its finishing" => &["brief", "direction", "look", "skill"],
+            "revise: the sound" => &["brief", "direction"],
+            _ => &["brief", "direction", "look", "skill", "craft rules", "framing"],
+        }
+    };
+    for (name, text) in &paths {
+        for (block, marker) in blocks {
+            assert_eq!(text.contains(marker), want(name).contains(&block), "{name}: {block}");
+        }
+        assert!(shotpilot::craft::self_review_words(text).is_empty(), "{name}: {:?}", shotpilot::craft::self_review_words(text));
+    }
+}
+
 #[test]
 fn code_puts_beats_in_order_and_fits_the_runtime() {
     let f = ws(); // target 30s

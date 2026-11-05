@@ -154,11 +154,21 @@ pub fn save_index(root: &Path, idx: &Value) -> crate::Result<()> {
 /// The scout photos the planner gets: per anchor, the view from the middle of the set,
 /// each preceded by a line naming it.
 pub fn planner_blocks(defn: &Definition, limit: usize) -> Vec<Value> {
+    scout_blocks(defn, None, limit)
+}
+
+/// [`planner_blocks`] for the named anchors only (an edit gets the places its shots use).
+pub fn planner_blocks_for(defn: &Definition, names: &[String], limit: usize) -> Vec<Value> {
+    scout_blocks(defn, Some(names), limit)
+}
+
+fn scout_blocks(defn: &Definition, only: Option<&[String]>, limit: usize) -> Vec<Value> {
     let root = defn.root();
     let idx = load_index(&root);
     let mut out = Vec::new();
     let anchors = idx["anchors"].as_object().cloned().unwrap_or_default();
-    for (name, views) in anchors.iter().take(limit) {
+    let wanted = anchors.iter().filter(|(name, _)| only.map_or(true, |o| o.iter().any(|n| n == *name)));
+    for (name, views) in wanted.take(limit) {
         if defn.anchor(name).is_none() {
             continue;
         }
