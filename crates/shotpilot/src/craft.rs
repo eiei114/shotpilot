@@ -287,13 +287,14 @@ pub fn script_text(defn: &Definition) -> String {
          - Lines are short: Japanese up to ~15 characters, English up to ~6 words. Never invent a release date, a \
            platform or a store claim; use only facts the brief states.\n\
          - `target` length is the whole cut, cards included.\n\
-         - `transition`: mostly `cut`; `dip` through black for a jump in time; `flash` (from white) on each short \
-           evidence shot of a count, or for one jolt.\n\
+         - `transition`: how the shot hands over to the next one: {handovers}. Where each kind goes is under \
+           \"Hand-overs between shots\".\n\
          - `grade`: follow the genre and style references: `horror` (cold, desaturated, grain), `red` (only for a \
            short jolt teaser), `warm` (cozy, bright, sunny), `vivid` (action, punchy colour), `cool` (sci-fi, mystery, \
            night), or `none` to keep the game's own look. \
            `letterbox`: 2.39 for a cinematic teaser, 0 for none.\n",
-        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) },
+        handovers = crate::handover::vocabulary()
     )
 }
 
@@ -303,12 +304,13 @@ pub fn finish_text(defn: &Definition) -> String {
         "\n## Finish (burned in when the cut is assembled; never re-renders)\n\
          - `caption`: at most 3 in the whole teaser, each short (Japanese up to ~15 characters, English up to ~6 words), \
            so the teaser reads with the sound off. Leave it empty on the hook and the title shot.\n\
-         - `transition`: mostly `cut`. `dip` (through black) before the title or for a jump in time; `flash` (through \
-           white) only for one jolt at most.\n\
+         - `transition`: how the shot hands over to the next one: {handovers}. Mostly `cut`; `dip` before the \
+           title or for a jump in time.\n\
          - `title_card`: the game's title{}.\n\
          - `end_card`: only facts the brief states (platforms, release window, a call to action written there). \
            Never invent a date or a platform; with none given, leave it empty.\n",
-        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) },
+        handovers = crate::handover::vocabulary()
     )
 }
 

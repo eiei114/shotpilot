@@ -378,6 +378,8 @@
  "だけ{0}": " only{0}",
  "つないでいます…": "Joining…",
  "つなぎ": "Transition",
+ "つなぎの種類が多すぎる": "Too many kinds of transition",
+ "つなぎを cut のほか 2 種（{0}）に絞った: {1}": "Kept the transitions to cut and two others ({0}): {1}",
  "つなぐ・音・書き出し": "Assemble, sound, export",
  "で承認、文字と秒数は押せばその場で直せます。行を選ぶと、カメラ・光・音・文字とつなぎのどれか": " to approve; click text or length to fix it in place. Select a row and you can ask Claude to fix just one of camera, light, sound, or text and transitions",
  "どう直す？ 例: もう少し手すりに寄せて": "How should it change? e.g. Move it a little closer to the railing",

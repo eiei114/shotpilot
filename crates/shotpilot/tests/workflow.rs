@@ -731,6 +731,27 @@ fn too_many_flashes_in_a_second_stop_approval() {
 }
 
 #[test]
+fn more_than_two_kinds_of_hand_over_are_pointed_out() {
+    // D-58 (open-design: one primary transition and one or two accents): a P2, counted as drawn
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let mix = |f: &common::Fixture| f.ws.check().unwrap().into_iter().filter(|x| x.rule == "transition.mix").collect::<Vec<_>>();
+    f.ws.set_fields("s01_gate", &set(&[("transition", json!("dip"))])).unwrap();
+    f.ws.set_fields("s02_well", &set(&[("transition", json!("flash"))])).unwrap();
+    assert!(mix(&f).is_empty());
+    f.ws.set_fields("s03_window", &set(&[("transition", json!("glitch"))])).unwrap();
+    let found = mix(&f);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].severity.as_str(), "P2");
+    assert!(found[0].message.starts_with("3 kinds of hand-over besides cut"), "{}", found[0].message);
+    // a cut that avoids glitches draws that one as a cut: two kinds again
+    f.ws.set_finish(&set(&[("motion", json!({"avoid": ["glitch"]}))])).unwrap();
+    assert!(mix(&f).is_empty());
+    // hand-overs are editorial: nothing re-renders
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+}
+
+#[test]
 fn the_script_puts_cards_between_shots_and_keeps_sound_on_its_shot() {
     let mut f = ws();
     f.ws.render(&[], "previz", false, None).unwrap();

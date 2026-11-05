@@ -191,14 +191,15 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         ("baseline", "## Teaser baseline"),
         ("type", "## On-screen type"),
         ("motion", "## Text motion"),
+        ("hand-overs", "## Hand-overs between shots"),
     ];
     // which blocks each path must carry: picture notes get all of it, text notes the look, the
     // baseline and how lines are written (D-52), sound notes the brief and the direction only
     let want = |name: &str| -> &[&str] {
         match name {
-            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "motion"],
+            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "motion", "hand-overs"],
             "revise: the sound" => &["brief", "direction"],
-            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "motion"],
+            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "motion", "hand-overs"],
         }
     };
     for (name, text) in &paths {
@@ -403,4 +404,27 @@ fn overlays_on_one_shot_come_one_at_a_time() {
     assert_eq!(at("b"), Some((2.6, 1.0))); // waits for `a` (+0.1 s)
     assert_eq!(at("c"), None); // no room left on the shot
     assert!(p.adjustments.iter().any(|a| a.contains("台本の行 `b` を `")) && p.adjustments.iter().any(|a| a.contains("台本の行 `c` を外した")), "{:?}", p.adjustments);
+}
+
+#[test]
+fn a_plan_hands_over_with_cut_and_two_others() {
+    // D-58 (open-design: one primary transition and one or two accents): code keeps dip and the
+    // look's accent (the base profile's is flash); the planner's other hand-overs become cuts
+    let f = ws();
+    let shot = |id: &str, beat: &str, t: &str| {
+        let mut s = plan_shot(id, beat, 3.0, "well");
+        s["transition"] = json!(t);
+        s
+    };
+    let fake = FakeClaude::new(json!({"rationale": "r", "grade": "none", "letterbox": 0, "shots": [
+        shot("a", "hook", "glitch"), shot("b", "establish", "whiteout"), shot("c", "escalate", "flash"),
+        shot("d", "escalate", "dip"), shot("e", "title", "cut")]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let kinds: Vec<&str> = p.shots.iter().map(|s| s["transition"].as_str().unwrap_or("cut")).collect();
+    assert_eq!(kinds, ["cut", "cut", "flash", "dip", "cut"]);
+    assert!(p.adjustments.iter().any(|a| a == "つなぎを cut のほか 2 種（flash, dip）に絞った: a glitch, b whiteout"), "{:?}", p.adjustments);
+    // the planner was told what each hand-over says and where it goes, in one wording
+    let text = request_text(&fake.calls.borrow()[0]);
+    assert!(text.contains("## Hand-overs between shots") && text.contains("whiteout (up to white and back"), "{text}");
+    assert!(!text.contains("on each short evidence shot of a count"), "the old, contradicting line is gone");
 }
