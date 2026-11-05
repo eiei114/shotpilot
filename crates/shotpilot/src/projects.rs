@@ -338,7 +338,7 @@ pub fn folder_name(name: &str) -> String {
 }
 
 /// `parent/name`, or `name-2`, `name-3`... when that is already taken.
-fn free_folder(parent: &Path, name: &str) -> PathBuf {
+pub fn free_folder(parent: &Path, name: &str) -> PathBuf {
     let first = parent.join(name);
     if !first.exists() {
         return first;

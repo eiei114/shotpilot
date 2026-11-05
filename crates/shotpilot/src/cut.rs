@@ -48,7 +48,7 @@ pub fn run_ffmpeg(args: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn segment(take: &Take, w: i64, h: i64, fps: i64) -> Result<PathBuf> {
+pub fn segment(take: &Take, w: i64, h: i64, fps: i64) -> Result<PathBuf> {
     let seg = take.dir.join(format!("segment_{w}x{h}_{fps}.mp4"));
     if seg.exists() {
         return Ok(seg);

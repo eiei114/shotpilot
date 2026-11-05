@@ -20,6 +20,7 @@ pub mod moodboard;
 pub mod previz;
 pub mod produce;
 pub mod projects;
+pub mod promo;
 pub mod refs;
 pub mod scout;
 pub mod script;

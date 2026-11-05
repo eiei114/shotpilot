@@ -890,3 +890,27 @@ fn finishing_notes_over_http() {
     let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "x", "shot": "s03_window", "aspect": "camera"})));
     assert_eq!(code, 400);
 }
+
+#[test]
+fn the_release_plan_is_a_checklist_the_app_ticks() {
+    let s = srv();
+    let v = call(&s, "GET", "/api/promo", None, &[]).json();
+    assert_eq!(v["videos"].as_array().unwrap().len(), 3);
+    assert_eq!(v["saved"], false);
+    let r = call(&s, "POST", "/api/promo", Some(json!({"op": "check", "video": "v1", "check": "mute", "done": true})), &[]);
+    assert_eq!(r.code, 200);
+    let here = r.json()["videos"].as_array().unwrap().iter().find(|x| x["id"] == "v1").unwrap().clone();
+    assert_eq!(here["checks"].as_array().unwrap().iter().find(|c| c["id"] == "mute").unwrap()["done"], true);
+    // made-in-code checks cannot be ticked by hand
+    let r = call(&s, "POST", "/api/promo", Some(json!({"op": "check", "video": "v1", "check": "cut", "done": true})), &[]);
+    assert_eq!(r.code, 400);
+    let r = call(&s, "POST", "/api/promo", Some(json!({"op": "add", "kind": "event", "title": "", "due": "2027-06-20"})), &[]);
+    let id = r.json()["result"]["id"].as_str().unwrap().to_string();
+    let row = r.json()["videos"].as_array().unwrap().iter().find(|x| x["id"] == id.as_str()).unwrap().clone();
+    assert_eq!((row["title"].as_str(), row["due"].as_str()), (Some("セール・イベント告知"), Some("2027-06-20")));
+    // the stage badge comes with the status
+    let st = call(&s, "GET", "/api/status", None, &[]).json();
+    assert_eq!((st["promo"]["videos"].as_i64(), st["promo"]["saved"].as_bool()), (Some(4), Some(true)));
+    // promo.json is editorial: nothing went stale and nothing launched
+    assert!(launches(&s.f.ws).is_empty());
+}
