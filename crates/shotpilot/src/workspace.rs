@@ -233,9 +233,14 @@ impl Workspace {
 
     /// The shot check (see shotcheck.rs), most severe first.
     pub fn check(&self) -> Result<Vec<Finding>> {
-        let shots = self.resolved()?;
-        let mut found = shotcheck::check(&self.defn, &shots);
-        let seen = self.seen_findings(&shots)?;
+        self.check_resolved(&self.resolved()?)
+    }
+
+    /// [`Self::check`] for shots already resolved. Every caller (the CLI, the app's status,
+    /// produce) goes through here, so what the look after the shoot found shows everywhere.
+    pub fn check_resolved(&self, shots: &[ResolvedShot]) -> Result<Vec<Finding>> {
+        let mut found = shotcheck::check(&self.defn, shots);
+        let seen = self.seen_findings(shots)?;
         if seen.is_empty() {
             return Ok(found);
         }

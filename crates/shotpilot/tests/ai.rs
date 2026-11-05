@@ -224,7 +224,7 @@ fn text_stays_long_enough_to_read() {
     let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
     assert_eq!(p.script[0]["dur"], json!(3.3));
     assert_eq!(p.script[1]["dur"], json!(2.0)); // already long enough
-    assert!(p.adjustments.iter().any(|a| a.contains("`intro` from 1s to 3.3s")), "{:?}", p.adjustments);
+    assert!(p.adjustments.iter().any(|a| a.contains("`intro` を 1秒 → 3.3秒")), "{:?}", p.adjustments);
 
     // a line written by hand is left as written, and the shot check names it
     f.ws.render(&[], "previz", false, None).unwrap();
@@ -265,7 +265,7 @@ fn code_puts_beats_in_order_and_fits_the_runtime() {
     let p = ai::plan(&f.ws.defn, None, None, None, None, &FakeClaude::new(json!({"rationale": "r", "shots": short}))).unwrap();
     let total: f64 = p.shots.iter().map(|s| s["duration"].as_f64().unwrap()).sum();
     assert!((total - 30.0).abs() <= 3.0, "{total}");
-    assert!(p.adjustments.iter().any(|a| a.starts_with("scaled durations")), "{:?}", p.adjustments);
+    assert!(p.adjustments.iter().any(|a| a.starts_with("カットの合計を")), "{:?}", p.adjustments);
 }
 
 #[test]
@@ -369,5 +369,5 @@ fn overlays_on_one_shot_come_one_at_a_time() {
     assert_eq!(at("a"), Some((0.5, 2.0)));
     assert_eq!(at("b"), Some((2.6, 1.0))); // waits for `a` (+0.1 s)
     assert_eq!(at("c"), None); // no room left on the shot
-    assert!(p.adjustments.iter().any(|a| a.contains("moved script line `b`")) && p.adjustments.iter().any(|a| a.contains("left out script line `c`")), "{:?}", p.adjustments);
+    assert!(p.adjustments.iter().any(|a| a.contains("台本の行 `b` を `")) && p.adjustments.iter().any(|a| a.contains("台本の行 `c` を外した")), "{:?}", p.adjustments);
 }

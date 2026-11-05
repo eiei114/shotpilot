@@ -298,8 +298,12 @@ impl Engine for MockEngine {
         // what a level without tags offers, scored by size as the real engine does
         let tagged = out["anchors"].as_object().is_some_and(|m| !m.is_empty());
         let marks = self.store.join("landmarks.json");
-        if (!tagged || candidates) && marks.exists() {
-            let cands: Vec<Value> = read_json(&marks)?
+        // a new project with no level of its own films the sample courtyard, so trying
+        // Shotpilot without UE still gets places to scout
+        let courtyard = !marks.exists() && !self.store.join("level.json").exists() && self.defn.anchors.is_empty();
+        if (!tagged || candidates) && (marks.exists() || courtyard) {
+            let level = if courtyard { mock_courtyard() } else { read_json(&marks)? };
+            let cands: Vec<Value> = level
                 .as_object()
                 .into_iter()
                 .flatten()
@@ -320,6 +324,17 @@ impl Engine for MockEngine {
         }
         Ok(out)
     }
+}
+
+/// The mock's own level for a project that brings none: the sample's courtyard (templates::DEMO).
+fn mock_courtyard() -> Value {
+    json!({
+        "gate": {"at": [0, -1500, 100], "size": [300, 40, 260], "center": [0, -1500, 130]},
+        "well": {"at": [0, 0, 80], "size": [140, 140, 90], "center": [0, 0, 45]},
+        "window": {"at": [800, 600, 450], "size": [20, 140, 160], "center": [800, 600, 450]},
+        "door": {"at": [-700, 500, 120], "size": [20, 110, 220], "center": [-700, 500, 110]},
+        "lantern": {"at": [300, -300, 180], "size": [30, 30, 45], "center": [300, -300, 180]},
+    })
 }
 
 impl MockEngine {

@@ -318,7 +318,7 @@ pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {
     shots.sort_by_key(rank); // stable: keeps the planner's order within a beat
     let after: Vec<String> = shots.iter().map(|s| crate::model::str_of(&s["id"])).collect();
     if before != after {
-        notes.push("put the shots in beat order (hook -> establish -> escalate -> title)".into());
+        notes.push("カットをビートの順（hook → establish → escalate → title）に並べ替えた".into());
     }
     let dur = |s: &serde_json::Value| num(&s["duration"]).unwrap_or(3.0);
     let mut clamped = Vec::new();
@@ -331,7 +331,7 @@ pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {
         }
     }
     if !clamped.is_empty() {
-        notes.push(format!("kept durations within 1-8s: {}", clamped.join(", ")));
+        notes.push(format!("カットの長さを 1〜8 秒に収めた: {}", clamped.join(", ")));
     }
     let total: f64 = shots.iter().map(dur).sum();
     if target > 0.0 && total > 0.0 && (total - target).abs() > 0.1 * target {
@@ -341,7 +341,7 @@ pub fn normalize(shots: &mut [serde_json::Value], target: f64) -> Vec<String> {
             s["duration"] = serde_json::json!(d);
         }
         let now: f64 = shots.iter().map(dur).sum();
-        notes.push(format!("scaled durations from {}s to {}s to fit the {}s target", fmt_g(round_to(total, 2)), fmt_g(round_to(now, 2)), fmt_g(target)));
+        notes.push(format!("カットの合計を {}秒 から {}秒 に合わせた（台本のカードを除いた持ち時間 {}秒）", fmt_g(round_to(total, 2)), fmt_g(round_to(now, 2)), fmt_g(target)));
     }
     notes
 }

@@ -437,6 +437,10 @@ fn scouting_prefers_tagged_actors_and_keeps_the_inventory() {
 #[test]
 fn scouting_a_level_with_nothing_to_find_says_what_to_do() {
     let mut f = empty_project();
+    // a level built at runtime: nothing tagged, no landmarks in the editor
+    let store = f.ws.root.join(".shotpilot").join("mock_engine");
+    std::fs::create_dir_all(&store).unwrap();
+    std::fs::write(store.join("landmarks.json"), "{}").unwrap();
     let before = f.text();
     let err = f.ws.scout(&[], None).unwrap_err();
     assert!(err.msg.contains("anchors:"), "{}", err.msg);

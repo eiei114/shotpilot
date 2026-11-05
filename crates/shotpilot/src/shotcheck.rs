@@ -262,12 +262,14 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
     }
 
     // ---- timing
-    let total: f64 = shots.iter().map(|s| s.duration).sum();
+    // the target is the whole cut: the cards between shots take their own time (D-31)
+    let cards: f64 = defn.script.iter().filter(|l| l.is_slot()).map(|l| l.dur).sum();
+    let total: f64 = shots.iter().map(|s| s.duration).sum::<f64>() + cards;
     let target = defn.teaser.target_duration;
     if target != 0.0 && (total - target).abs() > 0.1 * target {
         out.push("runtime.target", None,
                  format!("runtime {}s is more than 10% off the {}s target", fmt_g(round_to(total, 2)), fmt_g(target)),
-                 format!("Bring the shot durations to about {}s in total.", fmt_g(target)));
+                 format!("Bring the shot and card durations to about {}s in total.", fmt_g(target)));
     }
     let hook: f64 = shots.iter().filter(|s| s.beat.as_deref() == Some("hook")).map(|s| s.duration).sum();
     let hook_max = if gameplay { 3.0 } else { 6.0 };

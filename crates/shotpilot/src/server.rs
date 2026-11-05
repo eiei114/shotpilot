@@ -538,7 +538,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
     let timeline = timeline_json(&ws.defn, &resolved);
     let total: f64 = timeline.last().map(|it| it["start"].as_f64().unwrap_or(0.0) + it["duration"].as_f64().unwrap_or(0.0)).unwrap_or(0.0);
     // the shot check once: the warnings are its P0 and P1 lines (Workspace::structure_warnings)
-    let checks = crate::shotcheck::check(&ws.defn, &resolved);
+    let checks = ws.check_resolved(&resolved)?;
     let warnings: Vec<String> =
         checks.iter().filter(|f| f.severity <= crate::shotcheck::Severity::P1).map(crate::shotcheck::Finding::line).collect();
     let scout = crate::scout::load_index(&ws.root);

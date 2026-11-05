@@ -1225,7 +1225,8 @@ function nextStep() {
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
   if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
-  if (!(b.images || []).length && !skipped("mood")) return { stage: "brief", what: "ムードボードを作る", why: "ロケハン写真を下敷きに、光と空気感だけを変えた参照画を作ります（任意）", act: "mood", skip: "mood", need: ai.image_active ? null : "画像の生成先（Codex か OpenAI キー）が未設定です" };
+  // the mood board is optional and goes before the cuts: once there are cuts, the next step is ahead, not back
+  if (!shots.length && !(b.images || []).length && !skipped("mood")) return { stage: "brief", what: "ムードボードを作る", why: "ロケハン写真を下敷きに、光と空気感だけを変えた参照画を作ります（任意）", act: "mood", skip: "mood", need: ai.image_active ? null : "画像の生成先（Codex か OpenAI キー）が未設定です" };
   const needAi = ai.ready ? null : "Claude が未接続です";
   if (!shots.length) return { stage: "structure", what: "Claude に構成を組ませる", why: "ステージ・ブリーフ・ムードボード・ロケハン写真を渡して組ませます", act: "plan", need: needAi };
   const planned = (ui.log || []).some((e) => e.action === "plan");
@@ -1233,7 +1234,7 @@ function nextStep() {
   if (p0.length) return { stage: "structure", what: `カット検査の P0 を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
   if (st.review?.stopped && shots.length) {
     if (st.script_approval !== "approved") {
-      return { stage: "structure", what: st.script_approval === "outdated" ? "直した台本を承認し直す" : "台本を確かめて承認する",
+      return { stage: "structure", what: st.script_approval === "outdated" ? "変わった台本を確かめて承認し直す" : "台本を確かめて承認する",
         why: "カット表で文字・秒数・見せるものを直せます。カメラだけ組み直すこともできます", act: "approve-script" };
     }
     return { stage: "structure", what: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", act: "resume" };
@@ -2796,7 +2797,8 @@ function drawChips() {
 /** Notes worth trying in the composer, for what it is pointed at now. Short: the box is narrow,
  * and every line of examples is a line less of the conversation. */
 function composerExamples() {
-  if (planning()) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
+  // before there is a cut, a note is about the plan, not a shot
+  if (planning() || !(ui.status?.shots || []).length) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
     return it?.p.role === "sfx" ? ["カットの頭に合わせる", "もう少し小さく", "別の衝撃音に替える"]
@@ -3049,7 +3051,9 @@ function entryHtml(e, isLast) {
     const c = e.checks || {};
     const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
     const steps = (e.steps || []).map((s) => `<div><span class="k">${esc(STEP_ICON[s.status] || "")} ${esc(s.label)}</span> ${esc(s.detail || "")}</div>`).join("");
-    const notes = (e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`).join("");
+    // what code shaped in the plan (beat order, lengths, a card held long enough to read) belongs here too
+    const notes = [...(e.adjustments || []).map((a) => `<div class="event"><span class="dot"></span><span><span class="k">コードが整えた:</span> ${esc(a)}</span></div>`),
+      ...(e.notes || []).map((n) => `<div class="event"><span class="dot warn"></span>${esc(n)}</div>`)].join("");
     const isLast = (ui.log || []).filter((x) => x.action === "produce").pop() === e;
     if (e.stopped === "review") {
       return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る（確認で止める）</div></div>
@@ -3116,8 +3120,8 @@ function drawChat() {
       const icon = d ? STEP_ICON[d.status] : "　";
       return `<div><span class="k">${icon} ${esc(names[k])}</span> ${esc(d?.status === "start" ? "実行中…" : d?.detail || "")}</div>`;
     }).join("");
-    html += `<div class="msg-user"><div class="bubble">${esc(ui.produce.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>
-      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state">作っています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div><div class="changes">${rows}</div></div>`;
+    html += `<div class="msg-user"><div class="bubble">${esc(ui.produce.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る${ui.produce.mode === "review" ? "（確認で止める）" : ui.produce.mode === "resume" ? "（続き）" : ""}</div></div>
+      <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="produce-state">作っています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div><div class="changes">${rows}</div></div>`;
   }
   if (ui.pending) {
     html += `<div class="msg-user"><div class="bubble">${esc(ui.pending.note)}</div><div class="ctx">${esc(ui.pending.ctx)}</div></div>
@@ -3188,9 +3192,13 @@ async function produceAll({ review = true, resume = false } = {}) {
   ui.busy = "produce"; ui.produce = { steps: {}, note, mode: resume ? "resume" : review ? "review" : "full" }; ui.pending = null;
   if (!resume) $("note").value = "";
   ui.started = Date.now(); draw(); drawChat();
+  // a long step (a mood board, a shoot) sends nothing for a while: keep the clock moving
+  const tick = setInterval(() => { const el = $("produce-state"); if (el) el.textContent = `作っています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
   try {
     const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note, quality: "previz", mood: true, review, resume }) });
+      // the shoot after the review films with the engine (still) on a UE project, so what was
+      // filmed can be looked at once and a hidden subject fixed once (D-50); previz otherwise
+      body: JSON.stringify({ note, quality: resume && st.engine === "ue5" ? "still" : "previz", mood: true, review, resume }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
@@ -3211,7 +3219,7 @@ async function produceAll({ review = true, resume = false } = {}) {
       }
     }
   } catch (e) { if (!resume) $("note").value = note; toast(e.message, true); }
-  finally { ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
+  finally { clearInterval(tick); ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
 }
 
 async function approveScript(on = true) {

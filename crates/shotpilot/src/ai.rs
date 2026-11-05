@@ -619,21 +619,21 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
         let need = crate::script::reading_secs(&kind, &text("ja"), &text("en"));
         let dur = r1(asked.max((need * 10.0).ceil() / 10.0).min(8.0));
         if dur > asked + 0.05 {
-            notes.push(format!("lengthened script line `{id}` from {}s to {}s so it can be read", model::fmt_g(r1(asked)), model::fmt_g(dur)));
+            notes.push(format!("文字が読めるように `{id}` を {}秒 → {}秒 に延ばした", model::fmt_g(r1(asked)), model::fmt_g(dur)));
         }
         m.insert("dur".into(), json!(dur));
         if slot {
             let after = map(l["after"].as_str().unwrap_or("start"));
             let after = if after.is_empty() { "start".to_string() } else { after };
             if after != "start" && !shot_ids.contains(&after) && !seen.contains(&after) && !v.as_array().into_iter().flatten().any(|o| o["id"] == after.as_str()) {
-                notes.push(format!("left out script line `{id}`: it follows `{after}`, which is not in the cut"));
+                notes.push(format!("台本の行 `{id}` を外した（続く先の `{after}` が Cut に無い）"));
                 continue;
             }
             m.insert("after".into(), json!(after));
         } else {
             let on = map(l["on"].as_str().unwrap_or(""));
             if !shot_ids.contains(&on) {
-                notes.push(format!("left out script line `{id}`: it sits on `{on}`, which is not a shot"));
+                notes.push(format!("台本の行 `{id}` を外した（重ねる先の `{on}` がカットではない）"));
                 continue;
             }
             m.insert("on".into(), json!(on));
@@ -659,12 +659,12 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
         let asked = num(&out[i]["at"]).unwrap_or(0.0);
         let at = asked.max(free_at.get(&on).copied().unwrap_or(0.0));
         if at > d - 0.6 {
-            notes.push(format!("left out script line `{id}`: no room left on `{on}` after the line before it"));
+            notes.push(format!("台本の行 `{id}` を外した（`{on}` には前の行のあとに出す余地が無い）"));
             drop.push(i);
             continue;
         }
         if (at - asked).abs() > 1e-6 {
-            notes.push(format!("moved script line `{id}` to {}s on `{on}` so it does not overlap the line before", model::fmt_g(r1(at))));
+            notes.push(format!("台本の行 `{id}` を `{on}` の {}秒 に動かした（前の行と重ならないように）", model::fmt_g(r1(at))));
         }
         let len = num(&out[i]["dur"]).unwrap_or(2.0).min(d - at);
         out[i]["at"] = json!(r1(at));
