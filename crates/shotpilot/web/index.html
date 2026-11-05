@@ -1216,16 +1216,29 @@ function drawDesign() {
     return `<tr data-shot="${esc(s.id)}"><td class="id">${s.index + 1}. ${esc(s.id)}<br><small style="color:var(--muted)">${esc(s.beat || "-")} · ${s.duration}s</small></td>
       <td><input data-k="cap" value="${esc(c.text || "")}" placeholder="字幕（任意）"></td>
       <td><input data-k="at" type="number" step="0.1" min="0" value="${esc(c.at ?? "")}" placeholder="0.3" style="width:70px"></td>
-      <td>${last ? `<span class="sp-hint">最後</span>` : `<select data-k="tr">${["cut", "dip", "flash"].map((x) => `<option value="${x}"${x === tr ? " selected" : ""}>${TRANSITION_JA[x]}</option>`).join("")}</select>`}</td></tr>`;
+      <td>${last ? `<span class="sp-hint">最後</span>` : `<select data-k="tr">${Object.keys(TRANSITION_JA).map((x) => `<option value="${x}"${x === tr ? " selected" : ""}>${TRANSITION_JA[x]}</option>`).join("")}</select>`}</td></tr>`;
   }).join("");
+  // the look's faces and motion (D-52, D-53): set by the look, changed in words on the left
+  const fo = f.fonts || {}, mo = f.motion || {};
+  const faces = [["表現", fo.display], ["情報", fo.body], ["欧文", fo.latin]]
+    .map(([k, v]) => `${k} ${esc(v || "システムの書体")}`).join(" · ");
+  const titleSize = f.title_size ? ` · タイトル 画面の高さの ${Math.round(f.title_size * 100)}%` : "";
+  const avoid = (mo.avoid || []).length ? ` · 使わない動き ${esc(mo.avoid.join(", "))}` : "";
+  const moves = mo.profile ? `${esc(mo.name || mo.profile)} · ${ENERGY_JA[mo.energy] || esc(mo.energy || "")}${avoid}` : "既定";
   $("designpanel").innerHTML = `<h3>デザイン</h3>
-    <div class="lead">帯・タイトル・字幕・エンドカード・カットのつなぎ方を決めます。どれも shots.yaml に書かれ、Cut のときに焼き込まれます。直しても撮り直しは起きません（Cut をやり直すだけ）。クロスフェードは尺が縮んで SE がずれるので、つなぎは黒か白をはさむ形だけです。${f.font ? "" : " <b style='color:var(--err)'>日本語フォントが見つかりません。finish.font にフォントのパスを書いてください。</b>"}</div>
+    <div class="lead">帯・タイトル・字幕・エンドカード・カットのつなぎ方を決めます。どれも shots.yaml に書かれ、Cut のときに焼き込まれます。直しても撮り直しは起きません（Cut をやり直すだけ）。クロスフェードは尺が縮んで SE がずれるので、つなぎは黒か白をはさむ形と、境目を崩す形だけです。${f.font ? "" : " <b style='color:var(--err)'>日本語フォントが見つかりません。finish.font にフォントのパスを書いてください。</b>"}</div>
     <div class="sp-hint">言葉で直すなら左の欄へ。この画面から送る指示は、文字（台本のカード・重ね文字・字幕）・つなぎ・明るさ・色調・帯だけを直し、カメラ・光・音には触れません。1カットだけなら、構成のカット表で行を選んで「文字・つなぎだけ」を使います。</div>
     <div class="form">
       <label>帯<small>映画の上下の黒帯。画面比で指定</small></label>
       <div><select id="d-lb">${opt("", "なし")}${opt(1.85, "1.85（ビスタ）")}${opt(2, "2.00")}${opt(2.39, "2.39（シネスコ）")}</select></div>
       <label>タイトル<small>title ビートのカット（無ければ最後）に重ねる。秒はそのカットの頭から</small></label>
       <div class="mood-bar"><input type="text" id="d-title" value="${esc(t.text || st.title || "")}" placeholder="タイトル"><input type="number" id="d-title-at" step="0.1" min="0" value="${esc(t.at ?? 0.5)}" style="width:80px" title="開始（秒）"><input type="number" id="d-title-d" step="0.1" min="0.5" value="${esc(t.duration ?? 3)}" style="width:80px" title="長さ（秒）"></div>
+      <label>ロゴ画像<small>台本のタイトルの文字の代わりに出す。透明の背景の PNG がよい。プロジェクトの外の画像は art/ に写します</small></label>
+      <div class="mood-bar"><input type="text" id="d-logo" value="${esc(f.logo || "")}" placeholder="art/logo.png"><button class="btn" id="d-logo-pick" type="button">選ぶ…</button></div>
+      <label>書体<small>ルックが決める。初めての Cut で取ってきて、書体に無い字はシステムの書体で描く</small></label>
+      <div class="sp-hint">${faces}${titleSize}</div>
+      <label>動き<small>ルックが決める。左の欄で「もっと静かに」「フラッシュはやめて」のように直せる</small></label>
+      <div class="sp-hint">${moves}</div>
       <label>エンドカード<small>最後のカットの後ろに付く黒い画面。1行に1つ（発売日、プラットフォーム、ウィッシュリスト）</small></label>
       <div><textarea id="d-end" rows="3" placeholder="Steam でウィッシュリスト登録受付中&#10;2026年 冬">${esc((e.lines || []).join("\n"))}</textarea>
         <input type="number" id="d-end-d" step="0.5" min="0.5" max="10" value="${esc(e.duration ?? 3)}" style="width:80px;margin-top:6px" title="長さ（秒）"> 秒</div>
@@ -1244,6 +1257,7 @@ async function saveDesign(thenCut) {
   set.title = tt ? { text: tt, at: Number($("d-title-at").value) || 0, duration: Number($("d-title-d").value) || 3 } : null;
   const lines = $("d-end").value.split("\n").map((x) => x.trim()).filter(Boolean);
   set.end_card = lines.length ? { lines, duration: Number($("d-end-d").value) || 3 } : null;
+  if ($("d-logo").value.trim() !== (f.logo || "")) set.logo = $("d-logo").value.trim() || null;
   ui.busy = "save"; draw();
   try {
     await api("POST", "/api/finish", { set });
@@ -1267,6 +1281,17 @@ async function saveDesign(thenCut) {
   } catch (err) { toast(err.message, true); ui.busy = null; await refresh(); return; }
   ui.busy = null; drawDesign.key = ""; await refresh();
   if (thenCut) cut();
+}
+
+/** The game's logo for the title, picked with the app's file dialog (copied into art/). */
+async function pickLogo() {
+  if (ui.busy) return;
+  try {
+    const r = await api("POST", "/api/finish/logo", { pick: true });
+    if (r.cancelled) return;
+    toast("ロゴを設定しました。Cut で焼き込むと、台本のタイトルの代わりに出ます");
+  } catch (err) { toast(err.message, true); return; }
+  drawDesign.key = ""; await refresh();
 }
 
 // ------------------------------------------------------------------ the next step
@@ -1623,7 +1648,8 @@ const ASPECT_COST = {
   shot: ["画が変われば、このカットだけ撮り直し", false], camera: ["このカットだけ撮り直し", false],
   light: ["このカットだけ撮り直し", false], sound: ["撮り直しなし", true], finish: ["撮り直しなし · Cut で焼き込み", true],
 };
-const TRANSITION_JA = { cut: "カット", dip: "黒をはさむ", flash: "白をはさむ" };
+const TRANSITION_JA = { cut: "カット", dip: "黒をはさむ", flash: "白をはさむ", whiteout: "白に飛ばす", glitch: "崩す（グリッチ）" };
+const ENERGY_JA = { calm: "ゆっくり", measured: "ふつう", driving: "速い" };
 const capOf = (s) => typeof s.node?.caption === "string" ? { text: s.node.caption } : s.node?.caption || null;
 
 /** Notes worth trying on a cut, for the part it is about. Pressing one fills the box; nothing is sent. */
@@ -3895,6 +3921,7 @@ $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(
 $("designpanel").addEventListener("click", (e) => {
   if (e.target.closest("#d-save")) saveDesign(false);
   else if (e.target.closest("#d-cut")) saveDesign(true);
+  else if (e.target.closest("#d-logo-pick")) pickLogo();
 });
 $("next").addEventListener("click", (e) => {
   if (e.target.closest("[data-next]")) runNext();
