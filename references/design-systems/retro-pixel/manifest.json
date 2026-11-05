@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "retro-pixel",
+  "name": "レトロピクセル",
+  "category": "action",
+  "description": "ゲームの絵をそのまま主役に。色調なし、ゴシック、チップチューンの軽さ。",
+  "genres": [
+    "action",
+    "adventure"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "cozy-pastel",
+  "name": "パステルのやすらぎ",
+  "category": "cozy",
+  "description": "朝の光と小さな楽しみを1つずつ。暖色、丸ゴシック、帯なし、ゆったり。",
+  "genres": [
+    "cozy"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

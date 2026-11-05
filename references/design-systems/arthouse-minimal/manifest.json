@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "arthouse-minimal",
+  "name": "余白の映画",
+  "category": "adventure",
+  "description": "少ないカットを長く。余白と沈黙で引き込む。色調なし、帯 2.39、明朝。",
+  "genres": [
+    "adventure",
+    "horror",
+    "cozy"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

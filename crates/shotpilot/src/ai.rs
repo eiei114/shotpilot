@@ -533,6 +533,10 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
             n_mood
         ));
     }
+    // the concept frames and the places the scout found for them (D-46)
+    let (frames, frames_text) = crate::concept::planner_blocks(defn);
+    content.extend(frames);
+    user.push_str(&frames_text);
     user.push_str(
         "\nWrite the shot list. Write `purpose` and `notes` in the same language as the pitch. \
          `rationale`: two or three sentences on the idea of the cut, in that language too.",
@@ -564,13 +568,18 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     let mut adjustments = craft::normalize(&mut shots, (duration - slot_secs).max(duration * 0.5));
     adjustments.append(&mut script_notes);
     validate_shots(defn, &shots)?;
-    let finish = vec![
+    let mut finish = vec![
         ("grade".to_string(), json!(out["grade"].as_str().filter(|g| *g != "none"))),
         ("letterbox".to_string(), json!(num(&out["letterbox"]).filter(|r| (1.0..=3.0).contains(r)))),
         // the title and end card now live in the script
         ("title".to_string(), Value::Null),
         ("end_card".to_string(), Value::Null),
     ];
+    // the active design system's tokens are authoritative for the look (D-45)
+    if let Some(d) = crate::designsys::get(&defn.brief.design) {
+        finish.retain(|(k, _)| k != "grade" && k != "letterbox");
+        finish.extend(crate::designsys::finish_entries(d));
+    }
     let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
@@ -1457,6 +1466,473 @@ fn finish_changes(defn: &Definition, yaml: &str) -> Result<Vec<(String, Value)>>
         }
     }
     Ok(out)
+}
+
+// --------------------------------------------------------------------------- planning turn (D-45)
+
+/// The planning turn's system prompt, after open-design's OD Next planning turn: route, ask
+/// only for essential gaps, otherwise a prose plan with a one-sentence direction. No step
+/// looks back at its own output (D-22).
+///
+/// Adapted from open-design (https://github.com/nexu-io/open-design, Apache-2.0):
+/// `plugins/_official/scenarios/od-next-strategy/assets/general-orchestration.md` (planning
+/// turn, direction in one sentence), `motion-design` (the beat map row) and
+/// `apps/daemon/src/prompts/discovery.ts` (question-form rules); rewritten for game teasers.
+pub fn discover_system() -> String {
+    "You plan a game teaser for an indie developer before anything is filmed. The developer made a request; \
+     you decide what the teaser is, which look it wears and which playbooks shape it. Production (the location \
+     scout, the script and the shot list, the previz) starts right after your plan, with no further approval.\n\n\
+     Planning turn\n\
+     1. Read the request, the answers to earlier questions, the project (title, pitch, brief, anchors, stage) and \
+     the catalogues. Identify the goal, the audience, the constraints and the deliverable. Tell confirmed facts \
+     from assumptions.\n\
+     2. Choose a coherent direction: one design system from the catalogue (the look) and the skills that fit (one \
+     main skill, two at most; utility skills for the parts that need them). Keep an existing brief, plan, look and \
+     skills unless the request changes them. If a plan already exists, update only the parts the request changed.\n\
+     3. Resolve small reversible gaps with stated assumptions. Ask only when an essential missing answer would \
+     materially change the teaser or cause rework, for example when nothing says what the game is. Then return \
+     route \"question\" with a form, and leave the plan empty. Do not ask the developer to approve a plan that can \
+     already be carried out. Never ask for permission to proceed.\n\
+     4. Otherwise return route \"plan\". Write a concise, actionable plan in prose: goal, deliverable (kind and \
+     length), direction, ordered steps from the location scout to the first cut, key assumptions and remaining \
+     constraints. Include a compact beat map, one row per beat (hook, establish, escalate, title): \
+     time → viewer takeaway → focal object → transformation → copy/audio → exit. Name what the location scout must \
+     find in the level (scout_targets). For `frames`, describe 2 to 6 key pictures of the teaser, one per beat-map row \
+     that matters most: what fills the frame, the light, the depth, the camera height, in one or two sentences each, \
+     as a concept artist's brief. They become rough concept frames the scout looks for in the level.\n\
+     5. When the request gives no visual style and there is no existing look to continue, never skip the direction: \
+     infer one from the game, the audience and the temperament of the content (colour mood, type personality, \
+     pace), pick the design system that carries it, and state it in `direction` in one sentence, so the developer \
+     can redirect cheaply.\n\n\
+     Question form (route \"question\" only)\n\
+     - At most 5 questions; fewer is better. A question earns its place only if its answer changes what you would \
+     make for this request. Never re-ask what the project or earlier answers already say.\n\
+     - Types: radio, checkbox, select, text, textarea. 2-7 options for a choice. The app adds an \"Other\" field to \
+     every choice, so never write your own catch-all option.\n\
+     - Prefill every question with a recommended `default` (an option value; for checkbox, values joined by \",\"; \
+     for text, concrete suggested text), so the form can be sent unchanged and still give a sound teaser.\n\
+     - `id` and option `value` stay in English; `title`, `label`, `placeholder` and option labels are in the \
+     developer's language.\n\n\
+     Never invent facts about the game: a release date or window, a platform, a price, a rating, an award, a \
+     feature the request does not state. Leave them out and say so in the assumptions; never ask for them unless \
+     the request is about a release.\n\
+     Write `say`, the plan, the direction, the brief fields and the form in the language of the request."
+        .to_string()
+}
+
+pub fn discover_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "route": {"type": "string", "enum": ["question", "plan"]},
+            "say": {"type": "string", "description": "one short line to the developer: what you will make, or why you ask"},
+            "form": {
+                "type": "object",
+                "description": "route question only; otherwise title empty and no questions",
+                "properties": {
+                    "title": {"type": "string"},
+                    "questions": {"type": "array", "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "label": {"type": "string"},
+                            "type": {"type": "string", "enum": ["radio", "checkbox", "select", "text", "textarea"]},
+                            "default": {"type": "string"},
+                            "placeholder": {"type": "string"},
+                            "options": {"type": "array", "items": {
+                                "type": "object",
+                                "properties": {"label": {"type": "string"}, "value": {"type": "string"}},
+                                "required": ["label", "value"], "additionalProperties": false,
+                            }},
+                        },
+                        "required": ["id", "label", "type", "default", "placeholder", "options"],
+                        "additionalProperties": false,
+                    }},
+                },
+                "required": ["title", "questions"],
+                "additionalProperties": false,
+            },
+            "plan": {"type": "string", "description": "route plan: the plan in prose with the beat map; empty for a question"},
+            "direction": {"type": "string", "description": "the direction in one sentence"},
+            "brief": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["teaser", "gameplay"]},
+                    "genre": {"type": "string"},
+                    "audience": {"type": "string"},
+                    "core": {"type": "string", "description": "the one feeling the viewer must leave with"},
+                    "must_show": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["kind", "genre", "audience", "core", "must_show"],
+                "additionalProperties": false,
+            },
+            "design": {"type": "string", "description": "a design system id from the catalogue"},
+            "skills": {"type": "array", "items": {"type": "string"}, "description": "skill ids from the catalogue"},
+            "style": {"type": "string", "description": "a style id from the catalogue, or empty"},
+            "scout_targets": {"type": "array", "items": {
+                "type": "object",
+                "properties": {"look_for": {"type": "string"}, "why": {"type": "string"}},
+                "required": ["look_for", "why"], "additionalProperties": false,
+            }},
+            "frames": {"type": "array", "description": "route plan: 2-6 key pictures, one per beat that matters", "items": {
+                "type": "object",
+                "properties": {"beat": {"type": "string", "enum": ["hook", "establish", "escalate", "title"]}, "look": {"type": "string"}},
+                "required": ["beat", "look"], "additionalProperties": false,
+            }},
+            "assumptions": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["route", "say", "form", "plan", "direction", "brief", "design", "skills", "style", "scout_targets", "frames", "assumptions"],
+        "additionalProperties": false,
+    })
+}
+
+/// What the planning turn returned.
+#[derive(Debug, Clone, Default)]
+pub struct Discovery {
+    /// "question" or "plan".
+    pub route: String,
+    pub say: String,
+    /// The question form ({title, questions}), for route question.
+    pub form: Value,
+    pub plan: String,
+    pub direction: String,
+    /// `brief:` entries to write (only the fields Claude filled, ids already checked).
+    pub brief: Vec<(String, Value)>,
+    pub design: String,
+    pub skills: Vec<String>,
+    pub scout_targets: Vec<(String, String)>,
+    /// One picture per key beat: (beat, look). They become concept frames (D-46).
+    pub frames: Vec<(String, String)>,
+    pub assumptions: Vec<String>,
+}
+
+impl Discovery {
+    pub fn is_question(&self) -> bool {
+        self.route == "question"
+    }
+
+    pub fn to_json(&self) -> Value {
+        json!({
+            "route": self.route, "say": self.say, "form": self.form, "plan": self.plan, "direction": self.direction,
+            "design": self.design, "skills": self.skills, "assumptions": self.assumptions,
+            "frames": self.frames.iter().map(|(b, l)| json!({"beat": b, "look": l})).collect::<Vec<_>>(),
+            "scout_targets": self.scout_targets.iter().map(|(l, w)| json!({"look_for": l, "why": w})).collect::<Vec<_>>(),
+        })
+    }
+}
+
+fn project_text(defn: &Definition) -> String {
+    let b = &defn.brief;
+    let mut out = format!(
+        "## Project\nTitle: {}\nPitch: {}\nKind: {}\n",
+        if defn.teaser.title.is_empty() { "(not set)" } else { &defn.teaser.title },
+        if defn.teaser.pitch.is_empty() { "(none)" } else { &defn.teaser.pitch },
+        b.kind
+    );
+    for (label, v) in [("Genre", &b.genre), ("Style", &b.style), ("Audience", &b.audience), ("Core experience", &b.core),
+                       ("Notes", &b.notes), ("Design system", &b.design)] {
+        if !v.is_empty() {
+            out.push_str(&format!("{label}: {v}\n"));
+        }
+    }
+    if !b.must_show.is_empty() {
+        out.push_str(&format!("Must show: {}\n", b.must_show.join(", ")));
+    }
+    if !b.skills.is_empty() {
+        out.push_str(&format!("Skills: {}\n", b.skills.join(", ")));
+    }
+    if crate::designsys::project_doc(&defn.root()).is_some() {
+        out.push_str("The project has its own DESIGN.md (the game's brand): keep its look; pick the closest design system for the numbers.\n");
+    }
+    if !b.plan.is_empty() {
+        out.push_str(&format!("\n## Current plan\nDirection: {}\n{}\n", b.direction, b.plan));
+    }
+    out.push_str(&format!("\n## Anchors in the level\n{}\n", if defn.anchors.is_empty() { "(none yet: the location scout will find them)".to_string() } else { anchors_list(defn) }));
+    out.push_str(&stage_section(defn));
+    out.push_str(&format!("\n## Props that can appear\n{}\n", props_list(defn)));
+    out
+}
+
+fn catalogues_text() -> String {
+    let genres: Vec<String> = crate::refs::genres().iter().map(|g| format!("{} ({})", g.name, g.id)).collect();
+    let styles: Vec<String> = crate::refs::styles()
+        .iter()
+        .map(|s| format!("- `{}` [{}] {}: {}", s.id, s.genre, s.name, s.summary))
+        .collect();
+    format!(
+        "\n## Genres with measured references\n{}\n\n## Design systems (the look)\n{}\n\n## Skills (playbooks)\n{}\n\n\
+         ## Styles (recent popular teasers to imitate in structure and rhythm; optional)\n{}\n",
+        genres.join(", "),
+        crate::designsys::catalogue_text(),
+        crate::skills::catalogue_text(),
+        styles.join("\n")
+    )
+}
+
+/// The planning turn (D-45). `answers`: the developer's answers to an earlier form, as text.
+/// Without `allow_questions` (the CLI, a first pass that cannot stop), it always plans.
+pub fn discover(defn: &Definition, request: &str, answers: &str, allow_questions: bool, claude: &dyn Claude) -> Result<Discovery> {
+    let request = request.trim();
+    let mut user = format!("## Request\n{}\n", if request.is_empty() { defn.teaser.pitch.as_str() } else { request });
+    if !answers.trim().is_empty() {
+        user.push_str(&format!("\n## Answers to your questions\n{}\n", answers.trim()));
+    }
+    user.push_str(&project_text(defn));
+    user.push_str(&catalogues_text());
+    if !allow_questions {
+        user.push_str("\nQuestions are not possible in this run: decide with stated assumptions and return route \"plan\".\n");
+    }
+    let out = ask_json(claude, &discover_system(), json!(user), discover_schema())?;
+    let mut d = Discovery {
+        route: if allow_questions && out["route"] == "question" { "question".into() } else { "plan".into() },
+        say: out["say"].as_str().unwrap_or("").trim().to_string(),
+        ..Default::default()
+    };
+    if d.is_question() {
+        let questions: Vec<Value> = out["form"]["questions"].as_array().cloned().unwrap_or_default().into_iter().take(5).collect();
+        if !questions.is_empty() {
+            d.form = json!({"title": out["form"]["title"], "questions": questions});
+            return Ok(d);
+        }
+        d.route = "plan".into(); // a question with no questions: plan instead
+    }
+    d.plan = out["plan"].as_str().unwrap_or("").trim().to_string();
+    d.direction = out["direction"].as_str().unwrap_or("").trim().to_string();
+    if d.plan.is_empty() {
+        bail!("Claude returned neither a plan nor a question");
+    }
+    // ids are kept only when they exist: the catalogue is enforced by code, not by the prompt
+    d.design = out["design"].as_str().filter(|id| crate::designsys::get(id).is_some()).unwrap_or("").to_string();
+    d.skills = out["skills"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter(|id| crate::skills::get(id).is_some())
+        .map(str::to_string)
+        .fold(Vec::new(), |mut v, s| {
+            if !v.contains(&s) {
+                v.push(s);
+            }
+            v
+        });
+    d.scout_targets = out["scout_targets"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|t| Some((t["look_for"].as_str()?.trim().to_string(), t["why"].as_str().unwrap_or("").trim().to_string())))
+        .filter(|(l, _)| !l.is_empty())
+        .collect();
+    d.assumptions = out["assumptions"].as_array().into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect();
+    d.frames = out["frames"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|f| {
+            let beat = f["beat"].as_str().filter(|b| BEATS.contains(b))?;
+            let look = f["look"].as_str().map(str::trim).filter(|l| !l.is_empty())?;
+            Some((beat.to_string(), look.to_string()))
+        })
+        .take(6)
+        .collect();
+    let b = &out["brief"];
+    let mut brief: Vec<(String, Value)> = Vec::new();
+    for k in ["kind", "genre", "audience", "core"] {
+        if let Some(v) = b[k].as_str().map(str::trim).filter(|v| !v.is_empty()) {
+            brief.push((k.to_string(), json!(v)));
+        }
+    }
+    let must: Vec<String> = b["must_show"].as_array().into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect();
+    if !must.is_empty() {
+        brief.push(("must_show".into(), json!(must)));
+    }
+    if let Some(s) = out["style"].as_str().filter(|id| crate::refs::style(id).is_some()) {
+        brief.push(("style".into(), json!(s)));
+    }
+    if !d.design.is_empty() {
+        brief.push(("design".into(), json!(d.design)));
+    }
+    if !d.skills.is_empty() {
+        brief.push(("skills".into(), json!(d.skills)));
+    }
+    let mut plan = d.plan.clone();
+    if !d.scout_targets.is_empty() {
+        plan.push_str("\n\nScout targets:\n");
+        for (l, w) in &d.scout_targets {
+            plan.push_str(&format!("- {l}{}\n", if w.is_empty() { String::new() } else { format!(" ({w})") }));
+        }
+    }
+    if !d.assumptions.is_empty() {
+        plan.push_str("\nAssumptions:\n");
+        for a in &d.assumptions {
+            plan.push_str(&format!("- {a}\n"));
+        }
+    }
+    brief.push(("plan".into(), json!(plan.trim())));
+    brief.push(("direction".into(), json!(d.direction)));
+    d.brief = brief;
+    Ok(d)
+}
+
+pub fn locations_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "picks": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "candidate": {"type": "string", "description": "a candidate name from the list, exactly"},
+                    "why": {"type": "string"},
+                },
+                "required": ["candidate", "why"], "additionalProperties": false,
+            }},
+        },
+        "required": ["picks"],
+        "additionalProperties": false,
+    })
+}
+
+/// The location scout's choice (D-45): which landmarks of the level to photograph for this
+/// plan. Returns candidate names, in the order Claude gave them; code keeps only real ones.
+pub fn pick_locations(defn: &Definition, cands: &[crate::scout::Candidate], limit: usize, want: Option<&str>, claude: &dyn Claude)
+    -> Result<Vec<String>> {
+    let system = "You are the location scout on a game teaser shoot. The level has no marked places yet. From the \
+                  candidate objects found in the level, choose the places to photograph so the plan can be filmed: \
+                  the places the plan and its scout targets need first, then places that give the teaser range \
+                  (different rooms or areas, a strong opening image, a place for the title). Prefer objects that \
+                  mark a place (a door, a bed, an altar, a gate) over clutter. Spread the picks across the level.";
+    let b = &defn.brief;
+    let mut user = format!(
+        "## Plan\nDirection: {}\n{}\n\nCore experience: {}\nMust show: {}\n\n## Candidates (name, label, class, size, centre)\n{}\n\n\
+         Choose up to {limit} candidates, most important first.",
+        b.direction,
+        if b.plan.is_empty() { defn.teaser.pitch.as_str() } else { b.plan.as_str() },
+        b.core,
+        b.must_show.join(", "),
+        cands.iter().map(crate::scout::Candidate::line).collect::<Vec<_>>().join("\n")
+    );
+    if !b.genre.is_empty() {
+        user.push_str(&format!("\nGenre: {}", b.genre));
+    }
+    if let Some(w) = want.filter(|w| !w.trim().is_empty()) {
+        user.push_str(&format!(
+            "\n\n## Pictures still without a place\nPick the candidates most likely to look like these (by what they are, their \
+             size and where they stand):\n{w}"
+        ));
+    }
+    let out = ask_json(claude, system, json!(user), locations_schema())?;
+    let mut picks: Vec<String> = Vec::new();
+    for p in out["picks"].as_array().into_iter().flatten() {
+        let Some(name) = p["candidate"].as_str() else { continue };
+        if cands.iter().any(|c| c.name == name) && !picks.iter().any(|x| x == name) {
+            picks.push(name.to_string());
+        }
+        if picks.len() >= limit {
+            break;
+        }
+    }
+    Ok(picks)
+}
+
+pub fn match_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "matches": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "frame": {"type": "string", "description": "a concept frame id"},
+                    "photo": {"type": "string", "description": "the scout photo id (anchor/side) that fits best, or empty for none"},
+                    "fit": {"type": "string", "enum": ["good", "rough", "none"]},
+                    "why": {"type": "string"},
+                },
+                "required": ["frame", "photo", "fit", "why"], "additionalProperties": false,
+            }},
+        },
+        "required": ["matches"],
+        "additionalProperties": false,
+    })
+}
+
+/// One answer of [`match_frames`]: the frame, and the photo id ("anchor/side") with its fit,
+/// or None when no photo can be filmed to feel like it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrameMatch {
+    pub frame: String,
+    pub photo: Option<(String, String)>,
+    pub fit: String,
+    pub why: String,
+}
+
+/// The location scout compares concept frames with the photos it took (D-46): for each frame,
+/// the photo whose place feels most like it. `frames`: (id, beat, look, image path);
+/// `photos`: (anchor, side, image path). Images go up to a byte budget; ids are checked in code.
+pub fn match_frames(defn: &Definition, frames: &[(String, String, String, std::path::PathBuf)],
+                    photos: &[(String, String, std::path::PathBuf)], claude: &dyn Claude) -> Result<Vec<FrameMatch>> {
+    const BUDGET: usize = 22_000_000;
+    let system = "You are the location scout on a game teaser shoot. The director has rough concept frames (generated \
+                  sketches) of what some beats should feel like. You photographed places in the level. For each concept \
+                  frame, choose the one scout photo whose place, filmed from about there, would feel most like the \
+                  frame: what fills the frame, the light and darkness, the depth of the space, the materials and the \
+                  camera height. Exact objects do not need to match. `good`: it can be filmed to feel like the frame. \
+                  `rough`: the same kind of place, a different feel. `none`: nothing photographed here can carry it.";
+    let mut content: Vec<Value> = Vec::new();
+    let mut used = 0usize;
+    let mut sent_frames = Vec::new();
+    for (id, beat, look, path) in frames {
+        let Some(rel) = path.strip_prefix(defn.root()).ok().map(|p| p.to_string_lossy().replace('\\', "/")) else { continue };
+        let Some((img, n)) = crate::concept::image_block(&defn.root(), &rel) else { continue };
+        content.push(json!({"type": "text", "text": format!("Concept frame `{id}` ({beat}): {look}")}));
+        content.push(img);
+        used += n;
+        sent_frames.push(id.clone());
+    }
+    if sent_frames.is_empty() {
+        return Ok(Vec::new());
+    }
+    // the front views of every place first, then the other sides, within the budget
+    let mut order: Vec<&(String, String, std::path::PathBuf)> = photos.iter().filter(|p| p.1 == "front").collect();
+    order.extend(photos.iter().filter(|p| p.1 != "front"));
+    let mut sent_photos: Vec<(String, String)> = Vec::new();
+    for (anchor, side, path) in order {
+        let Ok(bytes) = std::fs::read(path) else { continue };
+        let Some((_, media)) = crate::moodboard::image_type(&bytes) else { continue };
+        if bytes.len() > MAX_IMAGE_BYTES || used + bytes.len() > BUDGET {
+            continue;
+        }
+        used += bytes.len();
+        content.push(json!({"type": "text", "text": format!("Scout photo `{anchor}/{side}`")}));
+        content.push(json!({"type": "image", "source": {"type": "base64", "media_type": media, "data": base64(&bytes)}}));
+        sent_photos.push((anchor.clone(), side.clone()));
+    }
+    if sent_photos.is_empty() {
+        return Ok(Vec::new());
+    }
+    content.push(json!({"type": "text", "text": format!(
+        "Answer once per concept frame ({}). `photo` is a scout photo id exactly as labelled, or empty with fit `none`. \
+         Write `why` in one short sentence, in the language of this pitch: {}",
+        sent_frames.join(", "), defn.teaser.pitch)}));
+    let out = ask_json(claude, system, Value::Array(content), match_schema())?;
+    let mut res: Vec<FrameMatch> = Vec::new();
+    for m in out["matches"].as_array().into_iter().flatten() {
+        let Some(frame) = m["frame"].as_str().filter(|f| sent_frames.iter().any(|s| s == f)) else { continue };
+        if res.iter().any(|r| r.frame == frame) {
+            continue;
+        }
+        let fit = m["fit"].as_str().unwrap_or("none");
+        let photo = m["photo"]
+            .as_str()
+            .and_then(|p| p.split_once('/'))
+            .map(|(a, s)| (a.to_string(), s.to_string()))
+            .filter(|p| fit != "none" && sent_photos.contains(p));
+        res.push(FrameMatch {
+            frame: frame.to_string(),
+            fit: if photo.is_some() { fit.to_string() } else { "none".into() },
+            photo,
+            why: m["why"].as_str().unwrap_or("").to_string(),
+        });
+    }
+    Ok(res)
 }
 
 #[cfg(test)]

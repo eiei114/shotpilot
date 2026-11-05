@@ -3,10 +3,12 @@
 //! Define shots in `shots.yaml`; only the shots whose pixels changed are re-rendered.
 
 pub mod ai;
+pub mod concept;
 pub mod connect;
 pub mod craft;
 pub mod content;
 pub mod cut;
+pub mod designsys;
 pub mod engines;
 pub mod error;
 pub mod finish;
@@ -24,6 +26,7 @@ pub mod scout;
 pub mod script;
 pub mod server;
 pub mod shotcheck;
+pub mod skills;
 pub mod sound;
 pub mod soundcheck;
 pub mod sounddesign;

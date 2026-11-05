@@ -55,3 +55,19 @@ pub fn ids(v: &[&str]) -> Vec<String> {
 pub fn set(pairs: &[(&str, Value)]) -> Vec<(String, Value)> {
     pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
 }
+
+/// Whether a fake Claude is being asked the planning turn (D-45).
+pub fn is_discover(request: &Value) -> bool {
+    request["output_config"]["format"]["schema"]["properties"].get("route").is_some()
+}
+
+/// A planning turn's answer: a plan in the quiet-dread look with the rules skill.
+pub fn discovery_reply() -> Value {
+    serde_json::json!({
+        "route": "plan", "say": "規則で見せる静かなホラーにします。", "form": {"title": "", "questions": []},
+        "plan": "目的: 中庭の規則を3つ見せ、最後に破られる。", "direction": "動かないカメラと規則のカードで、静かに怖がらせる。",
+        "brief": {"kind": "teaser", "genre": "ホラー", "audience": "", "core": "見てはいけないものを見てしまう", "must_show": []},
+        "design": "quiet-dread", "skills": ["rules-teaser", "title-drop"], "style": "",
+        "scout_targets": [{"look_for": "井戸", "why": "規則が指す場所"}], "assumptions": ["発売日は書かない"]
+    })
+}

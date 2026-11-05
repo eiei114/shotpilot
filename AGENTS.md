@@ -34,13 +34,17 @@ shotpilot approve --script        # 台本を承認（文字・並び・各カ�
 shotpilot brief genre=ホラー       # brief: を見る・書く
 shotpilot moodboard               # ブリーフからムードボードを4枚生成（Codex か OpenAI キー）
 shotpilot storyboard [s03]        # previz の線画を下絵に、リアル寄りの絵コンテを生成（確認用。Cut には入らない）
-shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
+shotpilot discover "規則で見せるホラー"  # 企画（D-45）: 足りないときだけ質問し、方向・ルック・スキル・企画を brief: に書く
+shotpilot design [id] [--fork]    # ルック（デザインシステム）の一覧・指定。--fork でプロジェクトに DESIGN.md を写す
+shotpilot skills                  # ティザーの型の手順書（スキル）の一覧
+shotpilot concept [--match]       # 構成画（D-46）: 企画のビートごとの画を生成する / --match でレベルに似た場所を探す（無ければ別の候補を撮る）
+shotpilot produce                 # 初回: 制約を全部渡して一気に1本出す（企画→ロケハン→ステージ→ムードボード→構成と仕上げ→previz→Cut）
 shotpilot produce --review        # 同じだが、台本とカットの previz で止める（アプリの既定）。確かめて直したら produce --resume で音→撮影→Cut
-shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）
+shotpilot scout                   # 工程0: 各アンカーを4方向から撮る（scout/）。アンカーが無ければ、同じ UE の起動でレベルから取り込み、アセットも棚卸しする
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
-shotpilot promo                   # 発信計画（D-44）: 公開後の動画ごとのチェックシートと、定期発信の予定
+shotpilot promo                   # 発信計画（D-47）: 公開後の動画ごとのチェックシートと、定期発信の予定
 shotpilot promo update v1.1       # このカットを引き継いだアップデートトレーラーを隣に作る（ゲームが変わったカットだけ撮り直し）
 shotpilot promo post s03 [--clip] # take をそのまま静止画か1カットの動画で promo/posts/ に書き出す
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければホーム（最近のプロジェクト・新規作成）を開く
@@ -64,6 +68,9 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/storyboard.rs   絵コンテ（D-33）。previz の線画を下絵に、ロケハン写真とムードボードを参照して画像生成で描く確認用の1枚
   src/produce.rs      初回の一気通し（D-28）。足りない下ごしらえを埋め、plan を1回、最安の品質で撮って仕上げ込みで Cut
   src/craft.rs        plan に書く前に渡す仕様（ブリーフ、骨格、規則、画角の距離表）とコードによる整形
+  src/designsys.rs    ルック（D-45）。references/design-systems/<id>/ の DESIGN.md・tokens・manifest を埋め込み、plan に全文を渡し、tokens で仕上げを決める
+  src/concept.rs      構成画（D-46）。企画のビートごとの画（concept/）と、ロケハンで見つけた場所の記録。plan に画と場所の写真を渡す
+  src/skills.rs       スキル（D-45）。references/skills/<id>/SKILL.md を埋め込み、企画で選ばれたものの本文を plan に渡す
   src/refs.rs         実測リファレンス（references/craft/ と genres/<id>/、流行りの型 20 本を埋め込み）。plan に渡す文と、骨格の hook・title の長さと密度の形
   src/shotcheck.rs    ショット検査。トレーラーの規則でショットリストを lint する（P0 出典あり・承認を止める / P1 / P2 推定）
   src/previz.rs       エンジンを使わないワイヤーフレーム描画（PNG 書き出し）
@@ -81,7 +88,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/templates.rs    shots.yaml の雛形
   src/main.rs         clap の CLI
   src/projects.rs     ホーム画面の裏側（D-30）。最近のプロジェクトの一覧、プロジェクトのカード、新規作成（mock / UE5）
-  src/promo.rs        発信計画（D-44）。公開後の動画（発表・デモ・ローンチ・アップデート・セール）のチェックシート、隣への派生プロジェクト、定期発信の書き出し
+  src/promo.rs        発信計画（D-47）。公開後の動画（発表・デモ・ローンチ・アップデート・セール）のチェックシート、隣への派生プロジェクト、定期発信の書き出し
   src/server.rs       アプリの裏側。Workspace の上に載る薄い HTTP + SSE 層（loopback 限定）
   web/index.html      アプリの studio 画面（ビルドなし、依存なし。バイナリに埋め込む）
   web/home.html       アプリのホーム画面（D-30。最近のプロジェクト、プロンプトからの新規作成、設定）
@@ -103,7 +110,8 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - 台本の承認は `state.json` に script fingerprint（台本の文字と位置、各カットの id・beat・purpose・duration と並び）で残す（D-38）。カメラ・光・音では外れない。
 - 構図の承認は `state.json` に look fingerprint（品質に依らない画の指紋）で残す。画が変わる編集で外れ、編集的な変更では外れない。P0 の指摘があるショットは承認させない。
 - 絵コンテ（`storyboard/`）は確認用で、take ではない。`render/` にも state の take にも入れず、Cut には使わない。look fingerprint を名前にして、画が変わる編集で古くなり、編集的な変更では古くならない。生成するのは人間が頼んだときだけ（produce やレンダでは自動で描かない）。
-- 発信計画（`promo.json`、D-44）は編集的で、fingerprint にも shots.yaml にも入れない。派生プロジェクトの `promo.json` は元の計画への `link` だけを持つ（1つのゲームに計画は1つ）。派生で shots.yaml を書くのは新しいプロジェクトの分だけで、元のプロジェクトの定義と take は触らない。take を引き継ぐときは take フォルダをそのまま写し、写した側の take.json の `deps` だけを元のゲームの場所へ向け直す（同じ定義は同じ fingerprint なので撮り直さず、ゲームが変わったカットだけが古くなる）。
+- 構成画（`concept/`、D-46）はムードボードと同じく参照に限る。take にも Cut にも fingerprint にも入れない。生成するのは人間が頼んだとき（ボタンか `shotpilot concept`）だけで、企画や produce では自動で描かない。構成画と撮った写真の見比べは「本物の写真の中から選ぶ」ことで、Claude が自分の出力を見直すこと（D-22）ではない。選べる写真の id はコードで確かめる。
+- 発信計画（`promo.json`、D-47）は編集的で、fingerprint にも shots.yaml にも入れない。派生プロジェクトの `promo.json` は元の計画への `link` だけを持つ（1つのゲームに計画は1つ）。派生で shots.yaml を書くのは新しいプロジェクトの分だけで、元のプロジェクトの定義と take は触らない。take を引き継ぐときは take フォルダをそのまま写し、写した側の take.json の `deps` だけを元のゲームの場所へ向け直す（同じ定義は同じ fingerprint なので撮り直さず、ゲームが変わったカットだけが古くなる）。
 - 定期発信の投稿は take をそのまま書き出す（静止画は中央のコマ、動画はそのカットの segment）。切り出し・縦への組み直し・文字入れはしない（D-02）。
 - ロケハンのカメラはショットではない。shots.yaml にも take の状態にも入れない（UE では content_root/Scout/ にシーケンスを作るだけ）。
 - ムードボードの画像は雰囲気の参照に限る。生成画像をティザーの画として使わない（実際のゲームと違うものを見せない）。`brief.images` は編集的で、撮り直しを起こさない。
@@ -111,6 +119,8 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `appear`（prop の出現）は、使ったショットの engine payload にだけ入れる。空のときにキーを足さない（足すと全ショットの fingerprint が変わる）。
 - アンカーの大きさ（`{at, size, center}`）は previz の fingerprint にだけ入れる。エンジンの take を無効にしない。
 - plan / revise のプロンプトに、自己検証・チェックリスト・自己採点の語を書かない（D-22、`craft::SELF_REVIEW_WORDS` のテストが守る）。品質は生成前の仕様（`craft.rs`）で上げる。
+- 企画（`ai::discover`、D-45）は open-design の OD Next の計画ターンを写す。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。
+- ルック（`references/design-systems/`）とスキル（`references/skills/`）も plan に全文が渡るので、D-22 の語を書かない（`cargo test --test planning` が守る）。ルックは汎用に限り、実在のゲームやスタジオの名前・ロゴ・固有の色を写さない。ルックの tokens（色調・帯・書体）は Claude の提案より優先してコードで書く。
 - 流行りの型（`refs::STYLES`、D-39）は実在ティザーの構成とリズムだけを真似させる。話の筋・キャラクター・文言は真似させない。分析文（TEASER.md の 1〜7 節）も plan に渡るので、D-22 の語を書かない（`cargo test --test styles` が守る）。
 - `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。
 - ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。
@@ -130,7 +140,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - やる: デスクトップアプリ（`shotpilot-app`、Tauri）。ブラウザは使わない。中身はコアを組み込んだ loopback サーバーと、ビルド不要の HTML 1枚。
 - やる: BGM と SE（D-19）。`shots.yaml` に書き、cut のときにミックスして載せる。映像は撮り直さない。検証は earshot 式のサウンドチェック。
 - やる: 仕上げ（D-25）。帯・タイトル・エンドカード・字幕・カットのつなぎ（黒/白をはさむ）を shots.yaml に書き、Cut で焼き込む。撮り直しは起きない。
-- やる: 公開後の発信計画（D-44）。ティザーのあとの動画（発表・ゲームプレイ・デモ／フェス・ローンチ・アップデート・セール）をチェックシートで並べ、それぞれを隣の別プロジェクトとして起こす。アップデート連動と定期発信の候補は、ゲームの変化の検知（D-37）から出す。1プロジェクトが作る映像は1本のまま。
+- やる: 公開後の発信計画（D-47）。ティザーのあとの動画（発表・ゲームプレイ・デモ／フェス・ローンチ・アップデート・セール）をチェックシートで並べ、それぞれを隣の別プロジェクトとして起こす。アップデート連動と定期発信の候補は、ゲームの変化の検知（D-37）から出す。1プロジェクトが作る映像は1本のまま。
 - やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺（定期発信も横長の take のまま）、複数尺への展開、Electron、Web 公開する UI、GUI での録画後の自由な映像編集（トリム、エフェクト、クロスフェード）。
 - mock エンジンはテストとデモ用で、別エンジン対応の足場ではない。抽象化を先回りして作らない。
 - 録画後の映像編集は作らない（差別化にならない）。差別化できるのは録画の前だけ。音（D-19）と仕上げ（D-25）は例外で、定義の一部として扱い Cut で適用する。

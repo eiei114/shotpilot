@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "epic-fantasy",
+  "name": "叙事詩",
+  "category": "rpg",
+  "description": "広い景色と旅立ち。黄金色の光、帯 2.39、明朝、序曲のように盛り上げる。",
+  "genres": [
+    "rpg",
+    "adventure"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

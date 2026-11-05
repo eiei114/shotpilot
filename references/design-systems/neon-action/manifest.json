@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "neon-action",
+  "name": "ネオン・アクション",
+  "category": "action",
+  "description": "速さと光と衝撃。拍に合わせて切り、1語で打つ。鮮やか、ゴシック、白フラッシュ。",
+  "genres": [
+    "action"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

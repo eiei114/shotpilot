@@ -1,4 +1,4 @@
-//! The release plan (D-44): the videos a game puts out after the teaser, as checklists,
+//! The release plan (D-47): the videos a game puts out after the teaser, as checklists,
 //! started from the current project; and regular posts exported from takes as they are.
 //!
 //! The point of the update trailer: it is made from the teaser's shots, so after the game

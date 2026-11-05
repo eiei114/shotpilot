@@ -180,3 +180,72 @@ pub fn planner_blocks(defn: &Definition, limit: usize) -> Vec<Value> {
 pub fn summary(root: &Path) -> Map<String, Value> {
     load_index(root)["anchors"].as_object().cloned().unwrap_or_default()
 }
+
+/// A landmark the engine offers when nothing in the level is tagged (D-44, D-45).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Candidate {
+    /// An anchor id made from the label (SM_Old_Well3 -> old_well).
+    pub name: String,
+    /// The actor label in the level.
+    pub label: String,
+    /// The actor class.
+    pub class: String,
+    /// How much it is there (cube root of its volume, capped).
+    pub score: f64,
+    pub at: Vec3,
+    pub b: AnchorBox,
+}
+
+impl Candidate {
+    pub fn from_json(v: &Value) -> Option<Candidate> {
+        let name = v.get("name")?.as_str()?.to_string();
+        let (at, b) = crate::model::parse_anchor(v).ok()?;
+        Some(Candidate {
+            label: v.get("label").map(str_of).unwrap_or_else(|| name.clone()),
+            class: v.get("cls").or_else(|| v.get("class")).map(str_of).unwrap_or_default(),
+            score: v.get("score").and_then(num).unwrap_or(0.0),
+            name,
+            at,
+            b: b?,
+        })
+    }
+
+    /// The anchors: entry for shots.yaml.
+    pub fn entry(&self) -> Value {
+        let r = |v: Vec3| v.map(|x| g::round_to(x, 1));
+        if self.b.center == self.at {
+            json!({"at": r(self.at), "size": r(self.b.size)})
+        } else {
+            json!({"at": r(self.at), "size": r(self.b.size), "center": r(self.b.center)})
+        }
+    }
+
+    /// One line for the planner: name, what it is, size, where.
+    pub fn line(&self) -> String {
+        let f = |v: Vec3| v.iter().map(|x| fmt_g(g::round_to(*x, 0))).collect::<Vec<_>>().join(", ");
+        format!("- `{}` ({}, {}): size [{}] cm at [{}]", self.name, self.label, self.class, f(self.b.size), f(self.b.center))
+    }
+}
+
+/// The fallback pick without Claude: the largest first, then each next one far from those
+/// picked (weighted by its size), nothing closer than 3 m, so the photos cover the level.
+pub fn spread(cands: &[Candidate], limit: usize) -> Vec<Candidate> {
+    let mut pool: Vec<&Candidate> = cands.iter().collect();
+    pool.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    let mut picked: Vec<&Candidate> = Vec::new();
+    while !pool.is_empty() && picked.len() < limit {
+        let next = if picked.is_empty() {
+            Some(0)
+        } else {
+            let near = |c: &Candidate| picked.iter().map(|p| g::length(g::sub(c.b.center, p.b.center))).fold(f64::INFINITY, f64::min);
+            pool.iter()
+                .enumerate()
+                .filter(|(_, c)| near(c) >= 300.0)
+                .max_by(|(_, a), (_, b)| (a.score * near(a)).partial_cmp(&(b.score * near(b))).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(i, _)| i)
+        };
+        let Some(i) = next else { break };
+        picked.push(pool.remove(i));
+    }
+    picked.into_iter().cloned().collect()
+}

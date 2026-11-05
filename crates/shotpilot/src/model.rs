@@ -128,7 +128,10 @@ impl StageCfg {
 pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
 
 /// Fields of `brief:` a planner reads. Order is the order the app asks them in.
-pub const BRIEF_FIELDS: &[&str] = &["kind", "genre", "style", "audience", "core", "must_show", "references", "notes", "images"];
+pub const BRIEF_FIELDS: &[&str] = &[
+    "kind", "genre", "style", "audience", "core", "must_show", "references", "notes", "images", "design", "skills", "plan",
+    "direction",
+];
 
 /// `brief:`: what the trailer is for, written before any shot. Editorial only: it never
 /// affects pixels, so editing it never re-renders anything.
@@ -147,6 +150,14 @@ pub struct BriefCfg {
     /// Mood-board images (paths under moodboard/): palette, light and tone, not shot designs.
     pub images: Vec<String>,
     pub notes: String,
+    /// The look: a bundled design system id (designsys, D-45). A project `DESIGN.md` wins for the prose.
+    pub design: String,
+    /// Skill ids the planning turn picked (skills, D-45).
+    pub skills: Vec<String>,
+    /// The planning turn's plan, in prose (goal, deliverable, direction, steps, assumptions).
+    pub plan: String,
+    /// The direction in one sentence, so the human can redirect cheaply.
+    pub direction: String,
     /// The raw mapping, for the app's form.
     pub raw: Map<String, Value>,
 }
@@ -688,6 +699,16 @@ fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
     if !TRAILER_KINDS.contains(&kind.as_str()) {
         errs.push(format!("brief.kind: one of {} (got '{kind}')", TRAILER_KINDS.join(", ")));
     }
+    let design = opt_str(raw.get("design")).unwrap_or_default();
+    if !design.is_empty() && crate::designsys::get(&design).is_none() {
+        let ids: Vec<&str> = crate::designsys::all().iter().map(|d| d.id).collect();
+        errs.push(format!("brief.design: one of {} (got '{design}')", ids.join(", ")));
+    }
+    let skills = list("skills", errs);
+    for s in skills.iter().filter(|s| crate::skills::get(s).is_none()) {
+        let ids: Vec<&str> = crate::skills::all().iter().map(|k| k.id).collect();
+        errs.push(format!("brief.skills: '{s}' is not a skill ({})", ids.join(", ")));
+    }
     BriefCfg {
         kind,
         genre: opt_str(raw.get("genre")).unwrap_or_default(),
@@ -698,6 +719,10 @@ fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
         references: list("references", errs),
         images: list("images", errs),
         notes: opt_str(raw.get("notes")).unwrap_or_default(),
+        design,
+        skills,
+        plan: opt_str(raw.get("plan")).unwrap_or_default(),
+        direction: opt_str(raw.get("direction")).unwrap_or_default(),
         raw,
     }
 }

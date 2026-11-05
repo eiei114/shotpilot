@@ -457,8 +457,8 @@ function drawHome() {
   $("ai-dot").className = "dot" + (ai.ready ? "" : " bad");
   $("ai-name").textContent = ai.ready ? `${ai.active === "api-key" ? "API" : "Claude Code"} · ${ai.model || ""}` : "未接続";
   $("ai-warn").hidden = !ui.home || !!ai.ready;
-  if (!ai.ready && ai.error) $("ai-err").textContent = `Claude に接続されていません（${ai.error}）。プロジェクトは作れますが、一気に作るには接続が要ります。`;
-  $("send").title = ai.ready ? "作る：プロジェクトを作り、そのまま一気に1本作る (Ctrl+Enter)" : "プロジェクトを作る (Ctrl+Enter)";
+  if (!ai.ready && ai.error) $("ai-err").textContent = `Claude に接続されていません（${ai.error}）。プロジェクトは作れますが、企画と一気に作るには接続が要ります。`;
+  $("send").title = ai.ready ? "作る：プロジェクトを作り、企画してから、ロケハン・台本と構成・previz まで進める (Ctrl+Enter)" : "プロジェクトを作る (Ctrl+Enter)";
   drawTray();
   if (!$("examples").childElementCount) {
     $("examples").innerHTML = EXAMPLES.map((x, i) => {
