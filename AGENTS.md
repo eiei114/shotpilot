@@ -45,6 +45,7 @@ shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し �
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
 shotpilot-app [path/to/shots.yaml]   # アプリ。引数がなければホーム（最近のプロジェクト・新規作成）を開く
+node tools/i18n_extract.js        # 英語モードの辞書に無い画面の文言を一覧する（D-51）
 ```
 
 `cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は、ログイン済みの Claude Code（`claude` コマンド）か API キー（アプリの設定、または `ANTHROPIC_API_KEY`）で Claude を呼ぶ（モデルは `SHOTPILOT_MODEL` で上書きできる。effort は `low`〜`max` をアプリの接続設定か `SHOTPILOT_EFFORT` で変えられ、既定は `medium`。Claude Code 経由でも API 経由でも同じ値が効く）。
@@ -88,6 +89,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/server.rs       アプリの裏側。Workspace の上に載る薄い HTTP + SSE 層（loopback 限定）
   web/index.html      アプリの studio 画面（ビルドなし、依存なし。バイナリに埋め込む）
   web/home.html       アプリのホーム画面（D-30。最近のプロジェクト、プロンプトからの新規作成、設定）
+  web/i18n.js         英語モード（D-51）。PC の言語が日本語でなければ、画面の日本語を i18n-en.json の辞書で英語に置き換える
   ue/sp_entry.py      Unreal の中で動くスクリプト。唯一の Python（別ルールあり。バイナリに埋め込む）
   tests/              mock エンジンでループ全体を検証する
 crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組み込み、ウィンドウ1枚で開く
@@ -122,6 +124,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - `references/craft/` と `references/genres/` は実測から生成し、バイナリに埋め込む（D-29）。表は `aggregate_refs.py` が書き、auto マーカーの外の本文だけを手で書く。本文も plan に渡るので、D-22 の語を書かない。
 - ショット検査の重さは根拠で決める。出典のある規則だけを P0 にし、推定の閾値は P2 に留める（実測で校正するまで）。
 - `build` は、Sequencer 側で人間が加えた変更を黙って上書きしない（`--force` のときだけ上書きする）。
+- 画面の文言は日本語で書き、英語は `web/i18n-en.json` の辞書で出す（D-51）。描画コードに英語の分岐を書かない。文言を足したり変えたりしたら `node tools/i18n_extract.js` で辞書に無いものを出し、英訳を足す（`{0}` などの穴は日本語と同じ組にする。`the_pages_switch_to_english_with_a_dictionary` が守る）。ユーザーや Claude が書いた文は訳さない（辞書に無い文はそのまま残り、穴に入る自由な文は `i18n-free.json` が示す）。DOM の文字を読んで処理を分けるコードを書かない（英語モードでは中身が変わる）。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。
 - 座標系は UE 準拠（cm、Z が上、X が前、Y が右、左手系、回転は度）。`geometry.rs` は依存なしのまま保つ。
 

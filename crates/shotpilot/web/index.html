@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/i18n.js"></script>
 <title>shotpilot</title>
 <style>
 :root {
@@ -354,7 +355,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .thumb .q.stale { background: var(--stale); color: #241900; }
 .thumb .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--accent); width: 0; }
 .thumb .none { position: absolute; inset: 0; display: grid; place-items: center; color: #8a9094; font-size: 10.5px; text-align: center; padding: 4px; }
-.item.rendering .thumb .box::after { content: "撮影中"; position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5);
+.item.rendering .thumb .box::after { content: var(--label-rendering, "撮影中"); position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5);
   color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; animation: pulse 1.2s ease-in-out infinite; }
 .cardmini { aspect-ratio: 16 / 9; background: #0a0a0a; border-radius: 7px; display: grid; place-items: center; align-content: center; gap: 2px; color: #e0dbcf;
   font: 500 10px/1.3 "Yu Mincho", "Hiragino Mincho ProN", serif; text-align: center; padding: 4px 6px; overflow: hidden; }
@@ -1392,7 +1393,9 @@ async function fetchGenres() {
   finally { fetchGenres.busy = false; }
 }
 
-const viewsJa = (v) => (v >= 1e4 ? `${Math.round(v / 1e4).toLocaleString()}万回` : `${v}回`);
+const viewsJa = (v) => window.SP_LANG === "en"
+  ? `${new Intl.NumberFormat("en", { notation: "compact" }).format(v)} views`
+  : (v >= 1e4 ? `${Math.round(v / 1e4).toLocaleString()}万回` : `${v}回`);
 
 /** Cuts as ticks and black as dark spans along the runtime. */
 function rhythmSvg(s) {
@@ -2818,7 +2821,8 @@ function drawExamples() {
   const list = ui.status?.ai?.ready && !ui.busy && !$("note").value.trim() ? composerExamples() : [];
   box.hidden = !list.length;
   const html = list.length ? `<span class="lbl">例</span>${list.map((t) => `<button type="button" data-ex="${esc(t)}" title="押すと欄に入ります（送る前に直せます）">${esc(t)}</button>`).join("")}` : "";
-  if (box.innerHTML !== html) box.innerHTML = html;
+  // compare with what was drawn, not the DOM: the English mode rewrites the text on screen
+  if (box._html !== html) { box._html = html; box.innerHTML = html; }
 }
 
 function drawScope() {
@@ -3064,7 +3068,7 @@ function entryHtml(e, isLast) {
         ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ カット表で台本とカットを確かめる</button></div>` : ""}</div>`;
     }
     if (e.resumed) {
-      return `<div class="event"><span class="dot"></span><span>▶ 続き: ${esc((e.steps || []).map((s) => `${s.label} ${s.detail || ""}`.trim()).join(" → "))}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
+      return `<div class="event"><span class="dot"></span><span>▶ 続き: ${(e.steps || []).map((s) => `<span>${esc(s.label)}</span>${s.detail ? ` <span>${esc(s.detail)}</span>` : ""}`).join(" → ")}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>
         ${notes}${isLast ? `<div class="suggest"><button data-goto-stage="finish">↗ できた1本を見る</button></div>` : ""}`;
     }
     return `<div class="msg-user"><div class="bubble">${esc(e.note || "一気に作る")}</div><div class="ctx">⚡ 一気に作る</div></div>

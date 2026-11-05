@@ -35,6 +35,17 @@ use crate::workspace::Workspace;
 
 pub const INDEX_HTML: &str = include_str!("../web/index.html");
 pub const HOME_HTML: &str = include_str!("../web/home.html");
+/// The English mode (web/i18n.js) and its dictionary: the pages switch to English on a PC whose
+/// language is not Japanese.
+pub const I18N_JS: &str = include_str!("../web/i18n.js");
+pub const I18N_EN: &str = include_str!("../web/i18n-en.json");
+/// For each dictionary key, the holes that hold the user's or Claude's own words.
+pub const I18N_FREE: &str = include_str!("../web/i18n-free.json");
+
+/// The English mode with its dictionary in front.
+pub fn i18n_js() -> String {
+    format!("const SP_EN = {};\nconst SP_FREE = {};\n{I18N_JS}", I18N_EN.trim(), I18N_FREE.trim())
+}
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
 const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard", "concept"];
 /// Loopback only; large enough for a mood-board image sent as base64.
@@ -771,6 +782,8 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                                        &[("Cache-Control", "no-store".into())]).map_err(io),
         ("GET" | "HEAD", "/home") => send(stream, head, 200, "text/html; charset=utf-8", HOME_HTML.as_bytes(),
                                            &[("Cache-Control", "no-store".into())]).map_err(io),
+        ("GET" | "HEAD", "/i18n.js") => send(stream, head, 200, "text/javascript; charset=utf-8", i18n_js().as_bytes(),
+                                              &[("Cache-Control", "no-store".into())]).map_err(io),
         ("GET" | "HEAD", "/api/home") => send_json(stream, head, 200, &home_payload(app)).map_err(io),
         ("GET" | "HEAD", "/home/cover") => {
             let p = req.query.split('&').find_map(|kv| kv.strip_prefix("p=")).unwrap_or("");
