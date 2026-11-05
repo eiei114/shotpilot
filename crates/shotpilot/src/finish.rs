@@ -9,12 +9,14 @@
 //!
 //! No crossfades: an overlap would shorten the cut and pull the sound effects off their cuts.
 //! Dips (through black), flashes and whiteouts (from white) and glitches keep every shot's
-//! length. How the text moves and how long a dip takes come from `finish.motion` (motion.rs).
+//! length. How the text moves and how long a dip takes come from `finish.motion` (motion.rs);
+//! how each hand-over is drawn is its recipe (handover.rs, D-58).
 
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::handover::{filters as hand_over, Side};
 use crate::model::{fmt_g, num, str_of};
 use crate::script::Line;
 
@@ -760,20 +762,6 @@ fn slot(ink: &mut Ink, l: &Line, d: f64, w: i64, h: i64, fps: i64) -> crate::Res
     Ok(format!("{chain},format=yuv420p,setsar=1"))
 }
 
-/// The scale from the 1080-line layout for a frame `h` lines high.
-fn s_of(h: i64) -> f64 {
-    h as f64 / 1080.0
-}
-
-/// A glitch over [t0, t1] of a shot: the colour channels pulled apart and grain on top. The
-/// frames are changed, not added, so the shot keeps its length.
-fn glitch(t0: f64, t1: f64, s: f64) -> String {
-    let px = (10.0 * s).round().max(2.0) as i64;
-    format!(
-        "rgbashift=rh=-{px}:bh={px}:enable='between(t,{t0:.3},{t1:.3})',noise=alls=40:allf=t:enable='between(t,{t0:.3},{t1:.3})'"
-    )
-}
-
 /// A title slot that shows the game's logo: the image fitted into the middle of the frame
 /// (its height follows the title size, 22-45% of the frame), faded in and out through black.
 fn logo_slot(ink: &mut Ink, d: f64, w: i64, h: i64, fps: i64) -> String {
@@ -837,32 +825,13 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                     None if x.exposure != 0.0 => f.push(format!("eq=brightness={:.3}", x.exposure)),
                     None => {}
                 }
-                // the hand-over from the shot before (D-53: lengths from the motion profile)
-                let mo = &ink.motion;
+                // the hand-overs either side of the shot: their recipes (D-58), timed by the
+                // motion profile (D-53)
                 if let Some(CutPiece::Shot(prev)) = i.checked_sub(1).map(|j| &pieces[j]) {
-                    match mo.transition(&prev.transition).as_str() {
-                        "dip" => f.push(format!("fade=t=in:st=0:d={:.3}:color=black", mo.dip.min(x.duration / 2.0))),
-                        "flash" => f.push(format!("fade=t=in:st=0:d={:.3}:color=white", mo.flash.min(x.duration / 2.0))),
-                        // the picture comes back out of white (measured decay 0.7-1.0 s)
-                        "whiteout" => f.push(format!("fade=t=in:st=0:d={:.3}:color=white", 0.8_f64.min(x.duration / 2.0))),
-                        "glitch" => f.push(glitch(0.0, 0.1, s_of(h))),
-                        _ => {}
-                    }
+                    f.extend(hand_over(&ink.motion, &prev.transition, Side::In, x.duration, h, fps));
                 }
                 if matches!(pieces.get(i + 1), Some(CutPiece::Shot(_))) {
-                    match mo.transition(&x.transition).as_str() {
-                        "dip" => {
-                            let d = mo.dip.min(x.duration / 2.0);
-                            f.push(format!("fade=t=out:st={:.3}:d={d:.3}:color=black", x.duration - d));
-                        }
-                        // up to white over the last moments (measured rise 0.2-0.5 s)
-                        "whiteout" => {
-                            let d = 0.3_f64.min(x.duration / 3.0);
-                            f.push(format!("fade=t=out:st={:.3}:d={d:.3}:color=white", x.duration - d));
-                        }
-                        "glitch" => f.push(glitch((x.duration - 0.1).max(0.0), x.duration, s_of(h))),
-                        _ => {}
-                    }
+                    f.extend(hand_over(&ink.motion, &x.transition, Side::Out, x.duration, h, fps));
                 }
                 if has_text {
                     for l in &x.overlays {

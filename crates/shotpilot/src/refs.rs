@@ -26,13 +26,26 @@ pub fn baseline_text() -> String {
 
 const TYPE_DOC: &str = include_str!("../../../references/craft/TEASER-TYPE.md");
 const MOTION_DOC: &str = include_str!("../../../references/motion/MOTION.md");
+const TRANSITIONS_DOC: &str = include_str!("../../../references/motion/TRANSITIONS.md");
 
-/// The writing side of the motion rules (D-53): section 6 of references/motion/MOTION.md.
-/// The vocabulary's numbers stay with the code (motion.rs), like `type_text`.
-pub fn motion_text() -> String {
-    let body = MOTION_DOC.find("\n## 6.").map_or("", |i| &MOTION_DOC[i + 1..]);
+/// The body of section `n` of a reference document (up to the next section).
+fn section<'a>(doc: &'a str, n: &str) -> &'a str {
+    let body = doc.find(&format!("\n## {n}.")).map_or("", |i| &doc[i + 1..]);
     let body = body.split_once('\n').map_or("", |(_, b)| b);
-    format!("\n## Text motion (which entrance a line asks for; the look's profile moves the rest)\n{}\n", nested(body.trim()))
+    body.find("\n## ").map_or(body, |j| &body[..j]).trim()
+}
+
+/// The writing side of the motion rules (D-53, D-58): section 6 of references/motion/MOTION.md
+/// (how the text moves) and section 8 of TRANSITIONS.md (how the shots hand over). The
+/// vocabulary's numbers and the recipes stay with the code (motion.rs, handover.rs), like
+/// `type_text`.
+pub fn motion_text() -> String {
+    format!(
+        "\n## Text motion (which entrance a line asks for; the look's profile moves the rest)\n{}\n\
+         \n## Hand-overs between shots (which `transition` a shot asks for; the look's profile times it)\n{}\n",
+        nested(section(MOTION_DOC, "6")),
+        nested(section(TRANSITIONS_DOC, "8"))
+    )
 }
 
 /// The writing side of the type rules (D-52): section 10 of TEASER-TYPE.md, the only part a

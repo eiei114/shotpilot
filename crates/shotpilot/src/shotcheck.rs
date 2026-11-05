@@ -81,6 +81,8 @@ pub const RULES: &[Rule] = &[
            summary: "No focal length used on 3 shots in a row" },
     Rule { id: "title.short", severity: Severity::P2, basis: "inferred",
            summary: "The title beat holds >= 2 s so the card can be read" },
+    Rule { id: "transition.mix", severity: Severity::P2, basis: "inferred",
+           summary: "One main hand-over (cut) and at most two others (open-design: one primary transition and one or two accents)" },
 ];
 
 pub fn rule(id: &str) -> Option<&'static Rule> {
@@ -377,6 +379,23 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
                      format!("{n} flashes within one second from {}s (flash and whiteout hand-overs, flickering text)", fmt_g(round_to(*t0, 1))),
                      "Turn some of these flashes into cuts or dips, or space the short shots out.");
         }
+    }
+
+    // ---- hand-overs (D-58): a main one and one or two accents, as drawn (after `avoid`)
+    let mut kinds: Vec<String> = Vec::new();
+    for w in items.windows(2) {
+        if let (crate::script::Piece::Shot(i), crate::script::Piece::Shot(_)) = (&w[0].piece, &w[1].piece) {
+            let t = defn.shots.get(shots[*i].index).map(crate::finish::transition).unwrap_or_default();
+            let t = motion.transition(&t);
+            if t != "cut" && !kinds.contains(&t) {
+                kinds.push(t);
+            }
+        }
+    }
+    if kinds.len() > 2 {
+        out.push("transition.mix", None,
+                 format!("{} kinds of hand-over besides cut ({})", kinds.len(), kinds.join(", ")),
+                 "Keep cut as the main hand-over and one or two others (dip and the look's accent); turn the rest into cuts.");
     }
 
     // ---- camera and framing

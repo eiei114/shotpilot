@@ -609,7 +609,13 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     }
     // motion (D-53): the look's profile, else the genre's, then what the brief asked for
     finish.retain(|(k, _)| k != "motion");
-    finish.push(("motion".to_string(), plan_motion(defn, look, &out["motion"])));
+    let motion = plan_motion(defn, look, &out["motion"]);
+    // hand-overs (D-58): cut and at most two others, the look's accent and dip first
+    let accent = crate::motion::resolve(&crate::motion::parse(Some(&motion), &mut Vec::new())).accent;
+    if let Some(note) = crate::handover::shape(&mut shots, &accent) {
+        adjustments.push(note);
+    }
+    finish.push(("motion".to_string(), motion));
     let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
@@ -651,7 +657,9 @@ fn plan_motion(defn: &Definition, look: Option<&crate::designsys::DesignSystem>,
     if !avoid.is_empty() {
         m.insert("avoid".into(), json!(avoid));
     }
-    if m.is_empty() { Value::Null } else { Value::Object(m) }
+    let v = if m.is_empty() { Value::Null } else { Value::Object(m) };
+    // a measured reference's lengths outrank the look's (D-59)
+    crate::reference::motion_for(defn, v)
 }
 
 /// The script lines Claude wrote, as shots.yaml values: ids mapped to the cleaned shot ids,
@@ -1135,11 +1143,12 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
          {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}. \
          A shot may carry on-screen text burned in at the cut: `caption` {{text, at, duration}} (short, one line), \
-         and `transition` into the next shot: cut, dip (through black) or flash (through white). They never re-render.
+         and `transition` into the next shot: {handovers}. They never re-render.
 
          When a rendered frame is attached, it is what the camera currently sees at the moment the          director points to. Read the composition from it (what blocks the view, what is cut off,          where the subject sits) and move the camera so the note is satisfied. Positions in the frame          are given as percentages from the top-left corner. Photos labelled \"Location scout\" show the          anchors as they really look in the level: place cameras where they show open space and a clear view.          Write `summary` in the language of the note.\n\n{SOUND_GUIDE}",
         BEATS.join(" -> "),
-        tod_names_sorted().join(", ")
+        tod_names_sorted().join(", "),
+        handovers = crate::handover::vocabulary()
     );
     if finishing {
         system.push_str("\n\n");

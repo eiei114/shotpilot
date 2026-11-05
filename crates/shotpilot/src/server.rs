@@ -47,7 +47,7 @@ pub fn i18n_js() -> String {
     format!("const SP_EN = {};\nconst SP_FREE = {};\n{I18N_JS}", I18N_EN.trim(), I18N_FREE.trim())
 }
 const LOOPBACK: &[&str] = &["127.0.0.1", "localhost", "::1"];
-const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard", "concept", "promo"];
+const SERVED_DIRS: &[&str] = &["render", "cut", "audio", "moodboard", "scout", "storyboard", "concept", "promo", "reference"];
 /// Loopback only; large enough for a mood-board image sent as base64.
 const MAX_BODY: usize = 20 << 20;
 
@@ -71,6 +71,8 @@ pub enum Pick {
     Uproject { start: Option<PathBuf> },
     /// An image (the game's logo for the title).
     Image { start: Option<PathBuf> },
+    /// A video (a reference teaser to measure, D-59).
+    Video { start: Option<PathBuf> },
 }
 
 /// Shows a native file dialog. Only the desktop app has one; without it the home asks
@@ -513,6 +515,34 @@ fn mime(path: &Path) -> &'static str {
 
 // --------------------------------------------------------------------------- payloads
 
+/// The reference teaser the brief names (D-59): what was measured, and the latest comparison
+/// with the cut, for the design panel.
+fn reference_json(ws: &Workspace) -> Value {
+    let Some(r) = crate::reference::active(&ws.defn) else { return Value::Null };
+    let dir = crate::reference::dir(&ws.root, &r.id);
+    let compare = std::fs::read_to_string(dir.join("compare").join("compare.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .map(|c| {
+            let pairs: Vec<Value> = c["pairs"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|p| {
+                    let url = file_url(&ws.root, &dir.join("compare").join(p["file"].as_str().unwrap_or("")));
+                    json!({"label": p["label"], "at_ref": p["at_ref"], "at_cut": p["at_cut"], "url": url})
+                })
+                .collect();
+            json!({"cut": crate::reference::Measure::from_json(&c["measure"]["cut"]).summary(), "pairs": pairs, "compared": c["compared"]})
+        });
+    json!({
+        "id": r.id, "source": r.source, "summary": r.measure.summary(),
+        "contact": file_url(&ws.root, &dir.join("contact.jpg")).filter(|_| dir.join("contact.jpg").is_file()),
+        "borrowed": crate::reference::motion_entries(&r.measure).0,
+        "compare": compare,
+    })
+}
+
 fn file_url(root: &Path, path: &Path) -> Option<String> {
     let rel = path.strip_prefix(root).ok()?;
     let parts: Vec<String> = rel.components().map(|c| c.as_os_str().to_string_lossy().to_string()).collect();
@@ -587,6 +617,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
             "logo": ws.defn.finish.logo,
             "motion": motion_json(&ws.defn.finish.motion),
         },
+        "reference": reference_json(ws),
         "stage": {
             "summary": ws.defn.stage.summary,
             "anchors": ws.defn.stage.anchors.iter().map(|(n, d)| json!({"name": n, "description": d})).collect::<Vec<_>>(),
@@ -1142,6 +1173,41 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let mut ws = app.ws()?;
             ws.set_finish(&entries)?;
             send_json(stream, false, 200, &json!({"ok": true})).map_err(io)
+        }
+        ("POST", "/api/reference") => {
+            // a reference teaser (D-59): {pick: true} opens the app's file dialog for a video,
+            // {path: "..."} names one, {id: "..."} borrows one measured before. Measuring runs
+            // ffmpeg over the video (a few seconds); nothing re-renders
+            let body = req.json()?;
+            let video = if body.get("pick").and_then(Value::as_bool) == Some(true) {
+                let Some(picker) = &app.picker else {
+                    bail!("この画面では動画を選べません。動画のパスを入力してください");
+                };
+                let start = app.current().and_then(|p| p.parent().map(Path::to_path_buf));
+                match picker(Pick::Video { start }) {
+                    None => return send_json(stream, false, 200, &json!({"cancelled": true})).map_err(io),
+                    Some(p) => Some(p),
+                }
+            } else {
+                body.get("path").and_then(Value::as_str).map(str::trim).filter(|p| !p.is_empty()).map(PathBuf::from)
+            };
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let (id, notes) = match (video, body.get("id").and_then(Value::as_str)) {
+                (Some(v), _) => {
+                    let (r, notes) = ws.add_reference(&v, true)?;
+                    (r.id, notes)
+                }
+                (None, Some(id)) => (id.to_string(), ws.use_reference(id)?),
+                (None, None) => bail!("expected {{\"pick\": true}}, {{\"path\": \"...\"}} or {{\"id\": \"...\"}}"),
+            };
+            send_json(stream, false, 200, &json!({"id": id, "notes": notes})).map_err(io)
+        }
+        ("POST", "/api/reference/compare") => {
+            // measure the newest cut the same way and pair its frames with the reference's
+            let ws = app.ws()?;
+            let c = ws.compare_reference(None)?;
+            send_json(stream, false, 200, &json!({"pairs": c.pairs.len(), "cut": c.cut.to_json()})).map_err(io)
         }
         ("POST", "/api/finish/logo") => {
             // {pick: true} opens the app's file dialog; {path: "art/logo.png"} names one inside
