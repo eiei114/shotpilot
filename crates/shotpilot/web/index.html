@@ -382,7 +382,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .examples .cost.free { color: color-mix(in srgb, var(--accent) 45%, var(--ink)); font-weight: 600; }
 .composer .examples button { font-size: 11.5px; padding: 1px 9px; }
 .ask { flex-wrap: wrap; }
-.ask .tag { flex: none; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
+.ask .only { flex: none; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
 .lchip.fin { color: var(--muted); cursor: pointer; }
 .lchip.fin:hover { color: var(--ink); }
 .change { font-size: 12px; display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; padding: 6px 10px; border-radius: 10px;
@@ -1607,6 +1607,8 @@ function drawStructure() {
     <div class="sheet" role="list">${rows || `<div class="sheet-empty">この絞り込みに当てはまるカットはありません</div>`}</div>
     <div class="sheet-keys"><span><kbd>↑</kbd><kbd>↓</kbd> 選ぶ</span><span><kbd>Enter</kbd> 承認して次へ</span><span><kbd>Space</kbd> 大きく見る・範囲を囲む</span>
       <span><kbd>/</kbd> 直す</span><span><kbd>1</kbd>〜<kbd>${ASPECTS.length}</kbd> 直す範囲</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</span></div>`;
+  // what an edit just did shows under its row: bring it into view (it can fall below the fold)
+  if (ui.flash?.fresh) box.querySelector(".item.sel .change")?.scrollIntoView({ block: "nearest" });
   if (ui.edit) {
     const el = box.querySelector(".inl");
     if (el) { el.focus(); el.select?.(); }
@@ -1722,7 +1724,7 @@ function slotTools(l) {
   const ph = !ai ? "Claude が未接続です（文字と秒数は、押せばその場で直せます）"
     : l.kind === "black" ? "この間をどう直す？ 例: もう少し長く溜める" : `${what}をどう直す？ 例: もっと短く言い切る`;
   return `<div class="tools">
-    <div class="ask"><span class="tag" title="${esc(`${what}の文字・形・長さだけを Claude に直させます。ほかのカットとカメラはコードで守ります`)}">文字・長さだけ</span>
+    <div class="ask"><span class="only" title="${esc(`${what}の文字・形・長さだけを Claude に直させます。ほかのカットとカメラはコードで守ります`)}">文字・長さだけ</span>
       <input id="row-ask" autocomplete="off" placeholder="${esc(ph)}" value="${esc(ui.rowNote)}"${ai ? "" : " disabled"}>
       <button class="send" data-row-send title="送る (Enter)"${ai && !busy ? "" : " disabled"}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
     ${ai ? examplesHtml(slotExamples(l), ASPECT_COST.finish) : ""}
@@ -1749,8 +1751,9 @@ function flashHtml() {
   const pv = fl.previz === "running" ? "（previz を撮っています…）" : fl.previz === "done" ? "（previz を更新しました）" : "";
   const again = stale.length ? `撮り直し: <b>${esc(stale.join(", "))}</b> だけ${pv}` : "撮り直しなし";
   const detail = changeText(fl.changes);
-  // nothing to re-take: the change shows once the cut is assembled again (seconds, no render)
-  const see = !stale.length && detail && ui.status.cut
+  // nothing to re-take: the change shows once the cut is assembled again (seconds, no render).
+  // A flash is only left by an edit that changed something.
+  const see = !stale.length && ui.status.cut
     ? `<button class="mini" data-cut-now title="撮り直さず、いまの take をつなぎ直して焼き込みます"${ui.busy ? " disabled" : ""}>✂ Cut で見る</button>` : "";
   const undo = ui.status.undo ? `<button class="mini" data-undo${ui.busy ? " disabled" : ""}>↶ 元に戻す</button>` : "";
   return `<div class="change"><span class="what">✓ ${esc(fl.text)}</span>${detail ? `<span>${detail}</span>` : ""}<span>· ${again}</span>
@@ -1832,8 +1835,9 @@ async function sendRowNote() {
   let out = null;
   try {
     out = await api("POST", "/api/revise", { ...body, label: ui.pending.ctx });
-    afterEdit(owner, out, out.summary || "Claude が直しました");
-    if (!out.edited?.length && !Object.keys(out.changes || {}).length) toast("Claude は何も変えませんでした");
+    // nothing changed (e.g. a logo, which cannot be burned in): no ✓ on the row; Claude's reason is in the chat
+    if (!out.edited?.length && !Object.keys(out.changes || {}).length) { ui.flash = null; toast("Claude は何も変えませんでした（理由は左の会話に）"); }
+    else afterEdit(owner, out, out.summary || "Claude が直しました");
   } catch (e) { ui.rowNote = note; toast(e.message, true); }
   finally { clearInterval(tick); ui.busy = null; ui.rowBusy = null; ui.pending = null; ui.logKey = ""; await refresh(); }
   if (out) refreshPreviz(out.stale);
@@ -2619,20 +2623,21 @@ function drawChips() {
   drawExamples();
 }
 
-/** Notes worth trying in the composer, for what it is pointed at now. */
+/** Notes worth trying in the composer, for what it is pointed at now. Short: the box is narrow,
+ * and every line of examples is a line less of the conversation. */
 function composerExamples() {
-  if (planning()) return ["静かに始めて、最後に一気に崩す", "ジャンプスケアは使わない", "30秒・7カット前後で"];
+  if (planning()) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
-    return it?.p.role === "sfx" ? ["もう少し早く、カットの頭に合わせる", "もう少し小さく", "別の衝撃音に替える"]
-      : ["タイトルの前で一瞬音を抜く", "BGM をもう少し下げる", "カードが出る瞬間に低い一撃"];
+    return it?.p.role === "sfx" ? ["カットの頭に合わせる", "もう少し小さく", "別の衝撃音に替える"]
+      : ["タイトル前で音を抜く", "BGM を少し下げる", "カードに低い一撃"];
   }
-  if (ui.tab === "design") return ["カードを全部0.5秒長くして、ゆっくり読ませる", "hook はすぱっと切り、title の前だけ白く飛ばす", "色をもっと冷たく、シネスコの帯にする"];
+  if (ui.tab === "design") return ["カードを全部0.5秒長く", "title の前だけ白く飛ばす", "色をもっと冷たく", "帯を外す"];
   const whole = ui.scopeAll || ui.tab === "structure";
-  if (whole && ui.tab === "teaser") return ["タイトルの前だけ白く飛ばす", "字幕を全部0.3秒遅れて出す", "30秒に収める"];
-  if (whole) return ["30秒に収める", "hook を短くしてテンポを上げる", "カードの文字をもっと短く言い切る"];
+  if (whole && ui.tab === "teaser") return ["title の前だけ白く飛ばす", "字幕を全部0.3秒遅らせる", "30秒に収める"];
+  if (whole) return ["30秒に収める", "hook のテンポを上げる", "カードの文字を短く"];
   if (ui.region && ui.tab === "shot") return ["ここが邪魔。避けて撮る", "ここに目が行くように寄る"];
-  return ["被写体にもう少し寄せる", "1秒短くする", "字幕「」を重ねる"];
+  return ["被写体にもう少し寄る", "1秒短くする", "字幕「」を重ねる"];
 }
 
 /** The composer's examples, while its box is empty (they make way for what is being typed). */
@@ -2651,7 +2656,7 @@ function drawScope() {
     chips.push(`<span class="chip">✎ 文字・つなぎ・色だけ（撮り直しなし）</span>`);
     $("chips").innerHTML = chips.join("");
     $("scope").textContent = "✎ 全体の仕上げに指示";
-    $("note").placeholder = "仕上げをどう直す？ 例: カードを全部0.5秒長くして、ゆっくり読ませる（カメラ・光・音は変えません）";
+    $("note").placeholder = "仕上げをどう直す？ 文字・つなぎ・明るさ・色調・帯だけを直し、カメラ・光・音は変えません";
     return;
   }
   if (planning()) {
