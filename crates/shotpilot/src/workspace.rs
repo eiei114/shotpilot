@@ -1797,9 +1797,75 @@ impl Workspace {
     /// Editorial: nothing re-renders.
     pub fn apply_look(&mut self) -> Result<bool> {
         let Some(d) = crate::designsys::get(&self.defn.brief.design) else { return Ok(false) };
-        self.set_finish(&crate::designsys::look_entries(d))?;
+        // a measured reference's lengths stay on top of the look's motion (D-59)
+        let entries: Vec<(String, Value)> = crate::designsys::look_entries(d)
+            .into_iter()
+            .map(|(k, v)| if k == "motion" { (k, crate::reference::motion_for(&self.defn, v)) } else { (k, v) })
+            .collect();
+        self.set_finish(&entries)?;
         crate::fonts::prefetch(&self.defn.finish.fonts.specs());
         Ok(true)
+    }
+
+    // ------------------------------------------------------------------ a reference teaser (D-59)
+
+    /// Measure a reference teaser into `reference/<id>/`; with `borrow`, the brief names it and
+    /// `finish.motion` takes its lengths. Editorial: nothing re-renders.
+    pub fn add_reference(&mut self, video: &Path, borrow: bool) -> Result<(crate::reference::Reference, Vec<String>)> {
+        let r = crate::reference::add(&self.root, video)?;
+        self.state.log("reference", json!({"id": r.id, "source": r.source}));
+        self.state.save()?;
+        let notes = if borrow { self.use_reference(&r.id)? } else { Vec::new() };
+        Ok((r, notes))
+    }
+
+    /// Borrow a measured reference: `brief.reference_teaser` names it, and `finish.motion` takes
+    /// what it measured on top of the cut's motion (or the look's, or the genre's, when none is
+    /// written yet). Returns where each length came from.
+    pub fn use_reference(&mut self, id: &str) -> Result<Vec<String>> {
+        let Some(r) = crate::reference::load(&self.root, id) else {
+            bail!("no measured reference `{id}` (reference/{id}/facts.json): measure one with `shotpilot reference <video>`");
+        };
+        let base = if self.defn.finish.motion.is_set() {
+            // switching references: what the one before set, and nobody changed since, goes
+            match crate::reference::active(&self.defn).filter(|old| old.id != r.id) {
+                Some(old) => crate::reference::without(&self.defn.finish.motion.to_value(), &old.measure),
+                None => self.defn.finish.motion.to_value(),
+            }
+        } else if let Some(d) = crate::designsys::get(&self.defn.brief.design) {
+            crate::designsys::look_entries(d).into_iter().find(|(k, _)| k == "motion").map_or(Value::Null, |(_, v)| v)
+        } else {
+            crate::refs::genre_for(&self.defn.brief.genre)
+                .filter(|g| crate::motion::profile(g.id).is_some())
+                .map_or(Value::Null, |g| json!({"profile": g.id}))
+        };
+        self.set_brief(&[("reference_teaser".into(), json!(r.id))])?;
+        self.set_finish(&[("motion".into(), crate::reference::merged_motion(&base, &r.measure))])?;
+        Ok(crate::reference::motion_entries(&r.measure).1)
+    }
+
+    /// The newest cut video (`cut/<quality>/cut.mp4`).
+    pub fn latest_cut_video(&self) -> Option<PathBuf> {
+        std::fs::read_dir(self.root.join("cut"))
+            .ok()?
+            .flatten()
+            .map(|e| e.path().join("cut.mp4"))
+            .filter(|p| p.is_file())
+            .max_by_key(|p| std::fs::metadata(p).and_then(|m| m.modified()).ok())
+    }
+
+    /// Measure the newest cut the same way as the reference (the brief's, unless `id` names
+    /// another) and pair their frames at the same shares of their runtimes, for the director.
+    pub fn compare_reference(&self, id: Option<&str>) -> Result<crate::reference::Comparison> {
+        let id = id.map(str::to_string).unwrap_or_else(|| self.defn.brief.reference_teaser.clone());
+        if id.is_empty() {
+            bail!("no reference teaser yet: measure one with `shotpilot reference <video>`");
+        }
+        let Some(r) = crate::reference::load(&self.root, &id) else {
+            bail!("no measured reference `{id}` (reference/{id}/facts.json)");
+        };
+        let Some(video) = self.latest_cut_video() else { bail!("no cut video yet: run `shotpilot cut` first") };
+        crate::reference::compare(&self.root, &r, &video)
     }
 
     /// Bring the game's logo into the project (an image picked anywhere is copied to `art/`)

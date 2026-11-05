@@ -196,7 +196,7 @@ pub fn skeleton_text(slots: &[Slot]) -> String {
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}\n{}{}{}\n## Framing\n{}",
+        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}{}\n{}{}{}\n## Framing\n{}",
         brief_text(&defn.brief),
         plan_text(&defn.brief),
         skeleton_text(slots),
@@ -204,6 +204,7 @@ pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
         crate::refs::baseline_text(),
         crate::refs::type_text(),
         crate::refs::motion_text(),
+        crate::reference::planner_text(defn),
         crate::refs::planner_text(&defn.brief),
         crate::designsys::planner_text(defn),
         crate::skills::planner_text(&defn.brief),
@@ -241,6 +242,7 @@ pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
     out.push_str(&crate::refs::baseline_text());
     out.push_str(&crate::refs::type_text());
     out.push_str(&crate::refs::motion_text());
+    out.push_str(&crate::reference::planner_text(defn));
     out.push_str(&crate::designsys::planner_text(defn));
     out.push_str(&crate::skills::planner_text(b));
     if reach == Reach::Picture {

@@ -657,7 +657,9 @@ fn plan_motion(defn: &Definition, look: Option<&crate::designsys::DesignSystem>,
     if !avoid.is_empty() {
         m.insert("avoid".into(), json!(avoid));
     }
-    if m.is_empty() { Value::Null } else { Value::Object(m) }
+    let v = if m.is_empty() { Value::Null } else { Value::Object(m) };
+    // a measured reference's lengths outrank the look's (D-59)
+    crate::reference::motion_for(defn, v)
 }
 
 /// The script lines Claude wrote, as shots.yaml values: ids mapped to the cleaned shot ids,
