@@ -1,0 +1,106 @@
+# Teaser transitions — カットのつなぎの作り方
+
+> 出典: open-design（nexu-io/open-design、Apache-2.0）の Motion Design の作り方（`skills/motion-design/SKILL.md` と `references/replicate.md`、OD Next の `task-profiles/motion-design.md` と `hyperframes.md`）と、そのとき読まれるつなぎの参照（`design-templates/hyperframes/references/transitions.md`、`transitions/catalog.md` と `css-dissolve.md`・`css-light.md`・`css-distortion.md`、`motion-principles.md`）を、ゲームのティザーと shotpilot の決まり（尺を変えない、2 つの画を重ねない、秒数はコードが決める）に合わせて言い換えた（D-58）。長さの数値は `MOTION.md` と同じ実測（`research_notes/モーションデザイン/`）から取った。
+> 8 節だけが plan と、画・文字を変える修正に渡る（`refs::motion_text`）。1〜7 節は、コード（`handover.rs`）がつなぎを描くときの形と、その根拠。形の数値は `transitions.json`、ジャンルごとの長さは `profiles.json`。
+
+## 1. 作り方の流れ
+
+open-design の Motion Design は、つなぎを次の順で決める。shotpilot は同じ順を、台本と構成（plan）、ルックの profile、コードに分けて持つ。
+
+| 順 | open-design | shotpilot での置き場所 |
+|---|---|---|
+| 1 | ビートの表を先に作る（時刻 → 見る人が受け取ること → 主役 → 変化 → 文字と音 → 抜け方）。抜け方がつなぎになる | 各カットの `beat`・`purpose`・`duration`・`transition` が表の 1 行。plan が書く |
+| 2 | 勢い（energy）で主なつなぎと長さの帯を、気分（mood）で差し色を決める | ルックの profile（`profiles.json` の `energy`・`accent`・`dip`） |
+| 3 | 置き場所（冒頭、同じ話の続き、話題の変わり目、山場、終わり）で、どこに差し色を使うかを決める | 8 節を plan に渡す。差し色の種類はコードが 2 つまでに整える |
+| 4 | つなぎごとのレシピ（どの値を、何秒で、どの緩急で動かし、どこで入れ替えるか）をそのまま使う | `transitions.json` のレシピを `handover.rs` が ffmpeg のフィルタにする |
+| 5 | 参照の映像は、目で見積もらずに測ってから組む（"Measure the timeline; never estimate it."） | 長さの数値は実測（D-29、D-53）を正本にする |
+
+モデルに選ばせるのは 1 と 3 の語だけで、2 と 4 の数値はデータとコードが持つ。同じ定義からは、いつも同じコマが出る。
+
+## 2. つなぎは前後の関係を言う
+
+open-design は「つなぎは 2 つの場面がどう関係するかを見る人に告げる」と書き、つなぎを変化のためではなく関係で選ぶ（"Choose transitions because of the relationship between beats, not a desire for variety"）。
+
+| 語 | 前後の関係 | open-design の対応 |
+|---|---|---|
+| `cut` | 続き。または断絶で目を覚まさせる | Hard cut（"wake up" / disruption） |
+| `dip` | 時間か場所が飛ぶ。章が変わる | Color dip to black（劇的、上質、終わり） |
+| `flash` | 衝撃の一瞬 | Overexposure の短い形 |
+| `whiteout` | 光の中へ、回想へ、別の世界へ | Overexposure burn（劇的、映画的） |
+| `glitch` | 電子的な断絶、記録の乱れ | Glitch（張り詰めた、電子的） |
+
+## 3. 主なつなぎと差し色
+
+open-design の型は、主なつなぎを 1 つ（場面転換の 6〜7 割）と差し色 1〜2 つで、毎回違うつなぎにはしない。
+
+ティザーの主なつなぎは `cut` になる。736 本の実測で、黒へは 72% がカットで入り、68% がカットで戻る（ホラーは 79% がカットで黒へ）。フェードで黒をはさむのが多いのはコージー（カット 22%）とストラテジー（32%）だけだった。差し色はルックの profile の `accent` で、ホラーとアクションは `flash`、RPG は `whiteout`、日本のホラーと SF は `glitch`、コージーとストラテジーは `dip`。
+
+コードで守ること:
+
+- plan が書いたつなぎは、`cut` のほかに 2 種まで（`dip` とルックの差し色を先に残し、次に多く使われたもの）に整え、残りは `cut` にする（`handover::shape`、D-22 の「コードで整える」）。
+- 人間や修正で 3 種以上になったら、カット検査の P2（`transition.mix`）で示す。
+
+## 4. 置き場所
+
+open-design の「物語の位置」の表を、ティザーのビートに置き換えた。
+
+| 位置 | 使うつなぎ | open-design の理由 |
+|---|---|---|
+| hook | `cut`。差し色を使うなら、見せ方の言葉を決める 1 回 | Opening: いちばん特徴のあるつなぎで、全体の言葉を決める |
+| 同じビートの中のカット同士 | `cut` | Between related points: 続いているので邪魔しない |
+| ビートの変わり目 | `dip` か差し色 | Topic change: 主なつなぎと違うもので「新しい節」と知らせる |
+| 山場（escalate の終わり） | いちばん強い差し色を 1 回 | Climax: いちばんのつなぎをここで使う |
+| タイトルの前 | `dip` か、台本の `black` | Wind-down: 山場のあとに息をつかせる |
+| 最後 | `dip` か `cut` | Outro: いちばん遅く、いちばん単純に。新しい勢いを持ち込まない |
+
+## 5. レシピ
+
+shotpilot は 2 つの画を重ねない（尺を変えない、D-25）。そこで open-design のレシピのうち、「覆われた瞬間に入れ替える」形だけを使う。出ていくカットの終わり（out）を黒・白・崩れた画で覆い、カットの境目で入れ替え、入るカットの始め（in）で覆いを外す。open-design の手順「新しい場面を置く → 出ていく側を動かす → 入れ替える → 入る側を動かす → 覆いを片づける」の、入れ替えがいつも境目にある形にあたる。
+
+| つなぎ | out（出ていくカットの終わり） | in（入るカットの始め） | open-design の元 |
+|---|---|---|---|
+| `dip` | 黒へ溶ける（`dip` 秒、加速 `power2.in`） | 黒から現れる（`dip` 秒、減速 `power2.out`） | Color Dip（`power2.in` で消え、`power2.out` で現れる） |
+| `flash` | なし（切る） | 白から戻る（`flash` 秒、減速 `power2.out`） | Overexposure の短い形 |
+| `whiteout` | 露出を上げながら白へ（`rise` 秒、明るさは最大 `burn` 倍、加速 `power2.in`） | 白を保ち（`peak` 秒）、露出を戻しながら画へ（`decay` 秒、減速 `power2.out`） | Overexposure Burn（`brightness` を上げて白く飛ばし、白の頂点で入れ替え、白を引く） |
+| `glitch` | 最後の `glitch` 秒を崩す（色の層がコマごとに逆向きに跳ね、粒子が乗る） | 最初の `glitch` 秒を同じく崩す | Glitch（色の層を大きくずらして約 0.03 秒ごとに跳ねさせ、0.2 秒で入れ替える） |
+
+緩急の名前は open-design（GSAP）にそろえる: `linear`、`sine`、`power1`〜`power4`（2〜5 乗）、`expo` に `.in` / `.out` / `.inOut` を付ける。open-design の原則どおり、覆いに入っていく側は加速（`.in`）、覆いから出てくる側は減速（`.out`）にする（「つなぎは動詞、緩急は副詞」。逆にすると、入りは鈍く、抜けは名残惜しく見える）。
+
+片側の長さは、カットの半分まで（白飛びの上がりは 3 分の 1 まで）。白飛びの保ちと戻りが半分を超えるときは、2 つを同じ比で縮める。
+
+既定（`base`。`finish.motion` が無いとき）は、レシピを使う前と同じ直線のフェードで描く（D-53 の不変条件。`profiles.json` の `plain`）。
+
+ffmpeg では、黒・白への溶けを `eq` の時間の式（`eval=frame`）で描く。溶ける量を k とすると、コントラストを `g(1-k)`、明るさを `k·w + g(1-k)/2 - 1/2`（w は黒 16/255、白 235/255）、彩度を `1-k` にする。g は白飛びの露出で、覆う量と一緒に 1 から `burn` まで上がる。崩しは、コマの偶奇で向きを変える 2 つの `rgbashift` と `noise` をその間だけかける。どれもコマを足さず差し替えるだけなので、カットの尺は変わらない。
+
+## 6. 長さ
+
+| 値 | 既定 | 根拠 |
+|---|---|---|
+| `dip` | profile（0.12〜0.55 秒） | 736 本の実測: 黒へのフェードの中央値 0.25〜0.67 秒、ホラーは 79% がカットで黒へ（MOTION.md 2・3 節） |
+| `flash` | profile（0.10〜0.12 秒） | 1 コマずつ見た 33 本: 白フラッシュ 0.10〜0.17 秒 |
+| `rise` / `peak` / `decay` | 0.35 / 0.15 / 0.85 秒 | 1 コマずつ見た RPG の白飛び: 上がり 0.2〜0.5、保持 0〜0.5、戻り 0.7〜1.0 秒 |
+| `burn` | 2 倍 | open-design の Overexposure Burn（明るさを 1.5 倍、3 倍と上げてから白で覆う）を、白へ溶けるのと同時に上げる形にした |
+| `glitch` | 0.1 秒ずつ（境目で約 6 コマ） | open-design の Glitch は 0.2 秒に約 6 回跳ねる。D-53 の試作は境目の 2〜4 コマ |
+
+勢い（`energy`）は、どの長さも同じ倍率で伸び縮みさせる（calm 1.4 倍、measured 1 倍、driving 0.65 倍）。open-design の勢いの帯（穏やか 0.5〜0.8 秒、中 0.3〜0.5 秒、強 0.15〜0.3 秒）と同じ向き。ジャンルごとの長さは `profiles.json` の `dip`・`flash`・`whiteout`・`glitch` が上書きする。
+
+## 7. 入れないもの
+
+| open-design のつなぎ・規則 | 入れない理由 |
+|---|---|
+| crossfade、blur crossfade、focus pull、push、squeeze、zoom through、3D flip、cross-warp morph など、2 つの画が同時に見えるもの | take の外のコマが要る。尺が変わるか、止めた画で埋めることになる（D-25） |
+| light leak、film burn | 実測のティザーで見ていない。暖色の上塗りがルックの色調とぶつかる |
+| blinds、staggered blocks、iris、clock wipe、grid dissolve | 幾何学の繰り返しは安っぽく見える（open-design 自身の注意）。ティザーで見ていない |
+| punch（入るカットを一瞬拡大） | 尺は変わらないが、実測で見ていない（D-53 の候補のまま） |
+| 「どの場面の間にもつなぎを入れる」「抜けの動きは最後の場面だけ」 | モーショングラフィックスの規則。ティザーはハードカットが主で、文字はジャンルによってはゆっくり抜ける（MOTION.md 3 節）。抜け方はジャンルの profile に従う |
+
+## 8. カットにつなぎを書くとき
+
+つなぎの秒数と緩急はルックの profile とコードが決める。カットに書くのは `transition` の種類だけで、書かなければ `cut`。
+
+- 前後の関係で選ぶ。`cut` は続き、または断絶で目を覚まさせる。`dip` は時間や場所が飛ぶ。`flash` は衝撃の一瞬。`whiteout` は光や回想、別の世界への転換。`glitch` は電子的な断絶や記録の乱れ。変化をつけるためだけには選ばない。
+- 主なつなぎは `cut`。ほかに使うのは 1 本で 2 種まで（`dip` と、ルックの差し色）。全部のカットに違うつなぎを付けない。
+- 置き場所で使い分ける。同じビートの中のカット同士は `cut`。ビートの変わり目は `dip` か差し色。いちばん強い差し色は山場（escalate の終わり）で 1 回。タイトルの前は `dip` か台本の `black`。最後は単純に終える。
+- 数え上げの短いカットごとに `flash` を付けるのは、ルックの差し色が `flash` のときだけ。`flash`・`whiteout` と、`flicker` で入る文字は、合わせて 1 秒に 3 回までに間を空ける。
+- カットをまたぐ動きは、向きと速さを受け継ぐ（前のカットが右へ流れたら、次も右へ受ける）。意図しない大きさ・明るさ・被写体の飛びを作らない。
+- 単調に見えるときは、つなぎを増やさず、カットの長さと寄り引きに差をつけ、ひとつの被写体を次のカットへ受け渡す。

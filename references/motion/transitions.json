@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "shotpilot-transitions/v1",
+  "sources": {
+    "recipes": "open-design (nexu-io/open-design, Apache-2.0): design-templates/hyperframes/references/transitions.md, transitions/catalog.md, transitions/css-dissolve.md (Color Dip), css-light.md (Overexposure Burn), css-distortion.md (Glitch), motion-principles.md (ease direction)",
+    "lengths": "research_notes/モーションデザイン/corpus_cozy_rpg.md (RPG whiteouts: rise 0.2-0.5 s, hold 0-0.5 s, decay 0.7-1.0 s), auto_measure.md (black gaps and white flashes over 736 teasers)",
+    "rules": "references/motion/TRANSITIONS.md"
+  },
+  "lengths": {
+    "rise": 0.35,
+    "peak": 0.15,
+    "decay": 0.85,
+    "burn": 2.0,
+    "glitch": 0.1
+  },
+  "transitions": {
+    "cut": {
+      "means": "the next moment, or a break that wakes the viewer",
+      "steps": []
+    },
+    "dip": {
+      "means": "through black: time or place jumps",
+      "steps": [
+        {"side": "out", "cover": "black", "len": "dip", "max": 0.5, "ease": "power2.in"},
+        {"side": "in", "cover": "black", "len": "dip", "max": 0.5, "ease": "power2.out"}
+      ]
+    },
+    "flash": {
+      "means": "from white: the instant of a hit",
+      "steps": [
+        {"side": "in", "cover": "white", "len": "flash", "max": 0.5, "ease": "power2.out"}
+      ]
+    },
+    "whiteout": {
+      "means": "up to white and back: into light, a memory, another world",
+      "steps": [
+        {"side": "out", "cover": "white", "len": "rise", "max": 0.3333, "ease": "power2.in", "burn": "burn"},
+        {"side": "in", "cover": "white", "hold": "peak", "len": "decay", "max": 0.5, "ease": "power2.out", "burn": "burn"}
+      ]
+    },
+    "glitch": {
+      "means": "a few broken frames: an electronic break",
+      "steps": [
+        {"side": "out", "break": "glitch", "len": "glitch", "max": 0.5},
+        {"side": "in", "break": "glitch", "len": "glitch", "max": 0.5}
+      ]
+    }
+  }
+}
