@@ -166,8 +166,20 @@ pub fn revise_schema() -> Value {
                 "required": ["id", "sfx"],
                 "additionalProperties": false,
             }},
+            "texts": {"type": "array", "description": "script lines whose words, kind or timing change (only the lines this note names), or empty",
+                      "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "yaml": {"type": "string", "description": "a YAML mapping of the line's fields that change (ja, en, head, from, kind, at, dur); an empty string removes en, head or from"},
+                },
+                "required": ["id", "yaml"],
+                "additionalProperties": false,
+            }},
+            "finish": {"type": "string",
+                       "description": "a YAML mapping of the top-level `finish` keys that change (grade, letterbox, typeface), or empty to keep them"},
         },
-        "required": ["summary", "edits", "order", "audio", "lines"],
+        "required": ["summary", "edits", "order", "audio", "lines", "texts", "finish"],
         "additionalProperties": false,
     })
 }
@@ -763,6 +775,11 @@ pub struct Pointer {
     /// The director pointed at one part of the shot (`camera`, `environment`): only these
     /// top-level keys of the shots in scope may change. Anything else Claude returns is dropped.
     pub fields: Option<Vec<String>>,
+    /// Script lines whose words, kind and timing ([`LINE_TEXT_FIELDS`]) may change. None:
+    /// no script text may change.
+    pub texts: Option<Vec<String>>,
+    /// The teaser's `finish:` look ([`FINISH_FIELDS`]) may change (notes on the whole teaser).
+    pub finish: bool,
 }
 
 /// Parts of a shot a note can be pointed at, with the top-level keys each one covers and
@@ -770,7 +787,38 @@ pub struct Pointer {
 pub const ASPECTS: &[(&str, &[&str], &str)] = &[
     ("camera", &["camera"], "the shot's camera only (where it stands, where it looks, the lens and the move)"),
     ("light", &["environment"], "the shot's light only (`environment`: time of day and the like)"),
+    ("finish", &["caption", "transition", "exposure"],
+     "the finishing burned in at the cut only (the text over the shot, how it hands over to the next shot, its brightness at the cut)"),
 ];
+
+/// Top-level keys of a shot it may go without: when a note pointed at them gets a shot back
+/// without one, it is taken off ("no caption here").
+const OPTIONAL_FIELDS: &[&str] = &["caption", "transition", "exposure"];
+
+/// Fields of a script line a note may change: its words, its kind (a slot stays a slot, an
+/// overlay an overlay) and its timing. Where it sits (`after`, `on`) and its sound stay.
+pub const LINE_TEXT_FIELDS: &[&str] = &["ja", "en", "head", "from", "kind", "at", "dur"];
+
+/// Top-level `finish:` keys a note on the whole teaser may change. The title and the end card
+/// are left to the director (the end card holds facts only they know, D-28).
+pub const FINISH_FIELDS: &[&str] = &["grade", "letterbox", "typeface"];
+
+const FINISH_GUIDE: &str = "\
+Finishing is burned in when the cut is assembled; it never re-renders a shot.
+- Script lines are the teaser's text. Slots take their own time on black between shots: card (a centred \
+line fading in, a quiet English line under it), rule (a small heading over a line), title (large, \
+flickering in), message (a chat bubble with the room name and who sent it). Overlays sit on a shot: \
+caption (lower centre on a dark band, a slow fade in and out) and count (lower left, like a note under \
+a photograph, a quick fade). The motion of a line comes from its kind and its timing: `at` (overlays: \
+seconds into the shot it sits on) and `dur` (seconds it shows; for a slot, its length in the cut). \
+A slot can become another slot kind and an overlay another overlay kind; where a line sits stays.
+- On a shot: `caption` {text, at, duration} is one more lower-centre line; `transition` is how it hands \
+over to the next shot: cut, dip (through black, 0.25 s each side) or flash (from white); `exposure` \
+shifts its brightness at the cut (-0.5..0.5; leave it out for as shot).
+- The whole teaser: `grade` (the colour of every shot), `letterbox` (picture aspect inside black bars, \
+e.g. 2.39, or null for none), `typeface` (mincho or gothic).
+- Images, logos and other motion cannot be added here; when the note asks for one, do what these allow \
+and say so in `summary`.";
 
 /// The keys a pointed-at part covers (`camera` -> [camera]).
 pub fn aspect_fields(aspect: &str) -> Option<Vec<String>> {
@@ -851,6 +899,10 @@ pub struct Revision {
     pub audio: Option<Map<String, Value>>,
     /// New `sfx` of script lines (a list, or null for none), sound notes only.
     pub lines: Vec<(String, Value)>,
+    /// Words, kind and timing of script lines that change (field, value; null removes it).
+    pub texts: Vec<(String, Vec<(String, Value)>)>,
+    /// `finish:` entries that change (grade, letterbox, typeface).
+    pub finish: Vec<(String, Value)>,
     pub summary: String,
 }
 
@@ -933,7 +985,36 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     } else {
         String::new()
     };
-    let system = format!(
+    // the script text and the finishing this note may change (the server decides; code holds it)
+    let text_ids: &[String] = pointer.texts.as_deref().unwrap_or(&[]);
+    if pointer.sound && (!text_ids.is_empty() || pointer.finish) {
+        bail!("a note on the sound does not change the script text or the finishing");
+    }
+    if let Some(l) = text_ids.iter().find(|l| !defn.script.iter().any(|x| &x.id == *l)) {
+        bail!("unknown script line '{l}'");
+    }
+    let finishing = !text_ids.is_empty()
+        || pointer.finish
+        || pointer.fields.as_ref().is_some_and(|f| f.iter().any(|k| OPTIONAL_FIELDS.contains(&k.as_str())));
+    let texts_now = if text_ids.is_empty() {
+        String::new()
+    } else {
+        let rows: Vec<String> = defn.script.iter().filter(|l| text_ids.contains(&l.id)).map(text_row).collect();
+        format!("\n\nScript lines this note may change (in `texts`):\n{}", rows.join("\n"))
+    };
+    let finish_now = if pointer.finish {
+        let grades: Vec<&str> = crate::finish::GRADES.iter().map(|(n, _)| *n).collect();
+        format!(
+            "\n\nCurrent finish: grade {}, letterbox {}, typeface {} (grades: none, {})",
+            defn.finish.grade,
+            defn.finish.letterbox.map(model::fmt_g).unwrap_or_else(|| "none".into()),
+            defn.finish.typeface,
+            grades.join(", ")
+        )
+    } else {
+        String::new()
+    };
+    let mut system = format!(
         "You revise a game teaser shot list defined in YAML. You change as little as possible: \
          only the shots the note is about, only the fields that need to change. You never rename ids. \
          Shots are numbered from 1 in the order listed (\"the third shot\" = shot 3). Each shot has an \
@@ -948,7 +1029,12 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
         BEATS.join(" -> "),
         tod_names_sorted().join(", ")
     );
+    if finishing {
+        system.push_str("\n\n");
+        system.push_str(FINISH_GUIDE);
+    }
     let mut scope_line = match scope {
+        Some([]) => "Change no shot: leave `edits` and `order` empty.\n".to_string(),
         Some(s) => format!("You may only edit these shots: {}. Leave `order` empty.\n", s.join(", ")),
         None => "Only reorder if the note asks for it.\n".to_string(),
     };
@@ -974,11 +1060,29 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
             .find(|(_, keys, _)| keys.len() == fields.len() && keys.iter().zip(fields).all(|(k, f)| k == f))
             .map(|(_, _, t)| t.to_string())
             .unwrap_or_else(|| format!("`{}` of the shot only", fields.join("`, `")));
+        let keep = if fields.iter().any(|f| OPTIONAL_FIELDS.contains(&f.as_str())) {
+            "the camera, the light, the duration, beat, purpose, sound"
+        } else {
+            "the duration, beat, purpose, sound, caption"
+        };
         scope_line.push_str(&format!(
-            "This note is about {what}: change only `{}`; keep the duration, beat, purpose, sound, caption and every \
-             other field exactly as they are.\n",
+            "This note is about {what}: change only `{}`; keep {keep} and every other field exactly as they are.\n",
             fields.join("`, `")
         ));
+    }
+    if text_ids.is_empty() {
+        scope_line.push_str("Leave `texts` empty.\n");
+    } else {
+        scope_line.push_str(&format!(
+            "The words, kind and timing of script line(s) {} may change too (in `texts`, only the fields that change); \
+             no other line.\n",
+            text_ids.join(", ")
+        ));
+    }
+    if pointer.finish {
+        scope_line.push_str("The teaser's `grade`, `letterbox` and `typeface` may change too (in `finish`).\n");
+    } else {
+        scope_line.push_str("Leave `finish` empty.\n");
     }
     if !audio_allowed {
         scope_line.push_str("Leave `audio` empty (the background music is out of scope for this note).\n");
@@ -1005,7 +1109,7 @@ Library sounds you may also use: write `file: lib:<id>` and it is copied into th
         String::new()
     };
     let user = format!(
-        "{camera_help}Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}\n\nCurrent audio:\n{audio_now}\n\n\
+        "{camera_help}Anchors:\n{anchors}\n\nCurrent shots:\n{}{script_now}{texts_now}{finish_now}\n\nCurrent audio:\n{audio_now}\n\n\
          Audio files you may use (only these paths): {files_line}\n\n\
          Note from the director: {instruction}\n{scope_line}\
          Return each changed shot as a complete YAML mapping (without the leading '- ').",
@@ -1047,8 +1151,20 @@ Where the director is pointing: {c}")).unwrap_or_default();
             let mut kept = defn.find(&sid)?.clone();
             if let Some(k) = kept.as_object_mut() {
                 for f in fields {
-                    if let Some(v) = m.get(f).filter(|v| !v.is_null()) {
-                        k.insert(f.clone(), v.clone());
+                    let optional = OPTIONAL_FIELDS.contains(&f.as_str());
+                    // a plain cut and no brightness shift are the defaults: written as nothing
+                    let v = m.get(f).filter(|v| {
+                        let default = (f == "transition" && v.as_str() == Some("cut")) || (f == "exposure" && num(v) == Some(0.0));
+                        !v.is_null() && !default
+                    });
+                    match v {
+                        Some(v) => {
+                            k.insert(f.clone(), v.clone());
+                        }
+                        None if optional => {
+                            k.remove(f);
+                        }
+                        None => {}
                     }
                 }
             }
@@ -1098,6 +1214,31 @@ Where the director is pointing: {c}")).unwrap_or_default();
             line_edits.retain(|(k, _)| *k != lid);
             line_edits.push((lid, list));
         }
+    }
+    let mut text_edits: Vec<(String, Vec<(String, Value)>)> = Vec::new();
+    for e in out["texts"].as_array().into_iter().flatten() {
+        let lid = e["id"].as_str().unwrap_or("").to_string();
+        let Some(cur) = defn.script.iter().find(|l| l.id == lid) else {
+            bail!("Claude edited an unknown script line '{lid}'");
+        };
+        let m = match yamlio::parse_str(e["yaml"].as_str().unwrap_or(""), &format!("Claude's text for '{lid}'"))? {
+            Value::Object(m) => m,
+            Value::Null => continue,
+            _ => bail!("Claude's text for script line '{lid}' is not a mapping"),
+        };
+        let set = line_text_changes(cur, &m)?;
+        if set.is_empty() {
+            continue; // the line came back as it was
+        }
+        if !text_ids.contains(&lid) {
+            bail!("Claude tried to change the text of script line '{lid}' outside this note's scope; nothing applied");
+        }
+        text_edits.retain(|(k, _)| *k != lid);
+        text_edits.push((lid, set));
+    }
+    let finish = finish_changes(defn, out["finish"].as_str().unwrap_or(""))?;
+    if !finish.is_empty() && !pointer.finish {
+        bail!("Claude tried to change the teaser's finishing (`finish:`) outside this note's scope; nothing applied");
     }
     let audio_yaml = out["audio"].as_str().unwrap_or("").trim();
     let mut audio: Option<Map<String, Value>> = None;
@@ -1185,7 +1326,128 @@ Where the director is pointing: {c}")).unwrap_or_default();
     if !missing.is_empty() {
         bail!("Claude used audio file(s) that do not exist: {}; nothing applied", missing.join(", "));
     }
-    Ok(Revision { edits, order, audio, lines: line_edits, summary: out["summary"].as_str().unwrap_or("").to_string() })
+    Ok(Revision {
+        edits,
+        order,
+        audio,
+        lines: line_edits,
+        texts: text_edits,
+        finish,
+        summary: out["summary"].as_str().unwrap_or("").to_string(),
+    })
+}
+
+/// One script line as a note on the text sees it: where it sits, its timing and its words.
+fn text_row(l: &crate::script::Line) -> String {
+    let g = model::fmt_g;
+    let place = match (&l.on, &l.after) {
+        (Some(o), _) => format!("over {o} from {}s for {}s", g(l.at), g(l.dur)),
+        (_, Some(a)) => format!("after {a}, {}s", g(l.dur)),
+        _ => format!("{}s", g(l.dur)),
+    };
+    let mut row = format!("- {} ({}, {place}): ja: {}", l.id, l.kind, l.ja);
+    for (k, v) in [("en", &l.en), ("head", &l.head), ("from", &l.from)] {
+        if !v.is_empty() {
+            row.push_str(&format!(" | {k}: {v}"));
+        }
+    }
+    row
+}
+
+/// A whole number of seconds as an integer, so the YAML reads `dur: 2`, not `2.0`.
+fn seconds(x: f64) -> Value {
+    if x.fract() == 0.0 && x.abs() < 1e9 { json!(x as i64) } else { json!(x) }
+}
+
+/// The fields of a script line that Claude's mapping changes ([`LINE_TEXT_FIELDS`]; null
+/// takes a field off). A line keeps its place: a slot stays a slot, an overlay an overlay.
+fn line_text_changes(cur: &crate::script::Line, m: &Map<String, Value>) -> Result<Vec<(String, Value)>> {
+    use crate::script::{OVERLAY_KINDS, SLOT_KINDS};
+    let mut set = Vec::new();
+    for f in LINE_TEXT_FIELDS {
+        let Some(v) = m.get(*f) else { continue };
+        let new = match *f {
+            "at" | "dur" => {
+                if *f == "at" && cur.is_slot() {
+                    continue; // a slot's time is its place in the cut
+                }
+                let Some(x) = num(v) else { bail!("Claude's `{f}` for script line '{}' is not a number", cur.id) };
+                if (x - if *f == "at" { cur.at } else { cur.dur }).abs() < 1e-9 {
+                    continue;
+                }
+                seconds(x)
+            }
+            _ => {
+                let now = match *f {
+                    "ja" => cur.ja.as_str(),
+                    "en" => cur.en.as_str(),
+                    "head" => cur.head.as_str(),
+                    "from" => cur.from.as_str(),
+                    _ => cur.kind.as_str(),
+                };
+                let s = model::str_of(v).trim().to_string();
+                if s == now.trim() {
+                    continue;
+                }
+                if *f == "kind" {
+                    let same_family = (cur.is_slot() && SLOT_KINDS.contains(&s.as_str()))
+                        || (!cur.is_slot() && OVERLAY_KINDS.contains(&s.as_str()));
+                    if !same_family || s == "black" || cur.kind == "black" {
+                        bail!("Claude tried to turn script line '{}' from {} into '{s}' (a line keeps its place: \
+                               cards stay cards, text over a shot stays over it); nothing applied", cur.id, cur.kind);
+                    }
+                }
+                if s.is_empty() { Value::Null } else { json!(s) }
+            }
+        };
+        set.push((f.to_string(), new));
+    }
+    Ok(set)
+}
+
+/// The `finish:` entries ([`FINISH_FIELDS`]) Claude's mapping changes, checked as `finish:`
+/// would be. Other keys are dropped (the title and end card are the director's).
+fn finish_changes(defn: &Definition, yaml: &str) -> Result<Vec<(String, Value)>> {
+    if yaml.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let m = match yamlio::parse_str(yaml, "Claude's finish")? {
+        Value::Object(m) => m,
+        Value::Null => return Ok(Vec::new()),
+        _ => bail!("Claude's finish is not a mapping"),
+    };
+    let f = &defn.finish;
+    let mut now = Map::new();
+    now.insert("grade".into(), json!(f.grade));
+    now.insert("letterbox".into(), f.letterbox.map_or(Value::Null, |x| json!(x)));
+    now.insert("typeface".into(), json!(f.typeface));
+    let mut out = Vec::new();
+    for k in FINISH_FIELDS {
+        let Some(v) = m.get(*k) else { continue };
+        let v = match v {
+            // no bars: null (0 and false are how people say it)
+            Value::Bool(false) => Value::Null,
+            v if *k == "letterbox" && num(v) == Some(0.0) => Value::Null,
+            Value::String(s) => json!(s.trim()),
+            v => v.clone(),
+        };
+        let same = if *k == "letterbox" { num(&v) == f.letterbox } else { model::str_of(&v) == model::str_of(&now[*k]) };
+        if !same {
+            out.push((k.to_string(), v));
+        }
+    }
+    if !out.is_empty() {
+        let mut trial = now;
+        for (k, v) in &out {
+            trial.insert(k.clone(), v.clone());
+        }
+        let mut errs = Vec::new();
+        crate::finish::parse(Some(&Value::Object(trial)), &mut errs);
+        if !errs.is_empty() {
+            bail!("Claude's finish is invalid: {}", errs.join("; "));
+        }
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

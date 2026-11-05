@@ -766,3 +766,78 @@ fn home_creates_opens_and_switches_projects() {
     // without a native picker the home falls back to typed paths
     assert_eq!(jcall(&s, "POST", "/api/projects/pick", Some(json!({"kind": "open"}))).0, 400);
 }
+
+/// s03 with a caption and a flash into the next shot, and a camera that must not land.
+const S03_FINISHED: &str = "id: s03_window
+purpose: 2階の窓を見上げる。人影が一瞬だけ映る
+duration: 4
+camera:
+  anchor: window
+  offset: [-400, -300, -280]
+  lens: {focal_length: 85}
+environment: {time_of_day: night}
+caption: {text: 誰かいる, at: 1.0}
+transition: flash
+";
+
+/// A server over the demo with a script (a card after s02, a count over s03).
+fn srv_with_script(payload: Value) -> (Srv, std::sync::Arc<std::sync::Mutex<Vec<Value>>>) {
+    let (s, calls) = srv_with_claude(payload);
+    let mut text = s.f.text();
+    text.push_str("\nscript:\n  - {id: seven, kind: card, ja: 七人。, en: SEVEN, dur: 2, after: s02_well}\n  - {id: cups, kind: count, ja: コップ、七つ。, on: s03_window, at: 0.5}\n");
+    s.f.write(&text);
+    (s, calls)
+}
+
+#[test]
+fn finishing_notes_over_http() {
+    // one cut: its caption and hand-over and the text over it, never its camera; nothing re-renders
+    let (s, calls) = srv_with_script(json!({"summary": "白く飛ばした", "order": [],
+        "edits": [{"id": "s03_window", "yaml": S03_FINISHED, "reason": "r"}], "texts": [{"id": "cups", "yaml": "ja: コップ、八つ。"}]}));
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "白く飛ばして", "shot": "s03_window", "aspect": "finish"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!([]));
+    assert_eq!(out["changes"]["cups"][0]["path"], "ja");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let s03 = &st["shots"][2]["node"];
+    assert_eq!((s03["transition"].as_str(), s03["camera"]["lens"]["focal_length"].as_i64()), (Some("flash"), Some(50)), "{s03}");
+    assert_eq!(st["script"][1]["ja"], "コップ、八つ。");
+    let user = calls.lock().unwrap()[0]["messages"][0]["content"].to_string();
+    assert!(user.contains("script line(s) cups may change"), "{user}");
+    // the card is not that cut's text
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "x", "shot": "s01_gate", "aspect": "finish"})));
+    assert_eq!(code, 400, "{out}");
+
+    // one card: its words only; a shot Claude sends back is refused
+    let (s, _) = srv_with_script(json!({"summary": "", "order": [], "edits": [], "texts": [{"id": "seven", "yaml": "ja: 自分を入れて、七人。\ndur: 3"}]}));
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "言い切って", "line": "seven", "aspect": "finish"})));
+    assert_eq!(code, 200, "{out}");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!((st["script"][0]["ja"].as_str(), st["script"][0]["dur"].as_f64()), (Some("自分を入れて、七人。"), Some(3.0)));
+    let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "x", "line": "seven", "shot": "s03_window", "aspect": "finish"})));
+    assert_eq!(code, 400);
+    let (s, _) = srv_with_script(json!({"summary": "", "order": [], "edits": [{"id": "s03_window", "yaml": S03_FINISHED, "reason": "r"}]}));
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "x", "line": "seven", "aspect": "finish"})));
+    assert_eq!(code, 400, "{out}");
+
+    // the whole teaser: every line and the grade, still no camera and no render
+    let (s, _) = srv_with_script(json!({"summary": "", "order": [], "finish": "grade: cool",
+        "edits": [{"id": "s03_window", "yaml": S03_FINISHED, "reason": "r"}], "texts": [{"id": "seven", "yaml": "en: ''"}]}));
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "冷たく", "aspect": "finish", "all": true})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!([]));
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["finish"]["grade"], "cool");
+    assert_eq!(st["script"][0]["en"], "");
+    assert_eq!(st["shots"][2]["node"]["camera"]["lens"]["focal_length"], 50);
+    assert_eq!(st["undo"]["action"], "revise");
+    let (code, _) = jcall(&s, "POST", "/api/undo", Some(json!({})));
+    assert_eq!(code, 200);
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!((st["finish"]["grade"].as_str(), st["script"][0]["en"].as_str()), (Some("none"), Some("SEVEN")));
+
+    // a camera note keeps the script's words
+    let (s, _) = srv_with_script(json!({"summary": "", "order": [], "edits": [], "texts": [{"id": "cups", "yaml": "ja: x"}]}));
+    let (code, _) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "x", "shot": "s03_window", "aspect": "camera"})));
+    assert_eq!(code, 400);
+}
