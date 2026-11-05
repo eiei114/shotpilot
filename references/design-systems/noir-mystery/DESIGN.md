@@ -16,7 +16,21 @@ A teaser built as an investigation. Night streets, interiors with hard light and
 
 ## 3. Typography Rules
 
-- Japanese: mincho (Noto Serif JP). Latin: a typewriter face (Courier Prime / Special Elite) for clues, a high-contrast serif (Playfair Display) for the title.
+### Font family
+- Display: `Zen Old Mincho` 500: the title and the questions. The system mincho stands in when the face cannot be fetched.
+- Body: `BIZ UDPMincho` 400: a UD mincho that holds up on the caption band.
+- Latin: `Libre Caslon Text` 400: a book serif for statements of fact.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 12 | Display 500 |
+| Card, rule | 5 | Display 500 |
+| Caption | 5 | Body 400 |
+| Count | 4 | Body 400 |
+| English line | 2.5 | Latin 400 |
+
+### Principles
 - Questions and statements of fact; up to 14 Japanese characters or 7 English words.
 
 ## 4. Title & Card Stylings
@@ -31,6 +45,7 @@ A teaser built as an investigation. Night streets, interiors with hard light and
 - Detail shots 1.5-2.5 s; establishing shots 3-4 s; the reveal held 3 s.
 - Transitions: `cut`; `dip` for a jump in time. No `flash` unless the twist is a jolt.
 - Card holds 2.5 s.
+- Motion: the `horror` profile (references/motion/profiles.json); energy `measured`; card in `type`; caption in `type`; title in `fade` 0.8 s; accent `dip`; never `glitch`. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

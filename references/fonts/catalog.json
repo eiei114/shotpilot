@@ -1,0 +1,4344 @@
+{
+ "schemaVersion": "shotpilot-fonts/v1",
+ "generated": "2026-11-05",
+ "sources": {
+  "metadata": "https://fonts.google.com/metadata/fonts (fetched 2026-11-05)",
+  "coverage": "cmap of the first TTF of each family in github.com/google/fonts, counted against JIS X 0208 level 1 (2,965 kanji) and level 2 (3,390 kanji)",
+  "about": "DESCRIPTION.en_us.html of each family in github.com/google/fonts",
+  "overused": "open-design design-templates/hyperframes/references/typography.md (od-ban); research_notes/文字デザインと書体/web_trailer_type_and_legibility.md (cliche)"
+ },
+ "registers": {
+  "dread": "不穏・ホラー",
+  "epic": "壮大・ファンタジー",
+  "wa": "和風",
+  "tech": "SF・技術",
+  "gentle": "やさしい・コージー",
+  "pop": "ポップ・明るい",
+  "kinetic": "勢い・アクション",
+  "noir": "ミステリー・ノワール",
+  "retro": "レトロ・ドット",
+  "command": "戦略・司令室",
+  "minimal": "静か・アート",
+  "narrative": "語り・日記"
+ },
+ "roles": {
+  "title": "タイトル（ロゴが無いとき）",
+  "card": "黒地のカード・キャッチ",
+  "caption": "画の上の字幕",
+  "count": "数え上げ・数字",
+  "cta": "日付・購入案内",
+  "sub": "小さな副行（英語の添え書きなど）"
+ },
+ "looks": {
+  "quiet-dread": [
+   "dread",
+   "minimal"
+  ],
+  "vhs-found-footage": [
+   "dread",
+   "retro"
+  ],
+  "cozy-pastel": [
+   "gentle",
+   "pop"
+  ],
+  "storybook": [
+   "gentle",
+   "narrative"
+  ],
+  "grimdark": [
+   "dread",
+   "epic"
+  ],
+  "epic-fantasy": [
+   "epic",
+   "wa"
+  ],
+  "neon-action": [
+   "kinetic",
+   "pop"
+  ],
+  "retro-pixel": [
+   "retro"
+  ],
+  "arthouse-minimal": [
+   "minimal",
+   "narrative"
+  ],
+  "noir-mystery": [
+   "noir"
+  ],
+  "cold-scifi": [
+   "tech"
+  ],
+  "command-room": [
+   "command",
+   "tech"
+  ]
+ },
+ "japanese": [
+  {
+   "family": "Noto Sans JP",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 11,
+   "added": "2015-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Noto+Sans+JP",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "tech",
+    "command",
+    "minimal"
+   ],
+   "roles": [
+    "caption",
+    "count",
+    "cta",
+    "sub"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Noto is a global font collection for writing in all modern and ancient languages. Noto Sans JP is an unmodulated (“sans serif”) design for the Japanese language and other languages used in Japan.",
+   "note": "どの環境にもある既定のゴシック。足りない字の受け皿に使い、ルックの顔には使わない。",
+   "default": true
+  },
+  {
+   "family": "Noto Serif JP",
+   "category": "Serif",
+   "weights": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 98,
+   "added": "2018-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Noto+Serif+JP",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "noir",
+    "minimal",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "caption",
+    "sub"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Noto is a global font collection for writing in all modern and ancient languages. Noto Serif JP is a modulated (“serif”) design for the Japanese language and other languages used in Japan.",
+   "note": "既定の明朝。足りない字の受け皿に使い、ルックの顔には使わない。",
+   "default": true
+  },
+  {
+   "family": "M PLUS Rounded 1c",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    300,
+    400,
+    500,
+    700,
+    800,
+    900
+   ],
+   "variable": false,
+   "popularity": 132,
+   "added": "2018-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/M+PLUS+Rounded+1c",
+   "script": "ja",
+   "class": "maru",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "card",
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.573,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": null,
+   "note": "M+ の丸ゴシック。太さが 7 段あり、字幕からタイトルまで使える。"
+  },
+  {
+   "family": "Zen Kaku Gothic New",
+   "category": "Sans Serif",
+   "weights": [
+    300,
+    400,
+    500,
+    700,
+    900
+   ],
+   "variable": false,
+   "popularity": 162,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Kaku+Gothic+New",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "tech",
+    "command",
+    "minimal"
+   ],
+   "roles": [
+    "card",
+    "caption",
+    "count",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Kaku Gothic New is a contemporary Japanese gothic (san serif) typeface family. With this font, you can express fine typesetting without any professional detailed arrangements.",
+   "note": "現代的なゴシック。字幕と情報の行の標準にできる。"
+  },
+  {
+   "family": "M PLUS 1p",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    300,
+    400,
+    500,
+    700,
+    800,
+    900
+   ],
+   "variable": false,
+   "popularity": 169,
+   "added": "2017-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/M+PLUS+1p",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "tech",
+    "pop"
+   ],
+   "roles": [
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.611,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "The M+ Outline Fonts Project develops a superfamily set of several families: 4 families with proportional Latin, 3 with fixed-halfwidth Latin, and 2 with fixed-fullwidth Japanese Kana variations.",
+   "note": "かなに手書きの曲線が混じる旧版の M+。新しく選ぶなら M PLUS 1 か 2。"
+  },
+  {
+   "family": "Zen Maru Gothic",
+   "category": "Sans Serif",
+   "weights": [
+    300,
+    400,
+    500,
+    700,
+    900
+   ],
+   "variable": false,
+   "popularity": 213,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Maru+Gothic",
+   "script": "ja",
+   "class": "maru",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Maru Gothic is a rounded san serif family that gives a soft and natural impression due to the deep rounds in the corners. Because of this unique soft impression the thin weight is also easy to use in any scenes.",
+   "note": "角の丸みが深い丸ゴシック。細い太さでも柔らかく見える。"
+  },
+  {
+   "family": "LINE Seed JP",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    400,
+    700,
+    800
+   ],
+   "variable": false,
+   "popularity": 231,
+   "added": "2026-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/LINE+Seed+JP",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "minimal",
+    "pop"
+   ],
+   "roles": [
+    "card",
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": null,
+   "note": "企業書体の親しみのあるゴシック。説明文は取得できていない。"
+  },
+  {
+   "family": "Shippori Mincho",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": false,
+   "popularity": 249,
+   "added": "2021-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Shippori+Mincho",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "dread",
+    "epic",
+    "wa",
+    "narrative"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Shippori Mincho is an old-style Mincho style created to provide novel writers in Japan a beautiful Mincho style for free.",
+   "note": "築地五号系の明朝。ExtraBold は見出し用に作られ、拡大しても崩れない。"
+  },
+  {
+   "family": "BIZ UDPGothic",
+   "category": "Sans Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 303,
+   "added": "2022-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/BIZ+UDPGothic",
+   "script": "ja",
+   "class": "ud-gothic",
+   "registers": [
+    "command",
+    "minimal"
+   ],
+   "roles": [
+    "caption",
+    "count",
+    "cta",
+    "sub"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "BIZ UD Gothic is a universal design typeface designed to be easy to read and ideal for education and business documentation. It is a highly legible and well-balanced design sans serif.",
+   "note": "モリサワの UD ゴシック（プロポーショナル）。小さくても読める。"
+  },
+  {
+   "family": "Sawarabi Mincho",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 304,
+   "added": "2018-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Sawarabi+Mincho",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "narrative",
+    "minimal"
+   ],
+   "roles": [
+    "card"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 0.995,
+    "jis_level2": 0.1,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Sawarabi Mincho (さわらび明朝) is a Japanese font by mshio . With a delicate and beautiful design, it is suitable for text and headline usage.",
+   "note": "繊細な明朝。第2水準の漢字はほぼ無い。"
+  },
+  {
+   "family": "Sawarabi Gothic",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 315,
+   "added": "2018-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Sawarabi+Gothic",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "minimal"
+   ],
+   "roles": [
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.428,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Sawarabi Gothic (さわらびゴシック) is a Japanese font by mshio . Carefully designed for high legibility, it works well in small text sizes.",
+   "note": "小さい字で読みやすいゴシック。第2水準の漢字はほぼ無い。"
+  },
+  {
+   "family": "Dela Gothic One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 316,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Dela+Gothic+One",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "kinetic",
+    "pop",
+    "command"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "count"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "DelaGothic is a flat, very thick Gothic body. Its stability and strength make it ideal for use on posters and packaging.",
+   "note": "平たく極太のゴシック。ポスター向き。数字の大写しにも合う。"
+  },
+  {
+   "family": "Zen Old Mincho",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700,
+    900
+   ],
+   "variable": false,
+   "popularity": 317,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Old+Mincho",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "dread",
+    "epic",
+    "wa",
+    "narrative"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Old Mincho is a Japanese mincho (serif) typeface with a classic design. This font family started with the regular (400) weight, and bold and black weights were added due to huge demand.",
+   "note": "古典的な明朝。Black まであり、大きく組んでも持つ。"
+  },
+  {
+   "family": "M PLUS 1",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 336,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/M+PLUS+1",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "tech",
+    "kinetic",
+    "command"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "caption",
+    "count",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.668,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "M+ FONTS is a little nifty font family for everyday usage. Mplus 1 is a Sans Serif font with nine weights from Thin to Black, supporting 5,700+ Kanjis for Japanese with GF Latin Plus.",
+   "note": "Thin から Black まで 9 段の現代的なゴシック。300 と 900 の対比が作れる。"
+  },
+  {
+   "family": "Kosugi Maru",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 370,
+   "added": "2016-01",
+   "license": "Apache-2.0",
+   "url": "https://fonts.google.com/specimen/Kosugi+Maru",
+   "script": "ja",
+   "class": "maru",
+   "registers": [
+    "gentle",
+    "retro"
+   ],
+   "roles": [
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kosugi Maru is a Gothic Rounded design, with low stroke contrast and monospaced metrics, and rounded terminals.",
+   "note": "1950 年代の設計を元にした等幅の丸ゴシック（Apache ライセンス）。"
+  },
+  {
+   "family": "Shippori Mincho B1",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": false,
+   "popularity": 440,
+   "added": "2021-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Shippori+Mincho+B1",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "dread",
+    "wa",
+    "narrative"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Shippori Mincho is an old-style Mincho style created to provide novel writers in Japan a beautiful Mincho style for free.",
+   "note": "しっぽり明朝の、角が丸くインクだまりのある版。印刷物の温度が出る。"
+  },
+  {
+   "family": "Murecho",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 449,
+   "added": "2021-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Murecho",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "tech",
+    "command",
+    "minimal"
+   ],
+   "roles": [
+    "caption",
+    "count",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "partial",
+    "jis_level1": 0.731,
+    "jis_level2": 0.042,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Murecho is a low-stroke contrast, flat terminal Gothic style (“sans serif”) Japanese typeface designed for text settings in Japan. It covers Hiragana, Katakana, and Kanji (JOYO+).",
+   "note": "コントラストの低い平らな端のゴシック。常用漢字までで、第1水準は 7 割しか無い。"
+  },
+  {
+   "family": "Zen Kaku Gothic Antique",
+   "category": "Sans Serif",
+   "weights": [
+    300,
+    400,
+    500,
+    700,
+    900
+   ],
+   "variable": false,
+   "popularity": 462,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Kaku+Gothic+Antique",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "minimal",
+    "narrative",
+    "noir"
+   ],
+   "roles": [
+    "card",
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Kaku Gothic New is a contemporary Japanese gothic (san serif) typeface family. With this font, you can express fine typesetting without any professional detailed arrangements.",
+   "note": "Zen 角ゴシックの古典寄りの版。素直で品がある。"
+  },
+  {
+   "family": "M PLUS 2",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 498,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/M+PLUS+2",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "minimal",
+    "command"
+   ],
+   "roles": [
+    "card",
+    "caption",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.668,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "M+ FONTS is a little nifty font family for everyday usage. Mplus 2 is a Sans Serif font with nine weights from Thin to Black, supporting 5,700+ Kanjis for Japanese with GF Latin Plus.",
+   "note": "やや古典的な字形の M+。落ち着いた情報の行に。"
+  },
+  {
+   "family": "IBM Plex Sans JP",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": false,
+   "popularity": 515,
+   "added": "2022-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/IBM+Plex+Sans+JP",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "tech",
+    "command"
+   ],
+   "roles": [
+    "caption",
+    "count",
+    "cta",
+    "sub"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "IBM Plex® is the corporate typeface for IBM worldwide and an open-source project developed by the IBM Brand & Experience team (BX&D).",
+   "note": "人と機械の関係を主題にしたグロテスク。欧文と揃いの技術系の行に。"
+  },
+  {
+   "family": "Kaisei Decol",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    700
+   ],
+   "variable": false,
+   "popularity": 532,
+   "added": "2021-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Kaisei+Decol",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kaisei Decol is designed with the same element in Kanji, the little dot at the end of the stroke. When typesetted, because of this dot elements, it makes less stimulus to eyes and also gives a cute and fun impression.",
+   "note": "画の端に点のある可愛い明朝。短い文とタイトル向き。"
+  },
+  {
+   "family": "Potta One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 582,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Potta+One",
+   "script": "ja",
+   "class": "brush",
+   "registers": [
+    "wa",
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Potta One is a single style family which features letterforms that have been inspired by brush lettering.",
+   "note": "筆の書き文字に着想を得た 1 書体。画面高さ 5% 未満では読みにくい。"
+  },
+  {
+   "family": "Hachi Maru Pop",
+   "category": "Handwriting",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 586,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Hachi+Maru+Pop",
+   "script": "ja",
+   "class": "pop",
+   "registers": [
+    "pop",
+    "gentle",
+    "retro"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "HachiMaruPop is a cute font that was popular among young Japanese girls in the 1970s and 1980s. It has an informal handwritten appearance which works well at larger sizes.",
+   "note": "70〜80 年代の丸文字。大きく使う前提。"
+  },
+  {
+   "family": "BIZ UDGothic",
+   "category": "Sans Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 599,
+   "added": "2022-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/BIZ+UDGothic",
+   "script": "ja",
+   "class": "ud-gothic",
+   "registers": [
+    "command",
+    "minimal"
+   ],
+   "roles": [
+    "caption",
+    "count",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "BIZ UD Gothic is a universal design typeface designed to be easy to read and ideal for education and business documentation. It is a highly legible and well-balanced design sans serif.",
+   "note": "モリサワの UD ゴシック（等幅）。数え上げの桁が揃う。"
+  },
+  {
+   "family": "Kiwi Maru",
+   "category": "Serif",
+   "weights": [
+    300,
+    400,
+    500
+   ],
+   "variable": false,
+   "popularity": 609,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Kiwi+Maru",
+   "script": "ja",
+   "class": "maru",
+   "registers": [
+    "gentle",
+    "pop",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kiwi Maru was created mainly for use in digital devices, and I hope you will use it experimentally in your papers and reports.",
+   "note": "日常語とくだけた言葉のための丸い書体。"
+  },
+  {
+   "family": "DotGothic16",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 612,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/DotGothic16",
+   "script": "ja",
+   "class": "pixel",
+   "registers": [
+    "retro",
+    "tech"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "caption",
+    "count",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Dotgothic 16 is based on the old 16x16 Gothic bitmap font that recreates the feel of pixel fonts from old video games, cell phones and computer screens on print.",
+   "note": "16×16 のビットマップを元にしたドット書体。大きさは 16 の整数倍で使う。"
+  },
+  {
+   "family": "Yuji Mai",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 639,
+   "added": "2021-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yuji+Mai",
+   "script": "ja",
+   "class": "brush",
+   "registers": [
+    "wa",
+    "epic",
+    "dread"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "\"Yuji\" is a series of fonts digitizing handwriting by the calligrapher Yuji Kataoka. Yuji Mai expresses a free, unrestrained, emotional beauty. The Latin alphabets were written to match the kana strokes.",
+   "note": "書家・片岡祐司の手書き。自由で情緒的。タイトル向き。"
+  },
+  {
+   "family": "Klee One",
+   "category": "Handwriting",
+   "weights": [
+    400,
+    600
+   ],
+   "variable": false,
+   "popularity": 652,
+   "added": "2021-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Klee+One",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Klee is a script font handwritten by pencil or pen. Its quiet design has an elegant look that sets itself apart from traditional script and textbook fonts. Ideal for body text.",
+   "note": "鉛筆・ペンの手書き。静かで品がある。日記や語りの行に。"
+  },
+  {
+   "family": "Rampart One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 659,
+   "added": "2021-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rampart+One",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "kinetic",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Rampart is a unique outline shadow font made in the image of 3-D blocks. It is best used for added impact or to demonstrate strength and stability.",
+   "note": "立体の影付きの袋文字。タイトルの一語だけに。"
+  },
+  {
+   "family": "Mochiy Pop One",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 674,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Mochiy+Pop+One",
+   "script": "ja",
+   "class": "pop",
+   "registers": [
+    "pop",
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Mochiy Pop is a casual Gothic font created based on characters written by girls in their 20s in Japan. A cute display font, you can use it widely, such as for manga, magazines, movies, and signs.",
+   "note": "20 代女性の書き文字を元にしたポップ体。漢字は Noto Sans JP の改変。"
+  },
+  {
+   "family": "Kosugi",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 697,
+   "added": "2016-01",
+   "license": "Apache-2.0",
+   "url": "https://fonts.google.com/specimen/Kosugi",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [
+    "retro",
+    "command"
+   ],
+   "roles": [
+    "caption",
+    "count"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kosugi is a Gothic design, with low stroke contrast and monospaced metrics. Initially developed by MOTOYA and released for the Android platform under the Apache license, the typeface is based on a design from the 1950s.",
+   "note": "1950 年代の設計を元にした等幅のゴシック（Apache ライセンス）。"
+  },
+  {
+   "family": "Hina Mincho",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 714,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Hina+Mincho",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "gentle",
+    "narrative",
+    "retro"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Hina Mincho is old-fashined and cute Japanese font. It includes Google Latin Plus, hiragana, katakana, JIS level 1 and 2 kanji glyphs. This font is licensed under the SIL Open Font License, Version 1.1.",
+   "note": "昔風で可愛い明朝。"
+  },
+  {
+   "family": "BIZ UDPMincho",
+   "category": "Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 735,
+   "added": "2022-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/BIZ+UDPMincho",
+   "script": "ja",
+   "class": "ud-mincho",
+   "registers": [
+    "narrative",
+    "noir"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "BIZ UD Mincho is a universal design typeface designed to be easy to read and ideal for education and business documentation.",
+   "note": "横画が太い UD 明朝。帯の上の字幕を明朝で組むときに。"
+  },
+  {
+   "family": "M PLUS U",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 757,
+   "added": "2026-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/M+PLUS+U",
+   "script": "ja",
+   "class": "ud-gothic",
+   "registers": [
+    "minimal",
+    "command"
+   ],
+   "roles": [
+    "caption",
+    "count",
+    "cta"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.668,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "M+ FONTS is a little nifty font family for everyday usage. Mplus U is a Sans Serif font with nine weights from Thin to Black, supporting 5,700+ Kanjis for Japanese with GF Latin Plus.",
+   "note": "ふところを広げ濁点を大きくした M+ の UD 版。"
+  },
+  {
+   "family": "Monomaniac One",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 762,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Monomaniac+One",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "kinetic",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Monomaniac is a bold Japanese Sans Serif font featuring rounded corners. The letterforms are condensed which work well for vertical typesetting.",
+   "note": "角の丸い縦長の太いゴシック。漢字は無い（かなと欧文だけ）。"
+  },
+  {
+   "family": "Yusei Magic",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 783,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yusei+Magic",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "pop",
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Yusei Magic is a font based on handwritten letters written with permanent marker. It has a thick vertical stroke and a thin horizontal stroke, so it is highly visible.",
+   "note": "油性マーカーの書き文字。縦画が太く遠くから読める。"
+  },
+  {
+   "family": "RocknRoll One",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 794,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/RocknRoll+One",
+   "script": "ja",
+   "class": "pop",
+   "registers": [
+    "pop",
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "RocknRoll is an original pop-style font. The strokes of varying intensity add momentum and the rounded dots create a lively and dynamic feel.",
+   "note": "強弱のある線と丸い点のポップ体。勢いがある。"
+  },
+  {
+   "family": "Yuji Syuku",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 807,
+   "added": "2021-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yuji+Syuku",
+   "script": "ja",
+   "class": "brush",
+   "registers": [
+    "wa",
+    "epic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "\"Yuji\" is a series of fonts digitizing handwriting by the calligrapher Yuji Kataoka. Yuji Syuku has tradition and dignity, but is also approachable. This design can be widely accepted by the general public.",
+   "note": "書家・片岡祐司の手書き。伝統と品格がありつつ親しみやすい。"
+  },
+  {
+   "family": "Cherry Bomb One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 828,
+   "added": "2023-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Cherry+Bomb+One",
+   "script": "ja",
+   "class": "pop",
+   "registers": [
+    "pop",
+    "gentle"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Satsuyako first released the kana font CherryBomb in 2012 with the concept, \"Cute with a kick.\" Its round and modern bounciness has made it appealing for diverse use from title logos and food packaging to children' s mag",
+   "note": "「キックのある可愛さ」の丸いかな書体。漢字は無い。"
+  },
+  {
+   "family": "Zen Kurenaido",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 859,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Kurenaido",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "narrative",
+    "gentle",
+    "dread"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Kurenaido is a Japanese font with a handwritten feeling. The brush-like elements are omitted from the design, leaving only the bones of the letter, resulting in an impression of ballpoint handwriting.",
+   "note": "筆の要素を抜いたボールペンの手書き。日記や手紙の行に。"
+  },
+  {
+   "family": "Train One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 874,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Train+One",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "kinetic",
+    "retro",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Train is a gothic-style typeface made with an outer and inner line. It is open and vibrant, and its strong first impression makes it suitable for logos and titles.",
+   "note": "外線と内線で組んだ袋文字のゴシック。ロゴとタイトル向き。"
+  },
+  {
+   "family": "Zen Antique",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 889,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Antique",
+   "script": "ja",
+   "class": "antique",
+   "registers": [
+    "wa",
+    "retro",
+    "dread"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Antique features two kinds of Antique Japanese with Kanji.",
+   "note": "かなが軽く漢字が重い、独特の律動のアンチック。昭和の印刷物の空気。"
+  },
+  {
+   "family": "Kaisei Opti",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    700
+   ],
+   "variable": false,
+   "popularity": 908,
+   "added": "2021-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Kaisei+Opti",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "gentle",
+    "minimal"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kaisei Opti is a modern style Japanese typeface. When typesetted, it gives a cheerful and breezy impression.",
+   "note": "明るく軽やかな現代的な明朝。"
+  },
+  {
+   "family": "Shippori Antique",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 937,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Shippori+Antique",
+   "script": "ja",
+   "class": "antique",
+   "registers": [
+    "retro",
+    "kinetic",
+    "dread"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 0.999,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Shippori Antique follows long-established standards for dialogue in manga and was created to provide people who draw manga in Japan a beautiful antique font for free.",
+   "note": "漫画の台詞の標準（かなはアンチック、漢字はゴシック）を写した書体。"
+  },
+  {
+   "family": "Zen Antique Soft",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 986,
+   "added": "2021-08",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zen+Antique+Soft",
+   "script": "ja",
+   "class": "antique",
+   "registers": [
+    "wa",
+    "gentle",
+    "retro"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Zen Antique features two kinds of Antique Japanese with Kanji.",
+   "note": "Zen アンチックの角を丸めた版。"
+  },
+  {
+   "family": "Stick",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1019,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Stick",
+   "script": "ja",
+   "class": "pop",
+   "registers": [
+    "pop",
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "True to its name, Stick is designed with straight lines that create a cute and playful feel. The pastoral ambience also gives this font wide versatility for use in both paper mediums and digital content.",
+   "note": "直線だけでできた可愛い書体。牧歌的。"
+  },
+  {
+   "family": "Yomogi",
+   "category": "Handwriting",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1022,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yomogi",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Yomogi is extra thin hand writing font that is easy to read and makes a strong impression. It includes Google Latin Plus, hiragana, katakana, JIS level 1 and 2 kanji glyphs.",
+   "note": "極細の手書き。等幅で縦組みにも使える。"
+  },
+  {
+   "family": "Kaisei Tokumin",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    700,
+    800
+   ],
+   "variable": false,
+   "popularity": 1036,
+   "added": "2021-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Kaisei+Tokumin",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "epic",
+    "dread",
+    "wa"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kaisei Tokumin is a shorten word for Tokudai Mincho Kana, meaning \"Extra Bold Serif Kana,\" intended for the strong title usage.",
+   "note": "特太明朝かな。強いタイトルのために作られ、詰まっても息がある。"
+  },
+  {
+   "family": "Reggae One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1054,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Reggae+One",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "kinetic",
+    "pop"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Reggae is a very popular display font often used in Japanese boys' magazines and digital content.",
+   "note": "少年誌でよく使われる、端の尖った勢いのある書体。"
+  },
+  {
+   "family": "Aoboshi One",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1081,
+   "added": "2023-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Aoboshi+One",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "noir",
+    "epic",
+    "minimal"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "\"Aoboshi\" is a single-weight serif-style Japanese font inspired by Copperplate Gothic.",
+   "note": "Copperplate Gothic に着想を得たセリフ風の書体。漢字は無い。"
+  },
+  {
+   "family": "M PLUS 1 Code",
+   "category": "Monospace",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": true,
+   "popularity": 1113,
+   "added": "2021-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/M+PLUS+1+Code",
+   "script": "ja",
+   "class": "mono",
+   "registers": [
+    "tech",
+    "command"
+   ],
+   "roles": [
+    "count",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "level1",
+    "jis_level1": 1.0,
+    "jis_level2": 0.668,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "M+ FONTS is a little nifty font family for everyday usage. Mplus 1 Code is a Sans Serif font with seven weights from Thin to Bold, supporting 5,700+ Kanjis for Japanese with GF Latin Plus.",
+   "note": "プログラミング用の等幅。数え上げや計器風の行に。第2水準は 7 割。"
+  },
+  {
+   "family": "Darumadrop One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1122,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Darumadrop+One",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "pop",
+    "wa"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Darumdrop is a flavorful handwritten font inspired by Japanese handwriting and \"Daruma Otoshi\" which is a Japanese folk craft game.",
+   "note": "だるま落としに着想を得た味のある手書き。漢字は無い。"
+  },
+  {
+   "family": "Mochiy Pop P One",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1124,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Mochiy+Pop+P+One",
+   "script": "ja",
+   "class": "pop",
+   "registers": [
+    "pop",
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Mochiy Pop is a casual Gothic font created based on characters written by girls in their 20s in Japan. A cute display font, you can use it widely, such as for manga, magazines, movies, and signs.",
+   "note": "Mochiy Pop のかなをプロポーショナルにした版。"
+  },
+  {
+   "family": "Kapakana",
+   "category": "Handwriting",
+   "weights": [
+    300,
+    400
+   ],
+   "variable": true,
+   "popularity": 1179,
+   "added": "2025-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Kapakana",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "gentle",
+    "noir"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kapakana is a Kana typeface designed with the concept of a copperplate script, including Hiragana, Katakana, and Latin glyphs (for pinyin use).",
+   "note": "銅版書体の筆記体のかな。漢字は無い。"
+  },
+  {
+   "family": "New Tegomin",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1198,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/New+Tegomin",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "narrative",
+    "gentle",
+    "retro"
+   ],
+   "roles": [
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "A Mincho (Japanese Serif) style font which has been drawn on a square grid. It takes inspiration from Mincho's clean and well organized appearance and the organic nature of handwritten letterforms.",
+   "note": "方眼の上に描いた、手書きの有機性を残す明朝。"
+  },
+  {
+   "family": "BIZ UDMincho",
+   "category": "Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 1248,
+   "added": "2022-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/BIZ+UDMincho",
+   "script": "ja",
+   "class": "ud-mincho",
+   "registers": [
+    "narrative",
+    "noir"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "BIZ UD Mincho is a universal design typeface designed to be easy to read and ideal for education and business documentation.",
+   "note": "横画が太い UD 明朝（等幅）。"
+  },
+  {
+   "family": "Yuji Boku",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1272,
+   "added": "2021-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yuji+Boku",
+   "script": "ja",
+   "class": "brush",
+   "registers": [
+    "wa",
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "\"Yuji\" is a series of fonts digitizing handwriting by the calligrapher Yuji Kataoka. Yuji Boku is a new and joyful design. It has both simplicity and warmth. Fonts in the Yuji Family: Yuji Mai Yuji Syuku",
+   "note": "書家・片岡祐司の手書き。素朴で温かい。"
+  },
+  {
+   "family": "Shippori Antique B1",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1357,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Shippori+Antique+B1",
+   "script": "ja",
+   "class": "antique",
+   "registers": [
+    "retro",
+    "dread"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 0.999,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Shippori Antique follows long-established standards for dialogue in manga and was created to provide people who draw manga in Japan a beautiful antique font for free.",
+   "note": "しっぽりアンチックの、角が丸くインクだまりのある版。"
+  },
+  {
+   "family": "Kaisei HarunoUmi",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    700
+   ],
+   "variable": false,
+   "popularity": 1383,
+   "added": "2021-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Kaisei+HarunoUmi",
+   "script": "ja",
+   "class": "mincho",
+   "registers": [
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "caption"
+   ],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Kaisei Haru No Umi's Kana is an organic wavy design that gives natural and friendly look. Katakana is designed slightly smaller to give more old-style typesetting impression. Better when set in text size.",
+   "note": "波打つ有機的なかなの明朝。本文の大きさで良さが出る。"
+  },
+  {
+   "family": "WDXL Lubrifont JP N",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1549,
+   "added": "2025-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/WDXL+Lubrifont+JP+N",
+   "script": "ja",
+   "class": "gothic",
+   "registers": [],
+   "roles": [],
+   "coverage": {
+    "kanji": "full",
+    "jis_level1": 1.0,
+    "jis_level2": 1.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": null,
+   "note": "説明文を取得できていない。使う前に見本を見る。"
+  },
+  {
+   "family": "Shizuru",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1674,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Shizuru",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "dread",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "This is a font based on the handwritten sketch by handicapped artists, refined & created by design major students. The unique lines create its exceptional atmosphere.",
+   "note": "渋谷フォント。障害のある作家の手描きを元にした独特の線。漢字は無い。"
+  },
+  {
+   "family": "Tsukimi Rounded",
+   "category": "Sans Serif",
+   "weights": [
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": false,
+   "popularity": 1741,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Tsukimi+Rounded",
+   "script": "ja",
+   "class": "maru",
+   "registers": [
+    "gentle"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Tsukimi Rounded is kana font that is based san-go(Japanese traditional go-number sized type, #3) in Tsukiji Type Foundry’s specimen books.",
+   "note": "築地の三号活字を元にした丸いかな。漢字は無い。"
+  },
+  {
+   "family": "Slackside One",
+   "category": "Handwriting",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1746,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Slackside+One",
+   "script": "ja",
+   "class": "hand",
+   "registers": [
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Newly designed only for Google Fonts: sophisticated handwritten Japanese font. Slackside means loose end.",
+   "note": "洗練された手書き。漢字は無い。"
+  },
+  {
+   "family": "Rock 3D",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1822,
+   "added": "2020-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rock+3D",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "pop",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "This is a font based on the sketch of 3D letters by handicapped artists, refined & created by design major students, capturing the solidness of the 3D with two dimensional sketch.",
+   "note": "渋谷フォント。立体の文字の手描きが元。漢字は無い。"
+  },
+  {
+   "family": "Palette Mosaic",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1841,
+   "added": "2021-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Palette+Mosaic",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "pop",
+    "retro"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Palette Mosaic is constructed from primitive shapes by handicapped artists in collaboration with design students. The shapes have been arranged to create a strong and solid atmosphere.",
+   "note": "渋谷フォント。単純な形を組んだ書体。漢字は無い。"
+  },
+  {
+   "family": "Chokokutai",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1892,
+   "added": "2023-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Chokokutai",
+   "script": "ja",
+   "class": "display",
+   "registers": [
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.0,
+    "jis_level2": 0.0,
+    "katakana": 1.0,
+    "latin": 1.0
+   },
+   "about": "Chokokutai is a display Japanese font family whose characters have a funky appearance.",
+   "note": "ファンキーな見た目の表示用書体。漢字は無い。"
+  },
+  {
+   "family": "Yuji Hentaigana Akari",
+   "category": "Handwriting",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1965,
+   "added": "2021-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yuji+Hentaigana+Akari",
+   "script": "ja",
+   "class": "brush",
+   "registers": [
+    "wa"
+   ],
+   "roles": [],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.002,
+    "jis_level2": 0.0,
+    "katakana": 0.0,
+    "latin": 1.0
+   },
+   "about": "\"Yuji\" is a series of fonts digitizing handwriting by the calligrapher Yuji Kataoka.",
+   "note": "変体仮名の書体。現代の文には使えない（カタカナも無い）。飾りに限る。"
+  },
+  {
+   "family": "Yuji Hentaigana Akebono",
+   "category": "Handwriting",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 2074,
+   "added": "2021-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Yuji+Hentaigana+Akebono",
+   "script": "ja",
+   "class": "brush",
+   "registers": [
+    "wa"
+   ],
+   "roles": [],
+   "coverage": {
+    "kanji": "none",
+    "jis_level1": 0.002,
+    "jis_level2": 0.0,
+    "katakana": 0.0,
+    "latin": 1.0
+   },
+   "about": "\"Yuji\" is a series of fonts digitizing handwriting by the calligrapher Yuji Kataoka.",
+   "note": "変体仮名の書体。現代の文には使えない（カタカナも無い）。飾りに限る。"
+  }
+ ],
+ "latin": [
+  {
+   "family": "Zilla Slab",
+   "category": "Serif",
+   "weights": [
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": false,
+   "popularity": 164,
+   "added": "2017-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Zilla+Slab",
+   "script": "latin",
+   "class": "slab",
+   "registers": [
+    "command"
+   ],
+   "roles": [
+    "card",
+    "cta"
+   ],
+   "note": "スラブセリフ。"
+  },
+  {
+   "family": "IBM Plex Sans Condensed",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": false,
+   "popularity": 239,
+   "added": "2018-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/IBM+Plex+Sans+Condensed",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "command",
+    "tech"
+   ],
+   "roles": [
+    "card",
+    "cta",
+    "sub"
+   ],
+   "note": "落ち着いた縦長。"
+  },
+  {
+   "family": "Chivo",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 246,
+   "added": "2011-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Chivo",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "command"
+   ],
+   "roles": [
+    "card",
+    "cta"
+   ],
+   "note": "100〜900 のグロテスク。"
+  },
+  {
+   "family": "Quantico",
+   "category": "Sans Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 290,
+   "added": "2011-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Quantico",
+   "script": "latin",
+   "class": "sans-square",
+   "registers": [
+    "command",
+    "tech"
+   ],
+   "roles": [
+    "card",
+    "cta"
+   ],
+   "note": "軍用風の角ばった書体。"
+  },
+  {
+   "family": "Share Tech Mono",
+   "category": "Monospace",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 297,
+   "added": "2012-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Share+Tech+Mono",
+   "script": "latin",
+   "class": "mono",
+   "registers": [
+    "command",
+    "tech"
+   ],
+   "roles": [
+    "count",
+    "sub"
+   ],
+   "note": "計器の読み出し風。"
+  },
+  {
+   "family": "Familjen Grotesk",
+   "category": "Sans Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": true,
+   "popularity": 442,
+   "added": "2022-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Familjen+Grotesk",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "command",
+    "minimal"
+   ],
+   "roles": [
+    "card",
+    "cta"
+   ],
+   "note": "2022 年のグロテスク。"
+  },
+  {
+   "family": "Chivo Mono",
+   "category": "Monospace",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 604,
+   "added": "2022-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Chivo+Mono",
+   "script": "latin",
+   "class": "mono",
+   "registers": [
+    "command"
+   ],
+   "roles": [
+    "count",
+    "sub"
+   ],
+   "note": "Chivo の等幅。"
+  },
+  {
+   "family": "Big Shoulders Stencil",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 1317,
+   "added": "2025-02",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Big+Shoulders+Stencil",
+   "script": "latin",
+   "class": "stencil",
+   "registers": [
+    "command",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "ステンシル（可変 100〜900）。"
+  },
+  {
+   "family": "Instrument Serif",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 79,
+   "added": "2023-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Instrument+Serif",
+   "script": "latin",
+   "class": "serif-display",
+   "registers": [
+    "dread",
+    "minimal"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "細身のセリフ。黒地に一語を置くときに。流行り始めている。"
+  },
+  {
+   "family": "Fraunces",
+   "category": "Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 82,
+   "added": "2020-07",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Fraunces",
+   "script": "latin",
+   "class": "serif-display",
+   "registers": [
+    "dread",
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "可変（WONK/SOFT 軸）。900 は重く奇妙、SOFT 軸で柔らかくなる。"
+  },
+  {
+   "family": "Newsreader",
+   "category": "Serif",
+   "weights": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": true,
+   "popularity": 125,
+   "added": "2020-07",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Newsreader",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "dread",
+    "minimal",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "静かな行のための本文セリフ（200〜800）。"
+  },
+  {
+   "family": "Cutive Mono",
+   "category": "Monospace",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 361,
+   "added": "2012-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Cutive+Mono",
+   "script": "latin",
+   "class": "mono",
+   "registers": [
+    "dread",
+    "noir"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "Courier Prime より使われていない細いタイプライター。"
+  },
+  {
+   "family": "Gloock",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 393,
+   "added": "2023-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Gloock",
+   "script": "latin",
+   "class": "serif-display",
+   "registers": [
+    "dread",
+    "noir"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "太くコントラストの高い表示用セリフ。仕掛け無しで不穏。"
+  },
+  {
+   "family": "IM Fell English",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 522,
+   "added": "2010-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/IM+Fell+English",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "dread",
+    "epic"
+   ],
+   "roles": [
+    "card"
+   ],
+   "note": "活版の凹凸が残るセリフ。"
+  },
+  {
+   "family": "Libre Caslon Display",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 568,
+   "added": "2017-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Libre+Caslon+Display",
+   "script": "latin",
+   "class": "serif-display",
+   "registers": [
+    "dread",
+    "noir"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "大きく使う前提の細い線のカスロン。"
+  },
+  {
+   "family": "Marcellus",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 171,
+   "added": "2012-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Marcellus",
+   "script": "latin",
+   "class": "serif-caps",
+   "registers": [
+    "epic"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "sub"
+   ],
+   "note": "フレアのあるローマン大文字。Cinzel より穏やか。"
+  },
+  {
+   "family": "Forum",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 355,
+   "added": "2011-07",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Forum",
+   "script": "latin",
+   "class": "serif-caps",
+   "registers": [
+    "epic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "少し癖のあるローマン大文字。"
+  },
+  {
+   "family": "Eczar",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": true,
+   "popularity": 420,
+   "added": "2015-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Eczar",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "epic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "頑丈で太いセリフ（400〜800）。"
+  },
+  {
+   "family": "Pirata One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 494,
+   "added": "2012-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Pirata+One",
+   "script": "latin",
+   "class": "blackletter",
+   "registers": [
+    "epic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "読みやすいブラックレター。"
+  },
+  {
+   "family": "Grenze Gotisch",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 770,
+   "added": "2020-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Grenze+Gotisch",
+   "script": "latin",
+   "class": "blackletter",
+   "registers": [
+    "epic",
+    "dread"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "太さの幅があるゴシック体の表示用書体。"
+  },
+  {
+   "family": "Almendra",
+   "category": "Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 1000,
+   "added": "2011-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Almendra",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "epic"
+   ],
+   "roles": [
+    "card"
+   ],
+   "note": "カリグラフィ寄りのセリフ。"
+  },
+  {
+   "family": "Texturina",
+   "category": "Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 1450,
+   "added": "2020-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Texturina",
+   "script": "latin",
+   "class": "blackletter",
+   "registers": [
+    "epic",
+    "dread"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "ブラックレターの香りのある本文セリフ（可変 100〜900）。"
+  },
+  {
+   "family": "Literata",
+   "category": "Serif",
+   "weights": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 219,
+   "added": "2018-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Literata",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "静かな副行のための温かい本文セリフ。"
+  },
+  {
+   "family": "Gabarito",
+   "category": "Display",
+   "weights": [
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 321,
+   "added": "2023-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Gabarito",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "親しみのある幾何学サンセリフ（400〜900）。"
+  },
+  {
+   "family": "Young Serif",
+   "category": "Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 490,
+   "added": "2023-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Young+Serif",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "gentle"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "柔らかく温かいセリフ（2023 年）。"
+  },
+  {
+   "family": "Grandstander",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 509,
+   "added": "2020-07",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Grandstander",
+   "script": "latin",
+   "class": "display",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "子ども向けの太い表示用書体（100〜900）。"
+  },
+  {
+   "family": "Shantell Sans",
+   "category": "Display",
+   "weights": [
+    300,
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": true,
+   "popularity": 739,
+   "added": "2023-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Shantell+Sans",
+   "script": "latin",
+   "class": "hand",
+   "registers": [
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "マーカーの手書き風。"
+  },
+  {
+   "family": "Gluten",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 949,
+   "added": "2021-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Gluten",
+   "script": "latin",
+   "class": "display",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "揺れているが読める。"
+  },
+  {
+   "family": "Bagel Fat One",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 953,
+   "added": "2023-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Bagel+Fat+One",
+   "script": "latin",
+   "class": "display",
+   "registers": [
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "太く個性のある表示用書体。"
+  },
+  {
+   "family": "Archivo",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 44,
+   "added": "2016-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Archivo",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "kinetic",
+    "command"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "幅の軸を持ち、Expanded 900 で押しが出る。"
+  },
+  {
+   "family": "Smooch Sans",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 64,
+   "added": "2021-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Smooch+Sans",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "100〜900 の縦長。"
+  },
+  {
+   "family": "Barlow Condensed",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": false,
+   "popularity": 73,
+   "added": "2017-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Barlow+Condensed",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "kinetic",
+    "command"
+   ],
+   "roles": [
+    "card",
+    "cta",
+    "sub"
+   ],
+   "note": "看板系の縦長サンセリフ（100〜900）。"
+  },
+  {
+   "family": "League Gothic",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": true,
+   "popularity": 258,
+   "added": "2021-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/League+Gothic",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "古典的な縦長のゴシック。"
+  },
+  {
+   "family": "Sofia Sans Extra Condensed",
+   "category": "Sans Serif",
+   "weights": [
+    1,
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000
+   ],
+   "variable": true,
+   "popularity": 414,
+   "added": "2022-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Sofia+Sans+Extra+Condensed",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "太さ 1〜1000 の極端な幅。"
+  },
+  {
+   "family": "Alumni Sans",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 480,
+   "added": "2021-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Alumni+Sans",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "100〜900 の縦長。"
+  },
+  {
+   "family": "Big Shoulders",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 508,
+   "added": "2025-02",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Big+Shoulders",
+   "script": "latin",
+   "class": "sans-condensed",
+   "registers": [
+    "kinetic",
+    "command"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "シカゴの看板の縦長サンセリフ（可変 100〜900、2025 年）。"
+  },
+  {
+   "family": "Anybody",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 706,
+   "added": "2022-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Anybody",
+   "script": "latin",
+   "class": "sans-extended",
+   "registers": [
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "幅 50〜150 の軸を持つ。"
+  },
+  {
+   "family": "Jost",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 54,
+   "added": "2020-02",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Jost",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "minimal"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "sub"
+   ],
+   "note": "Futura 風の幾何学サンセリフ。"
+  },
+  {
+   "family": "Geist",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 85,
+   "added": "2024-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Geist",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "minimal",
+    "tech"
+   ],
+   "roles": [
+    "card",
+    "cta",
+    "sub"
+   ],
+   "note": "100〜900 のサンセリフ（2024 年）。"
+  },
+  {
+   "family": "Schibsted Grotesk",
+   "category": "Sans Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 99,
+   "added": "2023-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Schibsted+Grotesk",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "minimal"
+   ],
+   "roles": [
+    "card",
+    "cta"
+   ],
+   "note": "400〜900 のグロテスク。"
+  },
+  {
+   "family": "Hanken Grotesk",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 142,
+   "added": "2022-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Hanken+Grotesk",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "minimal"
+   ],
+   "roles": [
+    "card",
+    "cta",
+    "sub"
+   ],
+   "note": "100〜900 のグロテスク（2022 年）。"
+  },
+  {
+   "family": "IBM Plex Mono",
+   "category": "Monospace",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": false,
+   "popularity": 68,
+   "added": "2018-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/IBM+Plex+Mono",
+   "script": "latin",
+   "class": "mono",
+   "registers": [
+    "noir",
+    "tech"
+   ],
+   "roles": [
+    "sub",
+    "count"
+   ],
+   "note": "事件ファイル風の行に。"
+  },
+  {
+   "family": "Spectral",
+   "category": "Serif",
+   "weights": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": false,
+   "popularity": 181,
+   "added": "2017-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Spectral",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "noir",
+    "narrative"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "画面のために作られたセリフ。"
+  },
+  {
+   "family": "Libre Caslon Text",
+   "category": "Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 254,
+   "added": "2013-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Libre+Caslon+Text",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "noir"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "落ち着いたカスロン。"
+  },
+  {
+   "family": "Tenor Sans",
+   "category": "Sans Serif",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 263,
+   "added": "2011-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Tenor+Sans",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "noir",
+    "minimal"
+   ],
+   "roles": [
+    "sub",
+    "card"
+   ],
+   "note": "ヒューマニストの大文字。字幕風の副行に。"
+  },
+  {
+   "family": "Libre Bodoni",
+   "category": "Serif",
+   "weights": [
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": true,
+   "popularity": 390,
+   "added": "2022-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Libre+Bodoni",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "noir"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "Bodoni Moda より使われていないボドニ。"
+  },
+  {
+   "family": "Rufina",
+   "category": "Serif",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 554,
+   "added": "2012-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rufina",
+   "script": "latin",
+   "class": "serif",
+   "registers": [
+    "noir"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "鋭いセリフ。"
+  },
+  {
+   "family": "Pixelify Sans",
+   "category": "Display",
+   "weights": [
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": true,
+   "popularity": 466,
+   "added": "2023-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Pixelify+Sans",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "ドット書体（2023 年）。"
+  },
+  {
+   "family": "Silkscreen",
+   "category": "Display",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 534,
+   "added": "2022-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Silkscreen",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro"
+   ],
+   "roles": [
+    "sub",
+    "cta"
+   ],
+   "note": "小さな UI 用の鮮明なドット書体。"
+  },
+  {
+   "family": "Doto",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 827,
+   "added": "2024-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Doto",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro",
+    "tech"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "100〜900 の点描。"
+  },
+  {
+   "family": "Jersey 10",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 966,
+   "added": "2024-04",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Jersey+10",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "ドット書体（2024 年）。"
+  },
+  {
+   "family": "Tiny5",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 1125,
+   "added": "2024-05",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Tiny5",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro"
+   ],
+   "roles": [
+    "card",
+    "sub"
+   ],
+   "note": "太さの段を持つドット書体。"
+  },
+  {
+   "family": "Handjet",
+   "category": "Display",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 1346,
+   "added": "2020-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Handjet",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro",
+    "tech"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "100〜900 の点で描く書体。"
+  },
+  {
+   "family": "Sixtyfour",
+   "category": "Monospace",
+   "weights": [
+    400
+   ],
+   "variable": true,
+   "popularity": 1617,
+   "added": "2024-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Sixtyfour",
+   "script": "latin",
+   "class": "pixel",
+   "registers": [
+    "retro"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "可変の等幅ドット。"
+  },
+  {
+   "family": "Saira",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 57,
+   "added": "2017-07",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Saira",
+   "script": "latin",
+   "class": "sans",
+   "registers": [
+    "tech",
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "Condensed / Extra Condensed まで揃い、300 と 900 の対比が作れる。"
+  },
+  {
+   "family": "Geist Mono",
+   "category": "Monospace",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 129,
+   "added": "2024-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Geist+Mono",
+   "script": "latin",
+   "class": "mono",
+   "registers": [
+    "tech",
+    "command"
+   ],
+   "roles": [
+    "count",
+    "cta",
+    "sub"
+   ],
+   "note": "データ表示の行に（2024 年）。"
+  },
+  {
+   "family": "Chakra Petch",
+   "category": "Sans Serif",
+   "weights": [
+    300,
+    400,
+    500,
+    600,
+    700
+   ],
+   "variable": false,
+   "popularity": 150,
+   "added": "2018-09",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Chakra+Petch",
+   "script": "latin",
+   "class": "sans-square",
+   "registers": [
+    "tech"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "角ばった技術系のサンセリフ。"
+  },
+  {
+   "family": "Unbounded",
+   "category": "Sans Serif",
+   "weights": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": true,
+   "popularity": 172,
+   "added": "2022-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Unbounded",
+   "script": "latin",
+   "class": "sans-extended",
+   "registers": [
+    "tech",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "幅広で重い。"
+  },
+  {
+   "family": "Oxanium",
+   "category": "Display",
+   "weights": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": true,
+   "popularity": 292,
+   "added": "2020-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Oxanium",
+   "script": "latin",
+   "class": "sans-square",
+   "registers": [
+    "tech"
+   ],
+   "roles": [
+    "title",
+    "card",
+    "cta"
+   ],
+   "note": "可変 200〜800 の角ばった書体。"
+  },
+  {
+   "family": "Tomorrow",
+   "category": "Sans Serif",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+   ],
+   "variable": false,
+   "popularity": 559,
+   "added": "2019-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Tomorrow",
+   "script": "latin",
+   "class": "sans-square",
+   "registers": [
+    "tech"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "100〜900 の技術系サンセリフ。"
+  },
+  {
+   "family": "Martian Mono",
+   "category": "Monospace",
+   "weights": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800
+   ],
+   "variable": true,
+   "popularity": 572,
+   "added": "2022-11",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Martian+Mono",
+   "script": "latin",
+   "class": "mono",
+   "registers": [
+    "tech",
+    "command"
+   ],
+   "roles": [
+    "count",
+    "sub"
+   ],
+   "note": "幅の軸を持つ等幅。"
+  }
+ ],
+ "overused": [
+  {
+   "family": "Inter",
+   "kind": "od-ban",
+   "popularity": 5,
+   "why": "LLM が既定で選ぶ書体（open-design の禁止リスト）",
+   "instead": [
+    "Hanken Grotesk",
+    "Geist",
+    "Familjen Grotesk"
+   ]
+  },
+  {
+   "family": "Roboto",
+   "kind": "od-ban",
+   "popularity": 2,
+   "why": "同上",
+   "instead": [
+    "Hanken Grotesk",
+    "Chivo"
+   ]
+  },
+  {
+   "family": "Open Sans",
+   "kind": "od-ban",
+   "popularity": 3,
+   "why": "同上",
+   "instead": [
+    "Hanken Grotesk",
+    "Chivo"
+   ]
+  },
+  {
+   "family": "Noto Sans",
+   "kind": "od-ban",
+   "popularity": 20,
+   "why": "同上",
+   "instead": [
+    "Hanken Grotesk",
+    "Geist"
+   ]
+  },
+  {
+   "family": "Lato",
+   "kind": "od-ban",
+   "popularity": 9,
+   "why": "同上",
+   "instead": [
+    "Hanken Grotesk",
+    "Schibsted Grotesk"
+   ]
+  },
+  {
+   "family": "Poppins",
+   "kind": "od-ban",
+   "popularity": 8,
+   "why": "同上",
+   "instead": [
+    "Gabarito",
+    "Jost"
+   ]
+  },
+  {
+   "family": "Nunito",
+   "kind": "od-ban",
+   "popularity": 25,
+   "why": "同上",
+   "instead": [
+    "Gabarito",
+    "Grandstander"
+   ]
+  },
+  {
+   "family": "Playfair Display",
+   "kind": "od-ban",
+   "popularity": 24,
+   "why": "同上",
+   "instead": [
+    "Gloock",
+    "Libre Bodoni"
+   ]
+  },
+  {
+   "family": "Cormorant Garamond",
+   "kind": "od-ban",
+   "popularity": 65,
+   "why": "同上。x ハイトが低く、日本語の横では小さく見える",
+   "instead": [
+    "Newsreader",
+    "Libre Caslon Text"
+   ]
+  },
+  {
+   "family": "EB Garamond",
+   "kind": "od-ban",
+   "popularity": 84,
+   "why": "同上",
+   "instead": [
+    "Newsreader",
+    "Spectral"
+   ]
+  },
+  {
+   "family": "Bodoni Moda",
+   "kind": "od-ban",
+   "popularity": 146,
+   "why": "同上",
+   "instead": [
+    "Libre Bodoni",
+    "Gloock"
+   ]
+  },
+  {
+   "family": "Cinzel",
+   "kind": "od-ban",
+   "popularity": 120,
+   "why": "同上。Trajan 風の金の大文字はファンタジーの定番（Trajan は「映画ポスターの Arial」と呼ばれる）",
+   "instead": [
+    "Marcellus",
+    "Forum",
+    "Texturina"
+   ]
+  },
+  {
+   "family": "Prata",
+   "kind": "od-ban",
+   "popularity": 256,
+   "why": "同上",
+   "instead": [
+    "Gloock",
+    "Rufina"
+   ]
+  },
+  {
+   "family": "Syne",
+   "kind": "od-ban",
+   "popularity": 185,
+   "why": "open-design が「AI デザインの印」と名指しする書体",
+   "instead": [
+    "Unbounded",
+    "Archivo"
+   ]
+  },
+  {
+   "family": "Cinzel Decorative",
+   "kind": "cliche",
+   "popularity": 371,
+   "why": "ファンタジーの定番（推論）",
+   "instead": [
+    "Marcellus",
+    "Pirata One"
+   ]
+  },
+  {
+   "family": "Bebas Neue",
+   "kind": "cliche",
+   "popularity": 43,
+   "why": "アクションの定番の縦長（推論。人気順位 43）",
+   "instead": [
+    "Big Shoulders",
+    "League Gothic",
+    "Sofia Sans Extra Condensed"
+   ]
+  },
+  {
+   "family": "Oswald",
+   "kind": "cliche",
+   "popularity": 19,
+   "why": "アクションの定番の縦長（推論。人気順位 19）",
+   "instead": [
+    "Barlow Condensed",
+    "Alumni Sans"
+   ]
+  },
+  {
+   "family": "Anton",
+   "kind": "cliche",
+   "popularity": 77,
+   "why": "アクションの定番（推論）",
+   "instead": [
+    "League Gothic",
+    "Big Shoulders"
+   ]
+  },
+  {
+   "family": "Orbitron",
+   "kind": "cliche",
+   "popularity": 127,
+   "why": "未来的なゲームロゴの「非公式の標準」と書かれる（検索の抜粋）",
+   "instead": [
+    "Chakra Petch",
+    "Oxanium",
+    "Tomorrow"
+   ]
+  },
+  {
+   "family": "Audiowide",
+   "kind": "cliche",
+   "popularity": 282,
+   "why": "SF の定番（推論）",
+   "instead": [
+    "Oxanium",
+    "Unbounded"
+   ]
+  },
+  {
+   "family": "Michroma",
+   "kind": "cliche",
+   "popularity": 417,
+   "why": "Eurostile 風。SF の定番（推論）",
+   "instead": [
+    "Chakra Petch",
+    "Saira"
+   ]
+  },
+  {
+   "family": "Rajdhani",
+   "kind": "cliche",
+   "popularity": 122,
+   "why": "司令室・SF の定番（推論）",
+   "instead": [
+    "Barlow Condensed",
+    "IBM Plex Sans Condensed"
+   ]
+  },
+  {
+   "family": "Press Start 2P",
+   "kind": "cliche",
+   "popularity": 236,
+   "why": "レトロの定番（推論。人気順位 236）",
+   "instead": [
+    "Pixelify Sans",
+    "Silkscreen",
+    "Jersey 10"
+   ]
+  },
+  {
+   "family": "VT323",
+   "kind": "cliche",
+   "popularity": 302,
+   "why": "レトロ・VHS の定番（推論）",
+   "instead": [
+    "Tiny5",
+    "Sixtyfour"
+   ]
+  },
+  {
+   "family": "Creepster",
+   "kind": "cliche",
+   "popularity": 319,
+   "why": "血の滴る書体はホラーの定番（検索の抜粋）。実測でも 10 本中 3 本",
+   "instead": [
+    "Gloock",
+    "Fraunces",
+    "IM Fell English"
+   ]
+  },
+  {
+   "family": "Nosifer",
+   "kind": "cliche",
+   "popularity": 1123,
+   "why": "同上",
+   "instead": [
+    "Gloock",
+    "Instrument Serif"
+   ]
+  },
+  {
+   "family": "Eater",
+   "kind": "cliche",
+   "popularity": 556,
+   "why": "同上",
+   "instead": [
+    "Gloock",
+    "Grenze Gotisch"
+   ]
+  },
+  {
+   "family": "Butcherman",
+   "kind": "cliche",
+   "popularity": 1304,
+   "why": "同上",
+   "instead": [
+    "Gloock",
+    "Grenze Gotisch"
+   ]
+  },
+  {
+   "family": "Special Elite",
+   "kind": "cliche",
+   "popularity": 261,
+   "why": "かすれたタイプライターはホラーの定番（推論）",
+   "instead": [
+    "Cutive Mono",
+    "IBM Plex Mono"
+   ]
+  },
+  {
+   "family": "Courier Prime",
+   "kind": "cliche",
+   "popularity": 206,
+   "why": "タイプライターの定番（推論）",
+   "instead": [
+    "Cutive Mono",
+    "IBM Plex Mono"
+   ]
+  },
+  {
+   "family": "Fredoka",
+   "kind": "cliche",
+   "popularity": 123,
+   "why": "丸い泡のような書体はコージーの定番（推論）",
+   "instead": [
+    "Gabarito",
+    "Young Serif",
+    "Bagel Fat One"
+   ]
+  },
+  {
+   "family": "Baloo 2",
+   "kind": "cliche",
+   "popularity": 194,
+   "why": "同上",
+   "instead": [
+    "Gabarito",
+    "Grandstander"
+   ]
+  },
+  {
+   "family": "Comfortaa",
+   "kind": "cliche",
+   "popularity": 152,
+   "why": "同上",
+   "instead": [
+    "Gabarito",
+    "Young Serif"
+   ]
+  },
+  {
+   "family": "Quicksand",
+   "kind": "cliche",
+   "popularity": 49,
+   "why": "同上",
+   "instead": [
+    "Gabarito",
+    "Literata"
+   ]
+  }
+ ]
+}

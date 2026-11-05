@@ -14,6 +14,46 @@ Claude when the planning turn picked them.
 | Shape | `design-templates/` | `craft.rs` skeleton | `hook → establish → escalate → title` |
 | Look | `design-systems/<brand>/` | `design-systems/<id>/` | one look a teaser wears: `DESIGN.md` + `tokens.json` + `manifest.json` (D-45) |
 | Playbook | `skills/<id>/SKILL.md` | `skills/<id>/SKILL.md` | one kind of teaser, or one part of it (D-45) |
+| Type rules | `craft/typography*.md` | `craft/TEASER-TYPE.md` | how to set teaser text: sizes per role, faces, tracking, leading, punctuation, per genre (measured) |
+| Font catalog | hyperframes `references/typography.md` | `fonts/` | which faces to pick: every Google Fonts Japanese family + Latin candidates, overused list |
+
+## Type and fonts (D-52)
+
+The numbers come from 77 teasers read frame by frame and from JLREQ, Netflix's Japanese
+timed-text guide, EBU R95 and the BBC subtitle guidelines; the notes are in
+`research_notes/文字デザインと書体/`. Like open-design injecting only the craft sections a
+skill requires, the planner and the text and picture edits get only section 10 of
+`craft/TEASER-TYPE.md` (how the script's lines are written, `refs::type_text`); the sizes and
+faces in the rest of the file are applied by code (`finish.rs`).
+
+- A look's `tokens.json` names its faces from the catalogue as `type.display` / `body` /
+  `latin` (`"Family:weight"`) and `type.title_size`; planning (and `shotpilot design <id>`)
+  writes them to `finish.fonts` and `finish.title_size`. `fonts.rs` fetches each face once
+  from Google Fonts into `<config>/shotpilot/fonts` (catalogue families only, all OFL) and
+  the cut falls back to the system mincho/gothic for any line a face lacks a glyph for.
+
+- `fonts/FONTS.md`: how to choose (register first, overused list, candidates per register
+  and per look, glyph coverage, size floors, licences).
+- `fonts/catalog.json`: 68 Japanese families (class, registers, roles, measured kanji
+  coverage against JIS levels 1 and 2, the designer's "About" text) and 61 Latin
+  candidates, plus 34 overused faces with what to use instead. Written by
+  `research_data/tools/build_fonts.py` from `research_data/fonts/` (not in git).
+- Both avoid self-review wording (D-22); section 10 reaches the planner, so
+  `every_path_that_writes_shots_gets_the_frozen_spec` checks it with the rest of the spec.
+
+## Motion (D-53)
+
+| Axis | open-design | here | holds |
+|---|---|---|---|
+| Motion rules | task profiles `motion-design`, `hyperframes` | `motion/MOTION.md` | the vocabulary (entrances, holds, exits, hand-overs), what code keeps (reading time, 3 flashes a second), section 6 for the planner |
+| Motion defaults | `references/transitions.md` energy table | `motion/profiles.json` | one profile per genre (and a Japanese-PV variant for four of them): each role's entrance, hold and exit with seconds, the dip length, the accent |
+
+The numbers come from 33 teasers read frame by frame (`research_notes/モーションデザイン/corpus_*.md`)
+and 736 measured from luma (`auto_measure.md`). A look's `tokens.json` picks a profile and
+overrides roles in `motion`; planning writes it to `finish.motion` and the planner may only set
+the energy, the Japanese-PV variant and the moves to avoid, plus one entrance per script line
+(`motion:`). `motion.rs` resolves the profile and writes the ffmpeg expressions; with no
+`finish.motion` the `base` profile gives the motion the cut had before.
 
 ## Design systems and skills (D-45)
 

@@ -16,8 +16,23 @@ A teaser that trusts the game's art. Pixel-art or low-poly scenes framed so the 
 
 ## 3. Typography Rules
 
-- Japanese: pixel or bitmap-style gothic (DotGothic16). Latin: a pixel face (Press Start 2P), uppercase.
+### Font family
+- Display: `DotGothic16` 400: everything Japanese. The system gothic stands in when the face cannot be fetched.
+- Body: `DotGothic16` 400: the same face.
+- Latin: `Pixelify Sans` 500: a pixel face, uppercase.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 14 | Display 400 |
+| Card, rule | 5 | Display 400 |
+| Caption | 5 | Body 400 |
+| Count | 4 | Body 400 |
+| English line | 2.5 | Latin 500 |
+
+### Principles
 - Very short lines: up to 8 Japanese characters or 4 English words.
+- Pixel faces stay crisp only at whole multiples of their grid.
 
 ## 4. Title & Card Stylings
 
@@ -31,6 +46,7 @@ A teaser that trusts the game's art. Pixel-art or low-poly scenes framed so the 
 - Shots 1.5-2.5 s; a montage of mechanics in the middle; boss tease in the last quarter.
 - Transitions: `cut`; `flash` (white) for a new stage or the title.
 - Card holds 1.5-2 s.
+- Motion: the `action` profile (references/motion/profiles.json); caption in `type`; title in `flicker` 0.5 s. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

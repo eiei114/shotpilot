@@ -16,9 +16,24 @@ A teaser that frightens by holding still. Long static or creeping shots of ordin
 
 ## 3. Typography Rules
 
-- Japanese: mincho (Shippori Mincho / Noto Serif JP). Latin: a quiet serif (Cormorant Garamond) in small caps, wide tracking.
+### Font family
+- Display: `Shippori Mincho` 500: the title, cards and rules. The system mincho stands in when the face cannot be fetched.
+- Body: `Zen Kaku Gothic Antique` 400: the gothic only informs: dates, counts, the end card.
+- Latin: `Newsreader` 400: the quiet English line, small.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 16 | Display 500 |
+| Card, rule | 5 | Display 500 |
+| Caption | 5 | Body 400 |
+| Count | 4 | Body 400 |
+| English line | 2.5 | Latin 400 |
+
+### Principles
 - Cards are small and centred, never bold. Up to 12 Japanese characters or 6 English words per line.
 - The title is the only large type in the teaser.
+- Mincho carries the voice; the gothic is for facts.
 
 ## 4. Title & Card Stylings
 
@@ -33,6 +48,7 @@ A teaser that frightens by holding still. Long static or creeping shots of ordin
 - Shots 3-6 s. The calm is the point; the last quarter is the slowest.
 - Transitions: `cut` by default, `dip` through black for a jump in time and before the title. No `flash`, except one jolt at most in the last third.
 - Card holds 2.5-3 s.
+- Motion: the `horror` profile (references/motion/profiles.json); title in `fade` 1.2 s, hold `still`, out `fade`; never `glitch`. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

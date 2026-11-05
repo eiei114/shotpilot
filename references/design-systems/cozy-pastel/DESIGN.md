@@ -16,7 +16,21 @@ A teaser that invites rather than impresses. Each shot shows one small, satisfyi
 
 ## 3. Typography Rules
 
-- Japanese: rounded gothic (Zen Maru Gothic / M PLUS Rounded 1c). Latin: a rounded sans (Fredoka / Nunito).
+### Font family
+- Display: `Zen Maru Gothic` 900: the title and the friendly single words. The system gothic stands in when the face cannot be fetched.
+- Body: `M PLUS Rounded 1c` 500: captions and the end card.
+- Latin: `Gabarito` 700: mixed case; never all caps on the title.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 20 | Display 900 |
+| Card, rule | 5 | Display 900 |
+| Caption | 5 | Body 500 |
+| Count | 4 | Body 500 |
+| English line | 2.5 | Latin 700 |
+
+### Principles
 - Big, friendly single words work; long sentences do not.
 - Up to 10 Japanese characters or 4 English words per card.
 
@@ -32,6 +46,7 @@ A teaser that invites rather than impresses. Each shot shows one small, satisfyi
 - Shots 2.5-4 s; even, unhurried rhythm. No sudden accelerations.
 - Transitions: `cut`; `dip` through black only for the day turning to night. No `flash`.
 - Card holds 2-2.5 s.
+- Motion: the `cozy` profile (references/motion/profiles.json). A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

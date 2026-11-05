@@ -16,8 +16,23 @@ A teaser that opens a map. Grand landscapes in golden light, a party or a lone t
 
 ## 3. Typography Rules
 
-- Japanese: classical mincho (Shippori Mincho B1). Latin: a heroic serif (Cinzel / Cormorant Garamond), title case.
+### Font family
+- Display: `Shippori Mincho` 800: the title and the call (for a Japanese-styled world, Yuji Syuku instead). The system mincho stands in when the face cannot be fetched.
+- Body: `Zen Kaku Gothic Antique` 500: captions and the end card.
+- Latin: `Marcellus` 400: flared Roman capitals, calmer than the common Trajan look.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 13 | Display 800 |
+| Card, rule | 5 | Display 800 |
+| Caption | 5 | Body 500 |
+| Count | 4 | Body 500 |
+| English line | 2.5 | Latin 400 |
+
+### Principles
 - Lines are big promises, short: up to 12 Japanese characters or 6 English words.
+- Avoid gold Trajan-style capitals: the most common fantasy title look (4 of 10 measured RPG teasers).
 
 ## 4. Title & Card Stylings
 
@@ -32,6 +47,7 @@ A teaser that opens a map. Grand landscapes in golden light, a party or a lone t
 - Opening vistas 4-5 s; middle builds with 2-3 s shots of places and creatures; third quarter peaks with motion; final image long.
 - Transitions: `cut`; `dip` between "chapters" and before the title. No `flash` unless the game is action-heavy.
 - Card holds 2.5 s.
+- Motion: the `rpg` profile (references/motion/profiles.json). A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

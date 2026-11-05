@@ -16,7 +16,21 @@ A high-energy teaser built on rhythm. Saturated neon against deep blacks, motion
 
 ## 3. Typography Rules
 
-- Japanese: heavy gothic (Noto Sans JP Black / Dela Gothic One). Latin: condensed display (Bebas Neue / Anton), all caps.
+### Font family
+- Display: `Dela Gothic One` 400: the title and the one-word punches. The system gothic stands in when the face cannot be fetched.
+- Body: `M PLUS 1` 700: captions, counts and the end card.
+- Latin: `Big Shoulders` 800: condensed, all caps.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 15 | Display 400 |
+| Card, rule | 5 | Display 400 |
+| Caption | 5 | Body 700 |
+| Count | 4 | Body 700 |
+| English line | 2.5 | Latin 800 |
+
+### Principles
 - One to three words per card. Up to 6 Japanese characters or 3 English words.
 
 ## 4. Title & Card Stylings
@@ -31,6 +45,7 @@ A high-energy teaser built on rhythm. Saturated neon against deep blacks, motion
 - Shots 0.8-2 s in the build, 2.5-3 s for the hook and the last action image.
 - Transitions: `cut` on the beat; `flash` on impacts and on the title (sparingly: at most one in four cuts). No `dip` except the drop.
 - Card holds 0.8-1.2 s.
+- Motion: the `action` profile (references/motion/profiles.json); card in `slam` 0.15 s; title in `slam` 0.15 s. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 
