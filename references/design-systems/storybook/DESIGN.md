@@ -16,7 +16,21 @@ The teaser is told like a fairy tale: once there was a place, someone set out, s
 
 ## 3. Typography Rules
 
-- Japanese: a warm mincho (Zen Old Mincho / Shippori Mincho B1). Latin: an old-style serif (Lora / EB Garamond), italic for the English line.
+### Font family
+- Display: `Zen Old Mincho` 700: the title and the told lines. The system mincho stands in when the face cannot be fetched.
+- Body: `Zen Maru Gothic` 500: captions and the end card.
+- Latin: `Young Serif` 400: an old-style serif for the English line.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 18 | Display 700 |
+| Card, rule | 5 | Display 700 |
+| Caption | 5 | Body 500 |
+| Count | 4 | Body 500 |
+| English line | 2.5 | Latin 400 |
+
+### Principles
 - Sentences may be full and gentle, but short: up to 14 Japanese characters or 7 English words.
 - No all-caps.
 
@@ -32,6 +46,7 @@ The teaser is told like a fairy tale: once there was a place, someone set out, s
 - Shots 3-5 s, each a page. A gentle build in the third quarter, then a long final image.
 - Transitions: `dip` through black between chapters, `cut` within one. No `flash`.
 - Card holds 2.5-3 s.
+- Motion: the `cozy` profile (references/motion/profiles.json); energy `calm`; card in `fade` 0.6 s; title in `fade` 0.8 s, hold `drift`. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

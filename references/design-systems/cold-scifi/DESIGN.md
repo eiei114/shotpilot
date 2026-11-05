@@ -16,7 +16,21 @@ A teaser of precision and isolation. Long corridors of a station, a planet throu
 
 ## 3. Typography Rules
 
-- Japanese: geometric gothic (Noto Sans JP Light / Medium). Latin: a technical sans (Rajdhani / Exo 2), uppercase, generous tracking.
+### Font family
+- Display: `M PLUS 1` 800: the title and the system messages. The system gothic stands in when the face cannot be fetched.
+- Body: `IBM Plex Sans JP` 400: captions, counts and the end card.
+- Latin: `Chakra Petch` 500: a squared technical sans, uppercase.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 14 | Display 800 |
+| Card, rule | 5 | Display 800 |
+| Caption | 5 | Body 400 |
+| Count | 4 | Body 400 |
+| English line | 2.5 | Latin 500 |
+
+### Principles
 - System-message style: `SIGNAL LOST`, `記録 0417`. Up to 12 Japanese characters or 5 English words.
 
 ## 4. Title & Card Stylings
@@ -31,6 +45,7 @@ A teaser of precision and isolation. Long corridors of a station, a planet throu
 - Shots 3-5 s for scale, 1.5-2 s for system details; one alarm moment in the third quarter.
 - Transitions: `cut`; `dip` for signal loss; one `flash` for the alarm.
 - Card holds 2.5 s.
+- Motion: the `scifi` profile (references/motion/profiles.json). A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

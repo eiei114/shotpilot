@@ -16,8 +16,23 @@ A teaser that says almost nothing and makes the viewer lean in. Five to eight sh
 
 ## 3. Typography Rules
 
-- Japanese: a light mincho (Noto Serif JP Light). Latin: a clean grotesque (Inter / Space Grotesk), lowercase or sentence case, small.
+### Font family
+- Display: `Shippori Mincho` 400: a light mincho for the title and the cards. The system mincho stands in when the face cannot be fetched.
+- Body: `Zen Kaku Gothic New` 300: a light gothic for facts.
+- Latin: `Instrument Serif` 400: a narrow serif, sentence case, small.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 10 | Display 400 |
+| Card, rule | 5 | Display 400 |
+| Caption | 5 | Body 300 |
+| Count | 4 | Body 300 |
+| English line | 2.5 | Latin 400 |
+
+### Principles
 - One line per card, up to 14 Japanese characters or 8 English words. Text is set small.
+- The title stays small too (10% of the frame height).
 
 ## 4. Title & Card Stylings
 
@@ -31,6 +46,7 @@ A teaser that says almost nothing and makes the viewer lean in. Five to eight sh
 - Shots 4-7 s. The rhythm is set by the images, not by music.
 - Transitions: `cut` only, plus `dip` before the title. Never `flash`.
 - Card holds 3 s.
+- Motion: the `adventure` profile (references/motion/profiles.json); energy `calm`; title in `fade` 1.0 s, hold `still`; never `flash`, `glitch`, `slam`. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

@@ -15,9 +15,24 @@ The teaser pretends to be evidence. Shots are framed like a person holding a cam
 
 ## 3. Typography Rules
 
-- Japanese: gothic (Noto Sans JP; DotGothic16 for logs). Latin: a monospaced face (VT323 / Space Mono), uppercase.
+### Font family
+- Display: `DotGothic16` 400: logs, timestamps and the title, like a camcorder's on-screen text. The system gothic stands in when the face cannot be fetched.
+- Body: `Kosugi` 400: monospaced, so digits line up in counts.
+- Latin: `Tiny5` 400: uppercase metadata.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 14 | Display 400 |
+| Card, rule | 5 | Display 400 |
+| Caption | 5 | Body 400 |
+| Count | 4 | Body 400 |
+| English line | 2.5 | Latin 400 |
+
+### Principles
 - Text looks like metadata: `REC 03:12:44`, `TAPE 2 / 1998.08.14`, `記録 3`.
 - No serif, no elegant centred cards.
+- Pixel faces stay crisp only at whole multiples of their grid.
 
 ## 4. Title & Card Stylings
 
@@ -32,6 +47,7 @@ The teaser pretends to be evidence. Shots are framed like a person holding a cam
 - Evidence shots 1-1.5 s in a run; establishing shots 3-4 s.
 - Transitions: `cut`, and `flash` (from white) on each short evidence shot of a count. `dip` only before the title.
 - Card holds 1.8-2.2 s; logs are read fast.
+- Motion: the `horror` profile (references/motion/profiles.json); card in `cut`; title in `glitch` 0.4 s; accent `glitch`. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

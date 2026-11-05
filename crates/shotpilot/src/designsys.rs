@@ -2,7 +2,7 @@
 //!
 //! A design system is one look a teaser can wear: `DESIGN.md` (prose in nine sections, the
 //! planner reads it whole and treats it as authoritative), `tokens.json` (the numbers code
-//! uses: grade, letterbox, typeface, card holds) and `manifest.json` (id, name, genres). The
+//! uses: grade, letterbox, typeface, faces, title size, motion, card holds) and `manifest.json` (id, name, genres). The
 //! bundled ones in `references/design-systems/` are generic looks, never a studio's identity.
 //!
 //! A project can have its own `DESIGN.md` next to shots.yaml (the game's brand). It wins over
@@ -153,11 +153,32 @@ pub fn catalogue_text() -> String {
         .join("\n")
 }
 
-/// The finish values a design system sets (grade, letterbox, typeface), as `finish:` entries.
+/// The finish values a design system sets (grade, letterbox, typeface, and its typefaces and
+/// title size), as `finish:` entries.
 pub fn finish_entries(d: &DesignSystem) -> Vec<(String, Value)> {
-    vec![
+    let mut out = vec![
         ("grade".to_string(), json!(Some(d.grade()).filter(|g| g != "none"))),
         ("letterbox".to_string(), json!(d.letterbox())),
         ("typeface".to_string(), json!(d.typeface())),
+    ];
+    out.extend(look_entries(d));
+    out
+}
+
+/// The look's typefaces (`type.display` / `body` / `latin`, "Family:weight" from the font
+/// catalogue, D-52), title size and motion (`motion`: a profile of
+/// references/motion/profiles.json and its overrides, D-53), as `finish:` entries.
+pub fn look_entries(d: &DesignSystem) -> Vec<(String, Value)> {
+    let t = &d.tokens["type"];
+    let face = |k: &str| t[k].as_str().filter(|s| crate::fonts::Spec::parse(s).is_ok()).map(str::to_string);
+    let fonts = json!({"display": face("display"), "body": face("body"), "latin": face("latin")});
+    let motion = match &d.tokens["motion"] {
+        Value::Object(m) if !m.is_empty() => Value::Object(m.clone()),
+        _ => Value::Null,
+    };
+    vec![
+        ("fonts".to_string(), fonts),
+        ("title_size".to_string(), json!(num(&t["title_size"]).filter(|r| (0.04..=0.35).contains(r)))),
+        ("motion".to_string(), motion),
     ]
 }

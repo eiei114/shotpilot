@@ -16,8 +16,23 @@ A heavy, mythic teaser. Vast ruined architecture, fog, a lone figure, a monstrou
 
 ## 3. Typography Rules
 
-- Japanese: a sharp mincho (Shippori Mincho B1, bold for the title only). Latin: an inscriptional serif (Cinzel / Cormorant SC), all caps, wide tracking.
+### Font family
+- Display: `Kaisei Tokumin` 800: an extra-bold mincho for the title and the short declarations. The system mincho stands in when the face cannot be fetched.
+- Body: `Zen Kaku Gothic Antique` 500: captions and the end card.
+- Latin: `Grenze Gotisch` 600: a gothic display with real weight, in title case (never all caps).
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 16 | Display 800 |
+| Card, rule | 5 | Display 800 |
+| Caption | 5 | Body 500 |
+| Count | 4 | Body 500 |
+| English line | 2.5 | Latin 600 |
+
+### Principles
 - Lines are short and declarative: up to 10 Japanese characters or 5 English words.
+- Weight carries the menace; no dripping or distressed type.
 
 ## 4. Title & Card Stylings
 
@@ -31,6 +46,7 @@ A heavy, mythic teaser. Vast ruined architecture, fog, a lone figure, a monstrou
 - First half slow (4-6 s shots of scale and ruin), third quarter faster (1.5-2.5 s around a clash), last quarter one long held image before the title.
 - Transitions: `cut`; `dip` before the title; one `flash` allowed on the decisive impact.
 - Card holds 2.5-3 s.
+- Motion: the `rpg` profile (references/motion/profiles.json); energy `calm`; accent `dip`. A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

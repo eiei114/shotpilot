@@ -189,14 +189,16 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         ("craft rules", "## Craft rules"),
         ("framing", "## Framing"),
         ("baseline", "## Teaser baseline"),
+        ("type", "## On-screen type"),
+        ("motion", "## Text motion"),
     ];
-    // which blocks each path must carry: picture notes get all of it, text notes the look and
-    // the baseline, sound notes the brief and the direction only
+    // which blocks each path must carry: picture notes get all of it, text notes the look, the
+    // baseline and how lines are written (D-52), sound notes the brief and the direction only
     let want = |name: &str| -> &[&str] {
         match name {
-            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline"],
+            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "motion"],
             "revise: the sound" => &["brief", "direction"],
-            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline"],
+            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "motion"],
         }
     };
     for (name, text) in &paths {
@@ -205,6 +207,37 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         }
         assert!(shotpilot::craft::self_review_words(text).is_empty(), "{name}: {:?}", shotpilot::craft::self_review_words(text));
     }
+}
+
+#[test]
+fn the_plan_moves_as_the_look_says_unless_the_brief_asks_otherwise() {
+    // D-53: the look's motion tokens become finish.motion; the planner adds only what the
+    // brief or the direction asked for (energy, the Japanese PV variant, moves to avoid), and a
+    // line keeps the entrance it asked for
+    let mut f = ws();
+    f.ws.set_brief(&[("design".into(), json!("quiet-dread"))]).unwrap();
+    let line = json!({"id": "hit", "kind": "card", "ja": "逃げろ", "en": "", "head": "", "from": "", "dur": 2.0,
+                      "after": "start", "on": "", "at": 0, "motion": "slam"});
+    let fake = FakeClaude::new(json!({"rationale": "r", "script": [line],
+        "shots": [plan_shot("a", "hook", 4.0, "well"), plan_shot("b", "title", 4.0, "gate")],
+        "motion": {"energy": "driving", "variant": "ja", "avoid": ["flash"]}}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let motion = &p.finish.iter().find(|(k, _)| k == "motion").unwrap().1;
+    assert_eq!(motion["profile"], json!("horror-ja"));
+    assert_eq!(motion["energy"], json!("driving"));
+    assert_eq!(motion["avoid"], json!(["glitch", "flash"])); // the look's, then the brief's
+    assert_eq!(motion["title"]["in"], json!("fade")); // the look's override stays
+    assert_eq!(p.script[0]["motion"], json!("slam"));
+    // with nothing asked, the look's motion as it is
+    let quiet = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &quiet).unwrap();
+    let motion = &p.finish.iter().find(|(k, _)| k == "motion").unwrap().1;
+    assert_eq!(motion["profile"], json!("horror"));
+    assert!(motion.get("energy").is_none());
+    // no look: the genre's profile
+    f.ws.set_brief(&[("design".into(), json!("")), ("genre".into(), json!("コージーな農業シム"))]).unwrap();
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &quiet).unwrap();
+    assert_eq!(p.finish.iter().find(|(k, _)| k == "motion").unwrap().1["profile"], json!("cozy"));
 }
 
 #[test]

@@ -1773,10 +1773,10 @@ impl Workspace {
         Ok(idx)
     }
 
-    /// Set fields under `finish:` (letterbox, title, end_card, font; null clears one).
-    /// Editorial: it is burned in at the next cut, nothing re-renders.
+    /// Set fields under `finish:` (letterbox, title, end_card, font, fonts, logo, ...; null
+    /// clears one). Editorial: it is burned in at the next cut, nothing re-renders.
     pub fn set_finish(&mut self, entries: &[(String, Value)]) -> Result<()> {
-        const KEYS: &[&str] = &["letterbox", "title", "end_card", "font", "grade", "typeface"];
+        const KEYS: &[&str] = &["letterbox", "title", "end_card", "font", "grade", "typeface", "fonts", "title_size", "logo", "motion"];
         for (k, _) in entries {
             if !KEYS.contains(&k.as_str()) {
                 bail!("unknown finish field '{k}'. known: {}", KEYS.join(", "));
@@ -1790,6 +1790,43 @@ impl Workspace {
         let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
         self.state.log("finish", json!({"fields": keys}));
         self.state.save()
+    }
+
+    /// Write the active look's typefaces, title size and motion into `finish:` (D-52), and
+    /// start fetching the faces. Nothing when `brief.design` names no bundled look.
+    /// Editorial: nothing re-renders.
+    pub fn apply_look(&mut self) -> Result<bool> {
+        let Some(d) = crate::designsys::get(&self.defn.brief.design) else { return Ok(false) };
+        self.set_finish(&crate::designsys::look_entries(d))?;
+        crate::fonts::prefetch(&self.defn.finish.fonts.specs());
+        Ok(true)
+    }
+
+    /// Bring the game's logo into the project (an image picked anywhere is copied to `art/`)
+    /// and return its path relative to shots.yaml, for `finish.logo`.
+    pub fn import_logo(&self, src: &Path) -> Result<String> {
+        let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        if !["png", "jpg", "jpeg", "webp"].contains(&ext.as_str()) || !src.is_file() {
+            bail!("the logo must be a png, jpg or webp image ({})", src.display());
+        }
+        let root = std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
+        let full = std::fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
+        if let Ok(rel) = full.strip_prefix(&root) {
+            return Ok(rel.to_string_lossy().replace('\\', "/"));
+        }
+        let dir = self.root.join("art");
+        std::fs::create_dir_all(&dir)?;
+        let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("logo");
+        let bytes = std::fs::read(src)?;
+        let mut name = format!("{stem}.{ext}");
+        let mut n = 1;
+        // never overwrite a different image of the same name
+        while dir.join(&name).exists() && std::fs::read(dir.join(&name)).ok().as_deref() != Some(bytes.as_slice()) {
+            n += 1;
+            name = format!("{stem}-{n}.{ext}");
+        }
+        std::fs::write(dir.join(&name), &bytes)?;
+        Ok(format!("art/{name}"))
     }
 
     /// Write `stage:` (the set as read from the scout photos). Editorial: nothing re-renders.

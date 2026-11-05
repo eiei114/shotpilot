@@ -39,6 +39,8 @@ pub struct Line {
     pub at: f64,
     /// Sound effects on this line (`at` from the line's start), mixed at the cut.
     pub sfx: Vec<Value>,
+    /// The entrance this line asks for (`motion:`, D-53), over its role's in the profile.
+    pub motion: Option<String>,
 }
 
 impl Line {
@@ -123,8 +125,14 @@ pub fn parse(v: Option<&Value>, shot_ids: &[String], errs: &mut Vec<String>) -> 
             on: m.get("on").map(str_of).filter(|s| !s.is_empty()),
             at: m.get("at").and_then(num).unwrap_or(0.3),
             sfx: m.get("sfx").and_then(Value::as_array).cloned().unwrap_or_default(),
+            motion: m.get("motion").map(str_of).filter(|s| !s.is_empty()),
             kind,
         };
+        if let Some(e) = &line.motion {
+            if !crate::motion::ENTRANCES.contains(&e.as_str()) {
+                errs.push(format!("{at}.motion: one of {} (got '{e}')", crate::motion::ENTRANCES.join(", ")));
+            }
+        }
         crate::sound::validate_line_sfx(&at, m.get("sfx"), errs);
         if line.is_slot() && line.after.is_none() {
             errs.push(format!("{at}.after: a {} needs `after: <shot id | line id | start>`", line.kind));

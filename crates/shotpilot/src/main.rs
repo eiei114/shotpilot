@@ -189,6 +189,10 @@ enum Cmd {
     Brief {
         assignments: Vec<String>,
     },
+    /// what is burned in at the cut: finish logo=logo.png title_size=0.18 fonts='{display: "Shippori Mincho:800"}'
+    Finish {
+        assignments: Vec<String>,
+    },
     /// edit fields of one shot: set s03 camera.lens.focal_length=50 duration=5
     Set {
         shot: String,
@@ -311,6 +315,8 @@ posts: every {} days{}; next {} (in {} days)", p["every_days"],
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    // the look's typefaces are fetched from Google Fonts the first time a cut needs them
+    shotpilot::fonts::allow_fetch(true);
     match run(cli) {
         Ok(code) => ExitCode::from(code),
         Err(e) => {
@@ -766,6 +772,11 @@ fn run(cli: Cli) -> Result<u8> {
                         shotpilot::bail!("unknown design system '{id}' (shotpilot design lists them)");
                     };
                     ws.set_brief(&[("design".to_string(), serde_json::json!(d.id))])?;
+                    // the look's typefaces, title size and motion; nothing re-renders
+                    ws.set_finish(&shotpilot::designsys::look_entries(d))?;
+                    for missing in shotpilot::fonts::fetch_now(&ws.defn.finish.fonts.specs()) {
+                        println!("  font not fetched ({missing}); the cut will use the system font");
+                    }
                     if fork {
                         let dst = ws.root.join(shotpilot::designsys::PROJECT_FILE);
                         if dst.exists() {
@@ -822,6 +833,30 @@ fn run(cli: Cli) -> Result<u8> {
             if !missing.is_empty() {
                 println!("missing:    {} (the planner works better with these)", missing.join(", "));
             }
+        }
+        Cmd::Finish { assignments } => {
+            let mut ws = ws(file)?;
+            if !assignments.is_empty() {
+                ws.set_finish(&parse_assignments(&assignments)?)?;
+            }
+            let f = &ws.defn.finish;
+            println!("grade:      {}", f.grade);
+            println!("letterbox:  {}", f.letterbox.map(fmt_g).unwrap_or_else(|| "-".into()));
+            println!("typeface:   {} (the system font when a face is missing)", f.typeface);
+            for (role, spec) in [("display", &f.fonts.display), ("body", &f.fonts.body), ("latin", &f.fonts.latin)] {
+                let line = match spec {
+                    Some(s) if shotpilot::fonts::local(s).is_some() => format!("{} (downloaded)", s.label()),
+                    Some(s) => format!("{} (downloaded at the next cut)", s.label()),
+                    None => "-".into(),
+                };
+                println!("{:<11} {line}", format!("{role}:"));
+            }
+            println!("title_size: {}", f.title_size.map(fmt_g).unwrap_or_else(|| format!("{} (default)", fmt_g(shotpilot::finish::TITLE_SIZE))));
+            println!("logo:       {}", f.logo.as_deref().unwrap_or("-"));
+            let m = shotpilot::motion::resolve(&f.motion);
+            let avoid = if m.avoid.is_empty() { String::new() } else { format!(", never {}", m.avoid.join(" ")) };
+            println!("motion:     {} ({}{avoid}); card {} / title {} / dip {}s / accent {}",
+                     m.profile, m.energy, m.card.enter, m.title.enter, fmt_g(shotpilot::geometry::round_to(m.dip, 2)), m.accent);
         }
         Cmd::Set { shot, assignments } => {
             let parsed = parse_assignments(&assignments)?;

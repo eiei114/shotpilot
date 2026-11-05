@@ -8,7 +8,8 @@
 //! the cut.
 //!
 //! No crossfades: an overlap would shorten the cut and pull the sound effects off their cuts.
-//! Dips (through black) and flashes (from white) keep every shot's length.
+//! Dips (through black), flashes and whiteouts (from white) and glitches keep every shot's
+//! length. How the text moves and how long a dip takes come from `finish.motion` (motion.rs).
 
 use std::path::{Path, PathBuf};
 
@@ -17,8 +18,8 @@ use serde_json::{Map, Value};
 use crate::model::{fmt_g, num, str_of};
 use crate::script::Line;
 
-pub const TRANSITIONS: &[&str] = &["cut", "dip", "flash"];
-/// Seconds a dip takes on each side of the cut.
+pub const TRANSITIONS: &[&str] = &["cut", "dip", "flash", "whiteout", "glitch"];
+/// Seconds a dip takes on each side of the cut (the base profile's).
 pub const DIP: f64 = 0.25;
 
 /// Colour grades applied to every shot at the cut (ffmpeg filters; `{b}` is the brightness,
@@ -42,6 +43,31 @@ pub struct Text {
     pub duration: f64,
 }
 
+/// The faces a look sets (`finish.fonts`, D-52): `display` for the title, cards and rules,
+/// `body` for captions, counts, messages and the end card, `latin` for the English lines.
+/// Each is a family of `references/fonts/catalog.json` at one weight; unset roles use the
+/// system mincho / gothic.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct FaceCfg {
+    pub display: Option<crate::fonts::Spec>,
+    pub body: Option<crate::fonts::Spec>,
+    pub latin: Option<crate::fonts::Spec>,
+}
+
+pub const FACE_ROLES: &[&str] = &["display", "body", "latin"];
+
+impl FaceCfg {
+    /// The faces that are set, in role order.
+    pub fn specs(&self) -> Vec<crate::fonts::Spec> {
+        [&self.display, &self.body, &self.latin].into_iter().flatten().cloned().collect()
+    }
+}
+
+/// The title's glyph height (kanji, or capitals for a Latin title) as a share of the frame
+/// height, when `finish.title_size` is not set. Measured teasers range 0.07-0.35 by genre
+/// (references/craft/TEASER-TYPE.md); 0.122 is the size the title had before it was settable.
+pub const TITLE_SIZE: f64 = 0.122;
+
 #[derive(Debug, Clone)]
 pub struct FinishCfg {
     /// Picture aspect inside black bars (2.39 = scope); None = full frame.
@@ -53,11 +79,20 @@ pub struct FinishCfg {
     pub grade: String,
     pub title: Option<Text>,
     pub end_card: Option<(Vec<String>, f64)>,
+    /// Faces from the font catalogue (fetched once, then cached).
+    pub fonts: FaceCfg,
+    /// The title's glyph height as a share of the frame height (None: TITLE_SIZE).
+    pub title_size: Option<f64>,
+    /// The game's logo (an image next to shots.yaml), drawn instead of the title's text.
+    pub logo: Option<String>,
+    /// How the text moves and the shots hand over (D-53).
+    pub motion: crate::motion::MotionCfg,
 }
 
 impl Default for FinishCfg {
     fn default() -> Self {
-        FinishCfg { letterbox: None, font: None, typeface: "mincho".into(), grade: "none".into(), title: None, end_card: None }
+        FinishCfg { letterbox: None, font: None, typeface: "mincho".into(), grade: "none".into(), title: None, end_card: None,
+                    fonts: FaceCfg::default(), title_size: None, logo: None, motion: Default::default() }
     }
 }
 
@@ -131,6 +166,51 @@ pub fn parse(v: Option<&Value>, errs: &mut Vec<String>) -> FinishCfg {
     if !["mincho", "gothic"].contains(&typeface.as_str()) {
         errs.push(format!("finish.typeface: mincho or gothic (got '{typeface}')"));
     }
+    let mut fonts = FaceCfg::default();
+    match m.get("fonts") {
+        None | Some(Value::Null) => {}
+        Some(Value::Object(f)) => {
+            for (role, v) in f {
+                let slot = match role.as_str() {
+                    "display" => &mut fonts.display,
+                    "body" => &mut fonts.body,
+                    "latin" => &mut fonts.latin,
+                    _ => {
+                        errs.push(format!("finish.fonts.{role}: one of {}", FACE_ROLES.join(", ")));
+                        continue;
+                    }
+                };
+                match v {
+                    Value::Null => {}
+                    Value::String(s) if s.trim().is_empty() => {}
+                    Value::String(s) => match crate::fonts::Spec::parse(s) {
+                        Ok(spec) => *slot = Some(spec),
+                        Err(e) => errs.push(format!("finish.fonts.{role}: {e}")),
+                    },
+                    _ => errs.push(format!("finish.fonts.{role}: a family, optionally with a weight (\"Shippori Mincho:800\")")),
+                }
+            }
+        }
+        Some(_) => errs.push("finish.fonts: {display, body, latin} (\"Family:weight\" each)".into()),
+    }
+    let title_size = match m.get("title_size") {
+        None | Some(Value::Null) => None,
+        Some(x) => match num(x) {
+            Some(r) if (0.04..=0.35).contains(&r) => Some(r),
+            _ => {
+                errs.push("finish.title_size: the title's glyph height as a share of the frame height, 0.04..0.35".into());
+                None
+            }
+        },
+    };
+    let logo = m.get("logo").map(str_of).filter(|s| !s.trim().is_empty());
+    if let Some(l) = &logo {
+        let p = Path::new(l);
+        let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        if p.is_absolute() || l.contains("..") || !["png", "jpg", "jpeg", "webp"].contains(&ext.as_str()) {
+            errs.push(format!("finish.logo: an image (png, jpg, webp) inside the project, as a relative path (got '{l}')"));
+        }
+    }
     FinishCfg {
         letterbox,
         font: m.get("font").map(str_of).filter(|s| !s.is_empty()),
@@ -138,6 +218,10 @@ pub fn parse(v: Option<&Value>, errs: &mut Vec<String>) -> FinishCfg {
         grade,
         title: m.get("title").and_then(|t| text_of(t, 0.5, 3.0)),
         end_card,
+        fonts,
+        title_size,
+        logo,
+        motion: crate::motion::parse(m.get("motion"), errs),
     }
 }
 
@@ -178,12 +262,24 @@ pub fn validate_shot(at: &str, shot: &Value, errs: &mut Vec<String>) {
     }
 }
 
-/// Fonts for the burned-in text: a Japanese face (mincho or gothic) and a sans for the
-/// quiet English lines.
-#[derive(Debug, Clone)]
+/// A face from the catalogue, resolved to its cached file.
+#[derive(Debug, Clone, Default)]
+pub struct Face {
+    /// `Family:weight`, for notes.
+    pub label: String,
+    pub path: PathBuf,
+}
+
+/// Fonts for the burned-in text: the system Japanese face (mincho or gothic) and a gothic
+/// for the quiet lines, plus the look's faces where they could be had. A line falls back to
+/// the system face when its catalogue face has no glyph for one of its characters.
+#[derive(Debug, Clone, Default)]
 pub struct Fonts {
     pub main: PathBuf,
     pub sans: PathBuf,
+    pub display: Option<Face>,
+    pub body: Option<Face>,
+    pub latin: Option<Face>,
 }
 
 fn first(cands: &[PathBuf]) -> Option<PathBuf> {
@@ -222,7 +318,35 @@ pub fn fonts(cfg: &FinishCfg) -> Option<Fonts> {
         None if cfg.typeface == "gothic" => sans.clone(),
         None => first(&mincho).unwrap_or_else(|| sans.clone()),
     };
-    Some(Fonts { main, sans })
+    Some(Fonts { main, sans, ..Default::default() })
+}
+
+/// The system fonts plus the look's faces (`finish.fonts`), fetched into the cache when the
+/// binary allows it. A face that cannot be had is reported in `notes` and left to the system
+/// font; with no system Japanese font, the look's faces stand in for it.
+pub fn faces(cfg: &FinishCfg, notes: &mut Vec<String>) -> Option<Fonts> {
+    let mut get = |spec: &Option<crate::fonts::Spec>| -> Option<Face> {
+        let spec = spec.as_ref()?;
+        match crate::fonts::resolve(spec) {
+            Ok(path) => Some(Face { label: spec.label(), path }),
+            Err(e) => {
+                notes.push(format!("font {}: {}; the system font was used", spec.label(), e.msg));
+                None
+            }
+        }
+    };
+    let (display, body, latin) = (get(&cfg.fonts.display), get(&cfg.fonts.body), get(&cfg.fonts.latin));
+    let mut f = match fonts(cfg) {
+        Some(f) => f,
+        None => {
+            let any = body.as_ref().or(display.as_ref())?;
+            Fonts { main: any.path.clone(), sans: any.path.clone(), ..Default::default() }
+        }
+    };
+    f.display = display;
+    f.body = body;
+    f.latin = latin;
+    Some(f)
 }
 
 /// The Japanese face only (for callers that need one font).
@@ -280,6 +404,11 @@ pub fn describe(cfg: &FinishCfg, pieces: &[CutPiece]) -> Map<String, Value> {
         })
         .sum();
     m.insert("overlays".into(), serde_json::json!(overlays));
+    let label = |s: &Option<crate::fonts::Spec>| s.as_ref().map(crate::fonts::Spec::label);
+    m.insert("fonts".into(), serde_json::json!({
+        "display": label(&cfg.fonts.display), "body": label(&cfg.fonts.body), "latin": label(&cfg.fonts.latin),
+    }));
+    m.insert("logo".into(), serde_json::json!(cfg.logo));
     m
 }
 
@@ -297,27 +426,41 @@ const INK: &str = "0xE0DBCF";
 const DIM: &str = "0x80877F";
 const SUB: &str = "0xB3B8B0";
 
-/// Opacity that rises over `fin` from `a` and falls over `fout` until `b` (local time `t`).
-fn fade(a: f64, b: f64, fin: f64, fout: f64) -> String {
-    let half = ((b - a) / 2.0).max(0.01);
-    let (fin, fout) = (fin.clamp(0.01, half), fout.clamp(0.01, half));
-    format!(
-        "if(lt(t,{a:.3}),0,if(lt(t,{:.3}),(t-{a:.3})/{fin:.3},if(lt(t,{:.3}),1,if(lt(t,{b:.3}),({b:.3}-t)/{fout:.3},0))))",
-        a + fin,
-        b - fout
-    )
+use crate::motion::{fade, Motion, RoleMotion};
+
+/// Which face a line is set in (D-52): the look's display face for the title, cards and
+/// rules; its body face for captions and counts (system fallback: the main face) and for
+/// the quiet lines of a message (fallback: the gothic); its Latin face for English lines.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Role {
+    Display,
+    Body,
+    Quiet,
+    Latin,
 }
 
-/// The title's opacity: a short irregular flicker in, a steady hold, then a fade.
-fn flicker(d: f64) -> String {
-    let keys = [(0.0, 0.0), (0.10, 0.85), (0.16, 0.10), (0.24, 1.0), (0.30, 0.35), (0.40, 1.0), ((d - 0.6).max(0.5), 1.0), (d, 0.0)];
-    let mut e = "0".to_string();
-    for w in keys.windows(2).rev() {
-        let ((t0, v0), (t1, v1)) = (w[0], w[1]);
-        let seg = format!("{v0:.3}+({v1:.3}-{v0:.3})*(t-{t0:.3})/{:.3}", (t1 - t0).max(0.001));
-        e = format!("if(lt(t,{t1:.3}),{seg},{e})");
-    }
-    e
+/// Sizes on the 1080-line layout, from references/craft/TEASER-TYPE.md: captions at about 5%
+/// of the frame height, English sub-lines at 2.5% or more (smaller reads as legal text).
+const CARD: f64 = 64.0;
+const RULE: f64 = 62.0;
+const CAPTION: f64 = 62.0;
+const COUNT: f64 = 46.0;
+const SUB_LINE: f64 = 38.0;
+const TITLE_SUB: f64 = 40.0;
+const HEAD: f64 = 32.0;
+const MESSAGE: f64 = 44.0;
+const END_CARD: f64 = 58.0;
+/// A glyph's height per em: kanji fill most of the em, Latin capitals about 70% of it.
+const CJK_FACE: f64 = 0.88;
+const CAP_FACE: f64 = 0.70;
+
+fn is_wide(c: char) -> bool {
+    matches!(c as u32, 0x1100..=0x115F | 0x2E80..=0xA4CF | 0xAC00..=0xD7A3 | 0xF900..=0xFAFF | 0xFE30..=0xFE4F | 0xFF00..=0xFF60 | 0xFFE0..=0xFFE6 | 0x20000..=0x3FFFD)
+}
+
+/// A line's width in ems, roughly: full-width characters 1, Latin 0.6, spaces 0.3.
+fn ems(line: &str) -> f64 {
+    line.chars().map(|c| if is_wide(c) { 1.0 } else if c == ' ' { 0.3 } else { 0.6 }).sum()
 }
 
 /// Writes drawtext filters; text goes through files so nothing in it needs escaping.
@@ -331,23 +474,139 @@ struct Ink<'a> {
     /// The picture inside the letterbox bars (top edge, height), for text over shots.
     pic_top: f64,
     pic_h: f64,
+    /// The title's glyph height as a share of the frame (None: the fixed 150 px).
+    title_size: Option<f64>,
+    /// The game's logo, drawn instead of the title's text.
+    logo: Option<PathBuf>,
+    /// Lines that left their face for the system font (a missing glyph), for the cut's notes.
+    notes: Vec<String>,
+    /// How the text moves and the shots hand over (D-53).
+    motion: Motion,
+}
+
+/// Where a moving line sits across: centred, or from a left edge (pixels).
+#[derive(Debug, Clone, Copy)]
+enum Across {
+    Centre,
+    Left(f64),
+}
+
+/// A wipe's black mask on a card: it slides off the line from left to right.
+#[derive(Debug, Clone, Copy)]
+struct Wipe {
+    x: f64,
+    w: f64,
+    y: f64,
+    h: f64,
+    a: f64,
+    fin: f64,
 }
 
 impl Ink<'_> {
+    /// The font file for a line: the look's face for its role, unless that face has no glyph
+    /// for one of the line's characters (then the system face, and a note).
+    fn font_for(&mut self, role: Role, body: &str) -> PathBuf {
+        let fonts = self.fonts;
+        let (face, system) = match role {
+            Role::Display => (&fonts.display, &fonts.main),
+            Role::Body => (&fonts.body, &fonts.main),
+            Role::Quiet => (&fonts.body, &fonts.sans),
+            Role::Latin => (&fonts.latin, &fonts.sans),
+        };
+        let Some(face) = face else { return system.clone() };
+        if crate::fonts::covers(&face.path, body) == Some(false) {
+            let note = format!("{} has no glyph for 「{}」; that line used the system font",
+                               face.label, crate::fonts::missing(&face.path, body));
+            if !self.notes.contains(&note) {
+                self.notes.push(note);
+            }
+            return system.clone();
+        }
+        face.path.clone()
+    }
+
+    /// A still line (sub-lines, headings): fixed size, faded by `alpha`.
     #[allow(clippy::too_many_arguments)]
-    fn text(&mut self, body: &str, sans: bool, size: f64, color: &str, x: &str, y: &str, alpha: &str, border: f64)
+    fn text(&mut self, body: &str, role: Role, size: f64, color: &str, x: &str, y: &str, alpha: &str, border: f64)
+        -> crate::Result<String> {
+        let font = self.font_for(role, body);
+        self.draw(body, &font, &format!("{:.0}", size * self.s), color, x, y, alpha, border)
+    }
+
+    /// One drawtext; the size may be an expression of `t`.
+    #[allow(clippy::too_many_arguments)]
+    fn draw(&mut self, body: &str, font: &Path, size: &str, color: &str, x: &str, y: &str, alpha: &str, border: f64)
         -> crate::Result<String> {
         self.n += 1;
         let p = self.dir.join(format!("text{}.txt", self.n));
         std::fs::write(&p, body)?;
-        let font = if sans { &self.fonts.sans } else { &self.fonts.main };
         let b = if border > 0.0 { format!(":borderw={:.0}:bordercolor=black@0.55", border * self.s) } else { String::new() };
+        // an expression with commas has to be quoted inside the filter graph
+        let q = |e: &str| if e.contains(',') { format!("'{e}'") } else { e.to_string() };
+        let (size, x, y) = (q(size), q(x), q(y));
         Ok(format!(
-            "drawtext=fontfile='{}':textfile='{}':fontsize={:.0}:fontcolor={color}{b}:x={x}:y={y}:alpha='{alpha}'",
+            "drawtext=fontfile='{}':textfile='{}':fontsize={size}:fontcolor={color}{b}:x={x}:y={y}:alpha='{alpha}'",
             filter_path(font),
             filter_path(&p),
-            size * self.s
         ))
+    }
+
+    /// A line that moves by `rm` while it shows in [a, b] (local time), centred on `yc`
+    /// (pixels). Entrances that need a black card behind them (a wipe) fall back to a fade
+    /// over a picture. Returns its filters and, for a wipe, the mask the card slides off it.
+    #[allow(clippy::too_many_arguments)]
+    fn line(&mut self, body: &str, role: Role, rm: &RoleMotion, a: f64, b: f64, px: f64, color: &str, across: Across,
+            yc: f64, border: f64, on_black: bool) -> crate::Result<(Vec<String>, Option<Wipe>)> {
+        let mut rm = rm.clone();
+        if rm.enter == "wipe" && !on_black {
+            rm.enter = "fade".into();
+        }
+        let tm = crate::motion::timing(&rm, a, b);
+        let size_px = px * self.s;
+        let font = self.font_for(role, body);
+        let x = match across {
+            Across::Centre => "(w-text_w)/2".to_string(),
+            Across::Left(v) => format!("{v:.0}"),
+        };
+        let mut out = Vec::new();
+        for (colour, size, alpha, dx) in crate::motion::layers(&rm, &tm, size_px, self.s) {
+            let c = if colour.is_empty() { color.to_string() } else { colour };
+            out.push(self.draw(body, &font, &size, &c, &format!("{x}+{dx}"), &format!("{yc:.0}-text_h/2"), &alpha, 0.0)?);
+        }
+        if rm.enter == "type" {
+            // the first k characters at a time, from a fixed left edge and a fixed baseline
+            let chars: Vec<char> = body.chars().collect();
+            let steps = crate::motion::type_steps(chars.len(), &tm);
+            let left = match across {
+                Across::Centre => {
+                    let widest = body.lines().map(ems).fold(0.0, f64::max);
+                    format!("{:.0}", ((self.w as f64 - widest * size_px) / 2.0).max(0.0))
+                }
+                Across::Left(v) => format!("{v:.0}"),
+            };
+            let exit = crate::motion::exit_alpha(&rm, &tm);
+            let y = format!("{yc:.0}-max_glyph_h/2");
+            for (i, (k, t0)) in steps.iter().enumerate() {
+                let prefix: String = chars[..*k].iter().collect();
+                let alpha = match steps.get(i + 1) {
+                    Some((_, t1)) => format!("gte(t,{t0:.3})*lt(t,{t1:.3})"),
+                    None => format!("gte(t,{t0:.3})*{exit}"),
+                };
+                out.push(self.draw(&prefix, &font, &format!("{size_px:.0}"), color, &left, &y, &alpha, border)?);
+            }
+            return Ok((out, None));
+        }
+        let alpha = crate::motion::alpha(&rm, &tm);
+        let size = crate::motion::size(&rm, &tm, size_px);
+        out.push(self.draw(body, &font, &size, color, &x, &format!("{yc:.0}-text_h/2"), &alpha, border)?);
+        let wipe = (rm.enter == "wipe").then(|| {
+            let widest = body.lines().map(ems).fold(0.0, f64::max) * size_px;
+            let pad = 0.02 * self.w as f64;
+            let rows = body.lines().count().max(1) as f64;
+            Wipe { x: (self.w as f64 - widest) / 2.0 - pad, w: widest + 2.0 * pad, y: yc - size_px * 0.8 * rows,
+                   h: size_px * 1.6 * rows, a: tm.a, fin: tm.fin }
+        });
+        Ok((out, wipe))
     }
 
     fn cy(&self, y: f64) -> String {
@@ -357,6 +616,26 @@ impl Ink<'_> {
     /// A 1080-layout height over a shot, kept inside the letterbox picture.
     fn pic_y(&self, y: f64) -> f64 {
         self.pic_top + y / 1080.0 * self.pic_h
+    }
+
+    /// `size` (1080 layout), made smaller when the widest line would not fit in `share` of
+    /// the frame width.
+    fn fit(&self, text: &str, size: f64, share: f64) -> f64 {
+        let widest = text.lines().map(ems).fold(0.0, f64::max);
+        if widest <= 0.0 {
+            return size;
+        }
+        size.min(self.w as f64 / self.s * share / widest)
+    }
+
+    /// The title's font size (1080 layout): `title_size` of the frame height for the glyphs,
+    /// kept inside 86% of the width.
+    fn title_px(&self, text: &str) -> f64 {
+        let px = match self.title_size {
+            Some(frac) => frac * 1080.0 / if text.chars().any(is_wide) { CJK_FACE } else { CAP_FACE },
+            None => 150.0,
+        };
+        self.fit(text, px, 0.86)
     }
 }
 
@@ -375,19 +654,22 @@ fn overlay(ink: &mut Ink, l: &Line, shot_dur: f64) -> crate::Result<Vec<String>>
                 ink.pic_y(y) - hh / 2.0, hh)
     };
     let py = |ink: &Ink, y: f64| format!("{:.0}-text_h/2", ink.pic_y(y));
+    let rm = ink.motion.for_line(&l.kind, l.motion.as_deref());
     let mut out = Vec::new();
     if l.kind == "count" {
         // like a note under a photograph: lower left
         out.push(band(ink, 950.0, 190.0));
-        let y = py(ink, 950.0);
-        out.push(ink.text(&l.ja, false, 46.0, INK, &format!("{:.0}", 150.0 * s), &y, &fade(a, b, 0.18, 0.25), 3.0)?);
+        let yc = ink.pic_y(950.0);
+        out.extend(ink.line(&l.ja, Role::Body, &rm, a, b, COUNT, INK, Across::Left(150.0 * s), yc, 3.0, false)?.0);
     } else {
         out.push(band(ink, 925.0, 230.0));
-        let y = py(ink, 900.0);
-        out.push(ink.text(&l.ja, false, 54.0, INK, CX, &y, &fade(a, b, 0.35, 0.4), 3.0)?);
+        let yc = ink.pic_y(895.0);
+        let size = ink.fit(&l.ja, CAPTION, 0.9);
+        out.extend(ink.line(&l.ja, Role::Body, &rm, a, b, size, INK, Across::Centre, yc, 3.0, false)?.0);
         if !l.en.trim().is_empty() {
-            let y = py(ink, 965.0);
-            out.push(ink.text(&l.en, true, 22.0, SUB, CX, &y, &fade(a + 0.15, b, 0.35, 0.4), 2.0)?);
+            let y = py(ink, 968.0);
+            let size = ink.fit(&l.en, SUB_LINE, 0.9);
+            out.push(ink.text(&l.en, Role::Latin, size, SUB, CX, &y, &fade(a + 0.15, b, 0.35, 0.4), 2.0)?);
         }
     }
     Ok(out)
@@ -397,72 +679,139 @@ fn overlay(ink: &mut Ink, l: &Line, shot_dur: f64) -> crate::Result<Vec<String>>
 fn slot(ink: &mut Ink, l: &Line, d: f64, w: i64, h: i64, fps: i64) -> crate::Result<String> {
     let s = ink.s;
     let mut f = vec![format!("color=c=black:s={w}x{h}:r={fps}:d={d:.3}")];
+    let mut wipe = None;
+    let rm = ink.motion.for_line(&l.kind, l.motion.as_deref());
     match l.kind.as_str() {
         "black" => {}
+        "title" if ink.logo.is_some() => return Ok(logo_slot(ink, d, w, h, fps)),
         "rule" => {
             if !l.head.is_empty() {
-                let y = ink.cy(455.0);
-                f.push(ink.text(&l.head, true, 26.0, DIM, CX, &y, &fade(0.1, d - 0.05, 0.3, 0.35), 0.0)?);
+                let y = ink.cy(452.0);
+                f.push(ink.text(&l.head, Role::Quiet, HEAD, DIM, CX, &y, &fade(0.1, d - 0.05, 0.3, 0.35), 0.0)?);
             }
-            let y = ink.cy(545.0);
-            f.push(ink.text(&l.ja, false, 62.0, INK, CX, &y, &fade(0.2, d - 0.05, 0.3, 0.35), 0.0)?);
+            let size = ink.fit(&l.ja, RULE, 0.9);
+            let (lines, wp) = ink.line(&l.ja, Role::Display, &rm, 0.2, d - 0.05, size, INK, Across::Centre, 545.0 * s, 0.0, true)?;
+            f.extend(lines);
+            wipe = wp;
         }
         "title" => {
-            let y = ink.cy(530.0);
-            f.push(ink.text(&l.ja, false, 150.0, INK, CX, &y, &flicker(d), 0.0)?);
+            let size = ink.title_px(&l.ja);
+            let (lines, wp) = ink.line(&l.ja, Role::Display, &rm, 0.0, d, size, INK, Across::Centre, 530.0 * s, 0.0, true)?;
+            f.extend(lines);
+            wipe = wp;
             if !l.en.is_empty() {
-                let y = ink.cy(640.0);
-                f.push(ink.text(&l.en, true, 30.0, DIM, CX, &y, &fade(0.6, d, 0.6, 0.6), 0.0)?);
+                // under the title's glyphs, wherever their size puts them
+                let y = ink.cy(530.0 + size * 0.5 + 55.0);
+                f.push(ink.text(&l.en, Role::Latin, TITLE_SUB, DIM, CX, &y, &fade(0.6, d, 0.6, 0.6), 0.0)?);
             }
         }
         "message" => {
             // like the house chat: room name, a dark bubble, the sender, the message
             if !l.head.is_empty() {
-                let y = ink.cy(410.0);
-                f.push(ink.text(&l.head, true, 22.0, DIM, CX, &y, &fade(0.1, d, 0.25, 0.5), 0.0)?);
+                let y = ink.cy(405.0);
+                f.push(ink.text(&l.head, Role::Quiet, HEAD, DIM, CX, &y, &fade(0.1, d, 0.25, 0.5), 0.0)?);
             }
+            let bubble = (ems(&l.ja) * MESSAGE + 80.0).clamp(420.0, 1500.0);
             f.push(format!(
                 "drawbox=x={:.0}:y={:.0}:w={:.0}:h={:.0}:color=0x292B2E:t=fill:enable='gte(t,0.25)'",
-                ink.w as f64 / 2.0 - 210.0 * s,
+                ink.w as f64 / 2.0 - bubble / 2.0 * s,
                 (548.0 - 46.0) * s,
-                420.0 * s,
+                bubble * s,
                 92.0 * s
             ));
             if !l.from.is_empty() {
-                let (x, y) = (format!("{:.0}", ink.w as f64 / 2.0 - 190.0 * s), ink.cy(478.0));
-                f.push(ink.text(&l.from, true, 24.0, DIM, &x, &y, &fade(0.25, d, 0.25, 0.5), 0.0)?);
+                let (x, y) = (format!("{:.0}", ink.w as f64 / 2.0 - (bubble / 2.0 - 20.0) * s), ink.cy(474.0));
+                f.push(ink.text(&l.from, Role::Quiet, 28.0, DIM, &x, &y, &fade(0.25, d, 0.25, 0.5), 0.0)?);
             }
             let y = ink.cy(562.0);
-            f.push(ink.text(&l.ja, true, 44.0, INK, CX, &y, &fade(0.45, d, 0.3, 0.5), 0.0)?);
+            f.push(ink.text(&l.ja, Role::Quiet, MESSAGE, INK, CX, &y, &fade(0.45, d, 0.3, 0.5), 0.0)?);
+        }
+        "end" => {
+            // the end card: facts, set in the body face
+            let size = ink.fit(&l.ja, END_CARD, 0.86);
+            let (lines, wp) = ink.line(&l.ja, Role::Body, &rm, 0.15, d - 0.05, size, INK, Across::Centre, 540.0 * s, 0.0, true)?;
+            f.extend(lines);
+            wipe = wp;
         }
         _ => {
             // card: a centred line on black, a quiet English line beneath
-            let y = ink.cy(520.0);
-            f.push(ink.text(&l.ja, false, 64.0, INK, CX, &y, &fade(0.15, d - 0.05, 0.45, 0.5), 0.0)?);
+            let size = ink.fit(&l.ja, CARD, 0.9);
+            let (lines, wp) = ink.line(&l.ja, Role::Display, &rm, 0.15, d - 0.05, size, INK, Across::Centre, 520.0 * s, 0.0, true)?;
+            f.extend(lines);
+            wipe = wp;
             if !l.en.is_empty() {
-                let y = ink.cy(600.0);
-                f.push(ink.text(&l.en, true, 22.0, DIM, CX, &y, &fade(0.35, d - 0.05, 0.45, 0.5), 0.0)?);
+                let y = ink.cy(610.0);
+                let size = ink.fit(&l.en, SUB_LINE, 0.9);
+                f.push(ink.text(&l.en, Role::Latin, size, DIM, CX, &y, &fade(0.35, d - 0.05, 0.45, 0.5), 0.0)?);
             }
         }
     }
-    f.push("format=yuv420p,setsar=1".into());
-    Ok(f.join(","))
+    let mut chain = f.join(",");
+    if let Some(m) = wipe {
+        // a black plate over the line that slides off it to the right
+        ink.n += 1;
+        let n = ink.n;
+        let (pw, ph) = (m.w.max(2.0).round() as i64, m.h.max(2.0).round() as i64);
+        chain = format!(
+            "{chain}[tx{n}];color=c=black:s={pw}x{ph}:r={fps}:d={d:.3}[mk{n}];[tx{n}][mk{n}]overlay=x='{:.0}+{:.0}*clip((t-{:.3})/{:.3},0,1)':y={:.0}:enable='lte(t,{:.3})'",
+            m.x, m.w, m.a, m.fin.max(0.01), m.y, m.a + m.fin
+        );
+    }
+    Ok(format!("{chain},format=yuv420p,setsar=1"))
+}
+
+/// The scale from the 1080-line layout for a frame `h` lines high.
+fn s_of(h: i64) -> f64 {
+    h as f64 / 1080.0
+}
+
+/// A glitch over [t0, t1] of a shot: the colour channels pulled apart and grain on top. The
+/// frames are changed, not added, so the shot keeps its length.
+fn glitch(t0: f64, t1: f64, s: f64) -> String {
+    let px = (10.0 * s).round().max(2.0) as i64;
+    format!(
+        "rgbashift=rh=-{px}:bh={px}:enable='between(t,{t0:.3},{t1:.3})',noise=alls=40:allf=t:enable='between(t,{t0:.3},{t1:.3})'"
+    )
+}
+
+/// A title slot that shows the game's logo: the image fitted into the middle of the frame
+/// (its height follows the title size, 22-45% of the frame), faded in and out through black.
+fn logo_slot(ink: &mut Ink, d: f64, w: i64, h: i64, fps: i64) -> String {
+    ink.n += 1;
+    let n = ink.n;
+    let logo = ink.logo.clone().unwrap_or_default();
+    let box_h = (ink.title_size.unwrap_or(TITLE_SIZE) * 2.6).clamp(0.22, 0.45) * h as f64;
+    let box_w = 0.7 * w as f64;
+    let fin = (d * 0.25).min(0.6);
+    format!(
+        "movie='{}',scale=w={box_w:.0}:h={box_h:.0}:force_original_aspect_ratio=decrease,format=rgba[lg{n}];\
+         color=c=black:s={w}x{h}:r={fps}:d={d:.3}[bg{n}];\
+         [bg{n}][lg{n}]overlay=x=(W-w)/2:y=(H-h)/2,fade=t=in:st=0:d={fin:.3}:color=black,\
+         fade=t=out:st={:.3}:d={fin:.3}:color=black,format=yuv420p,setsar=1",
+        filter_path(&logo),
+        (d - fin).max(0.0)
+    )
 }
 
 fn plain_line(kind: &str, ja: String, dur: f64, at: f64) -> Line {
     Line { id: String::new(), kind: kind.into(), ja, en: String::new(), head: String::new(), from: String::new(), dur,
-           after: None, on: None, at, sfx: Vec::new() }
+           after: None, on: None, at, sfx: Vec::new(), motion: None }
 }
 
 /// The ffmpeg filter graph for the finishing pass. Input 0 is the plain concatenation of the
-/// shots; slots are made from black inside the graph. Without fonts, text is left out.
+/// shots; slots are made from black inside the graph. Without fonts, text is left out (a
+/// logo still shows). `cfg.logo` is read as a file path here (the caller resolves it).
+/// Lines that left their face for the system font are added to `notes`.
 /// Returns (graph ending in [v], seconds).
-pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i64, fonts: Option<&Fonts>, text_dir: &Path)
-    -> crate::Result<(String, f64)> {
-    let fallback = Fonts { main: PathBuf::new(), sans: PathBuf::new() };
+#[allow(clippy::too_many_arguments)]
+pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i64, fonts: Option<&Fonts>, text_dir: &Path,
+                    notes: &mut Vec<String>) -> crate::Result<(String, f64)> {
+    let fallback = Fonts::default();
     let bar = cfg.letterbox.map(|r| ((h as f64 - w as f64 / r) / 2.0).max(0.0).round() as i64).unwrap_or(0);
     let mut ink = Ink { fonts: fonts.unwrap_or(&fallback), dir: text_dir, n: 0, s: h as f64 / 1080.0, w,
-                        pic_top: bar as f64, pic_h: (h - 2 * bar) as f64 };
+                        pic_top: bar as f64, pic_h: (h - 2 * bar) as f64, title_size: cfg.title_size,
+                        logo: cfg.logo.as_ref().map(PathBuf::from), notes: Vec::new(),
+                        motion: crate::motion::resolve(&cfg.motion) };
     let has_text = fonts.is_some();
     let n_shots = pieces.iter().filter(|p| matches!(p, CutPiece::Shot(_))).count();
     let mut graph: Vec<String> = Vec::new();
@@ -488,17 +837,32 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                     None if x.exposure != 0.0 => f.push(format!("eq=brightness={:.3}", x.exposure)),
                     None => {}
                 }
-                // the hand-over from the shot before
+                // the hand-over from the shot before (D-53: lengths from the motion profile)
+                let mo = &ink.motion;
                 if let Some(CutPiece::Shot(prev)) = i.checked_sub(1).map(|j| &pieces[j]) {
-                    match prev.transition.as_str() {
-                        "dip" => f.push(format!("fade=t=in:st=0:d={:.3}:color=black", DIP.min(x.duration / 2.0))),
-                        "flash" => f.push("fade=t=in:st=0:d=0.12:color=white".into()),
+                    match mo.transition(&prev.transition).as_str() {
+                        "dip" => f.push(format!("fade=t=in:st=0:d={:.3}:color=black", mo.dip.min(x.duration / 2.0))),
+                        "flash" => f.push(format!("fade=t=in:st=0:d={:.3}:color=white", mo.flash.min(x.duration / 2.0))),
+                        // the picture comes back out of white (measured decay 0.7-1.0 s)
+                        "whiteout" => f.push(format!("fade=t=in:st=0:d={:.3}:color=white", 0.8_f64.min(x.duration / 2.0))),
+                        "glitch" => f.push(glitch(0.0, 0.1, s_of(h))),
                         _ => {}
                     }
                 }
-                if x.transition == "dip" && matches!(pieces.get(i + 1), Some(CutPiece::Shot(_))) {
-                    let d = DIP.min(x.duration / 2.0);
-                    f.push(format!("fade=t=out:st={:.3}:d={d:.3}:color=black", x.duration - d));
+                if matches!(pieces.get(i + 1), Some(CutPiece::Shot(_))) {
+                    match mo.transition(&x.transition).as_str() {
+                        "dip" => {
+                            let d = mo.dip.min(x.duration / 2.0);
+                            f.push(format!("fade=t=out:st={:.3}:d={d:.3}:color=black", x.duration - d));
+                        }
+                        // up to white over the last moments (measured rise 0.2-0.5 s)
+                        "whiteout" => {
+                            let d = 0.3_f64.min(x.duration / 3.0);
+                            f.push(format!("fade=t=out:st={:.3}:d={d:.3}:color=white", x.duration - d));
+                        }
+                        "glitch" => f.push(glitch((x.duration - 0.1).max(0.0), x.duration, s_of(h))),
+                        _ => {}
+                    }
                 }
                 if has_text {
                     for l in &x.overlays {
@@ -511,7 +875,8 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                         if let Some(t) = &cfg.title {
                             let (a, b) = (t.at.min(x.duration - 0.5).max(0.0), (t.at + t.duration).min(x.duration));
                             let y = ink.cy(500.0);
-                            f.push(ink.text(&t.text, false, 120.0, INK, CX, &y, &fade(a, b, 0.4, 0.5), 1.0)?);
+                            let size = if cfg.title_size.is_some() { ink.title_px(&t.text) } else { ink.fit(&t.text, 120.0, 0.86) };
+                            f.push(ink.text(&t.text, Role::Display, size, INK, CX, &y, &fade(a, b, 0.4, 0.5), 1.0)?);
                         }
                     }
                 }
@@ -520,7 +885,7 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                 k += 1;
             }
             CutPiece::Slot(l, d) => {
-                let chain = if has_text {
+                let chain = if has_text || (l.kind == "title" && ink.logo.is_some()) {
                     slot(&mut ink, l, *d, w, h, fps)?
                 } else {
                     format!("color=c=black:s={w}x{h}:r={fps}:d={d:.3},format=yuv420p,setsar=1")
@@ -532,10 +897,11 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
     }
     let mut total: f64 = pieces.iter().map(CutPiece::duration).sum();
     if let Some((lines, d)) = cfg.end_card.as_ref().filter(|_| has_text) {
-        graph.push(format!("{}[pend]", slot(&mut ink, &plain_line("card", lines.join("\n"), *d, 0.0), *d, w, h, fps)?));
+        graph.push(format!("{}[pend]", slot(&mut ink, &plain_line("end", lines.join("\n"), *d, 0.0), *d, w, h, fps)?));
         labels.push("[pend]".into());
         total += d;
     }
+    notes.append(&mut ink.notes);
     let bars = if bar > 0 {
         format!(",drawbox=x=0:y=0:w=iw:h={bar}:color=black:t=fill,drawbox=x=0:y=ih-{bar}:w=iw:h={bar}:color=black:t=fill")
     } else {

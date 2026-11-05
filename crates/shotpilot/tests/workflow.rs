@@ -523,7 +523,9 @@ fn the_finish_is_definition_and_never_rerenders() {
 
     // bad values are refused before anything is written
     assert!(f.ws.set_finish(&set(&[("letterbox", json!(9))])).unwrap_err().msg.contains("letterbox"));
-    assert!(f.ws.set_finish(&set(&[("logo", json!("x"))])).unwrap_err().msg.contains("unknown finish field"));
+    assert!(f.ws.set_finish(&set(&[("watermark", json!("x"))])).unwrap_err().msg.contains("unknown finish field"));
+    assert!(f.ws.set_finish(&set(&[("logo", json!("../logo.png"))])).unwrap_err().msg.contains("finish.logo"));
+    assert!(f.ws.set_finish(&set(&[("fonts", json!({"display": "Comic Sans MS"}))])).unwrap_err().msg.contains("catalog"));
     assert!(f.ws.set_fields("s03_window", &set(&[("transition", json!("wipe"))])).unwrap_err().msg.contains("transition"));
     assert!(f.ws.set_fields("s03_window", &set(&[("caption", json!({"text": "x", "at": 9}))])).unwrap_err().msg.contains("caption.at"));
 
@@ -540,8 +542,8 @@ fn the_finish_is_definition_and_never_rerenders() {
         p
     }).collect();
     let dir = tempfile::tempdir().unwrap();
-    let fonts = Fonts { main: "C:/Windows/Fonts/x.ttf".into(), sans: "C:/Windows/Fonts/y.ttc".into() };
-    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, Some(&fonts), dir.path()).unwrap();
+    let fonts = Fonts { main: "C:/Windows/Fonts/x.ttf".into(), sans: "C:/Windows/Fonts/y.ttc".into(), ..Default::default() };
+    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, Some(&fonts), dir.path(), &mut Vec::new()).unwrap();
     assert!((total - (27.5 + 3.0)).abs() < 1e-6);
     assert!(g.contains("split=6") && g.contains("fade=t=out") && g.contains("fade=t=in"), "{g}");
     assert!(g.contains("drawbox=x=0:y=0:w=iw:h=92"), "{g}"); // (720 - 1280/2.39) / 2
@@ -551,6 +553,180 @@ fn the_finish_is_definition_and_never_rerenders() {
     assert!(texts.contains(&"住人が、一人ずつ消えていく".to_string()) && texts.contains(&"夜の中庭".to_string()));
     // the title sits on the title shot, in its own time (at 1 s for 4 s)
     assert!(g.contains("if(lt(t,1.000),0"), "{g}");
+}
+
+/// A minimal TrueType file whose character map holds `ranges` (format 4, platform 3).
+fn font_file(dir: &std::path::Path, name: &str, ranges: &[(u16, u16)]) -> std::path::PathBuf {
+    let mut segs: Vec<(u16, u16, u16)> = ranges.iter().map(|&(a, b)| (a, b, 1u16.wrapping_sub(a))).collect();
+    segs.push((0xFFFF, 0xFFFF, 1));
+    let n = segs.len() as u16;
+    let mut sub = vec![0, 4, 0, 0, 0, 0];
+    sub.extend_from_slice(&(n * 2).to_be_bytes());
+    sub.extend_from_slice(&[0; 6]);
+    segs.iter().for_each(|s| sub.extend_from_slice(&s.1.to_be_bytes()));
+    sub.extend_from_slice(&[0, 0]);
+    segs.iter().for_each(|s| sub.extend_from_slice(&s.0.to_be_bytes()));
+    segs.iter().for_each(|s| sub.extend_from_slice(&s.2.to_be_bytes()));
+    segs.iter().for_each(|_| sub.extend_from_slice(&[0, 0]));
+    let mut b = vec![0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0];
+    b.extend_from_slice(b"cmap");
+    b.extend_from_slice(&[0, 0, 0, 0]);
+    b.extend_from_slice(&28u32.to_be_bytes());
+    b.extend_from_slice(&((12 + sub.len()) as u32).to_be_bytes());
+    b.extend_from_slice(&[0, 0, 0, 1, 0, 3, 0, 1]);
+    b.extend_from_slice(&12u32.to_be_bytes());
+    b.extend_from_slice(&sub);
+    let p = dir.join(name);
+    std::fs::write(&p, b).unwrap();
+    p
+}
+
+#[test]
+fn the_look_sets_the_faces_and_a_line_with_a_missing_glyph_falls_back() {
+    // D-52: display face for cards and the title, Latin face for the English line, and the
+    // system font for a line whose face has no glyph for one of its characters
+    use shotpilot::finish::{self, CutPiece, Face, Fonts};
+    use shotpilot::script::Line;
+    let mut f = ws();
+    let dir = tempfile::tempdir().unwrap();
+    let kana = font_file(dir.path(), "kana.ttf", &[(0x20, 0x7E), (0x3001, 0x3002), (0x3041, 0x30FF)]);
+    let latin = font_file(dir.path(), "latin.ttf", &[(0x20, 0x7E)]);
+    let fonts = Fonts {
+        main: "C:/sys/main.ttc".into(),
+        sans: "C:/sys/sans.ttc".into(),
+        display: Some(Face { label: "Kana Display:400".into(), path: kana.clone() }),
+        body: None,
+        latin: Some(Face { label: "Latin:400".into(), path: latin.clone() }),
+    };
+    let line = |id: &str, kind: &str, ja: &str, en: &str| Line {
+        id: id.into(), kind: kind.into(), ja: ja.into(), en: en.into(), head: String::new(), from: String::new(), dur: 3.0,
+        after: Some("start".into()), on: None, at: 0.0, sfx: Vec::new(), motion: None,
+    };
+    let pieces = vec![
+        CutPiece::Slot(line("a", "card", "ようこそ、ここへ。", "WELCOME"), 3.0),
+        CutPiece::Slot(line("b", "card", "七号室へ", ""), 3.0),
+        CutPiece::Slot(line("t", "title", "ななごうしつ", ""), 4.0),
+    ];
+    // the title's glyphs at 20% of the frame height (on 720 lines: 0.2 * 720 / 0.88 = 164 px)
+    f.ws.set_finish(&set(&[("title_size", json!(0.2))])).unwrap();
+    let out = tempfile::tempdir().unwrap();
+    let mut notes = Vec::new();
+    let (g, _) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, Some(&fonts), out.path(), &mut notes).unwrap();
+    let path = |p: &std::path::Path| finish::filter_path(p);
+    let uses = |text: &str| -> String {
+        // the drawtext that reads the file holding `text`
+        let i = (1..=10).find(|i| std::fs::read_to_string(out.path().join(format!("text{i}.txt"))).ok().as_deref() == Some(text)).unwrap();
+        g.split(',').find(|part| part.contains(&format!("text{i}.txt"))).unwrap().to_string()
+    };
+    assert!(uses("ようこそ、ここへ。").contains(&path(&kana)), "{g}");
+    assert!(uses("WELCOME").contains(&path(&latin)), "{g}");
+    assert!(uses("七号室へ").contains("C\\:/sys/main.ttc"), "{g}"); // no kanji in the display face
+    assert!(uses("ななごうしつ").contains("fontsize=164"), "{g}");
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(notes[0].contains("Kana Display:400") && notes[0].contains("七号室"), "{notes:?}");
+
+    // with the game's logo, the title slot shows the image instead of its text
+    f.ws.set_finish(&set(&[("logo", json!("art/logo.png"))])).unwrap();
+    let mut cfg = f.ws.defn.finish.clone();
+    cfg.logo = Some(dir.path().join("logo.png").display().to_string());
+    let (g, _) = finish::filter_graph(&cfg, &pieces, 1280, 720, 30, Some(&fonts), out.path(), &mut Vec::new()).unwrap();
+    assert!(g.contains("movie='") && g.contains("logo.png") && g.contains("overlay=x=(W-w)/2"), "{g}");
+    assert!(!g.contains("ななごうしつ"));
+    // editorial: nothing re-renders
+    assert!(f.text().contains("logo: art/logo.png"), "{}", f.text());
+}
+
+#[test]
+fn the_motion_profile_moves_the_text_and_the_hand_overs() {
+    // D-53: the look's profile sets how each line comes in and how shots hand over; a line may
+    // ask for its own entrance; nothing re-renders and the cut keeps its length
+    use shotpilot::finish::{self, CutPiece, Fonts};
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let mut text = f.text();
+    text.push_str(r#"
+script:
+  - {id: intro, kind: card, ja: 今日から、ここに住む。, dur: 3, after: start}
+  - {id: hit, kind: card, ja: 逃げろ, motion: type, dur: 2, after: intro}
+  - {id: name, kind: rule, head: 規則 3, ja: 窓を開けない, motion: wipe, dur: 3, after: s01_gate}
+  - {id: title, kind: title, ja: 七号室, dur: 4, after: s05_door}
+"#);
+    f.write(&text);
+    f.ws.reload().unwrap();
+    f.ws.set_finish(&set(&[("motion", json!({"profile": "action-ja", "avoid": ["flash"]}))])).unwrap();
+    f.ws.set_fields("s02_well", &set(&[("transition", json!("whiteout"))])).unwrap();
+    f.ws.set_fields("s03_window", &set(&[("transition", json!("glitch"))])).unwrap();
+    f.ws.set_fields("s04_lantern", &set(&[("transition", json!("flash"))])).unwrap();
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
+    assert!(f.ws.set_finish(&set(&[("motion", json!({"profile": "western"}))])).unwrap_err().msg.contains("finish.motion.profile"));
+
+    let shots = f.ws.resolved().unwrap();
+    let pieces = {
+        let mut out = Vec::new();
+        let mut t = 0.0;
+        for item in shotpilot::script::layout(&f.ws.defn.script, &shots, 30) {
+            match item.piece {
+                shotpilot::script::Piece::Shot(i) => {
+                    let s = &shots[i];
+                    let raw = &f.ws.defn.shots[s.index];
+                    out.push(CutPiece::Shot(finish::ShotPiece { concat_start: t, duration: s.duration, beat: s.beat.clone(),
+                        caption: None, transition: finish::transition(raw), exposure: 0.0, overlays: Vec::new() }));
+                    t += s.duration;
+                }
+                shotpilot::script::Piece::Slot(j) => {
+                    let l = f.ws.defn.script[j].clone();
+                    let d = l.dur;
+                    out.push(CutPiece::Slot(l, d));
+                }
+            }
+        }
+        out
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let fonts = Fonts { main: "C:/sys/main.ttc".into(), sans: "C:/sys/sans.ttc".into(), ..Default::default() };
+    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, Some(&fonts), dir.path(), &mut Vec::new()).unwrap();
+    // the profile's slam: the card lands from 2.5 times its size
+    assert!(g.contains("fontsize='") && g.contains("(1+1.5*pow(1-clip("), "{g}");
+    // the line that asked to be typed: one drawtext per growing prefix
+    let typed = (1..=60).filter_map(|i| std::fs::read_to_string(dir.path().join(format!("text{i}.txt"))).ok())
+        .filter(|t| "逃げろ".starts_with(t.as_str()) && !t.is_empty()).count();
+    assert_eq!(typed, 3, "{g}");
+    // the wipe: a black plate slides off the rule
+    assert!(g.contains("[mk") && g.contains("overlay=x='"), "{g}");
+    // whiteout and glitch hand-overs; the flash is avoided, so that cut stays a cut
+    assert!(g.contains("fade=t=out") && g.contains(":color=white"), "{g}");
+    assert!(g.contains("rgbashift=") && g.contains("noise=alls=40"), "{g}");
+    assert_eq!(g.matches("color=white").count(), 2, "{g}"); // the whiteout's two sides, no flash
+    // the cut keeps its length: shots plus slots
+    let slots: f64 = f.ws.defn.script.iter().map(|l| l.dur).sum();
+    let shots_len: f64 = shots.iter().map(|s| s.duration).sum();
+    assert!((total - (slots + shots_len)).abs() < 1e-6);
+}
+
+#[test]
+fn too_many_flashes_in_a_second_stop_approval() {
+    // WCAG 2.3.1 / the NHK and JBA guideline: more than 3 flashes in one second is a P0
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let base = f.text();
+    // three flickering cards in a row (each flicker is two bright-dark pairs)
+    let cards = |dur: f64| format!(
+        "\nscript:\n  - {{id: a, kind: card, ja: 一, motion: flicker, dur: {dur}, after: start}}\n  \
+         - {{id: b, kind: card, ja: 二, motion: flicker, dur: {dur}, after: a}}\n  \
+         - {{id: c, kind: card, ja: 三, motion: flicker, dur: {dur}, after: b}}\n");
+    f.write(&format!("{base}{}", cards(0.4)));
+    f.ws.reload().unwrap();
+    let found = f.ws.check().unwrap();
+    let flash: Vec<_> = found.iter().filter(|x| x.rule == "flash.rate").collect();
+    assert_eq!(flash.len(), 1, "{found:?}");
+    assert_eq!(flash[0].severity.as_str(), "P0");
+    // spaced out, the same flickers are fine
+    f.write(&format!("{base}{}", cards(2.0)));
+    f.ws.reload().unwrap();
+    assert!(!f.ws.check().unwrap().iter().any(|x| x.rule == "flash.rate"));
+    // and a flash hand-over between two shots counts once
+    f.ws.set_fields("s02_well", &set(&[("transition", json!("flash"))])).unwrap();
+    assert!(!f.ws.check().unwrap().iter().any(|x| x.rule == "flash.rate"));
 }
 
 #[test]

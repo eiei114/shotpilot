@@ -16,7 +16,21 @@ A teaser that sells a system. It starts with one unit, one building or one choic
 
 ## 3. Typography Rules
 
-- Japanese: solid gothic (Noto Sans JP Bold). Latin: a sturdy condensed sans (Oswald / Barlow Condensed), uppercase.
+### Font family
+- Display: `Zen Kaku Gothic New` 700: the title and the verbs. The system gothic stands in when the face cannot be fetched.
+- Body: `BIZ UDGothic` 400: monospaced, so years and populations line up in counts.
+- Latin: `Barlow Condensed` 600: a sturdy condensed sans, uppercase.
+
+### Hierarchy
+| Role | Glyph height (% of frame) | Face |
+|---|---|---|
+| Title | 11 | Display 700 |
+| Card, rule | 5 | Display 700 |
+| Caption | 5 | Body 400 |
+| Count | 4 | Body 400 |
+| English line | 2.5 | Latin 600 |
+
+### Principles
 - Verbs and numbers: "築く。広げる。守る。" / "BUILD. EXPAND. DEFEND." Up to 8 Japanese characters or 4 English words.
 
 ## 4. Title & Card Stylings
@@ -30,6 +44,7 @@ A teaser that sells a system. It starts with one unit, one building or one choic
 - Start close and slow (3-4 s), speed up as the system grows (1.5-2.5 s), end on the widest view held long.
 - Transitions: `cut`; `dip` for a jump in time. `flash` only for a disaster.
 - Card holds 2 s.
+- Motion: the `strategy` profile (references/motion/profiles.json). A line may ask for its own entrance (`motion:`) for one or two accents.
 
 ## 6. Camera Language
 

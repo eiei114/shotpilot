@@ -949,3 +949,32 @@ fn the_release_plan_is_a_checklist_the_app_ticks() {
     // promo.json is editorial: nothing went stale and nothing launched
     assert!(launches(&s.f.ws).is_empty());
 }
+
+#[test]
+fn a_look_picked_in_the_app_brings_its_faces_and_motion_and_a_logo_can_be_named() {
+    // D-52 / D-53: picking a look writes its typefaces, title size and motion; the logo is a
+    // file inside the project (the app's dialog copies one from outside into art/)
+    let s = srv();
+    let (code, _) = jcall(&s, "POST", "/api/brief", Some(json!({"set": {"design": "neon-action"}})));
+    assert_eq!(code, 200);
+    let st = call(&s, "GET", "/api/status", None, &[]).json();
+    assert_eq!(st["finish"]["fonts"]["display"], json!("Dela Gothic One:400"));
+    assert_eq!(st["finish"]["title_size"], json!(0.15));
+    assert_eq!(st["finish"]["motion"]["profile"], json!("action"));
+    assert_eq!(st["finish"]["motion"]["energy"], json!("driving"));
+
+    std::fs::create_dir_all(s.f.ws.root.join("art")).unwrap();
+    std::fs::write(s.f.ws.root.join("art/logo.png"), b"png").unwrap();
+    let (code, out) = jcall(&s, "POST", "/api/finish/logo", Some(json!({"path": "art/logo.png"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["logo"], json!("art/logo.png"));
+    let (code, _) = jcall(&s, "POST", "/api/finish/logo", Some(json!({"path": "art/missing.png"})));
+    assert_eq!(code, 400);
+    // no native dialog behind this server: picking is refused, typing a path is the way
+    let (code, out) = jcall(&s, "POST", "/api/finish/logo", Some(json!({"pick": true})));
+    assert_eq!(code, 400, "{out}");
+    let (_, out) = jcall(&s, "POST", "/api/finish/logo", Some(json!({"clear": true})));
+    assert_eq!(out["logo"], Value::Null);
+    // editorial: nothing launched
+    assert!(launches(&s.f.ws).is_empty());
+}
