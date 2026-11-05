@@ -693,10 +693,11 @@ script:
     assert_eq!(typed, 3, "{g}");
     // the wipe: a black plate slides off the rule
     assert!(g.contains("[mk") && g.contains("overlay=x='"), "{g}");
-    // whiteout and glitch hand-overs; the flash is avoided, so that cut stays a cut
-    assert!(g.contains("fade=t=out") && g.contains(":color=white"), "{g}");
-    assert!(g.contains("rgbashift=") && g.contains("noise=alls=40"), "{g}");
-    assert_eq!(g.matches("color=white").count(), 2, "{g}"); // the whiteout's two sides, no flash
+    // whiteout and glitch hand-overs, drawn by their recipes (D-58: eased covers, jittering
+    // colour layers); the flash is avoided, so that cut stays a cut
+    assert!(g.contains(":eval=frame:enable=") && g.contains("0.9216*"), "{g}");
+    assert!(g.contains("rgbashift=") && g.contains("noise=alls=40") && g.contains("*not(mod(n,2))"), "{g}");
+    assert_eq!(g.matches("0.9216*").count(), 2, "{g}"); // the whiteout's two sides (up to white, back), no flash
     // the cut keeps its length: shots plus slots
     let slots: f64 = f.ws.defn.script.iter().map(|l| l.dur).sum();
     let shots_len: f64 = shots.iter().map(|s| s.duration).sum();

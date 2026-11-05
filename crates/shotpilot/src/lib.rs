@@ -15,6 +15,7 @@ pub mod finish;
 pub mod fonts;
 pub mod fingerprint;
 pub mod geometry;
+pub mod handover;
 pub mod library;
 pub mod model;
 pub mod motion;

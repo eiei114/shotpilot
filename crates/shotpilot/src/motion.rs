@@ -4,6 +4,7 @@
 //! open-design's motion-design profile ("the model picks from enums, code sets the numbers"):
 //! entrances (`cut fade flicker focus slam pop type wipe glitch`), holds (`still drift glow`),
 //! exits (`cut fade glitch`) and the hand-overs between shots (`cut dip flash whiteout glitch`).
+//! How a hand-over is drawn is its recipe (`handover.rs`, D-58); this holds its lengths.
 //!
 //! The numbers come from `references/motion/profiles.json`: one profile per genre, measured
 //! frame by frame on 33 teasers and from luma on 736 (research_notes/モーションデザイン/).
@@ -71,9 +72,25 @@ pub struct Motion {
     pub dip: f64,
     /// Seconds of a flash from white.
     pub flash: f64,
+    /// How a whiteout runs (D-58).
+    pub whiteout: Whiteout,
+    /// Seconds a glitch hand-over breaks on each side of the cut.
+    pub glitch: f64,
+    /// Hand-overs drawn as before the recipes (straight fades): the `base` profile.
+    pub plain: bool,
     /// The hand-over the profile uses for a jolt.
     pub accent: String,
     pub avoid: Vec<String>,
+}
+
+/// A whiteout: seconds up to white, held white and back, and how far the exposure is pushed on
+/// the way (a factor; 1 for none). Defaults in `references/motion/transitions.json`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Whiteout {
+    pub rise: f64,
+    pub peak: f64,
+    pub decay: f64,
+    pub burn: f64,
 }
 
 impl Default for Motion {
@@ -89,6 +106,9 @@ pub struct Profile {
     roles: Map<String, Value>,
     pub dip: f64,
     pub flash: f64,
+    pub whiteout: Whiteout,
+    pub glitch: f64,
+    pub plain: bool,
     pub accent: String,
     pub avoid: Vec<String>,
 }
@@ -112,6 +132,12 @@ pub fn profiles() -> &'static [Profile] {
                 roles: ROLES.iter().filter_map(|r| p.get(*r).map(|v| (r.to_string(), v.clone()))).collect(),
                 dip: num(&p["dip"]).unwrap_or(0.25),
                 flash: num(&p["flash"]).unwrap_or(0.12),
+                whiteout: {
+                    let w = |k: &str| num(&p["whiteout"][k]).unwrap_or_else(|| crate::handover::default_length(k));
+                    Whiteout { rise: w("rise"), peak: w("peak"), decay: w("decay"), burn: w("burn") }
+                },
+                glitch: num(&p["glitch"]).unwrap_or_else(|| crate::handover::default_length("glitch")),
+                plain: p["plain"].as_bool().unwrap_or(false),
                 accent: p["accent"].as_str().unwrap_or("flash").to_string(),
                 avoid: p["avoid"].as_array().into_iter().flatten().map(str_of).collect(),
             })
@@ -312,6 +338,13 @@ pub fn resolve(cfg: &MotionCfg) -> Motion {
             avoid.push(a.clone());
         }
     }
+    // hand-overs (D-58) follow the energy like the text; the plain ones keep their old seconds
+    let plain = p.is_some_and(|p| p.plain);
+    let k = if plain { 1.0 } else { scale };
+    let w = p.map_or(
+        Whiteout { rise: 0.3, peak: 0.0, decay: 0.8, burn: 1.0 },
+        |p| p.whiteout,
+    );
     let mut m = Motion {
         profile: p.map_or("base".into(), |p| p.id.clone()),
         energy: energy.clone(),
@@ -321,7 +354,10 @@ pub fn resolve(cfg: &MotionCfg) -> Motion {
         title: role("title"),
         end: role("end"),
         dip: cfg.dip.unwrap_or(p.map_or(0.25, |p| p.dip) * scale),
-        flash: p.map_or(0.12, |p| p.flash),
+        flash: p.map_or(0.12, |p| p.flash) * k,
+        whiteout: Whiteout { rise: w.rise * k, peak: w.peak * k, decay: w.decay * k, burn: w.burn },
+        glitch: p.map_or(0.1, |p| p.glitch) * k,
+        plain,
         accent: cfg.accent.clone().unwrap_or_else(|| p.map_or("flash".into(), |p| p.accent.clone())),
         avoid,
     };
@@ -376,6 +412,21 @@ impl Motion {
             }
         }
         rm
+    }
+
+    /// A hand-over's length or strength by the name its recipe uses (`dip`, `flash`, `rise`,
+    /// `peak`, `decay`, `burn`, `glitch`), or a number written in the recipe.
+    pub fn handover_value(&self, name: &str) -> f64 {
+        match name {
+            "dip" => self.dip,
+            "flash" => self.flash,
+            "rise" => self.whiteout.rise,
+            "peak" => self.whiteout.peak,
+            "decay" => self.whiteout.decay,
+            "burn" => self.whiteout.burn,
+            "glitch" => self.glitch,
+            n => n.parse().unwrap_or(0.0),
+        }
     }
 
     /// A hand-over with the avoided ones taken out (a flash or a glitch becomes a cut, a
