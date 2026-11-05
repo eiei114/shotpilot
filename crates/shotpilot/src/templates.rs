@@ -52,6 +52,8 @@ defaults:
 # Sound is mixed when the cut is assembled; editing it never re-renders a shot.
 # The BGM runs under the whole teaser. Sound effects sit on their shot (`sfx:`, `at` =
 # seconds from the shot's start, negative = leads into the cut) and move with it.
+# Every sound takes `gain` (dB) and its own filters: `high_cut: 4000` removes what is
+# above 4000 Hz, `low_cut: 100` what is below 100 Hz.
 # `shotpilot sound` mixes and checks the mix against professional launch films.
 audio:
   gain: 0
