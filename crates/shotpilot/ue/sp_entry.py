@@ -922,9 +922,9 @@ def run_render(job):
         if err:
             r["deps_error"] = err
 
-    def on_job_start(*args):
+    # UE checks the arity of delegate callables, so take exactly the one job argument.
+    def on_job_start(job):
         try:
-            job = args[0] if args else None
             content.job_started(index.get(job.get_editor_property("job_name")) if job is not None else None)
         except Exception:
             warn(traceback.format_exc())
