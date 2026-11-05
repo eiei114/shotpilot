@@ -767,6 +767,55 @@ fn home_creates_opens_and_switches_projects() {
     assert_eq!(jcall(&s, "POST", "/api/projects/pick", Some(json!({"kind": "open"}))).0, 400);
 }
 
+#[test]
+fn the_planning_turn_runs_over_http() {
+    // the catalogues for the app
+    let s = srv();
+    let (code, kits) = jcall(&s, "GET", "/api/kits", None);
+    assert_eq!(code, 200);
+    assert_eq!(kits["design_systems"].as_array().unwrap().len(), 12);
+    assert_eq!(kits["skills"].as_array().unwrap().len(), 18);
+
+    // a plan lands in the brief, with the form answers handed to Claude
+    let (s, calls) = srv_with_claude(common::discovery_reply());
+    let answers = json!([{"id": "genre", "label": "ジャンル", "value": "horror"}, {"id": "show", "label": "見せたいもの", "value": ["well", "door"]}]);
+    let (code, out) = jcall(&s, "POST", "/api/discover", Some(json!({"request": "規則のホラー", "answers": answers})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["route"], "plan");
+    assert_eq!(out["design"], "quiet-dread");
+    let user = calls.lock().unwrap()[0]["messages"][0]["content"].as_str().unwrap().to_string();
+    assert!(user.contains("[form answers — discovery]") && user.contains("見せたいもの [show]: well, door"), "{user}");
+    // the chat shows the turn from the history
+    let (_, log) = jcall(&s, "GET", "/api/log", None);
+    let last = log.as_array().unwrap().last().unwrap().clone();
+    assert_eq!(last["action"], "discover");
+    assert_eq!(last["note"], "規則のホラー");
+    assert_eq!(last["route"], "plan");
+    let text = std::fs::read_to_string(s.f.path()).unwrap();
+    assert!(text.contains("design: quiet-dread") && text.contains("rules-teaser"), "{text}");
+}
+
+#[test]
+fn concept_frames_find_their_places_over_http() {
+    let (mut s, calls) = srv_with_claude(json!({"matches": [{"frame": "c1", "photo": "well/front", "fit": "good", "why": "井戸"}]}));
+    s.f.ws.take_scout(&[]).unwrap();
+    let png: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
+    let root = s.f.ws.root.clone();
+    let mut frames = shotpilot::concept::replace(&root, &[("hook".into(), "暗い井戸".into())]).unwrap();
+    frames[0].file = Some(shotpilot::concept::store(&root, &frames[0], png).unwrap());
+    shotpilot::concept::save(&root, &frames).unwrap();
+
+    let (code, m) = jcall(&s, "POST", "/api/concept/match", Some(json!({})));
+    assert_eq!(code, 200, "{m}");
+    assert_eq!(m["found"], 1);
+    assert_eq!(m["open"], json!([]));
+    assert_eq!(calls.lock().unwrap().len(), 1); // one comparison, nothing else to try
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["concept"][0]["found"]["anchor"], "well");
+    let file = st["concept"][0]["file"].as_str().unwrap().to_string();
+    assert_eq!(call(&s, "GET", &format!("/files/{file}"), None, &[]).code, 200);
+}
+
 /// s03 with a caption and a flash into the next shot, and a camera that must not land.
 const S03_FINISHED: &str = "id: s03_window
 purpose: 2階の窓を見上げる。人影が一瞬だけ映る

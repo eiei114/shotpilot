@@ -106,11 +106,34 @@ enum Cmd {
         #[arg(long)]
         script: bool,
     },
-    /// photograph every anchor from four sides into scout/ (stage 0, location scouting)
+    /// photograph every anchor from four sides into scout/ (stage 0, location scouting).
+    /// With no anchors yet, brings them in from the level first (and the mesh inventory)
     Scout {
         anchors: Vec<String>,
     },
-    /// the first pass in one go: scout, stage, mood board, plan + finish, render, cut
+    /// the planning turn: what teaser to make, its look and its playbooks (written to brief:)
+    Discover {
+        /// what you want, in your own words (default: teaser.pitch)
+        #[arg(default_value = "")]
+        request: String,
+        /// answers to the questions Claude asked last time, as text
+        #[arg(long, default_value = "")]
+        answers: String,
+    },
+    /// the look: list the design systems | design <id> (use it) | design <id> --fork (copy its DESIGN.md here to edit)
+    Design {
+        id: Option<String>,
+        #[arg(long)]
+        fork: bool,
+    },
+    /// the teaser playbooks the planning turn can pick from
+    Skills,
+    /// concept frames (D-46): make the pictures the plan describes | --match: find their places in the level
+    Concept {
+        #[arg(long)]
+        r#match: bool,
+    },
+    /// the first pass in one go: plan, scout, stage, mood board, script + shots, render, cut
     Produce {
         /// first render quality (previz needs no engine)
         #[arg(long, default_value = "previz")]
@@ -519,8 +542,17 @@ fn run(cli: Cli) -> Result<u8> {
         }
         Cmd::Scout { anchors } => {
             let mut ws = ws(file)?;
-            let idx = ws.take_scout(&anchors)?;
-            for (name, views) in idx["anchors"].as_object().into_iter().flatten() {
+            // Claude picks the places by the plan when it is connected; the scout runs without it
+            let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref())).ok();
+            let rep = ws.scout(&anchors, claude.as_deref())?;
+            if let Some(s) = &rep.scan {
+                let how = if s.auto { "picked from the level" } else { "tagged in the level" };
+                println!("anchors {how}: {}", dash(&s.added));
+            }
+            if let Some(n) = rep.assets {
+                println!("assets inventoried: {n}");
+            }
+            for (name, views) in rep.index["anchors"].as_object().into_iter().flatten() {
                 let files: Vec<&str> = views.as_array().into_iter().flatten().filter_map(|v| v["file"].as_str()).collect();
                 println!("{name:<16} {}", files.join("  "));
             }
@@ -611,6 +643,82 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("{:<14} {:<5} {rel}", o.shot_id, o.action);
             }
             println!("storyboard frames are a preview: the cut uses only takes rendered from the game");
+        }
+        Cmd::Discover { request, answers } => {
+            let mut ws = ws(file)?;
+            let settings = Settings::load(Settings::default_path().as_deref());
+            let claude = connect::make_claude(&settings)?;
+            let d = shotpilot::ai::discover(&ws.defn, &request, &answers, true, claude.as_ref())?;
+            println!("{}", d.say);
+            if d.is_question() {
+                println!("\n{}", d.form["title"].as_str().unwrap_or("questions"));
+                for q in d.form["questions"].as_array().into_iter().flatten() {
+                    let opts: Vec<String> = q["options"].as_array().into_iter().flatten()
+                        .map(|o| format!("{} ({})", o["label"].as_str().unwrap_or(""), o["value"].as_str().unwrap_or(""))).collect();
+                    println!("- {} [{}] default: {}", q["label"].as_str().unwrap_or(""), q["id"].as_str().unwrap_or(""), q["default"].as_str().unwrap_or(""));
+                    if !opts.is_empty() {
+                        println!("    {}", opts.join(" / "));
+                    }
+                }
+                println!("\nanswer with: shotpilot discover \"<request>\" --answers \"<id>: <answer>; ...\"");
+                return Ok(1);
+            }
+            ws.apply_discovery(&d, &request, &serde_json::Value::Null)?;
+            println!("\ndirection: {}\ndesign:    {}\nskills:    {}\n\n{}", d.direction, dash(std::slice::from_ref(&d.design)), dash(&d.skills), d.plan);
+        }
+        Cmd::Design { id, fork } => {
+            let mut ws = ws(file)?;
+            match id {
+                None => {
+                    for d in shotpilot::designsys::all() {
+                        let mark = if d.id == ws.defn.brief.design { "*" } else { " " };
+                        println!("{mark} {:<18} {} [{}] {}", d.id, d.name, d.genres.join(", "), d.description);
+                    }
+                    if shotpilot::designsys::project_doc(&ws.root).is_some() {
+                        println!("  (this project has its own {}: it wins for the prose)", shotpilot::designsys::PROJECT_FILE);
+                    }
+                }
+                Some(id) => {
+                    let Some(d) = shotpilot::designsys::get(&id) else {
+                        shotpilot::bail!("unknown design system '{id}' (shotpilot design lists them)");
+                    };
+                    ws.set_brief(&[("design".to_string(), serde_json::json!(d.id))])?;
+                    if fork {
+                        let dst = ws.root.join(shotpilot::designsys::PROJECT_FILE);
+                        if dst.exists() {
+                            shotpilot::bail!("{} already exists; edit it, or remove it to fork again", dst.display());
+                        }
+                        std::fs::write(&dst, d.doc)?;
+                        println!("copied {} to {} (edit it into your game's brand)", d.id, dst.display());
+                    }
+                    println!("design: {} ({})", d.id, d.name);
+                }
+            }
+        }
+        Cmd::Concept { r#match } => {
+            let mut ws = ws(file)?;
+            let settings = Settings::load(Settings::default_path().as_deref());
+            if r#match {
+                let claude = connect::make_claude(&settings)?;
+                let m = ws.match_concept(claude.as_ref(), None)?;
+                println!("rounds: {}; places added: {}; frames with a place: {}; still open: {}", m.rounds, dash(&m.added), m.found, dash(&m.open));
+            } else {
+                let gen = connect::make_image_gen(&settings)?;
+                let made = ws.generate_concept(gen.as_ref())?;
+                println!("made {} picture(s)", made.len());
+            }
+            for f in shotpilot::concept::load(&ws.root) {
+                let at = f.found.as_ref().map(|p| format!("{}/{} ({})", p.anchor, p.side, p.fit)).unwrap_or_else(|| "-".into());
+                println!("  {:<4} {:<10} {:<40} {}", f.id, f.beat, f.file.as_deref().unwrap_or("(no picture)"), at);
+            }
+        }
+        Cmd::Skills => {
+            let ws = ws(file)?;
+            let active: Vec<&str> = shotpilot::skills::active(&ws.defn.brief).iter().map(|s| s.id).collect();
+            for s in shotpilot::skills::all() {
+                let mark = if active.contains(&s.id) { "*" } else { " " };
+                println!("{mark} {:<17} {:<8} {}", s.id, s.mode, s.description);
+            }
         }
         Cmd::Brief { assignments } => {
             let mut ws = ws(file)?;

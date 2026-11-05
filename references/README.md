@@ -1,8 +1,10 @@
 # references/
 
 Reference material for planning teasers, laid out after open-design
-(`design-systems/` + `craft/` + `design-templates/`). `craft/` and `genres/` are embedded
-in the binary (`crates/shotpilot/src/refs.rs`) and handed to Claude on every `plan`.
+(`design-systems/` + `craft/` + `design-templates/` + `skills/`). `craft/` and `genres/` are
+embedded in the binary (`crates/shotpilot/src/refs.rs`) and handed to Claude on every `plan`;
+`design-systems/` and `skills/` are embedded too (`designsys.rs`, `skills.rs`) and handed to
+Claude when the planning turn picked them.
 
 | Axis | open-design | here | holds |
 |---|---|---|---|
@@ -10,6 +12,39 @@ in the binary (`crates/shotpilot/src/refs.rs`) and handed to Claude on every `pl
 | Genre package | `design-systems/<brand>/` | `genres/<id>/` | one genre: prose + measured numbers + aliases (D-29) |
 | Style package | `design-systems/<brand>/` | `teasers/<id>/` | one real teaser: "Inspired by" prose + measured numbers |
 | Shape | `design-templates/` | `craft.rs` skeleton | `hook → establish → escalate → title` |
+| Look | `design-systems/<brand>/` | `design-systems/<id>/` | one look a teaser wears: `DESIGN.md` + `tokens.json` + `manifest.json` (D-45) |
+| Playbook | `skills/<id>/SKILL.md` | `skills/<id>/SKILL.md` | one kind of teaser, or one part of it (D-45) |
+
+## Design systems and skills (D-45)
+
+The planning turn (`ai::discover`, after open-design's OD Next planning turn) reads two
+catalogues and picks from them; the picks go to `brief.design` and `brief.skills`. When the
+shot list is written, the planner reads the picked `DESIGN.md` whole ("## Active design
+system", treated as authoritative), its `tokens.json`, and the whole body of every picked
+skill ("## Active skill"). The design system's tokens also set `finish.grade`,
+`finish.letterbox` and `finish.typeface` in code.
+
+- `design-systems/<id>/`: twelve generic looks (quiet-dread, vhs-found-footage,
+  cozy-pastel, storybook, grimdark, epic-fantasy, neon-action, retro-pixel,
+  arthouse-minimal, noir-mystery, cold-scifi, command-room). `DESIGN.md` keeps the nine
+  sections of the DESIGN.md convention (VoltAgent / Google Stitch), adapted to teasers:
+  1 Visual Theme & Atmosphere, 2 Color & Grade, 3 Typography Rules, 4 Title & Card
+  Stylings, 5 Pacing & Transitions, 6 Camera Language, 7 Sound Character, 8 Do's and
+  Don'ts, 9 Agent Prompt Guide. None copies a studio's identity: no names, logos or
+  trademark colours of real games.
+- A project may keep its own `DESIGN.md` next to shots.yaml (the game's brand). It wins
+  for the prose; the numbers still come from `brief.design`. `shotpilot design <id> --fork`
+  copies a look there to start from.
+- `skills/<id>/SKILL.md`: eighteen playbooks, after open-design's SKILL.md (front matter
+  `name`, `ja_name`, `description`, `triggers`, `sp: {mode, kind, genres, design_system,
+  example_prompt}`; body: Resource map, Workflow, Hard rules). `main` skills shape the
+  whole teaser (announce, mood, gameplay-first, release-date, demo, character, world tour,
+  threat, rules, diary, verb montage, one take, update, mystery); `utility` skills shape a
+  part (cold open, title drop, end card, count run). With no main skill picked, the kind's
+  default applies (gameplay-first or announce-teaser).
+- To add one: write the package, add a `ds!("<id>")` line in `designsys.rs` or a
+  `skill!("<id>")` line in `skills.rs`; `cargo test --test planning` checks the sections,
+  the grade and typeface names, and the D-22 words.
 
 ## How plan uses them
 

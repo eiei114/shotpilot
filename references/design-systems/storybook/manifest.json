@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "storybook",
+  "name": "絵本",
+  "category": "adventure",
+  "description": "1ページずつめくる童話の語り。広い構図に小さな主人公、暖色、明朝、黒でページを区切る。",
+  "genres": [
+    "adventure",
+    "cozy",
+    "rpg"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

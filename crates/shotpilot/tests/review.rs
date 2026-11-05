@@ -18,6 +18,10 @@ struct Director(RefCell<Vec<String>>);
 impl Claude for Director {
     fn ask(&self, request: &Value) -> Result<String> {
         let props = &request["output_config"]["format"]["schema"]["properties"];
+        if common::is_discover(request) {
+            self.0.borrow_mut().push("discover".into());
+            return Ok(common::discovery_reply().to_string());
+        }
         if props.get("summary").is_some() && props.get("anchors").is_some() {
             self.0.borrow_mut().push("stage".into());
             return Ok(json!({"summary": "中庭", "anchors": [{"name": "well", "description": "井戸"}],
@@ -54,7 +58,7 @@ fn the_first_pass_stops_at_the_review_and_resumes_after_it() {
     let mut on = |e: &str, d: &Value| events.push((e.to_string(), d.clone()));
     let out = produce::produce(&mut f.ws, &claude, None, &opts, &mut on).unwrap();
     assert_eq!(out["stopped"], "review");
-    assert_eq!(steps(&events), ["scout:done", "stage:done", "mood:skipped", "plan:done", "review:done"]);
+    assert_eq!(steps(&events), ["discover:done", "scout:done", "stage:done", "mood:skipped", "plan:done", "review:done"]);
     // the cuts can be looked at (previz), and nothing past the review ran
     assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
     assert!(!f.ws.root.join("cut").exists());
@@ -85,7 +89,7 @@ fn the_first_pass_stops_at_the_review_and_resumes_after_it() {
     let out = produce::resume(&mut f.ws, &claude, &ProduceOpts::default(), &mut on).unwrap();
     assert_eq!(steps(&events), ["sound:skipped", "render:done", "cut:done"]);
     assert_eq!(out["resumed"], true);
-    assert_eq!(*claude.0.borrow(), ["stage", "plan"]);
+    assert_eq!(*claude.0.borrow(), ["discover", "stage", "plan"]);
     assert!(f.ws.root.join("cut").exists());
     assert_eq!(f.ws.defn.script[0].ja, "今日から、この家に住む。"); // the human's fix survived
 }
@@ -97,7 +101,7 @@ fn without_review_the_pass_goes_all_the_way_as_before() {
     let mut events = Vec::new();
     let mut on = |e: &str, d: &Value| events.push((e.to_string(), d.clone()));
     produce::produce(&mut f.ws, &claude, None, &ProduceOpts { mood: false, ..Default::default() }, &mut on).unwrap();
-    assert_eq!(steps(&events), ["scout:done", "stage:done", "mood:skipped", "plan:done", "sound:skipped", "render:done", "cut:done"]);
+    assert_eq!(steps(&events), ["discover:done", "scout:done", "stage:done", "mood:skipped", "plan:done", "sound:skipped", "render:done", "cut:done"]);
     let mut f2 = ws();
     let err = produce::resume(&mut f2.ws, &claude, &ProduceOpts::default(), &mut |_, _| {});
     assert!(err.is_ok(), "the demo project has shots, so it can continue");

@@ -152,6 +152,53 @@ pub struct ScanReport {
     pub added: Vec<String>,
     pub moved: Vec<String>,
     pub same: Vec<String>,
+    /// The anchors were picked among the level's landmarks (nothing was tagged).
+    pub auto: bool,
+    /// Who picked them: "claude" (by the plan) or "spread" (the fallback); empty for tags.
+    pub picked_by: String,
+    /// Why the fallback was used, when Claude failed.
+    pub note: Option<String>,
+}
+
+/// How many places the location scout picks when nothing in the level is tagged.
+pub const SCOUT_PICKS: usize = 6;
+
+/// What [`Workspace::match_concept`] did.
+#[derive(Debug, Default, Clone)]
+pub struct MatchReport {
+    /// Comparison rounds run.
+    pub rounds: usize,
+    /// Candidates photographed as new anchors to find a place for a frame.
+    pub added: Vec<String>,
+    /// Frames with a place.
+    pub found: usize,
+    /// Frames with a picture and still no place.
+    pub open: Vec<String>,
+}
+
+/// The pictures still looking for a place, as text for the place pick.
+fn concept_wants(frames: &[crate::concept::Frame]) -> String {
+    frames
+        .iter()
+        .filter(|f| f.found.is_none())
+        .map(|f| format!("- `{}` ({}): {}", f.id, f.beat, f.look))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// What [`Workspace::scout`] gathered before taking the photos.
+#[derive(Debug, Default)]
+pub struct ScoutReport {
+    /// Anchors brought in from the level (None: shots.yaml already had anchors).
+    pub scan: Option<ScanReport>,
+    /// Meshes inventoried in the same launch (None: the inventory was already there).
+    pub assets: Option<usize>,
+    /// scout/index.json after the photos.
+    pub index: Value,
+    /// The level's landmark candidates, when the survey listed them.
+    pub candidates: Vec<crate::scout::Candidate>,
+    /// The concept frames' search, when frames were waiting for a place (D-46).
+    pub matched: Option<MatchReport>,
 }
 
 pub struct Workspace {
@@ -648,10 +695,15 @@ impl Workspace {
     pub fn scan(&mut self, tag: &str, prefix: &str) -> Result<ScanReport> {
         let engine = make_engine(&self.defn)?;
         let found = engine.scan(tag, prefix)?;
+        self.apply_scan(&found)
+    }
+
+    /// Write the anchors an engine found into shots.yaml (new ones added, moved ones updated).
+    fn apply_scan(&mut self, found: &Value) -> Result<ScanReport> {
         let mut names: Vec<(String, Value)> =
             found["anchors"].as_object().map(|m| m.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
         names.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut report = ScanReport::default();
+        let mut report = ScanReport { auto: found["auto"].as_bool().unwrap_or(false), ..Default::default() };
         let mut updates = Vec::new();
         for (name, found) in names {
             let Ok((at, b)) = model::parse_anchor(&found) else { continue };
@@ -681,7 +733,7 @@ impl Workspace {
             model::parse(&doc.value()?, &self.path)?;
             doc.save(&self.path)?;
             self.reload()?;
-            self.state.log("scan", json!({"added": report.added, "moved": report.moved}));
+            self.state.log("scan", json!({"added": report.added, "moved": report.moved, "auto": report.auto}));
             self.state.save()?;
         }
         Ok(report)
@@ -1336,6 +1388,225 @@ impl Workspace {
         self.reload()?;
         self.state.log("prop", json!({"removed": name}));
         self.state.save()
+    }
+
+    /// Stage 0 from one button: gather what is missing, then photograph. With no anchors yet,
+    /// one engine launch brings them in from the level (tagged actors, else landmarks the
+    /// engine picks) together with the mesh inventory when there is none; then the photos.
+    pub fn scout(&mut self, only: &[String], claude: Option<&dyn crate::ai::Claude>) -> Result<ScoutReport> {
+        let mut report = ScoutReport::default();
+        if self.defn.anchors.is_empty() {
+            let want_assets = crate::scout::load_assets(&self.root).is_empty();
+            let engine = make_engine(&self.defn)?;
+            let mut found = engine.survey("shotpilot", "SP_", want_assets, false)?;
+            if let Some(list) = found["assets"].as_array() {
+                let mut list: Vec<crate::scout::AssetInfo> = list.iter().filter_map(crate::scout::AssetInfo::from_json).collect();
+                list.sort_by(|a, b| a.asset.cmp(&b.asset));
+                list.dedup_by(|a, b| a.asset == b.asset);
+                crate::scout::save_assets(&self.root, &list)?;
+                self.state.log("assets", json!({"count": list.len()}));
+                self.state.save()?;
+                report.assets = Some(list.len());
+            }
+            // nothing tagged: pick among the landmarks (Claude, by the plan; else spread out)
+            let mut picked_by = String::new();
+            let mut note = None;
+            if !found["anchors"].as_object().is_some_and(|m| !m.is_empty()) {
+                let cands: Vec<crate::scout::Candidate> =
+                    found["candidates"].as_array().into_iter().flatten().filter_map(crate::scout::Candidate::from_json).collect();
+                // the concept frames, when made, say what the places should look like (D-46)
+                let want = concept_wants(&crate::concept::load(&self.root));
+                let by_claude = match claude.filter(|_| !cands.is_empty()) {
+                    Some(c) => match crate::ai::pick_locations(&self.defn, &cands, SCOUT_PICKS, Some(&want), c) {
+                        Ok(p) if !p.is_empty() => Some(p),
+                        Ok(_) => None,
+                        Err(e) => {
+                            note = Some(format!("Claude could not pick the places ({}); picked the most spread-out ones", e.msg));
+                            None
+                        }
+                    },
+                    None => None,
+                };
+                picked_by = if by_claude.is_some() { "claude" } else { "spread" }.to_string();
+                let names = by_claude.unwrap_or_else(|| {
+                    crate::scout::spread(&cands, SCOUT_PICKS).into_iter().map(|c| c.name).collect()
+                });
+                let picks: Map<String, Value> = names
+                    .iter()
+                    .filter_map(|n| cands.iter().find(|c| &c.name == n))
+                    .map(|c| (c.name.clone(), c.entry()))
+                    .collect();
+                found["anchors"] = Value::Object(picks);
+                found["auto"] = json!(true);
+                report.candidates = cands;
+            }
+            let mut rep = self.apply_scan(&found)?;
+            rep.picked_by = picked_by;
+            rep.note = note;
+            if self.defn.anchors.is_empty() {
+                bail!(
+                    "found nothing in the level to scout: tag actors `shotpilot` (or name them SP_...) in UE, or write \
+                     `anchors:` in shots.yaml. A level built at runtime has nothing in the editor to find"
+                );
+            }
+            report.scan = Some(rep);
+        }
+        report.index = self.take_scout(only)?;
+        // the concept frames look for their places among the photos, and further afield (D-46)
+        if let Some(c) = claude.filter(|_| crate::concept::load(&self.root).iter().any(crate::concept::Frame::open)) {
+            let cands = std::mem::take(&mut report.candidates);
+            report.matched = Some(self.match_concept(c, Some(cands))?);
+            report.index = crate::scout::load_index(&self.root);
+        }
+        Ok(report)
+    }
+
+    /// Write a planning turn's plan (D-45): the brief fields, the concept frames it described
+    /// (D-46; unchanged ones keep their picture and place), and the log entry the chat shows.
+    pub fn apply_discovery(&mut self, d: &crate::ai::Discovery, note: &str, answers: &Value) -> Result<Value> {
+        if !d.is_question() {
+            self.set_brief(&d.brief)?;
+            if !d.frames.is_empty() {
+                crate::concept::replace(&self.root, &d.frames)?;
+            }
+        }
+        let mut entry = d.to_json();
+        entry["note"] = json!(note);
+        entry["answers"] = answers.clone();
+        self.state.log("discover", entry.clone());
+        self.state.save()?;
+        Ok(entry)
+    }
+
+    /// Make the concept frames' pictures (D-46): one per frame that has none. Only when the
+    /// human asks; the pictures are references in concept/, never takes.
+    pub fn generate_concept(&mut self, gen: &dyn crate::moodboard::ImageGen) -> Result<Vec<String>> {
+        let mut frames = crate::concept::load(&self.root);
+        if frames.is_empty() {
+            bail!("no concept frames yet: the plan describes them (shotpilot discover, or 企画 in the app)");
+        }
+        let todo: Vec<usize> = (0..frames.len()).filter(|&i| frames[i].file.is_none()).collect();
+        if todo.is_empty() {
+            return Ok(Vec::new());
+        }
+        let jobs: Vec<crate::moodboard::ImageJob> = todo.iter().map(|&i| crate::concept::job(&self.defn, &frames[i])).collect();
+        let images = gen.generate_many(&jobs)?;
+        let mut made = Vec::new();
+        for (k, bytes) in images.iter().enumerate() {
+            let i = todo[k];
+            let rel = crate::concept::store(&self.root, &frames[i], bytes)?;
+            frames[i].file = Some(rel.clone());
+            frames[i].found = None;
+            frames[i].tried.clear();
+            made.push(rel);
+        }
+        crate::concept::save(&self.root, &frames)?;
+        self.state.log("concept", json!({"made": made, "frames": frames.iter().map(crate::concept::Frame::to_json).collect::<Vec<_>>()}));
+        self.state.save()?;
+        Ok(made)
+    }
+
+    /// Find the concept frames' places (D-46): compare the frames still open with the scout
+    /// photos; for the ones nothing fits, photograph other candidates of the level (ones the
+    /// plan's pictures suggest) and compare again, up to `concept::MATCH_ROUNDS` times.
+    /// `cands`: the level's candidates when already known (else one survey asks for them).
+    pub fn match_concept(&mut self, claude: &dyn crate::ai::Claude, cands: Option<Vec<crate::scout::Candidate>>) -> Result<MatchReport> {
+        use crate::concept;
+        let mut frames = concept::load(&self.root);
+        let mut rep = MatchReport::default();
+        let mut cands = cands.filter(|c| !c.is_empty());
+        let mut fresh: Option<Vec<String>> = None; // anchors added in the last round (None: compare with all)
+        for round in 0..concept::MATCH_ROUNDS {
+            let open: Vec<usize> = (0..frames.len()).filter(|&i| frames[i].open()).collect();
+            if open.is_empty() {
+                break;
+            }
+            let idx = crate::scout::load_index(&self.root);
+            let mut photos = Vec::new();
+            for (anchor, views) in idx["anchors"].as_object().into_iter().flatten() {
+                if self.defn.anchor(anchor).is_none() || fresh.as_ref().is_some_and(|f| !f.contains(anchor)) {
+                    continue;
+                }
+                for v in views.as_array().into_iter().flatten() {
+                    if let (Some(side), Some(file)) = (v["side"].as_str(), v["file"].as_str()) {
+                        photos.push((anchor.clone(), side.to_string(), self.root.join(file)));
+                    }
+                }
+            }
+            let asked: Vec<(String, String, String, PathBuf)> = open
+                .iter()
+                .map(|&i| {
+                    let f = &frames[i];
+                    (f.id.clone(), f.beat.clone(), f.look.clone(), self.root.join(f.file.as_deref().unwrap_or_default()))
+                })
+                .collect();
+            let seen: Vec<String> = photos.iter().map(|(a, _, _)| a.clone()).fold(Vec::new(), |mut v, a| {
+                if !v.contains(&a) {
+                    v.push(a);
+                }
+                v
+            });
+            for m in crate::ai::match_frames(&self.defn, &asked, &photos, claude)? {
+                let Some(f) = frames.iter_mut().find(|f| f.id == m.frame) else { continue };
+                match m.photo {
+                    Some((anchor, side)) => {
+                        let file = idx["anchors"][&anchor]
+                            .as_array()
+                            .and_then(|a| a.iter().find(|v| v["side"] == side.as_str()))
+                            .and_then(|v| v["file"].as_str())
+                            .unwrap_or_default()
+                            .to_string();
+                        f.found = Some(concept::Found { anchor, side, file, fit: m.fit, why: m.why });
+                    }
+                    None => {
+                        for a in &seen {
+                            if !f.tried.contains(a) {
+                                f.tried.push(a.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            rep.rounds = round + 1;
+            concept::save(&self.root, &frames)?;
+            let open: Vec<&concept::Frame> = frames.iter().filter(|f| f.open()).collect();
+            if open.is_empty() || round + 1 == concept::MATCH_ROUNDS {
+                break;
+            }
+            // other places for the frames nothing fits: the level's candidates the plan's pictures suggest
+            if cands.is_none() {
+                let engine = make_engine(&self.defn)?;
+                let found = engine.survey("shotpilot", "SP_", false, true)?;
+                cands = Some(found["candidates"].as_array().into_iter().flatten().filter_map(crate::scout::Candidate::from_json).collect());
+            }
+            let pool: Vec<crate::scout::Candidate> = cands
+                .as_ref()
+                .map(|c| c.iter().filter(|c| self.defn.anchor(&c.name).is_none()).cloned().collect())
+                .unwrap_or_default();
+            if pool.is_empty() {
+                break;
+            }
+            let want = concept_wants(&frames);
+            let picks = crate::ai::pick_locations(&self.defn, &pool, concept::PICKS_PER_ROUND, Some(&want), claude)?;
+            if picks.is_empty() {
+                break;
+            }
+            let entries: Map<String, Value> =
+                picks.iter().filter_map(|n| pool.iter().find(|c| &c.name == n)).map(|c| (c.name.clone(), c.entry())).collect();
+            let added = self.apply_scan(&json!({"anchors": entries, "auto": true}))?.added;
+            if added.is_empty() {
+                break;
+            }
+            self.take_scout(&added)?;
+            rep.added.extend(added.iter().cloned());
+            fresh = Some(added);
+        }
+        rep.found = frames.iter().filter(|f| f.found.is_some()).count();
+        rep.open = frames.iter().filter(|f| f.open()).map(|f| f.id.clone()).collect();
+        self.state.log("concept-match", json!({"rounds": rep.rounds, "added": rep.added, "found": rep.found, "open": rep.open,
+                                               "frames": frames.iter().map(concept::Frame::to_json).collect::<Vec<_>>()}));
+        self.state.save()?;
+        Ok(rep)
     }
 
     /// Photograph anchors from four sides (all anchors when `only` is empty) into scout/.

@@ -2,7 +2,8 @@
 
 Launched by shotpilot with the env var SHOTPILOT_JOB pointing at a job JSON file:
 
-  build / pull / scan : UnrealEditor-Cmd <uproject> -run=pythonscript -script=<this file>
+  build / pull / scan / assets / survey :
+                        UnrealEditor-Cmd <uproject> -run=pythonscript -script=<this file>
   render              : UnrealEditor-Cmd <uproject> -ExecutePythonScript=<this file>
                         (full editor; MRQ renders through the PIE executor, then quits)
 
@@ -430,6 +431,82 @@ def run_pull(job):
     return out
 
 
+def _actor_entry(a, require_size=False):
+    """[x, y, z], or {at, size, center} when the actor has bounds (empty actors have none)."""
+    loc = a.get_actor_location()
+    at = [round(loc.x, 1), round(loc.y, 1), round(loc.z, 1)]
+    try:
+        origin, extent = a.get_actor_bounds(False)
+        size = [round(2 * extent.x, 1), round(2 * extent.y, 1), round(2 * extent.z, 1)]
+        if all(v > 1.0 for v in size):
+            return {"at": at, "size": size, "center": [round(origin.x, 1), round(origin.y, 1), round(origin.z, 1)]}
+    except Exception:  # bounds are optional: keep the point
+        pass
+    return None if require_size else at
+
+
+def _anchor_name(label):
+    """An anchor id from an actor label: SM_Old_Well3 -> old_well. Empty when nothing usable is left."""
+    s = "".join(c if c.isascii() and (c.isalnum() or c in "_-") else "_" for c in label.lower())
+    parts = [p for p in s.split("_") if p]
+    if len(parts) > 1 and parts[0] in ("sm", "sk", "skm", "bp", "s", "a"):
+        parts = parts[1:]
+    while parts and parts[-1].isdigit():
+        parts.pop()
+    name = "_".join(parts).rstrip("0123456789").strip("_-")
+    if name and not name[0].isalpha():
+        name = "a_" + name
+    return name[:40]
+
+
+# Actors that are never landmarks: lights, cameras, volumes, sky, the level's own machinery.
+_SKIP_CLASS = ("Light", "Camera", "Volume", "Sky", "Fog", "PostProcess", "PlayerStart", "Landscape", "Brush",
+               "WorldSettings", "Info", "Reflection", "Decal", "Note", "Atmosphere", "Cloud", "Navigation",
+               "LevelSequence", "Emitter", "Niagara", "Audio", "Sound", "Trigger", "Blocking", "HLOD")
+
+
+def _candidates(limit):
+    """Landmark candidates when nothing is tagged: medium-to-large visible meshes, one per kind
+    (by label), largest first. shotpilot picks among them (Claude, by the plan; else the most
+    spread-out ones)."""
+    cands = []
+    for a in all_actors():
+        cls = a.get_class().get_name()
+        if any(k in cls for k in _SKIP_CLASS):
+            continue
+        try:
+            if a.is_hidden_ed() or a.is_editor_only():
+                continue
+        except Exception:
+            pass
+        try:
+            if not a.get_components_by_class(unreal.MeshComponent):
+                continue
+        except Exception:
+            continue
+        e = _actor_entry(a, require_size=True)
+        if not isinstance(e, dict):
+            continue
+        sx, sy, sz = e["size"]
+        big, flat = max(sx, sy, sz), min(sx, sy, sz)
+        # floors, ceilings and whole buildings frame nothing; tiny clutter is not a place
+        if big < 40 or big > 2500 or sz < 15:
+            continue
+        label = a.get_actor_label()
+        name = _anchor_name(label)
+        if not name:
+            continue
+        score = min((sx * sy * sz) ** (1.0 / 3.0), 400.0) * (0.5 if flat < 25 else 1.0)
+        cands.append(dict(e, name=name, label=label, cls=cls, score=round(score, 1)))
+    best = {}
+    for c in cands:  # one per kind: six chairs are one landmark
+        if c["name"] not in best or c["score"] > best[c["name"]]["score"]:
+            best[c["name"]] = c
+    out = sorted(best.values(), key=lambda c: -c["score"])[:limit]
+    log("scan: %d landmark candidates (%d kinds), returning %d" % (len(cands), len(best), len(out)))
+    return out
+
+
 def run_scan(job):
     ensure_map(job["project"].get("map"))
     tag, prefix = job.get("tag", "shotpilot"), job.get("prefix", "SP_")
@@ -438,20 +515,21 @@ def run_scan(job):
         label = a.get_actor_label()
         tagged = any(str(t) == tag for t in a.tags)
         if tagged or label.startswith(prefix):
-            loc = a.get_actor_location()
             name = label[len(prefix):] if label.startswith(prefix) else label
-            at = [round(loc.x, 1), round(loc.y, 1), round(loc.z, 1)]
-            entry = at
-            # the size of what is there, so shots can be framed for it (empty actors have none)
-            try:
-                origin, extent = a.get_actor_bounds(False)
-                size = [round(2 * extent.x, 1), round(2 * extent.y, 1), round(2 * extent.z, 1)]
-                if all(v > 1.0 for v in size):
-                    entry = {"at": at, "size": size, "center": [round(origin.x, 1), round(origin.y, 1), round(origin.z, 1)]}
-            except Exception:  # bounds are optional: keep the point
-                entry = at
-            anchors[name.lower().replace(" ", "_")] = entry
-    return {"anchors": anchors}
+            anchors[name.lower().replace(" ", "_")] = _actor_entry(a)
+    out = {"anchors": anchors}
+    if (job.get("auto") and not anchors) or job.get("candidates"):
+        out["candidates"] = [c for c in _candidates(int(job.get("limit", 60))) if c["name"] not in anchors]
+    return out
+
+
+def run_survey(job):
+    """Stage 0 in one launch: the tagged anchors (else landmark candidates to pick from) and, when
+    asked, the mesh inventory."""
+    out = run_scan(dict(job, auto=True))
+    if job.get("assets"):
+        out["assets"] = run_assets(job)["assets"]
+    return out
 
 
 def _bounds_size(asset):
@@ -903,7 +981,8 @@ def main():
         if kind == "render":
             run_render(job)  # writes its own result asynchronously
             return
-        res = {"build": run_build, "pull": run_pull, "scan": run_scan, "assets": run_assets}[kind](job)
+        res = {"build": run_build, "pull": run_pull, "scan": run_scan, "assets": run_assets,
+               "survey": run_survey}[kind](job)
         write_result(res)
     except Exception:
         write_result({"fatal": traceback.format_exc()})

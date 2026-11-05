@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "quiet-dread",
+  "name": "静かな恐怖",
+  "category": "horror",
+  "description": "動かないカメラと長い間で怖がらせる。帯 2.39、明朝、黒をはさむ。",
+  "genres": [
+    "horror",
+    "adventure"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "shotpilot-design-system/v1",
+  "id": "vhs-found-footage",
+  "name": "記録映像（VHS）",
+  "category": "horror",
+  "description": "残ってしまった記録のふり。短い証拠カットの数え上げ、日付スタンプ、白フラッシュ。帯なし、ゴシック。",
+  "genres": [
+    "horror"
+  ],
+  "source": {
+    "type": "bundled",
+    "origin": "shotpilot generic look; not any studio's identity"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.json"
+  }
+}
