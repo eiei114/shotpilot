@@ -26,6 +26,7 @@ COL_X = [-1400.0 + 400.0 * i for i in range(8)]
 COL_Y = {"L": 650.0, "R": -650.0}
 BROKEN = {("L", 2): 430.0, ("L", 5): 600.0, ("R", 1): 290.0, ("R", 6): 680.0}  # snapped columns: height of the stump
 TOP = PLAZA + COL_H          # the underside of the entablature
+GONE = ("R", 5)             # a column that is not there (its drums lie on the plaza)
 SPOTS = ((-1000, 430, PLAZA), (-1000, -430, PLAZA), (600, 430, PLAZA), (600, -430, PLAZA),
          (3050, 520, 440.0), (3050, -520, 440.0))   # the braziers (floor height)
 DUEL_AT = (500.0, 0.0)       # the middle of the duelling pair
@@ -260,7 +261,7 @@ def build_ashenpillars(lv):
         "relic": dict(base="return float3(0.1, 0.03, 0.0);", roughness="return 0.3;",
                       emissive="return float3(1.0, 0.45, 0.15) * (26.0 + 6.0 * sin(T * 1.7));"),
         "steel": dict(base="return float3(0.62, 0.62, 0.64);", roughness="return 0.22;"),
-        "cloth": dict(base=NOISE + "return float3(0.35, 0.05, 0.04) * (0.8 + 0.3 * n);", roughness="return 0.9;"),
+        "cloth": dict(base=NOISE + "return float3(0.55, 0.07, 0.05) * (0.8 + 0.3 * n);", roughness="return 0.9;"),
         "mountain": dict(base=NOISE + "return float3(0.10, 0.09, 0.10) * (0.8 + 0.3 * n);", roughness="return 1.0;"),
     })
     lv.box("Ground", (0, 0, -10), (80000, 80000, 20), mat="ash", folder="Geometry")
@@ -277,12 +278,15 @@ def build_ashenpillars(lv):
     lv.box("Plaza", (10, 0, 20), (3780, 2100, 40), mat="flags", folder="Geometry")
     place(lv, "Gate_Ramp", ramp(F, 160.0, 500.0, 40.0), (-2040, 0, 0), mat="stone", folder="Gate")
 
-    # the colonnade: two rows of eight fluted columns, four of them snapped off
+    # the colonnade: two rows of eight fluted columns, four of them snapped off and one gone (the brazier shot's
+    # camera stands where the sixth right-hand column would be: its footprint rings showed through the lens)
     full = column(F, COL_R, COL_H, 0.85, flutes=16)
     stumps = {}
     for side, y in COL_Y.items():
         for i, x in enumerate(COL_X):
             h = BROKEN.get((side, i))
+            if (side, i) == GONE:
+                continue
             if h is None:
                 label = "SP_colonnade" if (side, i) == ("L", 4) else "Column_%s%d" % (side, i + 1)
                 place(lv, label, full, (x, y, PLAZA), mat="stone", folder="Colonnade")
@@ -291,7 +295,7 @@ def build_ashenpillars(lv):
                 place(lv, "Column_%s%d_Stump" % (side, i + 1), stumps[(side, i)], (x, y, PLAZA), rot=17.0 * i, mat="stone",
                       folder="Colonnade")
     # the entablature survives only above runs of standing columns: one block per bay, a cornice over each run
-    runs = {"L": [(0, 1), (3, 4), (6, 7)], "R": [(0, 0), (2, 5), (7, 7)]}
+    runs = {"L": [(0, 1), (3, 4), (6, 7)], "R": [(0, 0), (2, 4), (7, 7)]}
     for side, spans in runs.items():
         y = COL_Y[side]
         for (a, b) in spans:
@@ -305,14 +309,14 @@ def build_ashenpillars(lv):
             lv.box("Architrave_Cap", (x0 + 45, y, TOP + 35), (90, 150, 70), mat="stone", folder="Colonnade")
             lv.box("Architrave_Cap", (x1 - 45, y, TOP + 35), (90, 150, 70), mat="stone", folder="Colonnade")
     cloth = [banner(F, 120.0, 382.0, 0), banner(F, 120.0, 382.0, 1)]
-    for k, (x, y) in enumerate(((0, 650), (-400, -650), (400, -650))):
+    for k, (x, y) in enumerate(((0, 650), (-400, -650), (0, -650))):
         place(lv, "Torn_Banner_%d" % (k + 1), cloth[k % 2], (x, y, TOP - 380), mat="cloth", folder="Colonnade")
 
     # snapped tops lie where they fell, on the plaza
     d = drum(F, 55.0, 170.0)
     cap = capital(F)
     lie = [(-600, 465, 88), (-632, 285, 76), (800, 520, 100), (400, 545, 30), (-1200, -500, 100), (-1130, -790, 20),
-           (1000, -480, 104), (1220, -560, 15)]
+           (1000, -480, 104), (1220, -560, 15), (760, -545, 30), (880, -470, 100)]
     for k, (x, y, yaw) in enumerate(lie):
         place(lv, "Fallen_Drum_%d" % (k + 1), d, (x, y, PLAZA + 55.0), rot=(90.0, yaw, 0.0), mat="stone", folder="Colonnade")
     for k, (x, y, yaw) in enumerate(((-420, 480, 30), (-1330, -520, 200), (1380, -560, 80))):

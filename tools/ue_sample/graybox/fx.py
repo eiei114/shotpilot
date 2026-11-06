@@ -518,15 +518,18 @@ float shimmer = 0.8 + 0.2 * sin(T * 6.0 + RND * 50.0);
 float3 col = lerp(float3(1.0, 0.55, 0.12), float3(0.8, 0.1, 0.02), AGE);
 return float4(col * (r * r * r) * fade * shimmer * PC.rgb * PA * %(power).2f, 1.0);"""
 
+FLAME_GAIN = 0.235  # the sprites add up: 1.7 x 0.235 = 0.4 is a clear orange flame with a yellow core
 FIRE_SIZES = {"torch": 0.45, "brazier": 1.0, "campfire": 1.45}
 
 
-def make_fire(folder, name="NS_Fire", size="brazier", embers=True, seed=11, power=0.4):
+def make_fire(folder, name="NS_Fire", size="brazier", embers=True, seed=11, power=1.7):
     """A flame with a hot core, a faint glow hugging the flame and rising embers. `size` is "torch" (flame
     about 30 cm tall), "brazier" (70 cm) or "campfire" (100 cm), or a number scaling the brazier.
-    Origin at the base of the flame. `power` is the flame's brightness (HDR; the level's exposure is
-    fixed, so this is the knob that makes it bloom). Pair with a point light (about 7000 cd for a
-    brazier, orange 1.0, 0.45, 0.12) driven by `brazier_light_function`."""
+    Origin at the base of the flame. `power` is the flame's brightness (default 1.7 reads as an orange
+    flame with a yellow core at EV 1.0-1.3; 1.0 is a dim fire, above 2.5 it burns out to white). Pair
+    with a point light (brazier about 60 cd, torch 25 cd, campfire 80 cd, orange 1.0, 0.52, 0.22,
+    radius 500-700) driven by `brazier_light_function`; give the light scatter=0 (or little) unless the
+    level has volumetric fog, or it shows as a round glow of its own."""
     k = FIRE_SIZES.get(size, size) if isinstance(size, str) else float(size)
     h = 70.0 * k
     m = folder + "/Materials/"
@@ -538,7 +541,7 @@ def make_fire(folder, name="NS_Fire", size="brazier", embers=True, seed=11, powe
     _cone(flame, 0.22 * h, angle=6.0)
     _forces(flame, curl=(0.9 * h, 0.012))
     _grow(flame, [(0.0, 0.55), (0.25, 1.0), (1.0, 0.6)])
-    _draw(flame, make_particle_material(m + "M_Flame", FLAME % {"power": power}, "add"))
+    _draw(flame, make_particle_material(m + "M_Flame", FLAME % {"power": power * FLAME_GAIN}, "add"))
 
     core = _emitter(s, "Core", "Fountain", seed + 1, rate=18.0, life=(0.5, 0.8), size=(0.5 * h, 0.7 * h),
                     color=(1.0, 0.9, 0.55, 1.0), rotation=(-6.0, 6.0))
@@ -547,7 +550,7 @@ def make_fire(folder, name="NS_Fire", size="brazier", embers=True, seed=11, powe
     _cone(core, 0.15 * h, angle=4.0)
     _forces(core, curl=(0.4 * h, 0.015))
     _grow(core, [(0.0, 0.6), (0.3, 1.0), (1.0, 0.5)])
-    _draw(core, make_particle_material(m + "M_FlameCore", FLAME % {"power": power * 1.1}, "add"))
+    _draw(core, make_particle_material(m + "M_FlameCore", FLAME % {"power": power * 1.1 * FLAME_GAIN}, "add"))
 
     glow = _emitter(s, "Glow", "Fountain", seed + 2, rate=8.0, life=(2.0, 2.0), size=(1.3 * h, 1.6 * h),
                     color=(1.0, 0.34, 0.06, 1.0))
@@ -623,13 +626,13 @@ return float4(col * ln * fade * PC.rgb * PA * %(power).2f, 1.0);"""
 
 
 def make_sparks(folder, name="NS_Sparks", interval=3.0, count=22, speed=(180.0, 520.0), angle=55.0, seed=41,
-                power=9.0, length=18.0, width=2.4):
+                power=9.0, length=18.0, width=2.4, lead=0.4):
     """A burst of sparks every `interval` seconds (a sword clash, a forge, a grinder): `count` streaks leave
     the origin inside a cone of `angle` degrees about straight up at `speed` cm/s, arc under gravity and
     die out within a second. Bursts stay at least 2 s apart by default, well inside the rule of no more
     than three bright flashes a second (each spark is a small streak, never a full-frame flash). The
-    a burst leaves about 0.4 s into every shot (the warm-up is timed for it), so a shot always opens
-    on a burst."""
+    warm-up ends `lead` seconds (0.4) after a burst, so the first burst in play comes about
+    `interval - lead` s into the shot (measured: up to 0.3 s earlier still) and then every `interval`."""
     s = System(folder + "/" + name)
     e = _emitter(s, "Sparks", "OmnidirectionalBurst", seed, life=(0.5, 1.1), size=(1.0, 1.0))
     e.emit("EmitterState", Loop_Behavior=Enum("Infinite"), Loop_Duration=float(interval))
@@ -641,7 +644,7 @@ def make_sparks(folder, name="NS_Sparks", interval=3.0, count=22, speed=(180.0, 
     _forces(e, gravity=(0.0, 0.0, -980.0), drag=0.5)
     _draw(e, make_particle_material(folder + "/Materials/M_Spark", SPARK % {"power": power}, "add"),
           alignment="VelocityAligned", facingMode="FaceCamera")
-    return _finish(s, warmup=3.0 * interval - 0.7)  # a burst leaves 0.4 s into every shot
+    return _finish(s, warmup=2.0 * interval + lead)
 
 
 # ------------------------------------------------------------------ leaves and petals

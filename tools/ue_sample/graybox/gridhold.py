@@ -424,7 +424,7 @@ def build_gridhold(lv):
             lf = brazier_light_function(m + "LF_Fire", 1.3)
             fire = make_fire(FXF, "NS_Forge", size=0.7, power=1.0)
             lv.fx("Forge_Fire", (-1580, -700, 88), fire)
-            lv.point("Forge_Light", (-1500, -700, 190), 300.0, (1.0, 0.52, 0.22), radius=600, source=14.0, light_function=lf)
+            lv.point("Forge_Light", (-1400, -700, 170), 220.0, (1.0, 0.52, 0.22), radius=600, source=14.0, light_function=lf)
             lv.fx("Forge_Smoke", (-1650, -700, 85 + 262), make_smoke(FXF, "NS_ForgeSmoke", scale=0.7, wind=(26.0, 8.0)))
             lv.fx("Anvil_Sparks", (-1458, -734, 92), make_sparks(FXF, "NS_AnvilSparks", interval=2.4, count=16, speed=(120.0, 320.0),
                                                                    angle=45.0))

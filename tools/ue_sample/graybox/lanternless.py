@@ -7,7 +7,6 @@ import unreal
 from .core import *  # noqa: F401,F403  (the Level spawner, paint, constants)
 from .fx import *  # noqa: F401,F403
 from .anim import *  # noqa: F401,F403
-from . import fx as _fx
 from . import shapes
 from . import moves_horror
 
@@ -198,7 +197,7 @@ def build_lanternless(lv):
     lv.shape("Pipe_Lobby", (-400, -120, H - 5), (10, 10, 780), mesh=CYLINDER, mat="prop", rot=(90, 0, 0), folder="Props")
     lv.shape("Pipe_Corridor", (1300, 100, H - 5), (10, 10, 2540), mesh=CYLINDER, mat="prop", rot=(90, 0, 0), folder="Props")
 
-    # lobby furniture (the nurse stands between the desk and the wall)
+    # lobby furniture (nobody stands at the desk)
     lv.box("SP_reception_desk", (-300, 380, 55), (120, 300, 110), mat="prop", folder="Props")
     lv.box("Reception_Counter", (-300, 380, 113), (140, 320, 6), mat="accent", folder="Props")
     lv.box("Reception_Monitor", (-300, 330, 130), (4, 30, 24), mat="prop", folder="Props")
@@ -248,8 +247,8 @@ def build_lanternless(lv):
     lv.box("SP_empty_chair", (1200, -460, 23), (45, 45, 46), mat="prop", folder="Props")
     lv.box("Chair_Back", (1200, -437, 75), (42, 6, 60), mat="prop", folder="Props")
     lv.box("Cabinet", (960, -560, 90), (60, 120, 180), mat="prop", folder="Props")
-    # the night nurse beside the reception desk, writing on a clipboard
-    nurse = lv.figure("Night_Nurse", (-300, 590, 0), facing=270.0, mesh=QUINN, anim=moves["nurse"])
+    # the night nurse in ward room R1 (the reception stays empty for the teaser), writing on a clipboard
+    nurse = lv.figure("Night_Nurse", (700, 405, 0), facing=0.0, mesh=QUINN, anim=moves["nurse"])
     lv.hold(nurse, "Clipboard", (22, 2, 30), mat="accent", socket="hand_l", loc=(0.0, 0.0, 0.0))
 
     # the ones that move (one 12 s loop; every shot starts at 0 s)
@@ -310,9 +309,6 @@ def build_lanternless(lv):
         drips = make_drips(FX_FOLDER, "NS_Ward_Drips", drop=H - 10.0)
         lv.fx("Drips_Lobby", (-420, -120, H - 12), drips)
         lv.fx("Drips_Corridor", (1450, 100, H - 12), drips)
-        # `line` is a reserved word in HLSL: the drizzle's streak shader fails to compile (and takes the
-        # renderer down) until fx.STREAK stops using it
-        _fx.STREAK = _fx.STREAK.replace("float line", "float streak").replace("line *", "streak *")
         rain = make_drizzle(FX_FOLDER, "NS_Ward_Rain", area=(260.0, 1000.0), height=330.0, rate=780.0)
         lv.fx("Rain_Front", (-960, 0, 165), rain)
         mist = make_mist(FX_FOLDER, "NS_Ward_Mist_DeadEnd", area=(240.0, 270.0), thickness=45.0, opacity=0.14, count=10)
