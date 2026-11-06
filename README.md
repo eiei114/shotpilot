@@ -1,6 +1,113 @@
 # Shotpilot
 
-UE5 プロジェクトからティザー映像（30〜60秒）を撮るための、ショット設計・撮影ツール。
+UE5 のゲームからティザー映像（30〜60秒）を撮るための、ショット設計・撮影ツール。Built with Claude: Japan 2026 の提出作品（開発者1人）。
+
+**ティザーのカットを Claude が組み、人間が1カットだけ直すと、その1カットだけが撮り直る。ゲームが変わったら、変わったものが写っていたカットだけが撮り直る。**
+
+## 何を解くか
+
+インディー開発者は、ゲームは作れてもトレーラーで詰まる。調査（`reports/`）で一番強かった不満は、ゲームの見た目や機能が変わるたびにトレーラーを全部撮り直すことだった。
+
+- 「I also had to reshoot the whole thing because I decided to change my enemy textures」（Reddit、2026-08）
+- 「watching the same 30 seconds about 100 times」（Reddit、2026-09）
+- 撮り直しに耐えかねて「プレイを自動で再生して録画し、ゲームが更新されたら再実行する」仕組みを自分で作った開発者が、別々のスレッドに何人もいた。
+
+似た製品は、どれも「どのカットが古くなったか」を判定しない（`reports/トレーラー制作の類似プロダクトと解決策.md`）。Shotpilot はカットごとに、画を決める定義の指紋（fingerprint）と、撮ったときに画面に写っていたゲームの素材の SHA-256 を持つ。どちらかが変わったカットだけを撮り直し、ほかのカットは前の take を使い回す。
+
+調査の限界: 一次の証言は、Reddit の API で読めた 2024-12〜2026-11 の投稿と、日本語の数記事に限られる。制作時間の自己申告（約4時間〜3か月）は単発の声で、分布ではない。「変わったカットだけ撮り直したい」という明示的な要望は見つかっていない。Shotpilot の核は、近くの不満から立てた仮説として扱っている。
+
+## 30 秒で試す（UE も API キーも要らない）
+
+Rust（1.80 以上）があれば動く。`engine: mock` が UE の代役になる。
+
+```bash
+cargo install --path crates/shotpilot
+mkdir demo && cd demo
+shotpilot init                                  # サンプルの shots.yaml（6 カット、mock エンジン）
+shotpilot render previz                         # 6 カットをエンジンなしで描く（1 秒かからない）
+shotpilot set 3 camera.lens.focal_length=85     # 3 番目だけ寄る
+shotpilot render previz                         # → previz: 1 rendered, 5 reused
+shotpilot order --move s06_title --to 1         # 並べ替える
+shotpilot render previz                         # → previz: 0 rendered, 6 reused（並びは画を変えない）
+shotpilot status                                # 各カットの状態（fresh / STALE / GAME）
+```
+
+`render` の `rendered` と `reused` が、何を撮り直したかを示す。誤った指定にはメッセージだけが出る（直し方を含む）。アプリは `cargo build --release -p shotpilot-app` で、`target/release/shotpilot-app.exe` が開く。
+
+## ゲームを Claude Code で直しているなら（D-66）
+
+ゲーム本体を Claude Code で直していると、ティザーのどのカットが古くなったかは誰も教えてくれない。Shotpilot は、それを Claude Code の中で知らせる。
+
+```bash
+cd MyGame                                           # .uproject のあるフォルダ
+shotpilot --file Teaser/shots.yaml claude install   # Skill とフックを入れる（既存の設定とフックは残す）
+```
+
+- **フック**（SessionStart と、Edit・Write・Bash・PowerShell のあとの PostToolUse）が、セッションの始めとファイルを変えたあとに、古くなったカットだけを事実の文で Claude に渡す。何も古くなければ何も言わない。同じ変化は1回だけ言う。
+  ```
+  Shotpilot（ティザー Teaser/shots.yaml、10 カット）: 撮り直しが要るカットがある。
+  - ゲームの素材が変わった（M_AwningRed）。それが画面に写っていたカットだけが古い:
+    - preview: s01_windmill, s04_market, s06_oak_light, s10_hill_title
+  撮り直すのはこのカットだけで、ほかのカットは前の take を使い回す: `shotpilot --file Teaser/shots.yaml render preview`（UE を起動する。数分かかる）。
+  手順は Skill「shotpilot-teaser」にある。ライト・配置・コードの変更は検知の対象外。
+  ```
+  （サンプルのゲーム KettleHill で、市場の日よけの色を変えたあとのセッションの始め。Claude は Skill の手順で status を見て、UE を起動する前に確かめ、任せると `preview: 4 rendered, 6 reused` で撮り直して Cut をつなぎ直した）
+  shots.yaml を直したときは、画が変わったカットだけを挙げる。目的や並び、音だけの変更なら「撮り直しは無い」と言う。
+- **Skill**（`.claude/skills/shotpilot-teaser/SKILL.md`）には、`status` で古いカットを見る → 古いカットだけ `render` → `cut` でつなぎ直す、の手順と、してはいけないこと（`render/` や `state.json` を手で触らない）を書いてある。「ティザーを追いつかせて」と頼めば Claude はこの手順で進め、UE を起動する前にユーザーに確かめる。
+- フックは知らせるだけで、撮影もファイルの書き換えもしない。どんな失敗でも終了コード 0 で黙る（ゲーム開発のセッションを止めない）。
+
+## ハッカソン期間中に作ったもの
+
+開発期間は 2026-11-02 12:30 〜 11-08 20:00。既存のプロジェクトのコードと設計は使っていない（D-05）。git の記録は次のとおり（決定の記録は `.claude/rules/product-decisions.md` の D-01〜D-66）。
+
+| 日 | したこと |
+|---|---|
+| 11/03 00:27 | 最初のコミット。Python の試作（fingerprint・状態・previz・UE の撮影スクリプト、約 2,000 行） |
+| 11/03 02:14 | コアを Rust に移し（D-16）、02:24 に Python 版を消した（UE の中で動く `sp_entry.py` だけが残る）。UE 5.8 で build → still → preview → pull → final → cut を実機で通した |
+| 11/03 | Tauri のアプリ、音（BGM と SE、D-19）、工程バー、ムードボード、ロケハン、一気に作る（D-28） |
+| 11/04 | ホーム画面（D-30）、台本が先の流れ（D-31）、実測したティザー 701 本からの型（D-29）、絵コンテ（D-33） |
+| 11/05 | ゲームの変化の検知（D-37）、カット表での確認（D-36）、previz で止める（D-38）、企画（D-45）、構成画（D-46）、発信計画（D-47）、書体と動き（D-52、D-53） |
+| 11/05〜06 | サンプルのゲーム4本（D-54、D-61）、カメラ効果（D-57）、チップで積む指示（D-62）、ノードのキャンバス（D-63）、音を作品ごとに変える（D-64）、不変条件をテストに結ぶ（D-65）、Claude Code との連携（D-66） |
+
+## Claude の使い方
+
+### 製品の中で
+
+Claude の呼び出しは役割ごとに分け、Claude が書いてよい範囲はプロンプトではなくコードで強制する。接続は、ログイン済みの Claude Code を headless で呼ぶのが既定（`claude -p`。API キーも使える）。
+
+| 役割 | 何を渡し、何を返させるか | コードが守ること |
+|---|---|---|
+| 企画（`discover`、D-45） | 最初のプロンプト。欠けがあるときだけ質問フォーム（5問まで） | ルックとスキルの id は実在を確かめる。発売日などの事実は作らせない |
+| 台本と構成（`plan`） | ブリーフ・骨格・規則・距離表・ロケハン写真・ムードボード | ビート順・尺・読み時間はコードで整える。自己検証の語を書かない（D-22） |
+| 修正（`revise`） | 指したカットと、plan と同じ凍結した仕様（D-48） | 変えてよいカットとキーをコードで絞る（カメラだけ・光だけ・音だけ・文字だけ） |
+| 音の設計 | ライブラリの一覧、ブリーフとルックの音の性格 | ほかのティザーが使う音に印を付ける（D-64） |
+| 場所選び（D-45、D-46） | ロケハンの写真と構成画 | 選べる写真の id はコードで確かめる |
+| 撮影後の確認（D-50） | 初回の撮影の中央フレーム | 聞くのは「被写体が写っているか」だけ。直すのは1回 |
+| チップの予測（D-62） | ロケハンで読んだ場所の記述 | effort は `low` に固定。何も書かない |
+
+どの経路に何が届くかは `every_path_that_writes_shots_gets_the_frozen_spec` が固定し、Claude を呼ぶ関数が全部その表に載っているかは `every_call_to_claude_is_in_the_spec_table_or_says_why_not` がソースから拾って確かめる。
+
+### 開発で（Claude Code）
+
+- 規約の正本は `AGENTS.md`（`CLAUDE.md` はそれを読み込むだけ）。不変条件の各項目には、守るテストの名前と、コードで確かめられない部分（「人間が守る:」）を書く。名前の無い項目や実在しないテストがあると `every_invariant_names_the_tests_that_keep_it` が落ちる。
+- 部分修正ループは `any_sequence_of_edits_rerenders_exactly_the_shots_whose_picture_changed` が、編集・元に戻す・撮影・ゲームの変化・承認のランダムな列（60 手 × 6 通りの種）で確かめる。期待値は「何が画を変えるか」だけから出す。実装をわざと5通りに壊して、どれでも落ちることを確かめた（D-65）。
+- フック（`tools/hooks/dev_guard.js`）: 画面の文言を足して英語の辞書に無ければ、その場で Claude に知らせる。ループを支えるファイルを変えたターンは、終わる前にループのテストを走らせ、落ちていればターンを終えずに戻す。
+- 自動メモリは切り、判断は `.claude/rules/product-decisions.md` に1行ずつ残す。UE 側の規約（`.claude/rules/ue5-cli.md`）は、UE を触るファイルを開いたときだけ読み込まれる。
+- サブエージェントは既定で sonnet。変更を不変条件に照らして読む読み取り専用の `invariant-reviewer` を置いている。
+
+## 失敗と直し
+
+実機で見つけた失敗を、仕組みで再発させないようにした記録（詳しくは各 D-）。
+
+| 症状 | 原因 | 直し | 守るテスト |
+|---|---|---|---|
+| ロケハン写真の約半分が真っ黒（Lanternless で 20 枚中約 10 枚） | 室内で、アンカーから一定の距離を引くと壁の中から撮っていた | UE が壁の手前へ寄せ、寄せた比でレンズを広げる（D-55） | `a_scout_camera_the_engine_pulled_in_front_of_a_wall_is_recorded_where_it_stood` |
+| マネキンを1体直すと 10 カット全部が撮り直し | 影の描画でも「写っていた」と数えていた | 視野に入り、遮られずに見えるものだけを数える（D-56） | `a_game_change_rerenders_only_the_shots_that_show_it` |
+| 人物の寄りや風車の羽根を狙ったカットが、足元や根元を写す | アンカーの点が基準点（足元・根元）だった | 狙う高さ `camera.aim` を足した。書かないカットは前と同じ画（D-60） | `aiming_at_the_upper_part_rerenders_that_shot_only_and_base_is_as_before` |
+| 4本のティザーで同じ音が使い回され、ストラテジーにホラーの曲 | 音の設計だけ、企画とルックの音の性格が渡っていなかった | 同じ仕様を渡し、ほかのティザーが使う音に印を付ける。Claude を呼ぶ全経路を表と照らすテストを足した（D-64） | `the_next_teaser_is_told_which_sounds_another_game_took`、`every_call_to_claude_is_in_the_spec_table_or_says_why_not` |
+| 不変条件 38 項目のうち、守るテストの名前があったのは 9 項目 | 文章で書いた決まりを、どのテストも見ていなかった | 全項目にテストの名前を書き、足りない 29 本を足した（D-65） | `every_invariant_names_the_tests_that_keep_it` |
+
+## 仕組み
 
 ショットを `shots.yaml` に書くと、Sequencer のシーケンスを組み、Movie Render Queue で撮影し、素材を名前付きで保持する。1カットだけ直したら、撮り直すのはその1カットだけ。
 
@@ -66,7 +173,7 @@ cargo build --release -p shotpilot-app         # アプリ: target/release/shotp
 - アプリと CLI は同じ `shots.yaml` を読み書きする。どちらから直しても数秒で反映される。
 - 中ではコアのライブラリが 127.0.0.1 の空きポートでだけ待ち受け、ウィンドウがそこを表示する。別プロセスは立てない。
 
-## まず試す（UE なし）
+## もう少し試す（UE なし）
 
 ```bash
 mkdir demo && cd demo
@@ -110,6 +217,24 @@ shotpilot pull                 # Sequencer で直したカメラを shots.yaml �
 shotpilot render final
 shotpilot cut final
 ```
+
+### サンプルのゲーム
+
+手元に UE5 のゲームが無いときに試すための、グレーボックスのゲームを自分で作れる。ゲームの仕組みは無く、テンプレートのキャラクターで歩けるだけ。4本ある（D-54、D-61）。ホラーの `Lanternless`（夜の閉じた病棟）、コージーの `KettleHill`（丘の上の茶屋の村。アンカーなしで、場所選びを Claude に任せる）、アクション・アドベンチャーの `AshenPillars`（灰の降る廃神殿）、ストラテジーの `Gridhold`（平原の砦）。どれも UE 5.8 の Third Person テンプレートから作り、Epic のアセットはリポジトリに入れない。以下は Lanternless の手順（ほかの3本も同じスクリプトで組む）。
+
+1. UE 5.8 のエディタで、新規プロジェクトを「ゲーム → 三人称 → Blueprint」、スターターコンテンツ無し、名前 `Lanternless` で作る。
+2. 上の4つのプラグインを有効にして、エディタを再起動する。
+3. 「ファイル → Python スクリプトを実行」で `tools/ue_sample/build_graybox.py` を選ぶ。`/Game/Lanternless/Maps/Lvl_Ward` ができ、起動マップになる。再生すると歩ける。エディタを開かずに組むなら、コマンドレットで同じスクリプトを走らせる（数秒で終わる）。
+
+   ```bash
+   UnrealEditor-Cmd.exe C:/path/Lanternless/Lanternless.uproject -run=pythonscript -script=C:/path/shotpilot/tools/ue_sample/build_graybox.py -unattended -nopause -NullRHI
+   ```
+
+4. アプリのホームで UE5 を選んで `.uproject` とマップを指定する（または `init --engine ue5 --uproject ... --map /Game/Lanternless/Maps/Lvl_Ward`）。アンカーは `SP_` の付いたアクター（受付、ストレッチャー、空の椅子、倒れた患者、廊下の奥の人影）。
+
+マネキンは動く。廊下の奥の人影はこちらへ歩き、R1 の患者は部屋を往復し、R2 の入口の患者は痙攣する（歩くものはレベルの自動再生シーケンス `LS_WardLife` が動かす）。動きは全コマを撮る `preview` と `final` で写る。`still` は飛び飛びの3コマなので、レベルの中の時間がほとんど進まない。
+
+マップは普通のアセットなので、組んだあとはエディタで手を入れてよい。スクリプトは既存のマップを上書きしないので、作り直すときはマップを消してから走らせる。
 
 ### Sequencer で直した場合
 
@@ -180,6 +305,7 @@ shotpilot revise "タイトルカットを最初に持ってきて"
 - ショット検査は、被写体（`look_at` のアンカー、無ければ `anchor`）の箱を画面に投影し、画面の高さの何割を占めるかを測る（`check` とアプリで表示）。カメラが箱の中にある、小さすぎる、大きすぎて切れている、を指摘する。
 - `revise`: 指示に関係するショットだけを書き換える（並べ替えと、SE・BGM も含む）。返ってきた編集は、適用する前に resolve して検証する。`--shot` を付けると、編集できる範囲をコードで制限する（このとき BGM は変えられない）。Claude が `audio/` に無いファイルを使おうとしたら、何も適用しない。
 - モデルの既定は `claude-opus-5-5`。`SHOTPILOT_MODEL` で上書きできる。effort（どこまで考えるか）は `low` / `medium` / `high` / `xhigh` / `max` から選べ、既定は `medium`。アプリでは入力欄の下のモデル名から開く接続設定で変え、CLI では `SHOTPILOT_EFFORT=high` のように環境変数で変える（環境変数が優先）。Claude Code 経由（`--effort`）でも API 経由（`output_config.effort`）でも同じ値が効く。Messages API を直接呼ぶ（ストリーミング、構造化出力、拒否されたときはサーバー側で既定のモデルに切り替える `fallbacks: "default"`）。
+- 弱いモデルでも型を再現できるように、構成の骨格（何カット・各何秒・どのビートか）は選んだ流行りの型の実測から作り、返答の崩れ（JSON の前後の文、語彙のゆれ、文字の空の行）はコードで直す（D-68）。OpenAI 互換のサーバー（vLLM・Ollama・llama.cpp・OpenRouter など）は `SHOTPILOT_PROVIDER=openai` と `SHOTPILOT_OPENAI_BASE_URL` で使える。`SHOTPILOT_CANDIDATES=3` にすると、plan を3案書かせてコードの採点で1つを残す（呼び出しは3倍）。モデルごとの再現の度合いは `shotpilot eval` で測る（`eval/README.md`）。
 
 ## コマンド一覧
 
@@ -200,16 +326,28 @@ shotpilot revise "タイトルカットを最初に持ってきて"
 | `cut [best\|quality]` | take を連結し、storyboard・spec・mp4 を出す（音があれば載せる） |
 | `sound [key=value…] [--json]` | BGM と SE をミックスし、サウンドチェックを出す。`bgm.file=…` などで `audio:` を直す |
 | `takes <shot>` / `log` / `gc` | take の一覧、履歴、古い take の削除 |
+| `eval [--models a,b] [--runs N] [--candidates N]` / `eval --replay <dir>` | plan を題材ごとに書かせ、実測の型との近さをコードで採点する（D-68、`eval/README.md`） |
+| `claude install [--dir <game>] [--force] [--print]` | ゲームのフォルダに Claude Code の Skill とフックを入れる（D-66） |
+| `hook session-start\|post-tool` | Claude Code が呼ぶフック。古くなったカットを知らせるだけで、常に終了コード 0 |
 
 ## 開発
 
 ```bash
 cargo test                 # UE も API キーも要らない（mock エンジンと差し替えクライアントで回す）
-cargo clippy --all-targets
+cargo clippy --all-targets # 警告ゼロを保つ
+node tools/i18n_extract.js # 画面の文言のうち、英語の辞書に無いものを出す
 ```
 
 fingerprint は Python 版（〜0.1）と同じ正規化 JSON を hash するので、Python 版で撮った UE の take はそのまま再利用される。previz だけは描画が変わったので撮り直しになる（数秒で終わる）。
 
-規約は `AGENTS.md` にある。
+規約は `AGENTS.md` に、判断の記録は `.claude/rules/product-decisions.md` にある。
 
-サウンドチェック（`soundcheck.rs`）は earshot（MIT License, Copyright (c) 2026 Leon Lin）の `critique` / `profile` / `features` を Rust に移植したもの。基準のプロファイル、重み、許容幅、判定の区切りは earshot のものをそのまま使う。
+## 出典とクレジット
+
+- サウンドチェック（`soundcheck.rs`）は earshot（MIT License, Copyright (c) 2026 Leon Lin）の `critique` / `profile` / `features` を Rust に移植したもの。基準のプロファイル、重み、許容幅、判定の区切りは earshot のものをそのまま使う。
+- 企画・ルック・スキルの形は open-design（nexu-io/open-design、Apache-2.0）の OD Next の計画ターン、`design-systems/`、`skills/` に倣った（コードは写していない）。ルックは汎用で、実在のゲームやスタジオの名前・ロゴ・色を写さない。
+- 書体は Google Fonts のもの（OFL。Kosugi・Kosugi Maru・Rock Salt は Apache 2.0）。使うときに取ってきてキャッシュし、リポジトリにもバイナリにも入れない。
+- サンプルのゲームは Epic の UE 5.8 Third Person テンプレートのアセット（マネキン、試作用の箱）で作る。アセットはリポジトリに入れず、組み立てのスクリプト（`tools/ue_sample/build_graybox.py`）だけを置く。
+- 効果音と曲は、作者が Splice で購入したサンプルを手元のライブラリ（リポジトリの外）から使う。リポジトリには入れず、再配布しない。`shotpilot init` の仮の音（`drone.wav` など）はコードで合成したもの。
+- ムードボードと構成画は OpenAI の画像生成（参照のみ）。ティザーの画はすべてゲームから撮る。
+- 実測したティザー（`references/teasers/`）は、長さ・カット・明るさなどの測定値と分析だけを置く。動画とフレーム画像は入れていない。
