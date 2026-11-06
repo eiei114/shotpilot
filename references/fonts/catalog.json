@@ -19,7 +19,8 @@
   "retro": "レトロ・ドット",
   "command": "戦略・司令室",
   "minimal": "静か・アート",
-  "narrative": "語り・日記"
+  "narrative": "語り・日記",
+  "worn": "崩れ・かすれ"
  },
  "roles": {
   "title": "タイトル（ロゴが無いとき）",
@@ -36,7 +37,8 @@
   ],
   "vhs-found-footage": [
    "dread",
-   "retro"
+   "retro",
+   "worn"
   ],
   "cozy-pastel": [
    "gentle",
@@ -863,7 +865,8 @@
    "class": "brush",
    "registers": [
     "wa",
-    "kinetic"
+    "kinetic",
+    "worn"
    ],
    "roles": [
     "title",
@@ -1028,7 +1031,8 @@
    "registers": [
     "wa",
     "epic",
-    "dread"
+    "dread",
+    "worn"
    ],
    "roles": [
     "title",
@@ -1827,7 +1831,8 @@
    "class": "hand",
    "registers": [
     "pop",
-    "wa"
+    "wa",
+    "worn"
    ],
    "roles": [
     "title"
@@ -2102,7 +2107,8 @@
    "class": "display",
    "registers": [
     "dread",
-    "pop"
+    "pop",
+    "worn"
    ],
    "roles": [
     "title"
@@ -2690,12 +2696,14 @@
    "class": "serif",
    "registers": [
     "dread",
-    "epic"
+    "epic",
+    "worn"
    ],
    "roles": [
+    "title",
     "card"
    ],
-   "note": "活版の凹凸が残るセリフ。"
+   "note": "活版の凹凸が残るセリフ。控えめな崩れ。古い記録、閉ざされた場所。"
   },
   {
    "family": "Libre Caslon Display",
@@ -3990,6 +3998,325 @@
     "sub"
    ],
    "note": "幅の軸を持つ等幅。"
+  },
+  {
+   "family": "Rock Salt",
+   "category": "Handwriting",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 438,
+   "added": "2011-01",
+   "license": "Apache-2.0",
+   "url": "https://fonts.google.com/specimen/Rock+Salt",
+   "script": "latin",
+   "class": "hand",
+   "registers": [
+    "worn",
+    "dread",
+    "narrative"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "マーカーの荒い走り書き。誰かが残したメモ、壁の落書き。"
+  },
+  {
+   "family": "Cabin Sketch",
+   "category": "Display",
+   "weights": [
+    400,
+    700
+   ],
+   "variable": false,
+   "popularity": 581,
+   "added": "2011-03",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Cabin+Sketch",
+   "script": "latin",
+   "class": "sketch",
+   "registers": [
+    "worn",
+    "gentle",
+    "narrative"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "鉛筆でなぞった線の字。手作りの温度。"
+  },
+  {
+   "family": "Fredericka the Great",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 626,
+   "added": "2011-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Fredericka+the+Great",
+   "script": "latin",
+   "class": "sketch",
+   "registers": [
+    "worn",
+    "dread",
+    "narrative"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "斜線で描いた下描きのセリフ。手で描き写した記録、患者や子どもが描いた字の不穏さ。"
+  },
+  {
+   "family": "Metal Mania",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 969,
+   "added": "2012-07",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Metal+Mania",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "尖ったメタルの字。バンド、暴力的な勢い。"
+  },
+  {
+   "family": "Rubik Glitch",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 981,
+   "added": "2022-02",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rubik+Glitch",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "tech",
+    "dread"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "横に裂けた字。映像や信号が壊れる題材に。土台が丸いゴシックなので、静かなホラーには軽い。"
+  },
+  {
+   "family": "Protest Revolution",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 994,
+   "added": "2024-01",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Protest+Revolution",
+   "script": "latin",
+   "class": "brush",
+   "registers": [
+    "worn",
+    "dread",
+    "kinetic"
+   ],
+   "roles": [
+    "title",
+    "card"
+   ],
+   "note": "かすれた刷毛の字。壁に殴り書きした言葉、追い詰められた叫び。"
+  },
+  {
+   "family": "Rubik Dirt",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1039,
+   "added": "2022-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rubik+Dirt",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "砂や汚れをかぶった太いゴシック。荒れ地、廃墟、戦場。"
+  },
+  {
+   "family": "Road Rage",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1050,
+   "added": "2021-10",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Road+Rage",
+   "script": "latin",
+   "class": "brush",
+   "registers": [
+    "worn",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "荒い筆の縦長。暴走、怒り。"
+  },
+  {
+   "family": "Frijole",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1051,
+   "added": "2011-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Frijole",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "retro"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "かすれた木版風の太い字。古い看板、西部劇。"
+  },
+  {
+   "family": "Caesar Dressing",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1102,
+   "added": "2011-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Caesar+Dressing",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "epic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "削れた古代の大文字。遺跡、呪い。現代の場所には合わない。"
+  },
+  {
+   "family": "Mystery Quest",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1331,
+   "added": "2012-02",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Mystery+Quest",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "gentle",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "歪んだセリフ。子ども向けのハロウィンの愉快さ。本気の恐怖には合わない。"
+  },
+  {
+   "family": "Rubik Scribble",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1447,
+   "added": "2023-12",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rubik+Scribble",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "pop"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "線で塗りつぶした字。落書き、子どもの手。"
+  },
+  {
+   "family": "Rubik Distressed",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1570,
+   "added": "2022-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rubik+Distressed",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "retro",
+    "kinetic"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "刷りがかすれた太いゴシック。古いポスター、判子。"
+  },
+  {
+   "family": "Rubik Burned",
+   "category": "Display",
+   "weights": [
+    400
+   ],
+   "variable": false,
+   "popularity": 1715,
+   "added": "2022-06",
+   "license": "OFL-1.1",
+   "url": "https://fonts.google.com/specimen/Rubik+Burned",
+   "script": "latin",
+   "class": "distressed",
+   "registers": [
+    "worn",
+    "dread"
+   ],
+   "roles": [
+    "title"
+   ],
+   "note": "縁が焼け焦げた白抜きの字。火事、焼け跡。"
   }
  ],
  "overused": [
@@ -4245,8 +4572,9 @@
    "why": "血の滴る書体はホラーの定番（検索の抜粋）。実測でも 10 本中 3 本",
    "instead": [
     "Gloock",
-    "Fraunces",
-    "IM Fell English"
+    "Fredericka the Great",
+    "Protest Revolution",
+    "Rubik Burned"
    ]
   },
   {
@@ -4256,7 +4584,8 @@
    "why": "同上",
    "instead": [
     "Gloock",
-    "Instrument Serif"
+    "Instrument Serif",
+    "Protest Revolution"
    ]
   },
   {
@@ -4266,7 +4595,8 @@
    "why": "同上",
    "instead": [
     "Gloock",
-    "Grenze Gotisch"
+    "Grenze Gotisch",
+    "Rubik Burned"
    ]
   },
   {
@@ -4276,7 +4606,8 @@
    "why": "同上",
    "instead": [
     "Gloock",
-    "Grenze Gotisch"
+    "Grenze Gotisch",
+    "Fredericka the Great"
    ]
   },
   {
