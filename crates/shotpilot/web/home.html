@@ -11,12 +11,14 @@
   --soft: #f3f6f7; --tray: #eceff0; --accent: #3be02b; --accent-ink: #0b3d06; --stale: #d99a00; --err: #d92d20;
   --hook: #ff6b3d; --establish: #3d8bff; --escalate: #b45cff; --title: #3be02b;
   --shadow: 0 1px 3px rgb(16 24 40 / .06); --pop: 0 10px 34px rgb(16 24 40 / .16);
+  --scroll: #c9d1d5; --scroll-hover: #a3acb1;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   --serif: "Iowan Old Style", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #6b7276; --line: #2a2e30;
+    --scroll: #34393c; --scroll-hover: #4b5155;
     --soft: #202325; --tray: #1d2022; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
   }
 }
@@ -28,6 +30,25 @@ body { margin: 0; background: var(--app); color: var(--ink); overflow: hidden;
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
+/* Scrollbars and sliders drawn in the app's own colours (no OS arrows or white tracks).
+   Chromium ignores ::-webkit-scrollbar on elements that set the standard scrollbar colour or width, so neither is set anywhere. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb { background: var(--scroll); border: 3px solid transparent; background-clip: padding-box;
+  border-radius: 999px; min-height: 32px; min-width: 32px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-hover); }
+::-webkit-scrollbar-thumb:active { background-color: var(--muted); }
+input[type=range] { -webkit-appearance: none; appearance: none; height: 18px; padding: 0; margin: 0;
+  background: transparent; cursor: pointer; --range: var(--ink); }
+input[type=range]:focus { outline: none; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: var(--scroll); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px;
+  border-radius: 50%; background: var(--card); border: 2px solid var(--range); box-shadow: 0 1px 2px rgb(0 0 0 / .25);
+  transition: transform .12s; }
+input[type=range]:hover::-webkit-slider-thumb, input[type=range]:active::-webkit-slider-thumb { transform: scale(1.15); }
+input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--range) 30%, transparent); }
+input[type=range]:disabled { cursor: default; opacity: .45; }
 svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ------------------------------------------------------------------ shell: rail + main card */
@@ -45,7 +66,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
   border: 0; background: none; width: 100%; }
 .rail-h svg { width: 14px; height: 14px; transition: transform .15s; }
 .rail-h.closed svg { transform: rotate(-90deg); }
-#recent { overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+#recent { overflow-y: auto; min-height: 0; flex: 1; }
 .rec { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; border: 0; background: none; width: 100%;
   color: var(--ink); text-align: left; font-size: 13.5px; }
 .rec:hover { background: color-mix(in srgb, var(--card) 45%, transparent); }
@@ -55,7 +76,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .rec.gone { color: var(--faint); }
 .rail-foot { padding: 10px 12px 0; color: var(--faint); font-size: 11.5px; }
 #main { margin: 10px 10px 10px 0; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--line);
-  min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; position: relative; }
+  min-width: 0; min-height: 0; overflow-y: auto; position: relative; }
 .view { min-height: 100%; }
 
 /* ------------------------------------------------------------------ home: hero + composer */
@@ -122,6 +143,51 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .ex .tag { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 1px 8px; }
 .blank { margin-top: 14px; border: 0; background: none; color: var(--muted); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
 .blank:hover { color: var(--ink); }
+
+/* ------------------------------------------------------------------ the vibe stack (D-62)
+   Atmosphere chips stacked onto the first prompt, chained; Claude predicts the next ones from what is typed. */
+.cwrap { position: relative; isolation: isolate; }
+.cwrap::before { content: ""; position: absolute; inset: -3px; border-radius: 23px; z-index: -1; opacity: 0; transition: opacity .4s;
+  background: linear-gradient(120deg, var(--hook), var(--escalate), var(--establish), var(--title)); background-size: 300% 300%; filter: blur(16px); }
+.cwrap.thinking::before { opacity: .38; animation: aurora 3.2s ease-in-out infinite; }
+@keyframes aurora { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.vrail { display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px; padding: 0 2px; }
+.vrail:empty { display: none; }
+.vnode { --c: var(--ink); display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  background: color-mix(in srgb, var(--c) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--c) 45%, var(--line)); }
+.vnode::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 20%, transparent); }
+.vnode.ai { --c: var(--escalate); }
+.vnode.new { animation: vin .34s cubic-bezier(.2, .9, .3, 1.35) both; }
+@keyframes vin { from { opacity: 0; transform: translateY(8px) scale(.8); } }
+.vnode button { border: 0; background: none; padding: 0 3px; color: var(--muted); font-size: 11px; line-height: 1; }
+.vnode button:hover { color: var(--err); }
+.vlink { width: 16px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--hook), var(--escalate), var(--establish)); opacity: .75; }
+.vibes { width: min(780px, 100%); margin-top: 16px; display: grid; gap: 10px; }
+.vhead { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.vhead h2 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 8px 0 6px; }
+.vhead .sp { flex: 1; }
+.vtab { --c: var(--muted); border: 0; background: none; padding: 5px 11px; border-radius: 999px; color: var(--muted); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.vtab i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); display: inline-block; }
+.vtab:hover { color: var(--ink); }
+.vtab.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+.vtoggle { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 4px 8px; border-radius: 8px; }
+.vtoggle:hover { color: var(--ink); background: var(--soft); }
+.vrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 4px; }
+.vrow .lbl { font-size: 11px; font-weight: 700; letter-spacing: .04em; margin-right: 4px; white-space: nowrap;
+  background: linear-gradient(90deg, var(--hook), var(--escalate), var(--establish)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vrow .muted { color: var(--faint); font-size: 12.5px; }
+.vchip { --c: var(--line); border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); background: var(--card); border-radius: 999px; padding: 5px 12px 5px 10px;
+  font-size: 13px; color: var(--ink); transition: transform .14s, border-color .14s, box-shadow .14s; }
+.vchip:hover { transform: translateY(-1px); border-color: var(--ink); box-shadow: 0 3px 10px rgb(16 24 40 / .08); }
+.vchip .plus { color: var(--faint); margin-right: 5px; font-weight: 700; }
+.vchip.ai { border-color: transparent; background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(120deg, var(--hook), var(--escalate), var(--establish)) border-box; }
+.vchip.ai .plus { color: var(--escalate); }
+.vchip.ai:hover { box-shadow: 0 4px 18px color-mix(in srgb, var(--escalate) 30%, transparent); }
+.vchip.first::after { content: "Tab"; font: 600 10px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 7px; }
+.vchip.ghost { width: 104px; height: 31px; border: 0; padding: 0; animation: vshimmer 1.3s linear infinite;
+  background: linear-gradient(90deg, var(--soft) 20%, color-mix(in srgb, var(--escalate) 22%, var(--soft)) 50%, var(--soft) 80%); background-size: 220% 100%; }
+@keyframes vshimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .cwrap.thinking::before, .vnode.new, .vchip.ghost { animation: none; } .vchip { transition: none; } }
 
 /* ------------------------------------------------------------------ all projects */
 .page { padding: 34px 34px 50px; }
@@ -219,9 +285,10 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
         <h1>どんな<mark id="kind-word">ティザー</mark>を撮る？</h1>
         <p>カットを Claude が組み、気になる1カットだけ直して撮り直す。</p>
       </div>
-      <div class="cwrap">
+      <div class="cwrap" id="cwrap">
         <div class="composer">
           <textarea id="prompt" rows="3" placeholder=""></textarea>
+          <div class="vrail" id="vrail"></div>
           <div class="crow">
             <span class="pill-wrap" style="position:relative"><button class="pill accent" id="kind-btn"></button><div class="menu" id="kind-menu" hidden></div></span>
             <span class="pill-wrap" style="position:relative"><button class="pill" id="genre-btn" title="ジャンル。選ぶと、そのジャンルで実測したティザーの型（速さ・色調・台本の手法）で組みます"></button><div class="menu" id="genre-menu" hidden></div></span>
@@ -233,9 +300,10 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
         </div>
         <div class="tray" id="tray"></div>
       </div>
+      <div class="vibes" id="vibes"></div>
       <div class="hint" id="ai-warn" hidden><span class="dot bad"></span><span id="ai-err">Claude に接続されていません。</span><button data-view="settings">接続を設定する</button></div>
       <div class="examples">
-        <h2>例から始める…</h2>
+        <h2>例</h2>
         <div id="examples"></div>
       </div>
       <button class="blank" id="sample">…またはサンプルで試す（UE なし・6カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
@@ -336,6 +404,11 @@ const ui = {
   menu: null,            // open card menu path
   filter: "",
   busy: false,
+  vibes: [],             // atmosphere chips stacked onto the prompt: [{label, note, ai, c}]
+  vibeTab: "光",         // the palette group on show
+  vpred: {},             // prompt + stack -> {state, chips}: Claude's predictions
+  vcur: "",              // the prediction on show (the last one asked for)
+  vnew: -1,              // the chip just stacked (it pops in once)
 };
 
 // ------------------------------------------------------------------ data
@@ -429,6 +502,76 @@ const ICON = {
   dots: '<svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>',
 };
 
+// ------------------------------------------------------------------ the vibe stack (D-62)
+// The prompt is the only thing typed. Atmosphere is stacked from chips (a palette, and Claude's predictions
+// for what is typed), chained after the prompt and sent with it.
+
+const VIBES = [
+  { g: "光", c: "#f5b301", items: ["月明かり", "夕焼けの逆光", "明滅する蛍光灯", "非常灯の赤", "窓から差す光", "朝の柔らかい光", "提灯の灯り"] },
+  { g: "色", c: "#ff4fa3", items: ["冷たい青", "暖かい琥珀", "赤を一点だけ", "色を抜いた灰色", "鮮やかな原色", "深い緑"] },
+  { g: "空気", c: "#2ec4b6", items: ["霧", "雨", "漂うほこり", "灰が降る", "湯気", "しんとした静けさ"] },
+  { g: "質感", c: "#a1887f", items: ["フィルムの粒子", "VHS のにじみ", "濡れた路面", "古びた漆喰", "苔むした石"] },
+  { g: "テンポ", c: "var(--escalate)", items: ["静かに始めて最後に崩す", "速いカットで畳みかける", "長回しで溜める", "黒をはさんで間を作る"] },
+  { g: "カメラ", c: "var(--establish)", items: ["固定カメラ", "ゆっくり前進", "手持ちの揺れ", "見上げる低い位置", "真上から見下ろす"] },
+  { g: "終わり方", c: "var(--title)", items: ["扉が閉まってタイトル", "無音でタイトル", "最後に一瞬だけ見せる", "ロゴを長く残す"] },
+];
+const vnorm = (s) => String(s || "").replace(/[\s。、.,!！?？・]/g, "").toLowerCase();
+const predOn = () => { try { return localStorage.getItem("sp-predict") !== "0"; } catch { return true; } };
+const vibeNote = () => ui.vibes.map((v) => v.note).join(window.SP_LANG === "en" ? ", " : "・");
+const vpredId = () => [$("prompt").value.trim(), ui.genre, ui.kind, ...ui.vibes.map((v) => v.note)].join("\u0001");
+let vTimer = 0;
+function vpredictSoon(delay = 500) { clearTimeout(vTimer); vTimer = setTimeout(vpredict, delay); }
+async function vpredict() {
+  const pitch = $("prompt").value.trim();
+  if (!ui.home?.ai?.ready || !predOn()) return;
+  if ([...pitch].length < 6) { ui.vcur = ""; drawVibes(); return; } // predictions for words no longer in the prompt go
+  const id = vpredId();
+  ui.vcur = id;
+  if (ui.vpred[id]) { drawVibes(); return; }
+  ui.vpred[id] = { state: "loading", chips: [] }; drawVibes();
+  let chips = [], state = "done";
+  try { chips = (await api("POST", "/api/suggest", { target: "pitch", pitch, genre: ui.genre, kind: ui.kind, stack: ui.vibes.map((v) => v.note), lang: window.SP_LANG || "ja" })).chips || []; }
+  catch { state = "failed"; }
+  ui.vpred[id] = { state, chips };
+  drawVibes();
+}
+function vibeAdd(c) {
+  const tr = window.tr || ((x) => x); // in English the words go out in English, like the chips on screen
+  const v = { ...c, label: tr(c.label), note: tr(c.note) };
+  if (!ui.vibes.some((x) => vnorm(x.note) === vnorm(v.note))) { ui.vibes.push(v); ui.vnew = ui.vibes.length - 1; }
+  drawVibes(); vpredictSoon();
+}
+function vibeDrop(i) { ui.vibes.splice(i, 1); ui.vnew = -1; drawVibes(); vpredictSoon(); }
+
+/** The chain inside the composer, and the palette under it (Claude's predictions first). */
+function drawVibes() {
+  $("vrail").innerHTML = ui.vibes.map((v, i) => `${i ? '<i class="vlink"></i>' : ""}<span class="vnode${v.ai ? " ai" : ""}${i === ui.vnew ? " new" : ""}"${v.c ? ` style="--c:${v.c}"` : ""}>${esc(v.label)}<button type="button" data-vrm="${i}" title="外す">✕</button></span>`).join("");
+  ui.vnew = -1;
+  const ai = !!ui.home?.ai?.ready, typed = [...$("prompt").value.trim()].length >= 6;
+  const p = ui.vpred[ui.vcur];
+  const have = new Set(ui.vibes.map((v) => vnorm(v.note)));
+  const set = [];
+  const trn = window.tr || ((x) => x); // a picked chip is stored translated: compare the same words
+  const add = (c) => { const k = vnorm(c.ai ? c.note : trn(c.note)); if (!k || have.has(k)) return -1; have.add(k); set.push(c); return set.length - 1; };
+  // predictions off (or Claude not connected): their chips are not drawn, so none may take Tab either
+  const aiIdx = ((ai && predOn() ? p?.chips : null) || []).map((t) => add({ label: t, note: t, ai: true })).filter((i) => i >= 0);
+  const g = VIBES.find((x) => x.g === ui.vibeTab) || VIBES[0];
+  const codeIdx = g.items.map((t) => add({ label: t, note: t, c: g.c })).filter((i) => i >= 0);
+  ui.vset = set;
+  const chip = (i, first) => { const c = set[i]; return `<button type="button" class="vchip${c.ai ? " ai" : ""}${first ? " first" : ""}" data-vadd="${i}"${c.c ? ` style="--c:${c.c}"` : ""} title="${esc(c.ai ? "Claude の予測。押すと積む" : "押すと積む")}"><span class="plus">${c.ai ? "✦" : "+"}</span>${esc(c.label)}</button>`; };
+  let aiRow = "";
+  if (ai && predOn()) {
+    const ghosts = p?.state === "loading" ? '<span class="vchip ghost"></span><span class="vchip ghost"></span><span class="vchip ghost"></span>' : "";
+    const body = aiIdx.length || ghosts ? aiIdx.map((i, j) => chip(i, j === 0)).join("") + ghosts
+      : (typed ? `<span class="muted" title="下から選べます">予測なし</span>${p?.state === "failed" ? `<button type="button" class="vchip" data-vretry title="再試行">↻</button>` : ""}` : '<span class="vchip ghost" title="ゲームのことを書くと、合いそうな雰囲気を Claude が予測します"></span><span class="vchip ghost"></span><span class="vchip ghost"></span>');
+    aiRow = `<div class="vrow"><span class="lbl" title="この企画に合いそう">✦</span>${body}</div>`;
+  }
+  $("cwrap").classList.toggle("thinking", p?.state === "loading");
+  $("vibes").innerHTML = `<div class="vhead"><h2 title="雰囲気を積む">雰囲気</h2>${VIBES.map((x) => `<button type="button" class="vtab${x.g === g.g ? " on" : ""}" data-vtab="${esc(x.g)}" style="--c:${x.c}"><i></i>${esc(x.g)}</button>`).join("")}
+      <span class="sp"></span>${ai ? `<button type="button" class="vtoggle" data-vpred title="Claude の予測: ${predOn() ? "オン" : "オフ"}。雰囲気を予測します（軽い呼び出し）">✦ ${predOn() ? "オン" : "オフ"}</button>` : ""}</div>
+    ${aiRow}<div class="vrow">${codeIdx.map((i) => chip(i, false)).join("")}</div>`;
+}
+
 // ------------------------------------------------------------------ drawing
 
 function draw() {
@@ -470,13 +613,13 @@ function drawHome() {
   if (!ai.ready && ai.error) $("ai-err").textContent = `Claude に接続されていません（${ai.error}）。プロジェクトは作れますが、企画と一気に作るには接続が要ります。`;
   $("send").title = ai.ready ? "作る：プロジェクトを作り、企画してから、ロケハン・台本と構成・previz まで進める (Ctrl+Enter)" : "プロジェクトを作る (Ctrl+Enter)";
   drawTray();
+  drawVibes();
   if (!$("examples").childElementCount) {
     $("examples").innerHTML = EXAMPLES.map((x, i) => {
       const bars = ["hook", "establish", "escalate", "title"].map((b, j) =>
         `<i style="flex:${x.beats[j]};height:${30 + (j === 2 ? 60 : j * 14)}%;background:${BEAT[b]}"></i>`).join("");
-      return `<button class="ex" data-ex="${i}"><span class="art">${bars}</span>
-        <span><span class="t">${ICON.spark}${esc(x.title)}<span class="tag">${esc(KINDS[x.kind].label)} · ${esc(x.tag)}</span></span>
-        <span class="d">${esc(x.prompt)}</span></span></button>`;
+      return `<button class="ex" data-ex="${i}" title="${esc(x.prompt)}"><span class="art">${bars}</span>
+        <span><span class="t">${ICON.spark}${esc(x.title)}<span class="tag">${esc(KINDS[x.kind].label)} · ${esc(x.tag)}</span></span></span></button>`;
     }).join("");
   }
 }
@@ -653,8 +796,11 @@ async function create(sample = false) {
   if (ui.busy) return;
   const prompt = $("prompt").value.trim();
   if (!sample && !prompt) { $("prompt").focus(); toast("どんな映像にしたいかを書いてください"); return; }
+  // the stacked atmosphere rides on the prompt: the planning turn reads both as the request
+  const vibe = vibeNote();
+  const pitch = vibe ? `${prompt}\n${window.SP_LANG === "en" ? "Mood" : "雰囲気"}: ${vibe}` : prompt;
   const body = { engine: sample ? "mock" : ui.engine, kind: ui.kind, genre: sample ? "" : ui.genre, sample,
-    name: sample ? "サンプル" : (ui.name.trim() || nameFromPrompt(prompt)), pitch: sample ? "" : prompt,
+    name: sample ? "サンプル" : (ui.name.trim() || nameFromPrompt(prompt)), pitch: sample ? "" : pitch,
     location: ui.location };
   if (!sample && ui.engine === "ue5") {
     if (!ui.uproject?.path) { toast("UE プロジェクト（.uproject）を選んでください"); return pickUproject(); }
@@ -665,7 +811,7 @@ async function create(sample = false) {
   try {
     await api("POST", "/api/projects/create", body);
     // the studio picks this up and runs the first pass in one go (D-28)
-    if (!sample && ui.home?.ai?.ready) sessionStorage.setItem("shotpilot.produce", JSON.stringify({ note: prompt }));
+    if (!sample && ui.home?.ai?.ready) sessionStorage.setItem("shotpilot.produce", JSON.stringify({ note: pitch }));
     location.href = "/";
   } catch (e) { toast(e.message, true); ui.busy = false; $("send").disabled = false; }
 }
@@ -700,10 +846,15 @@ document.addEventListener("click", (e) => {
   if (t.closest("#kind-btn")) { const m = $("kind-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   if (t.closest("#engine-btn")) { const m = $("engine-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   if (!t.closest(".menu")) closeMenus();
+  const va = t.closest("[data-vadd]"); if (va) { const c = ui.vset?.[+va.dataset.vadd]; if (c) vibeAdd(c); va.blur(); return; }
+  const vr = t.closest("[data-vrm]"); if (vr) { vibeDrop(+vr.dataset.vrm); return; }
+  const vt = t.closest("[data-vtab]"); if (vt) { ui.vibeTab = vt.dataset.vtab; drawVibes(); return; }
+  if (t.closest("[data-vretry]")) { delete ui.vpred[ui.vcur]; vpredict(); return; }
+  if (t.closest("[data-vpred]")) { try { localStorage.setItem("sp-predict", predOn() ? "0" : "1"); } catch { /* per-viewer */ } drawVibes(); if (predOn()) vpredictSoon(0); return; }
   const ex = t.closest("[data-ex]");
   if (ex) {
     const x = EXAMPLES[+ex.dataset.ex];
-    ui.kind = x.kind; if (x.genre) ui.genre = x.genre; savePrefs(); $("prompt").value = window.tr(x.prompt); drawHome();
+    ui.kind = x.kind; if (x.genre) ui.genre = x.genre; savePrefs(); $("prompt").value = window.tr(x.prompt); drawHome(); vpredictSoon(200);
     $("main").scrollTo({ top: 0, behavior: "smooth" }); $("prompt").focus(); return;
   }
   if (t.closest("#pick-loc")) { pickLocation(); return; }
@@ -716,10 +867,17 @@ $("sample").addEventListener("click", () => create(true));
 $("model-btn").addEventListener("click", () => go("settings"));
 $("open-btn").addEventListener("click", openFolder);
 $("recent-h").addEventListener("click", () => { ui.railOpen = !ui.railOpen; savePrefs(); drawRail(); });
-$("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); create(false); } });
+$("prompt").addEventListener("keydown", (e) => {
+  if (e.isComposing || e.keyCode === 229) return; // Japanese input: Tab and Ctrl+Enter belong to the conversion
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); create(false); return; }
+  // Tab takes Claude's first prediction, like a completion
+  const first = (ui.vset || []).find((c) => c.ai);
+  if (e.key === "Tab" && !e.shiftKey && first) { e.preventDefault(); vibeAdd(first); }
+});
 $("prompt").addEventListener("input", () => {
   const el = $("prompt"); el.style.height = "auto"; el.style.height = Math.min(260, el.scrollHeight) + "px";
   const n = $("name-in"); if (n) n.placeholder = nameFromPrompt(el.value);
+  vpredictSoon(1200); // predict once the typing pauses
 });
 $("tray").addEventListener("input", (e) => { if (e.target.id === "name-in") ui.name = e.target.value; });
 $("tray").addEventListener("change", (e) => { if (e.target.id === "map-sel") { ui.map = e.target.value; savePrefs(); } });

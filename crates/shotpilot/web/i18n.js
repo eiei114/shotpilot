@@ -158,5 +158,7 @@
   }
   // CSS-drawn labels
   document.documentElement.style.setProperty("--label-rendering", '"Filming"');
+  document.documentElement.style.setProperty("--label-revising", '"Revising…"');
+  document.documentElement.style.setProperty("--label-filming", '"Filming…"');
   document.addEventListener("DOMContentLoaded", () => { walk(document.body); document.title = tr(document.title); });
 })();
