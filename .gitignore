@@ -22,3 +22,6 @@ crates/shotpilot-app/gen/
 
 # Teaser references: frames of third-party works stay local
 references/teasers/*/preview/
+
+# Eval runs (shotpilot eval writes eval/runs/<time>/; the cases under eval/cases are kept)
+eval/runs/
