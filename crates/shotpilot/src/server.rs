@@ -586,6 +586,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
             "title_size": ws.defn.finish.title_size,
             "logo": ws.defn.finish.logo,
             "motion": motion_json(&ws.defn.finish.motion),
+            "motion_cfg": ws.defn.finish.motion.to_value(),
         },
         "stage": {
             "summary": ws.defn.stage.summary,
@@ -596,11 +597,33 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "assets_count": crate::scout::load_assets(&ws.root).len(),
         "pitch": ws.defn.teaser.pitch,
         "fps": ws.defn.teaser.fps,
+        "vocab": vocab_json(),
         "shots": shots,
         "audio": ws.defn.audio,
         "cut": latest_cut(&ws.root),
         "promo": crate::promo::summary(ws, crate::promo::today()),
     }))
+}
+
+/// The closed vocabularies the page offers as choices (one copy, here): it only adds Japanese names.
+fn vocab_json() -> Value {
+    json!({
+        "time_of_day": crate::model::TIME_OF_DAY.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+        "moves": crate::model::MOVES,
+        "aims": crate::model::AIMS,
+        "transitions": crate::finish::TRANSITIONS,
+        "fx": crate::fx::FX.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+        "fx_max": crate::fx::MAX_PER_SHOT,
+        "fx_burst": crate::fx::FX.iter().map(|(n, _)| (n.to_string(), json!(crate::fx::burst(n)))).collect::<serde_json::Map<_, _>>(),
+        "lens_steps": crate::workspace::LENS_STEPS,
+        "energies": crate::motion::ENERGIES,
+        "title_size_default": crate::finish::TITLE_SIZE,
+        "avoidable": crate::motion::AVOIDABLE,
+        "faces": crate::fonts::catalog().families.iter().filter(|f| crate::fonts::overused(&f.family).is_none()).map(|f| {
+            json!({"f": f.family, "s": if f.script == "latin" { "latin" } else { "ja" }, "k": f.kanji != "none",
+                   "t": f.roles.iter().any(|r| r == "title"), "w": f.weights})
+        }).collect::<Vec<_>>(),
+    })
 }
 
 /// The cut in order (shots and script slots) with start and length in seconds.
@@ -863,10 +886,15 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let body = req.json()?;
             let shot = body.get("shot").and_then(Value::as_str).unwrap_or("");
             let kind = body.get("kind").and_then(Value::as_str).unwrap_or("");
+            // how big: s / m / l (m when left out); anything else is refused
+            let amount = match body.get("amount") {
+                None | Some(Value::Null) => "m",
+                Some(v) => v.as_str().unwrap_or(""),
+            };
             let _guard = app.mutate()?;
             let mut ws = app.ws()?;
             let sid = ws.select_one(shot)?.id;
-            let rep = ws.nudge(&sid, kind)?;
+            let rep = ws.nudge_by(&sid, kind, amount)?;
             let mut out = rep.to_json();
             out["changes"] = ws.state.history().last().map(|e| e["changes"].clone()).unwrap_or(Value::Null);
             send_json(stream, false, 200, &out).map_err(io)
@@ -1019,10 +1047,13 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             };
             let limit = arg("limit").parse().unwrap_or(200).min(1000);
             let root = app.root();
+            let worn = lib.worn(&root);
             let items: Vec<Value> = lib.search(&arg("q"), &arg("kind"), limit).into_iter().map(|s| {
                 let mut v = s.to_json();
                 v["url"] = json!(format!("/library/{}", percent_encode(&s.id)));
                 v["imported"] = json!(lib.imported(s, &root));
+                // teasers of other games that use it now (D-64)
+                v["others"] = json!(worn.get(&s.id).copied().unwrap_or(0));
                 v
             }).collect();
             let out = json!({
@@ -1275,6 +1306,16 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             ws.remove_moodboard_image(rel)?;
             send_json(stream, false, 200, &json!({"images": ws.defn.brief.images})).map_err(io)
         }
+        ("POST", "/api/suggest") => {
+            // chips for the stack composer (D-62): one quick read, nothing is written and no lock is
+            // taken. The home asks before a project exists (its first prompt), so no workspace then.
+            let body = req.json()?;
+            let ask = crate::suggest::Ask::from_json(&body);
+            let claude = (app.claude)(&app.settings())?;
+            let ws = if ask.target == "pitch" { None } else { Some(app.ws()?) };
+            let chips = crate::suggest::suggest(ws.as_ref().map(|w| &w.defn), &ask, claude.as_ref())?;
+            send_json(stream, false, 200, &json!({"chips": chips})).map_err(io)
+        }
         ("POST", "/api/plan") => {
             let out = plan(app, &req.json()?)?;
             send_json(stream, false, 200, &out).map_err(io)
@@ -1338,8 +1379,20 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     let all = body.get("all").and_then(Value::as_bool) == Some(true);
     let line_id = body.get("line").and_then(Value::as_str).filter(|s| !s.is_empty());
     let shot_given = body.get("shot").and_then(Value::as_str).is_some_and(|s| !s.is_empty());
+    // the cuts a mood on the canvas is wired to (D-62): a note for those cuts and no other
+    let wired: Vec<&str> = body.get("shots").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).filter(|s| !s.is_empty()).collect();
     let scope = match body.get("shot").and_then(Value::as_str).filter(|s| !s.is_empty()) {
         Some(s) => Some(vec![ws.select_one(s)?.id]),
+        None if !wired.is_empty() => {
+            let mut ids: Vec<String> = Vec::new();
+            for s in &wired {
+                let id = ws.select_one(s)?.id;
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+            Some(ids)
+        }
         // one part of every shot (e.g. the cameras, keeping the script) is still a scoped note
         None if aspect.is_some() && all => Some(ws.defn.shot_ids()),
         // the words of one card between shots: no shot changes
@@ -1351,7 +1404,8 @@ fn revise(app: &App, body: &Map<String, Value>) -> Result<Value> {
     match scope.as_deref() {
         Some([]) | None => {}
         Some([one]) => context.push(format!("shot {one}")),
-        Some(many) => context.push(format!("all {} shots", many.len())),
+        Some(many) if many.len() == ws.defn.shots.len() => context.push(format!("all {} shots", many.len())),
+        Some(many) => context.push(format!("shots {}", many.join(", "))),
     }
     if let Some(a) = aspect {
         let Some(fields) = ai::aspect_fields(a) else {

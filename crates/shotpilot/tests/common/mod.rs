@@ -36,6 +36,18 @@ pub fn ws() -> Fixture {
     Fixture { dir, ws }
 }
 
+/// The same demo project one folder down (`<temp>/game/shots.yaml`), for tests that make
+/// projects next to it: the siblings stay inside the temp dir, apart from other tests.
+pub fn ws_nested() -> Fixture {
+    let dir = tempfile::tempdir().unwrap();
+    let game = dir.path().join("game");
+    std::fs::create_dir_all(&game).unwrap();
+    let p = game.join("shots.yaml");
+    std::fs::write(&p, templates::render(DEMO, "t", "mock", "null", "/Game/Maps/Courtyard")).unwrap();
+    let ws = Workspace::open(&p).unwrap();
+    Fixture { dir, ws }
+}
+
 /// Mock engine launch records (`.shotpilot/mock_engine/launches.jsonl`).
 pub fn launches(ws: &Workspace) -> Vec<Value> {
     let f = ws.root.join(".shotpilot").join("mock_engine").join("launches.jsonl");

@@ -18,6 +18,7 @@ use crate::bail;
 use crate::craft;
 use crate::error::{Error, Result};
 use crate::library::Library;
+use std::cell::RefCell;
 use crate::model::{self, beat_guide, num, tod_names_sorted, Definition, BEATS, MOVES};
 use crate::sound;
 use crate::yamlio;
@@ -44,7 +45,10 @@ const CONVENTIONS: &str = "\
 Unreal Engine conventions: units are centimeters, Z is up, X forward, Y right.
 A camera is placed relative to an anchor (a named point in the level) with an
 offset [x, y, z] in world space, and looks at that anchor unless look_at names
-another anchor. 1.7 m eye height is z=170 relative to the ground. Typical framing
+another anchor. An anchor's point is its base on the ground (a person's feet, a building's
+footing); `aim` says where on it the camera looks: base, center, or upper (a person's head and
+shoulders, the top of a tower). Frame a person's face or a held sword with aim upper.
+1.7 m eye height is z=170 relative to the ground. Typical framing
 distances: close-up 80-200 cm at 50-85 mm, medium 250-500 cm at 35-50 mm,
 wide 800-3000 cm at 18-28 mm.
 Moves: static, dolly_in/dolly_out (distance cm along view), truck_left/truck_right
@@ -69,6 +73,8 @@ fn shot_schema() -> Value {
             "anchor": {"type": "string"},
             "offset": {"type": "array", "items": {"type": "number"}},
             "look_at": {"type": "string", "description": "anchor name, or empty string to look at `anchor`"},
+            "aim": {"type": "string", "enum": crate::model::AIMS,
+                    "description": "where on the looked-at anchor: base (its point on the ground: a person's feet), center (the middle of it), upper (a person's head and shoulders, the top of a building)"},
             "focal_length": {"type": "number"},
             "move": {"type": "string", "enum": MOVES},
             "move_amount": {"type": "number", "description": "cm for dolly/truck/crane, degrees for orbit, 0 for static"},
@@ -86,10 +92,34 @@ fn shot_schema() -> Value {
                 "additionalProperties": false,
             }},
         },
-        "required": ["id", "beat", "purpose", "duration", "anchor", "offset", "look_at", "focal_length", "move",
+        "required": ["id", "beat", "purpose", "duration", "anchor", "offset", "look_at", "aim", "focal_length", "move",
                      "move_amount", "time_of_day", "notes", "appear"],
         "additionalProperties": false,
     })
+}
+
+/// The title faces the planner may name, with "" for the look's display face (D-59).
+fn title_face_enum() -> Vec<String> {
+    std::iter::once(String::new()).chain(crate::fonts::title_faces().into_iter().map(|f| f.family.clone())).collect()
+}
+
+/// `finish.fonts` with the title face set (the look's faces, else the cut's, kept).
+fn fonts_with_title(base: Option<&Value>, defn: &Definition, title: Option<&crate::fonts::Spec>) -> Value {
+    let mut fonts = match base {
+        Some(Value::Object(m)) => Value::Object(m.clone()),
+        _ => defn.finish.fonts.to_value(),
+    };
+    if let Some(o) = fonts.as_object_mut() {
+        match title {
+            Some(t) => {
+                o.insert("title".into(), json!(t.label()));
+            }
+            None => {
+                o.remove("title");
+            }
+        }
+    }
+    fonts
 }
 
 /// The entrances a line may ask for, with "" for the profile's own.
@@ -143,8 +173,11 @@ pub fn plan_schema() -> Value {
     let mut shot = shot_schema();
     shot["properties"]["transition"] = json!({"type": "string", "enum": crate::finish::TRANSITIONS,
                                               "description": "how this shot hands over to the next one"});
+    shot["properties"]["fx"] = json!({"type": "array", "items": {"type": "string", "enum": crate::fx::names()},
+                                      "description": "camera effects burned in at the cut; empty for none (most shots)"});
     if let Some(req) = shot["required"].as_array_mut() {
         req.push(json!("transition"));
+        req.push(json!("fx"));
     }
     let grades: Vec<&str> = std::iter::once("none").chain(crate::finish::GRADES.iter().map(|(n, _)| *n)).collect();
     json!({
@@ -157,8 +190,10 @@ pub fn plan_schema() -> Value {
             "grade": {"type": "string", "enum": grades},
             "letterbox": {"type": "number", "description": "picture aspect inside black bars (2.39 = scope), or 0 for none"},
             "motion": plan_motion_schema(),
+            "title_face": {"type": "string", "enum": title_face_enum(),
+                           "description": "the title's own face from the title faces list, when the pitch, the plan or the place calls for one; empty to keep the look's"},
         },
-        "required": ["rationale", "script", "shots", "grade", "letterbox", "motion"],
+        "required": ["rationale", "script", "shots", "grade", "letterbox", "motion", "title_face"],
         "additionalProperties": false,
     })
 }
@@ -242,7 +277,7 @@ pub fn ask_structured(claude: &dyn Claude, system: &str, user: Value, schema: Va
 
 fn ask_json(claude: &dyn Claude, system: &str, user: Value, schema: Value) -> Result<Value> {
     let text = claude.ask(&request_with(system, user, schema))?;
-    serde_json::from_str(&text).map_err(|e| Error::user(format!("Claude returned malformed JSON: {e}")))
+    parse_reply(&text, repair_enabled()).map(|(v, _)| v)
 }
 
 // --------------------------------------------------------------------------- HTTP
@@ -428,6 +463,11 @@ pub struct Planned {
     pub script: Vec<Value>,
     /// The measured references the planner read, e.g. "horror (158 teasers)" (refs.rs).
     pub references: Vec<String>,
+    /// With several plans written (`SHOTPILOT_CANDIDATES`), each one's code score in the
+    /// order they came (None: that call failed); this plan is the best of them. Empty for one.
+    pub candidates: Vec<Option<f64>>,
+    /// The model's reply text this plan was read from (the eval keeps it to re-score later).
+    pub reply: String,
 }
 
 pub fn stage_schema() -> Value {
@@ -511,10 +551,80 @@ pub fn plan_system() -> String {
     )
 }
 
+thread_local! {
+    static REPAIR_OVERRIDE: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+/// [`plan`] with the weak-model repairs (JSON rescue, closed-vocabulary schema, vocabulary
+/// normalisation, contract retry) forced on or off for this call on this thread, whatever
+/// `SHOTPILOT_REPAIR` says. `false` is the plain single call.
+pub fn plan_with(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>,
+                 direction: Option<&str>, claude: &dyn Claude, repair: bool) -> Result<Planned> {
+    let before = REPAIR_OVERRIDE.with(|c| c.replace(Some(repair)));
+    let out = plan(defn, pitch, duration, n_shots, direction, claude);
+    REPAIR_OVERRIDE.with(|c| c.set(before));
+    out
+}
+
+/// Most plans [`plan`] writes to pick one from.
+pub const MAX_CANDIDATES: usize = 5;
+
+/// How many plans [`plan`] writes and picks from: `SHOTPILOT_CANDIDATES` (1..=5), else 1.
+pub fn candidates() -> usize {
+    std::env::var("SHOTPILOT_CANDIDATES").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(1).clamp(1, MAX_CANDIDATES)
+}
+
 /// Plan a shot list from the pitch, the brief and the anchors. `direction` is an extra
 /// note from the director (e.g. typed in the app's structure stage).
+///
+/// With [`candidates`] above 1, the same spec is sent that many times and code picks the plan
+/// that scores highest against the measured teasers (eval::score: the shot check, the rhythm
+/// of the style or genre, the text rules). The model never sees the other plans or a score;
+/// picking among independent answers by code is not self-review (D-22).
 pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>,
             direction: Option<&str>, claude: &dyn Claude) -> Result<Planned> {
+    plan_best(defn, pitch, duration, n_shots, direction, claude, candidates())
+}
+
+/// [`plan`] writing `n` plans (1..=MAX_CANDIDATES) and keeping the one code scores highest.
+pub fn plan_best(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>,
+                 direction: Option<&str>, claude: &dyn Claude, n: usize) -> Result<Planned> {
+    let n = n.clamp(1, MAX_CANDIDATES);
+    if n == 1 {
+        return plan_once(defn, pitch, duration, n_shots, direction, claude);
+    }
+    // a plan that passes (no P0, total >= 70) beats one that does not; then the higher total
+    let mut best: Option<((bool, f64), Planned)> = None;
+    let mut totals = Vec::new();
+    let mut first_err = None;
+    for _ in 0..n {
+        match plan_once(defn, pitch, duration, n_shots, direction, claude) {
+            Ok(p) => {
+                let key = crate::eval::score(defn, &p).map_or((false, 0.0), |s| (s.pass, s.total));
+                totals.push(Some((key.1 * 10.0).round() / 10.0));
+                if !matches!(&best, Some((b, _)) if *b >= key) {
+                    best = Some((key, p));
+                }
+            }
+            Err(e) => {
+                totals.push(None);
+                first_err.get_or_insert(e);
+            }
+        }
+    }
+    match (best, first_err) {
+        (Some((_, mut p)), _) => {
+            p.candidates = totals;
+            Ok(p)
+        }
+        (None, Some(e)) => Err(e),
+        (None, None) => bail!("no plan came back"),
+    }
+}
+
+fn plan_once(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_shots: Option<usize>,
+             direction: Option<&str>, claude: &dyn Claude) -> Result<Planned> {
+    let repair = repair_enabled();
     if defn.anchors.is_empty() {
         bail!("no anchors. run `shotpilot scan` (or add `anchors:`) so shots can be placed");
     }
@@ -573,7 +683,290 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
         content.push(json!({"type": "text", "text": user}));
         Value::Array(content)
     };
-    let out = ask_json(claude, &plan_system(), user, plan_schema())?;
+    let schema = if repair { plan_schema_for(defn) } else { plan_schema() };
+    let attempts = if repair { 1 + MAX_RETRIES } else { 1 };
+    let mut retries: Vec<String> = Vec::new();
+    let mut extra: Option<String> = None;
+    for attempt in 0..attempts {
+        // a failed call (network, auth) is not a contract problem: it is not asked again
+        let tap = Tap { inner: claude, last: RefCell::new(String::new()) };
+        let asked = ask_json(&tap, &plan_system(), with_extra_block(&user, extra.as_deref()), schema.clone());
+        let raw = tap.last.take();
+        let direct_ok = serde_json::from_str::<Value>(&raw).is_ok();
+        let parsed = match asked {
+            // the plain mode takes the reply as it is, whatever the environment says
+            Ok(_) if !repair && !direct_ok => Err(Error::user("Claude returned malformed JSON")),
+            Ok(v) => Ok((v, if direct_ok { Vec::new() } else { vec!["返答の JSON を取り出した".to_string()] })),
+            Err(e) if e.msg.starts_with("Claude returned malformed JSON") => Err(e),
+            Err(e) => return Err(e),
+        };
+        let planned = parsed.and_then(|(out, parse_notes)| {
+            let mut p = plan_from_reply(defn, &out, duration, slots.clone(), repair)?;
+            p.adjustments.splice(0..0, parse_notes);
+            Ok(p)
+        });
+        match planned {
+            Ok(mut p) => {
+                p.adjustments.splice(0..0, retries);
+                p.reply = raw;
+                return Ok(p);
+            }
+            Err(e) if attempt + 1 >= attempts => return Err(e),
+            Err(e) => {
+                retries.push(format!("契約に合わない返答だったので頼み直した（{}回）: {}", attempt + 1, e.msg));
+                extra = Some(retry_text(defn, &e.msg));
+            }
+        }
+    }
+    Err(Error::user("Claude returned no usable plan"))
+}
+
+/// Passes requests through and keeps the last reply text, so a caller that goes through
+/// [`ask_json`] can still tell a rescued reply from a clean one.
+struct Tap<'a> {
+    inner: &'a dyn Claude,
+    last: RefCell<String>,
+}
+
+impl Claude for Tap<'_> {
+    fn ask(&self, request: &Value) -> Result<String> {
+        let text = self.inner.ask(request)?;
+        *self.last.borrow_mut() = text.clone();
+        Ok(text)
+    }
+}
+
+/// How many more times a reply that breaks the contract is asked for.
+const MAX_RETRIES: usize = 2;
+
+/// Whether the weak-model repairs are on. `SHOTPILOT_REPAIR=off` gives the plain behaviour.
+pub fn repair_enabled() -> bool {
+    if let Some(forced) = REPAIR_OVERRIDE.with(|c| c.get()) {
+        return forced;
+    }
+    !std::env::var("SHOTPILOT_REPAIR").map(|v| v.trim().eq_ignore_ascii_case("off")).unwrap_or(false)
+}
+
+/// The plan schema with the project's anchor and prop names as closed lists.
+pub fn plan_schema_for(defn: &Definition) -> Value {
+    let anchors: Vec<&str> = defn.anchors.iter().map(|(n, _)| n.as_str()).collect();
+    let props: Vec<&str> = defn.props.iter().map(|(n, _)| n.as_str()).collect();
+    plan_schema_with(&anchors, &props)
+}
+
+/// [`plan_schema`] with `anchor` / `look_at` limited to these anchors (look_at may be empty)
+/// and `appear[].prop` to these props.
+pub fn plan_schema_with(anchors: &[&str], props: &[&str]) -> Value {
+    let mut schema = plan_schema();
+    let shot = &mut schema["properties"]["shots"]["items"]["properties"];
+    if !anchors.is_empty() {
+        shot["anchor"] = json!({"type": "string", "enum": anchors});
+        let mut look: Vec<&str> = vec![""];
+        look.extend(anchors);
+        shot["look_at"] = json!({"type": "string", "enum": look, "description": "anchor name, or empty string to look at `anchor`"});
+        shot["appear"]["items"]["properties"]["anchor"] = json!({"type": "string", "enum": anchors});
+    }
+    if !props.is_empty() {
+        shot["appear"]["items"]["properties"]["prop"] = json!({"type": "string", "enum": props});
+    }
+    schema
+}
+
+/// The request's user turn with one more text block after it.
+fn with_extra_block(user: &Value, extra: Option<&str>) -> Value {
+    let Some(extra) = extra else { return user.clone() };
+    let mut blocks = match user {
+        Value::Array(a) => a.clone(),
+        other => vec![json!({"type": "text", "text": other.as_str().unwrap_or("")})],
+    };
+    blocks.push(json!({"type": "text", "text": extra}));
+    Value::Array(blocks)
+}
+
+/// The extra turn for a reply that could not be used: the facts, then the request to send
+/// the whole JSON again.
+fn retry_text(defn: &Definition, reason: &str) -> String {
+    let anchors: Vec<&str> = defn.anchors.iter().map(|(n, _)| n.as_str()).collect();
+    let props: Vec<&str> = defn.props.iter().map(|(n, _)| n.as_str()).collect();
+    format!(
+        "The previous reply could not be used: {reason}\n\
+         Anchor names that exist: {}.\nProp names that exist: {}.\n\
+         Send the whole JSON answer again in the same format, using only these names, one id per shot and \
+         `appear.at` inside the shot's duration.",
+        anchors.join(", "),
+        if props.is_empty() { "(none)".to_string() } else { props.join(", ") }
+    )
+}
+
+/// Parse the reply text. With `rescue`, a fenced block or the first balanced `{...}` object
+/// in the text is taken when the whole text is not JSON (no guessing of missing brackets).
+fn parse_reply(text: &str, rescue: bool) -> Result<(Value, Vec<String>)> {
+    let first = match serde_json::from_str::<Value>(text) {
+        Ok(v) => return Ok((v, Vec::new())),
+        Err(e) => e,
+    };
+    if rescue {
+        if let Some(v) = rescue_json(text) {
+            return Ok((v, vec!["返答の JSON を取り出した".to_string()]));
+        }
+    }
+    Err(Error::user(format!("Claude returned malformed JSON: {first}")))
+}
+
+fn rescue_json(text: &str) -> Option<Value> {
+    // a fenced block first
+    let mut rest = text;
+    while let Some(i) = rest.find("```") {
+        let after = &rest[i + 3..];
+        let body_start = after.find('\n').map(|n| n + 1).unwrap_or(0);
+        let body = &after[body_start..];
+        let Some(end) = body.find("```") else { break };
+        if let Ok(v @ Value::Object(_)) = serde_json::from_str::<Value>(body[..end].trim()) {
+            return Some(v);
+        }
+        rest = &body[end + 3..];
+    }
+    // then the first balanced top-level object that parses
+    let bytes = text.as_bytes();
+    let mut start = 0;
+    while let Some(off) = text[start..].find('{') {
+        let at = start + off;
+        let (mut depth, mut in_str, mut esc) = (0usize, false, false);
+        let mut end = None;
+        for (j, &b) in bytes[at..].iter().enumerate() {
+            if in_str {
+                if esc {
+                    esc = false;
+                } else if b == b'\\' {
+                    esc = true;
+                } else if b == b'"' {
+                    in_str = false;
+                }
+                continue;
+            }
+            match b {
+                b'"' => in_str = true,
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = Some(at + j + 1);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(e) = end {
+            if let Ok(v @ Value::Object(_)) = serde_json::from_str::<Value>(&text[at..e]) {
+                return Some(v);
+            }
+            start = at + 1;
+        } else {
+            start = at + 1;
+        }
+    }
+    None
+}
+
+/// The lowercase key two spellings of one name share: case, spaces, dashes and a leading `sp_`.
+fn vocab_key(s: &str) -> String {
+    let k: String = s.trim().to_lowercase().chars().map(|c| if c == ' ' || c == '-' { '_' } else { c }).collect();
+    k.strip_prefix("sp_").map(str::to_string).unwrap_or(k)
+}
+
+/// The one vocabulary entry `raw` is a looser spelling of. None when it is already exact,
+/// matches nothing, or matches two entries.
+fn canonical<'a>(raw: &str, vocab: &'a [String]) -> Option<&'a str> {
+    if vocab.iter().any(|v| v == raw) {
+        return None;
+    }
+    let lower = raw.trim().to_lowercase();
+    let same: Vec<&String> = vocab.iter().filter(|v| v.to_lowercase() == lower).collect();
+    if same.len() == 1 {
+        return Some(same[0]);
+    }
+    if same.len() > 1 {
+        return None;
+    }
+    let loose: Vec<&String> = vocab.iter().filter(|v| vocab_key(v) == vocab_key(raw)).collect();
+    (loose.len() == 1).then(|| loose[0].as_str())
+}
+
+fn fix_field(v: &mut Value, label: &str, vocab: &[String], notes: &mut Vec<String>) {
+    let Some(raw) = v.as_str().map(str::to_string) else { return };
+    if raw.is_empty() {
+        return;
+    }
+    if let Some(c) = canonical(&raw, vocab) {
+        notes.push(format!("語彙のゆれを直した: {label} '{raw}' → {c}"));
+        *v = json!(c);
+    }
+}
+
+fn owned(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| s.to_string()).collect()
+}
+
+/// Case- and spelling-insensitive matches to the closed vocabularies, fixed in place before
+/// the plan is validated. Names are never guessed between two candidates.
+fn normalize_vocab(defn: &Definition, out: &mut Value) -> Vec<String> {
+    let mut notes = Vec::new();
+    let beats = owned(BEATS);
+    let moves = owned(MOVES);
+    let mut tod = owned(&tod_names_sorted());
+    tod.push("default".into());
+    let aims = owned(model::AIMS);
+    let trans = owned(crate::finish::TRANSITIONS);
+    let fxs = owned(&crate::fx::names());
+    let anchors: Vec<String> = defn.anchors.iter().map(|(n, _)| n.clone()).collect();
+    let props: Vec<String> = defn.props.iter().map(|(n, _)| n.clone()).collect();
+    if let Some(shots) = out["shots"].as_array_mut() {
+        for s in shots {
+            for (k, vocab) in [("beat", &beats), ("move", &moves), ("time_of_day", &tod), ("aim", &aims),
+                               ("transition", &trans), ("anchor", &anchors), ("look_at", &anchors)] {
+                if let Some(v) = s.get_mut(k) {
+                    fix_field(v, k, vocab, &mut notes);
+                }
+            }
+            if let Some(list) = s.get_mut("fx").and_then(Value::as_array_mut) {
+                for f in list {
+                    fix_field(f, "fx", &fxs, &mut notes);
+                }
+            }
+            if let Some(list) = s.get_mut("appear").and_then(Value::as_array_mut) {
+                for a in list {
+                    if let Some(v) = a.get_mut("prop") {
+                        fix_field(v, "prop", &props, &mut notes);
+                    }
+                    if let Some(v) = a.get_mut("anchor") {
+                        fix_field(v, "anchor", &anchors, &mut notes);
+                    }
+                }
+            }
+        }
+    }
+    let mut kinds = owned(crate::script::SLOT_KINDS);
+    kinds.extend(owned(crate::script::OVERLAY_KINDS));
+    let entrances = owned(crate::motion::ENTRANCES);
+    if let Some(lines) = out["script"].as_array_mut() {
+        for l in lines {
+            if let Some(v) = l.get_mut("kind") {
+                fix_field(v, "kind", &kinds, &mut notes);
+            }
+            if let Some(v) = l.get_mut("motion") {
+                fix_field(v, "motion", &entrances, &mut notes);
+            }
+        }
+    }
+    notes
+}
+
+/// Everything after the reply is parsed: shots, script, adjustments and finish.
+fn plan_from_reply(defn: &Definition, out: &Value, duration: f64, slots: Vec<craft::Slot>, repair: bool) -> Result<Planned> {
+    let mut fixed = out.clone();
+    let vocab_notes = if repair { normalize_vocab(defn, &mut fixed) } else { Vec::new() };
+    let out = &fixed;
     let mut shots: Vec<Value> = out["shots"]
         .as_array()
         .ok_or_else(|| Error::user("Claude returned no shots"))?
@@ -591,7 +984,8 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     let (script, mut script_notes) = script_from_plan(&out["script"], &id_map, &shots);
     // the target is the whole cut: shots get what the cards leave
     let slot_secs: f64 = script.iter().filter(|l| crate::script::SLOT_KINDS.contains(&l["kind"].as_str().unwrap_or(""))).filter_map(|l| num(&l["dur"])).sum();
-    let mut adjustments = craft::normalize(&mut shots, (duration - slot_secs).max(duration * 0.5));
+    let mut adjustments = vocab_notes;
+    adjustments.extend(craft::normalize(&mut shots, (duration - slot_secs).max(duration * 0.5)));
     adjustments.append(&mut script_notes);
     validate_shots(defn, &shots)?;
     let mut finish = vec![
@@ -610,6 +1004,18 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     // motion (D-53): the look's profile, else the genre's, then what the brief asked for
     finish.retain(|(k, _)| k != "motion");
     finish.push(("motion".to_string(), plan_motion(defn, look, &out["motion"])));
+    // the title's own face (D-59): from the catalogue's title faces, with glyphs for the title
+    if let Some(name) = out["title_face"].as_str().map(str::trim).filter(|n| !n.is_empty()) {
+        let titles: Vec<&str> = script.iter().filter(|l| l["kind"] == "title").filter_map(|l| l["ja"].as_str()).collect();
+        match crate::fonts::title_spec(name, &titles) {
+            Ok(spec) => {
+                let base = finish.iter().find(|(k, _)| k == "fonts").map(|(_, v)| v.clone());
+                finish.retain(|(k, _)| k != "fonts");
+                finish.push(("fonts".to_string(), fonts_with_title(base.as_ref(), defn, Some(&spec))));
+            }
+            Err(e) => adjustments.push(format!("title face left to the look: {e}")),
+        }
+    }
     let mut references = vec![format!("all genres ({} teasers)", crate::refs::craft().n)];
     if let Some(r) = crate::refs::genre_for(&defn.brief.genre) {
         references.push(format!("{} ({} teasers)", r.id, r.n));
@@ -617,7 +1023,7 @@ pub fn plan(defn: &Definition, pitch: Option<&str>, duration: Option<f64>, n_sho
     if let Some(s) = crate::refs::style(&defn.brief.style) {
         references.push(format!("style: {}", s.name));
     }
-    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references, script })
+    Ok(Planned { shots, rationale: out["rationale"].as_str().unwrap_or("").to_string(), adjustments, skeleton: slots, finish, references, script, candidates: Vec::new(), reply: String::new() })
 }
 
 /// `finish.motion` for a planned cut: the look's motion tokens (or the genre's profile), with
@@ -661,6 +1067,8 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
     let mut out: Vec<Value> = Vec::new();
     let mut notes = Vec::new();
     let mut seen: Vec<String> = Vec::new();
+    // lines left out for having no words: their id -> what they followed
+    let mut skipped: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for (i, l) in v.as_array().into_iter().flatten().enumerate() {
         let kind = l["kind"].as_str().unwrap_or("caption").to_string();
         let slot = crate::script::SLOT_KINDS.contains(&kind.as_str());
@@ -680,6 +1088,16 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
         if let Some(e) = l["motion"].as_str().filter(|e| crate::motion::ENTRANCES.contains(e)) {
             m.insert("motion".into(), json!(e));
         }
+        // a line with no words (other than a black gap) cannot be shown: leave it out, and let
+        // a card that followed it follow what it followed
+        if kind != "black" && !m.contains_key("ja") {
+            notes.push(format!("台本の行 `{id}` を外した（文字が空）"));
+            if let Some(raw) = l["id"].as_str().filter(|r| !r.is_empty() && !shot_ids.contains(&r.to_string())) {
+                let after = map(l["after"].as_str().unwrap_or("start"));
+                skipped.insert(raw.to_string(), if after.is_empty() { "start".to_string() } else { after });
+            }
+            continue;
+        }
         // a line stays long enough to be read (D-49); overlays are capped by their shot below
         let asked = num(&l["dur"]).unwrap_or(2.5).clamp(0.3, 8.0);
         let text = |k: &str| m.get(k).and_then(Value::as_str).unwrap_or("").to_string();
@@ -690,7 +1108,10 @@ fn script_from_plan(v: &Value, id_map: &std::collections::HashMap<String, String
         }
         m.insert("dur".into(), json!(dur));
         if slot {
-            let after = map(l["after"].as_str().unwrap_or("start"));
+            let mut after = map(l["after"].as_str().unwrap_or("start"));
+            while let Some(a) = skipped.get(&after) {
+                after = a.clone();
+            }
             let after = if after.is_empty() { "start".to_string() } else { after };
             if after != "start" && !shot_ids.contains(&after) && !seen.contains(&after) && !v.as_array().into_iter().flatten().any(|o| o["id"] == after.as_str()) {
                 notes.push(format!("台本の行 `{id}` を外した（続く先の `{after}` が Cut に無い）"));
@@ -768,6 +1189,9 @@ fn shot_from_plan(s: &Value, i: usize) -> Value {
     if let Some(la) = s["look_at"].as_str().filter(|l| !l.is_empty() && *l != anchor) {
         cam.insert("look_at".into(), json!(la));
     }
+    if let Some(a) = s["aim"].as_str().filter(|a| *a != "base" && crate::model::AIMS.contains(a)) {
+        cam.insert("aim".into(), json!(a));
+    }
     let mv = s["move"].as_str().unwrap_or("static");
     if mv != "static" {
         let key = if mv.starts_with("orbit") { "degrees" } else { "distance" };
@@ -791,6 +1215,15 @@ fn shot_from_plan(s: &Value, i: usize) -> Value {
     }
     if let Some(t) = s["transition"].as_str().filter(|t| *t != "cut" && crate::finish::TRANSITIONS.contains(t)) {
         shot.insert("transition".into(), json!(t));
+    }
+    let mut fx: Vec<&str> = Vec::new();
+    for k in s["fx"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        if crate::fx::names().contains(&k) && !fx.contains(&k) && fx.len() < crate::fx::MAX_PER_SHOT {
+            fx.push(k);
+        }
+    }
+    if !fx.is_empty() {
+        shot.insert("fx".into(), json!(fx));
     }
     let appear: Vec<Value> = s["appear"]
         .as_array()
@@ -871,13 +1304,13 @@ pub struct Pointer {
 pub const ASPECTS: &[(&str, &[&str], &str)] = &[
     ("camera", &["camera"], "the shot's camera only (where it stands, where it looks, the lens and the move)"),
     ("light", &["environment"], "the shot's light only (`environment`: time of day and the like)"),
-    ("finish", &["caption", "transition", "exposure"],
-     "the finishing burned in at the cut only (the text over the shot, how it hands over to the next shot, its brightness at the cut)"),
+    ("finish", &["caption", "transition", "exposure", "fx"],
+     "the finishing burned in at the cut only (the text over the shot, how it hands over to the next shot, its brightness at the cut, its camera effects)"),
 ];
 
 /// Top-level keys of a shot it may go without: when a note pointed at them gets a shot back
 /// without one, it is taken off ("no caption here").
-const OPTIONAL_FIELDS: &[&str] = &["caption", "transition", "exposure"];
+const OPTIONAL_FIELDS: &[&str] = &["caption", "transition", "exposure", "fx"];
 
 /// Fields of a script line a note may change: its words, its kind (a slot stays a slot, an
 /// overlay an overlay) and its timing. Where it sits (`after`, `on`) and its sound stay.
@@ -885,7 +1318,7 @@ pub const LINE_TEXT_FIELDS: &[&str] = &["ja", "en", "head", "from", "kind", "at"
 
 /// Top-level `finish:` keys a note on the whole teaser may change. The title and the end card
 /// are left to the director (the end card holds facts only they know, D-28).
-pub const FINISH_FIELDS: &[&str] = &["grade", "letterbox", "typeface", "motion"];
+pub const FINISH_FIELDS: &[&str] = &["grade", "letterbox", "typeface", "motion", "title_face"];
 
 const FINISH_GUIDE: &str = "\
 Finishing is burned in when the cut is assembled; it never re-renders a shot.
@@ -899,10 +1332,12 @@ wipe, glitch; empty for the profile's). Its timing: `at` (overlays: seconds into
 overlay another overlay kind; where a line sits stays.
 - On a shot: `caption` {text, at, duration} is one more lower-centre line; `transition` is how it hands \
 over to the next shot: cut, dip (through black), flash (from white), whiteout (up to white and back) or \
-glitch (a few broken frames); `exposure` shifts its brightness at the cut (-0.5..0.5; leave it out for as shot).
+glitch (a few broken frames); `exposure` shifts its brightness at the cut (-0.5..0.5; leave it out for as shot); `fx` lists its camera effects (chroma, glitch, flicker, static, vhs, shake, redflash; a burst may be {type, at}; leave it out for none).
 - The whole teaser: `grade` (the colour of every shot), `letterbox` (picture aspect inside black bars, \
 e.g. 2.39, or null for none), `typeface` (mincho or gothic), `motion` {energy: calm | measured | driving, \
-avoid: [moves never used]} (how fast the text moves, and what to rule out).
+avoid: [moves never used]} (how fast the text moves, and what to rule out; avoiding `flash` also takes \
+out the flashing effects, and an effect's own name takes it out), `title_face` (the title's own face from \
+the title faces list, or empty for the look's display face).
 - Images and logos cannot be added here; when the note asks for one, do what these allow and say so in \
 `summary`.";
 
@@ -1117,21 +1552,35 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     let finish_now = if pointer.finish {
         let grades: Vec<&str> = crate::finish::GRADES.iter().map(|(n, _)| *n).collect();
         format!(
-            "\n\nCurrent finish: grade {}, letterbox {}, typeface {} (grades: none, {})",
+            "\n\nCurrent finish: grade {}, letterbox {}, typeface {}, title face {} (grades: none, {})",
             defn.finish.grade,
             defn.finish.letterbox.map(model::fmt_g).unwrap_or_else(|| "none".into()),
             defn.finish.typeface,
+            defn.finish.fonts.title.as_ref().map(|t| t.family.clone()).unwrap_or_else(|| "the look's display face".into()),
             grades.join(", ")
         )
     } else {
         String::new()
+    };
+    // the camera effects a note may set follow the cut's motion: what it avoids is left out (D-57)
+    let fx_here = pointer.finish || pointer.fields.as_ref().is_some_and(|f| f.iter().any(|k| k == "fx"));
+    let finish_now = if fx_here {
+        let m = crate::motion::resolve(&defn.finish.motion);
+        format!(
+            "{finish_now}\n\nThe cut's motion: profile {}, energy {}, avoids {} (an effect these take out is left out at the cut).",
+            m.profile,
+            m.energy,
+            if m.avoid.is_empty() { "nothing".to_string() } else { m.avoid.join(", ") }
+        )
+    } else {
+        finish_now
     };
     let mut system = format!(
         "You revise a game teaser shot list defined in YAML. You change as little as possible: \
          only the shots the note is about, only the fields that need to change. You never rename ids. \
          Shots are numbered from 1 in the order listed (\"the third shot\" = shot 3). Each shot has an \
          editorial `beat` ({}); keep it unless the note changes the shot's role.\n\n{CONVENTIONS}\n\
-         A shot's camera can be either `anchor`+`offset` (+ optional `move`, `look_at`, `lens`), or \
+         A shot's camera can be either `anchor`+`offset` (+ optional `move`, `look_at`, `aim`, `lens`), or \
          explicit `location` + `rotation` [pitch, yaw, roll] / `look_at`, with optional `end` \
          {{location, rotation|look_at, curve}}. `environment.time_of_day` is one of {}. \
          A shot may carry on-screen text burned in at the cut: `caption` {{text, at, duration}} (short, one line), \
@@ -1205,12 +1654,12 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
         files.join(", ")
     };
     if let Some(lib) = pointer.library.as_ref().filter(|l| pointer.sound && !l.sounds.is_empty()) {
+        let (list, hidden) = lib.prompt_list_for(LIBRARY_PROMPT_MAX, Some(&defn.root()));
+        let more = if hidden > 0 { format!("\n({hidden} more library sounds are not listed.)") } else { String::new() };
         files_line.push_str(&format!(
-            "
-
-Library sounds you may also use: write `file: lib:<id>` and it is copied into the project              (bgm = a loop long enough for background music):
-{}",
-            lib.prompt_list(LIBRARY_PROMPT_MAX)
+            "\n\nLibrary sounds you may also use: write `file: lib:<id>` and it is copied into the project \
+             (bgm = a loop long enough for background music). A sound marked `used in N other teasers` already \
+             belongs to another game; take it only when nothing else fits the note.\n{list}{more}"
         ));
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
@@ -1282,7 +1731,9 @@ Where the director is pointing: {c}")).unwrap_or_default();
                     let optional = OPTIONAL_FIELDS.contains(&f.as_str());
                     // a plain cut and no brightness shift are the defaults: written as nothing
                     let v = m.get(f).filter(|v| {
-                        let default = (f == "transition" && v.as_str() == Some("cut")) || (f == "exposure" && num(v) == Some(0.0));
+                        let default = (f == "transition" && v.as_str() == Some("cut"))
+                            || (f == "exposure" && num(v) == Some(0.0))
+                            || (f == "fx" && v.as_array().is_some_and(|a| a.is_empty()));
                         !v.is_null() && !default
                     });
                     match v {
@@ -1571,9 +2022,28 @@ fn finish_changes(defn: &Definition, yaml: &str) -> Result<Vec<(String, Value)>>
     now.insert("letterbox".into(), f.letterbox.map_or(Value::Null, |x| json!(x)));
     now.insert("typeface".into(), json!(f.typeface));
     now.insert("motion".into(), f.motion.to_value());
+    now.insert("fonts".into(), f.fonts.to_value());
     let mut out = Vec::new();
     for k in FINISH_FIELDS {
         let Some(v) = m.get(*k) else { continue };
+        if *k == "title_face" {
+            // the title's own face (D-59): checked against the catalogue and the title's glyphs
+            let name = model::str_of(v);
+            let name = name.trim();
+            let current = f.fonts.title.as_ref().map(|t| t.family.clone()).unwrap_or_default();
+            if name.eq_ignore_ascii_case(&current) {
+                continue;
+            }
+            let spec = if name.is_empty() {
+                None
+            } else {
+                let titles: Vec<&str> = defn.script.iter().filter(|l| l.kind == "title").map(|l| l.ja.as_str())
+                    .chain(f.title.as_ref().map(|t| t.text.as_str())).collect();
+                Some(crate::fonts::title_spec(name, &titles).map_err(|e| Error::user(format!("Claude's title face: {e}")))?)
+            };
+            out.push(("fonts".to_string(), fonts_with_title(None, defn, spec.as_ref())));
+            continue;
+        }
         if *k == "motion" {
             // a note sets the energy and the moves to avoid; the profile and its roles stay
             let mut merged = match f.motion.to_value() {

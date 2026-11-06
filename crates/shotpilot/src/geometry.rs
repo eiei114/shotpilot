@@ -275,4 +275,36 @@ mod tests {
         assert_eq!(r3(1.23456), 1.235);
         assert_eq!(pymod(-190.0, 360.0), 170.0);
     }
+
+    /// Guards the "geometry.rs stays dependency-free" invariant: only std and serde_json.
+    #[test]
+    fn geometry_uses_nothing_but_std_and_serde_json() {
+        let src = include_str!("geometry.rs");
+        let body = src.split("#[cfg(test)]").next().unwrap();
+        let mut uses = 0;
+        for line in body.lines().map(str::trim).filter(|l| l.starts_with("use ")) {
+            uses += 1;
+            let path = line.trim_start_matches("use ").trim_start_matches("::");
+            let root = path.split(|c: char| !(c.is_alphanumeric() || c == '_')).next().unwrap_or("");
+            assert!(root == "std" || root == "serde_json", "geometry.rs must not depend on `{line}`");
+        }
+        assert!(uses >= 1, "expected at least the serde_json use line");
+        assert!(!body.contains("crate::"), "geometry.rs must not reach into other modules");
+        assert!(!body.contains("super::"), "geometry.rs must not reach into other modules");
+    }
+
+    /// Guards the UE convention: yaw 90 looks along +Y, positive pitch looks up, and the
+    /// right vector of a yawed camera follows (left-handed, Z up).
+    #[test]
+    fn yaw_and_pitch_follow_the_ue_directions() {
+        let f = forward(Rot::new(0.0, 90.0, 0.0));
+        assert!(approx(f[0], 0.0) && approx(f[1], 1.0) && approx(f[2], 0.0), "{f:?}");
+        let r = right(Rot::new(0.0, 90.0, 0.0));
+        assert!(approx(r[0], -1.0) && approx(r[1], 0.0), "{r:?}");
+        let f = forward(Rot::new(30.0, 0.0, 0.0));
+        assert!(f[2] > 0.49 && f[0] > 0.0, "{f:?}");
+        // looking at a point on +Y from the origin gives yaw 90; a point above gives positive pitch
+        assert!(approx(look_at([0.0; 3], [0.0, 100.0, 0.0], 0.0).yaw, 90.0));
+        assert!(look_at([0.0; 3], [100.0, 0.0, 50.0], 0.0).pitch > 0.0);
+    }
 }

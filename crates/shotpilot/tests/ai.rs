@@ -85,13 +85,17 @@ fn revise_reorder_must_be_permutation() {
 fn plan_builds_valid_shots() {
     let mut f = ws();
     let shot = json!({"id": "S01 Hook!", "beat": "hook", "purpose": "p", "duration": 4, "anchor": "well",
-                      "offset": [-300, 0, 120], "look_at": "", "focal_length": 35, "move": "orbit_left",
-                      "move_amount": 20, "time_of_day": "night", "notes": ""});
+                      "offset": [-300, 0, 120], "look_at": "", "aim": "upper", "focal_length": 35, "move": "orbit_left",
+                      "move_amount": 20, "time_of_day": "night", "notes": "", "fx": ["shake", "bloom", "shake", "glitch"]});
     let fake = FakeClaude::new(json!({"rationale": "r", "shots": [shot]}));
     let shots = ai::plan(&f.ws.defn, Some("test"), None, None, None, &fake).unwrap().shots;
+    assert_eq!(shots[0]["fx"], json!(["shake", "glitch"]), "known effects, once each");
+    let req = &fake.calls.borrow()[0];
+    assert!(req.to_string().contains("Camera effects"), "the planner is told what the effects are for");
     assert_eq!(shots[0]["id"], "s01_hook");
     assert_eq!(shots[0]["beat"], "hook");
     assert_eq!(shots[0]["camera"]["move"], json!({"type": "orbit_left", "degrees": 20.0}));
+    assert_eq!(shots[0]["camera"]["aim"], json!("upper"));
     assert_eq!(shots[0]["environment"], json!({"time_of_day": "night"}));
     // writing a plan keeps the file's header comments
     f.ws.replace_all_shots(&shots).unwrap();
@@ -135,6 +139,74 @@ fn prompts_never_ask_claude_to_inspect_its_own_output() {
     }
     let plan_user = fake.calls.borrow()[0]["messages"][0]["content"].as_str().unwrap().to_string();
     assert!(shotpilot::craft::self_review_words(&plan_user).is_empty(), "{:?}", shotpilot::craft::self_review_words(&plan_user));
+}
+
+/// Every function in src/ that asks Claude, and what it is given: the name of its row in
+/// `every_path_that_writes_shots_gets_the_frozen_spec`, or (`exempt: …`) why it takes no part
+/// of the spec. The one-go sound design once asked Claude with none of it, and every game got
+/// the same sounds (D-64); a new call cannot slip past this list.
+const CLAUDE_CALLS: &[(&str, &str)] = &[
+    ("ai.rs::ask_json", "exempt: the transport every request goes through"),
+    ("ai.rs::ask_structured", "exempt: the transport, for modules outside ai.rs"),
+    ("connect.rs::ask", "exempt: the transport (sets the effort)"),
+    ("eval.rs::ask", "exempt: the benchmark's transport (sets the model under test, records the reply)"),
+    ("ai.rs::understand_stage", "exempt: describes the level from the scout photos; the stage it writes is part of the spec"),
+    ("ai.rs::discover", "exempt: writes the plan and the direction the spec is made from"),
+    ("ai.rs::pick_locations", "exempt: picks the places the scout shoots; writes no shot, line or sound"),
+    ("ai.rs::match_frames", "exempt: picks real photos that match the concept frames (D-46)"),
+    ("ai.rs::see_frames", "exempt: facts only, what a frame shows (D-50)"),
+    ("suggest.rs::suggest", "exempt: reads only; the chips it offers are sent through revise (D-62)"),
+    ("ai.rs::plan_once", "plan"),
+    ("ai.rs::revise_at", "revise"),
+    ("sounddesign.rs::design", "sound design"),
+];
+
+/// `file::fn` for every place in src/ (test modules aside) that sends Claude a request.
+fn claude_calls_in_the_source() -> Vec<String> {
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(&src).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|x| x.to_str()) != Some("rs") {
+            continue;
+        }
+        let file = path.file_name().unwrap().to_string_lossy().to_string();
+        let mut current = String::new();
+        for line in std::fs::read_to_string(&path).unwrap().lines() {
+            let t = line.trim_start();
+            if t.starts_with("mod tests") {
+                break;
+            }
+            if t.starts_with("//") {
+                continue;
+            }
+            let head = t.trim_start_matches("pub(crate) ").trim_start_matches("pub ");
+            if let Some(rest) = head.strip_prefix("fn ") {
+                current = rest.split(['(', '<']).next().unwrap_or("").to_string();
+                continue;
+            }
+            if ["ask_json(", "ask_structured(", ".ask(&"].iter().any(|k| t.contains(k)) {
+                out.push(format!("{file}::{current}"));
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+#[test]
+fn every_call_to_claude_is_in_the_spec_table_or_says_why_not() {
+    let found = claude_calls_in_the_source();
+    let known: Vec<&str> = CLAUDE_CALLS.iter().map(|(site, _)| *site).collect();
+    let new: Vec<&String> = found.iter().filter(|f| !known.contains(&f.as_str())).collect();
+    assert!(
+        new.is_empty(),
+        "{new:?} ask Claude but are not in CLAUDE_CALLS. A call that writes shots, script, finishing or sound \
+         gets a row in every_path_that_writes_shots_gets_the_frozen_spec; any other says why it takes no spec"
+    );
+    let gone: Vec<&&str> = known.iter().filter(|k| !found.iter().any(|f| f == *k)).collect();
+    assert!(gone.is_empty(), "{gone:?} no longer ask Claude; take them out of CLAUDE_CALLS");
 }
 
 /// Everything a request says: the system prompt and every text block of the user turn.
@@ -181,6 +253,16 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         ai::revise_at(defn, "もっと怖く", scope, &pointer, &c).unwrap();
         paths.push((name, request_text(&c.calls.borrow()[0])));
     }
+    // the one-go sound design writes sound onto every shot and line, so it is a path too
+    let libdir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(libdir.path().join("sounds")).unwrap();
+    std::fs::write(libdir.path().join("sounds/library.json"), json!({"sounds": [
+        {"id": "splice:drone", "path": "drone.wav", "kind": "loop", "duration_s": 64.0, "tags": ["drone"], "status": "ok"},
+    ]}).to_string()).unwrap();
+    let lib = shotpilot::library::Library::open(Some(libdir.path())).unwrap();
+    let c = FakeClaude::new(json!({"rationale": "r", "music": [], "hits": [], "missing": []}));
+    shotpilot::sounddesign::design(&f.ws, &lib, &c).unwrap();
+    paths.push(("sound design", request_text(&c.calls.borrow()[0])));
     let blocks = [
         ("brief", "Genre: 一人称ホラー"),
         ("direction", "Direction: 記録映像のふりをする。"),
@@ -190,15 +272,17 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         ("framing", "## Framing"),
         ("baseline", "## Teaser baseline"),
         ("type", "## On-screen type"),
+        ("title faces", "## Title faces"),
         ("motion", "## Text motion"),
+        ("sound", "## The look's sound"),
     ];
     // which blocks each path must carry: picture notes get all of it, text notes the look, the
     // baseline and how lines are written (D-52), sound notes the brief and the direction only
     let want = |name: &str| -> &[&str] {
         match name {
-            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "motion"],
-            "revise: the sound" => &["brief", "direction"],
-            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "motion"],
+            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "title faces", "motion"],
+            "revise: the sound" | "sound design" => &["brief", "direction", "sound"],
+            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "title faces", "motion"],
         }
     };
     for (name, text) in &paths {
@@ -206,6 +290,10 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
             assert_eq!(text.contains(marker), want(name).contains(&block), "{name}: {block}");
         }
         assert!(shotpilot::craft::self_review_words(text).is_empty(), "{name}: {:?}", shotpilot::craft::self_review_words(text));
+    }
+    // every call that writes something has its row here
+    for (site, row) in CLAUDE_CALLS.iter().filter(|(_, row)| !row.starts_with("exempt:")) {
+        assert!(paths.iter().any(|(n, _)| n == row || n.starts_with(&format!("{row}:"))), "{site}: no row `{row}` in this table");
     }
 }
 
@@ -238,6 +326,33 @@ fn the_plan_moves_as_the_look_says_unless_the_brief_asks_otherwise() {
     f.ws.set_brief(&[("design".into(), json!("")), ("genre".into(), json!("コージーな農業シム"))]).unwrap();
     let p = ai::plan(&f.ws.defn, None, None, None, None, &quiet).unwrap();
     assert_eq!(p.finish.iter().find(|(k, _)| k == "motion").unwrap().1["profile"], json!("cozy"));
+}
+
+#[test]
+fn the_planner_may_give_the_title_a_worn_face_from_the_catalogue() {
+    // D-59: the look sets the faces; the planner may name the title's own face from the
+    // catalogue's title faces, and code keeps it only when the face has the title's glyphs
+    let mut f = ws();
+    f.ws.set_brief(&[("design".into(), json!("quiet-dread"))]).unwrap();
+    let title = |ja: &str| json!({"id": "t", "kind": "title", "ja": ja, "en": "", "head": "", "from": "", "dur": 3.0,
+                                  "after": "b", "on": "", "at": 0, "motion": ""});
+    let shots = json!([plan_shot("a", "hook", 4.0, "well"), plan_shot("b", "title", 4.0, "gate")]);
+    let ask = |t: &str, face: &str| FakeClaude::new(json!({"rationale": "r", "script": [title(t)], "shots": shots, "title_face": face}));
+    let fake = ask("Lanternless", "Fredericka the Great");
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let fonts = &p.finish.iter().find(|(k, _)| k == "fonts").unwrap().1;
+    assert_eq!(fonts["title"], json!("Fredericka the Great:400"));
+    assert_eq!(fonts["display"], json!("Shippori Mincho:500"), "the look's faces stay");
+    // the planner is shown the worn faces the look can reach, with what each is for
+    let sys = fake.calls.borrow()[0].to_string();
+    assert!(sys.contains("## Title faces") && sys.contains("Rubik Glitch") && sys.contains("Protest Revolution"), "{sys}");
+    // a Latin face cannot set a Japanese title, and an overused one is never taken
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &ask("七号室", "Rubik Glitch")).unwrap();
+    assert!(p.finish.iter().find(|(k, _)| k == "fonts").unwrap().1.get("title").is_none());
+    assert!(p.adjustments.iter().any(|a| a.contains("title face left to the look") && a.contains("Japanese")), "{:?}", p.adjustments);
+    assert!(shotpilot::fonts::title_spec("Creepster", &["Lanternless"]).unwrap_err().contains("overused"));
+    // a worn Japanese face with kanji can
+    assert_eq!(shotpilot::fonts::title_spec("Yuji Mai", &["七号室"]).unwrap().label(), "Yuji Mai:400");
 }
 
 #[test]
@@ -303,12 +418,16 @@ fn code_puts_beats_in_order_and_fits_the_runtime() {
 
 #[test]
 fn skeleton_follows_the_craft() {
-    use shotpilot::craft::skeleton;
+    use shotpilot::craft::{card_reserve, skeleton};
     use shotpilot::model::BriefCfg;
     for target in [30.0, 45.0, 60.0] {
         let slots = skeleton(&BriefCfg::default(), target, None);
         let total: f64 = slots.iter().map(|s| s.duration).sum();
-        assert!((total - target).abs() < 0.6, "{target}: {total}");
+        // the shots leave the black and the title card their time after the last shot
+        let reserve = card_reserve(&BriefCfg::default(), target);
+        assert!(reserve >= 3.0, "{reserve}");
+        assert!((total + reserve - target).abs() < 0.3, "{target}: {total} + {reserve}");
+        assert!(slots.iter().all(|s| (1.0..=8.0).contains(&s.duration)), "{slots:?}");
         assert_eq!(slots.first().unwrap().beat, "hook");
         assert_eq!(slots.last().unwrap().beat, "title");
         let mean = |b: &str| {
@@ -319,12 +438,18 @@ fn skeleton_follows_the_craft() {
     }
     let gameplay = BriefCfg { kind: "gameplay".into(), ..Default::default() };
     assert!(skeleton(&gameplay, 60.0, None)[0].duration <= 3.0);
+    // the whole hook, not only its first shot, stays inside the gameplay hook.long
+    let hook: f64 = skeleton(&gameplay, 60.0, None).iter().filter(|s| s.beat == "hook").map(|s| s.duration).sum();
+    assert!(hook < shotpilot::shotcheck::HOOK_LONG_GAMEPLAY, "{hook}");
 
-    // hook and title lengths follow the genre's measured teasers: horror holds both longer
+    // the first cut and the closing card follow the genre's measured teasers: horror holds
+    // both longer, and action cuts more often
     let genre = |g: &str| BriefCfg { genre: g.into(), ..Default::default() };
     let (horror, action) = (skeleton(&genre("ホラー"), 45.0, None), skeleton(&genre("アクション"), 45.0, None));
     assert!(horror[0].duration > action[0].duration, "{horror:?}\n{action:?}");
-    assert!(horror.last().unwrap().duration > action.last().unwrap().duration, "{horror:?}\n{action:?}");
+    use shotpilot::craft::title_card_secs;
+    assert!(title_card_secs(&genre("ホラー")) > title_card_secs(&genre("アクション")));
+    assert!(horror.len() < action.len(), "{horror:?}\n{action:?}");
 }
 
 #[test]
@@ -403,4 +528,112 @@ fn overlays_on_one_shot_come_one_at_a_time() {
     assert_eq!(at("b"), Some((2.6, 1.0))); // waits for `a` (+0.1 s)
     assert_eq!(at("c"), None); // no room left on the shot
     assert!(p.adjustments.iter().any(|a| a.contains("台本の行 `b` を `")) && p.adjustments.iter().any(|a| a.contains("台本の行 `c` を外した")), "{:?}", p.adjustments);
+}
+
+#[test]
+fn camera_effects_are_the_seven_named_ones() {
+    // D-57: the fx vocabulary is closed; a new name needs a deliberate change here.
+    let names: Vec<&str> = shotpilot::fx::FX.iter().map(|(n, _)| *n).collect();
+    assert_eq!(names, ["chroma", "glitch", "flicker", "static", "vhs", "shake", "redflash"]);
+}
+
+#[test]
+fn only_plan_and_the_finish_note_may_set_camera_effects() {
+    // D-57: Claude may write `fx` in plan and in a finish note; camera, light, sound and free
+    // notes never carry an effect into the shot, even if the reply adds one.
+    let f = ws();
+    let defn = &f.ws.defn;
+    let one = ids(&["s03_window"]);
+    let before = defn.find("s03_window").unwrap().get("fx").cloned();
+    let with_fx = format!("{S03_CLOSER}fx: [shake]\n");
+    let reply = || FakeClaude::new(json!({"summary": "x", "edits": [{"id": "s03_window", "yaml": with_fx, "reason": "r"}], "order": [], "audio": ""}));
+    let fx_of = |rev: &ai::Revision| rev.edits.iter().find(|(k, _)| k == "s03_window").and_then(|(_, v)| v.get("fx").cloned());
+    let cases: Vec<(&str, ai::Pointer)> = vec![
+        ("camera", ai::Pointer { fields: ai::aspect_fields("camera"), ..Default::default() }),
+        ("light", ai::Pointer { fields: ai::aspect_fields("light"), ..Default::default() }),
+        ("sound", ai::Pointer { sound: true, ..Default::default() }),
+    ];
+    for (name, pointer) in cases {
+        let rev = ai::revise_at(defn, "もっと怖く", Some(&one), &pointer, &reply()).unwrap();
+        assert_eq!(fx_of(&rev), before, "a {name} note wrote camera effects");
+    }
+    let pointer = ai::Pointer { fields: ai::aspect_fields("finish"), ..Default::default() };
+    let rev = ai::revise_at(defn, "揺らして", Some(&one), &pointer, &reply()).unwrap();
+    assert_eq!(fx_of(&rev), Some(json!(["shake"])), "the finish note takes the effect");
+}
+
+#[test]
+fn the_planning_turn_is_told_never_to_invent_facts() {
+    // D-45: release dates, platforms, prices and the like are never made up.
+    let f = ws();
+    let fake = FakeClaude::new(common::discovery_reply());
+    ai::discover(&f.ws.defn, "規則で見せるホラー", "", true, &fake).unwrap();
+    let text = request_text(&fake.calls.borrow()[0]);
+    assert!(text.contains("Never invent facts about the game"), "{text}");
+    assert!(text.contains("a release date or window, a platform, a price"), "{text}");
+}
+
+#[test]
+fn a_style_is_followed_for_structure_never_for_story() {
+    // D-39: the style reference teaches rhythm and technique, not the other teaser's story.
+    let mut f = ws();
+    let s = &shotpilot::refs::styles_for("cozy")[0];
+    f.ws.set_brief(&common::set(&[("genre", json!("コージー")), ("style", json!(s.id))])).unwrap();
+    let fake = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
+    ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let text = request_text(&fake.calls.borrow()[0]);
+    assert!(text.contains("## Style reference: Inspired by"), "{text}");
+    assert!(text.contains("never its story, characters or words"), "{text}");
+    // without a style the reference block is absent
+    let g = ws();
+    let plain = FakeClaude::new(json!({"rationale": "r", "shots": [plan_shot("a", "hook", 4.0, "well")]}));
+    ai::plan(&g.ws.defn, None, None, None, None, &plain).unwrap();
+    assert!(!request_text(&plain.calls.borrow()[0]).contains("never its story, characters or words"));
+}
+
+#[test]
+fn a_sound_note_marks_library_sounds_another_teaser_already_uses() {
+    // D-64: a sound another game's teaser still uses is listed with how many use it.
+    let libdir = tempfile::tempdir().unwrap();
+    let sounds = libdir.path().join("sounds");
+    std::fs::create_dir_all(sounds.join("p")).unwrap();
+    for n in ["drone", "bell"] {
+        std::fs::write(sounds.join(format!("p/{n}.wav")), format!("RIFF-{n}")).unwrap();
+    }
+    std::fs::write(sounds.join("library.json"), json!({"sounds": [
+        {"id": "x:drone", "path": "p/drone.wav", "kind": "loop", "duration_s": 64.0, "status": "ok"},
+        {"id": "x:bell", "path": "p/bell.wav", "kind": "oneshot", "duration_s": 3.0, "status": "ok"},
+    ]}).to_string()).unwrap();
+    let lib = shotpilot::library::Library::open(Some(libdir.path())).unwrap();
+
+    // another game's teaser takes the drone and points its BGM at the copy
+    let other = ws();
+    let copy = lib.import("x:drone", &other.ws.root).unwrap();
+    let text = std::fs::read_to_string(&other.ws.path).unwrap().replace("audio/drone.wav", &copy);
+    assert!(text.contains(&copy), "the other project references the imported copy: {copy}");
+    other.write(&text);
+
+    let mine = ws();
+    let list_line = |id: &str| {
+        let pointer = ai::Pointer { sound: true, library: Some(lib.clone()), ..Default::default() };
+        let c = FakeClaude::new(json!({"summary": "x", "edits": [], "order": [], "audio": ""}));
+        ai::revise_at(&mine.ws.defn, "低い音を足して", Some(&ids(&["s03_window"])), &pointer, &c).unwrap();
+        let req = request_text(&c.calls.borrow()[0]);
+        req.lines().find(|l| l.starts_with(&format!("- {id} "))).unwrap_or("").to_string()
+    };
+    assert!(list_line("x:drone").contains("[used in 1 other teaser]"), "{}", list_line("x:drone"));
+    assert!(!list_line("x:bell").contains("[used in"), "{}", list_line("x:bell"));
+}
+
+#[test]
+fn a_free_note_on_a_cut_may_set_its_camera_effects() {
+    // D-57, D-65: a note that is not narrowed to an aspect may change anything about its cut,
+    // camera effects included (the camera, light and sound aspects may not: see above).
+    let f = ws();
+    let with_fx = format!("{S03_CLOSER}fx: [shake]
+");
+    let c = FakeClaude::new(json!({"summary": "x", "edits": [{"id": "s03_window", "yaml": with_fx, "reason": "r"}], "order": [], "audio": ""}));
+    let rev = ai::revise_at(&f.ws.defn, "もっと怖く", Some(&ids(&["s03_window"])), &ai::Pointer::default(), &c).unwrap();
+    let fx = rev.edits.iter().find(|(k, _)| k == "s03_window").and_then(|(_, v)| v.get("fx").cloned());
+    assert_eq!(fx, Some(json!(["shake"])));
 }

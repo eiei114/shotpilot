@@ -136,7 +136,15 @@ pub fn cameras(defn: &Definition, only: &[String]) -> Vec<ScoutCam> {
     out
 }
 
-/// `scout/index.json`: anchor -> [{side, file, location}], and when it was taken.
+/// Where a scout camera really stood, when the engine moved it: a camera whose line to the anchor
+/// crosses a wall is pulled in front of the wall with a wider lens (`clear_view` in the build
+/// result). None when it stayed put (or the engine has no geometry to check, like mock).
+pub fn moved_camera(built: &Value) -> Option<(Vec3, f64)> {
+    let cv = &built["clear_view"];
+    Some((vec3(&cv["location"])?, cv["focal_length"].as_f64()?))
+}
+
+/// `scout/index.json`: anchor -> [{side, file, location, focal_length}], and when it was taken.
 pub fn load_index(root: &Path) -> Value {
     std::fs::read_to_string(root.join(SCOUT_DIR).join("index.json"))
         .ok()

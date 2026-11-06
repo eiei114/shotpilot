@@ -317,6 +317,38 @@ environment: {time_of_day: night}
 ";
 
 #[test]
+fn chips_are_suggested_over_http_and_nothing_is_written() {
+    // the stack composer (D-62): Claude predicts the next chips, quickly; nothing re-renders or changes
+    let (s, calls) = srv_with_claude(json!({"chips": ["もう少し低い位置から", "見上げる", "ゆっくり 前進。", "ゆっくり前進"]}));
+    // what the location scout read: the chips are grounded in the places the cut films
+    s.f.write(&format!("{}\nstage:\n  summary: 夜の中庭\n  anchors:\n    window: 割れた2階の窓。月光が斜めに差す\n    well: 苔むした井戸\n", s.f.text()));
+    let before = s.f.text();
+    let (code, out) = jcall(&s, "POST", "/api/suggest", Some(json!({
+        "target": "row", "shot": "s03_window", "aspect": "camera", "stack": ["見上げる"], "lang": "ja"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["chips"], json!(["もう少し低い位置から", "ゆっくり 前進"]), "the stacked chip and a repeat are dropped");
+    assert_eq!(s.f.text(), before);
+    assert!(launches(&s.f.ws).is_empty(), "a suggestion never renders");
+    let req = calls.lock().unwrap().last().unwrap().clone();
+    assert_eq!(req["output_config"]["effort"], shotpilot::suggest::EFFORT);
+    let user = req["messages"][0]["content"].as_str().unwrap().to_string();
+    for part in ["The cut: s03_window", "the camera of this cut only", "1. 見上げる", "in Japanese", "window: 割れた2階の窓", "Stage (what the location scout found): 夜の中庭"] {
+        assert!(user.contains(part), "missing {part:?} in:\n{user}");
+    }
+    assert!(!user.contains("苔むした井戸"), "only the places this cut films");
+
+    // the home asks before there is a project: its prompt is the whole context
+    let (code, _) = jcall(&s, "POST", "/api/suggest", Some(json!({"target": "pitch", "pitch": "雨の団地で住人が消えるホラー", "lang": "en"})));
+    assert_eq!(code, 200);
+    let user = calls.lock().unwrap().last().unwrap()["messages"][0]["content"].as_str().unwrap().to_string();
+    assert!(user.contains("no project yet") && user.contains("雨の団地で住人が消えるホラー") && user.contains("in English"), "{user}");
+    assert!(!user.contains("s03_window"), "the open project is not the home's new teaser");
+
+    let (code, out) = jcall(&s, "POST", "/api/suggest", Some(json!({"target": "everything"})));
+    assert_eq!(code, 400, "{out}");
+}
+
+#[test]
 fn chat_note_on_a_frame_edits_only_that_shot() {
     let (s, calls) = srv_with_claude(json!({
         "summary": "寄りました", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
@@ -373,6 +405,24 @@ fn chat_scope_is_enforced_over_http() {
 }
 
 #[test]
+fn a_mood_wired_to_some_cuts_changes_only_those_cuts() {
+    // the canvas (D-62): one mood node wired to several cuts is one note scoped to exactly them
+    let (s, calls) = srv_with_claude(json!({
+        "summary": "霧を足した", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
+    let before = s.f.text();
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "霧", "shots": ["s01_gate", "s02_well"]})));
+    assert_eq!(code, 400, "s03 is not wired: {out}");
+    assert!(out["error"].as_str().unwrap().contains("outside the allowed scope"));
+    assert_eq!(before, s.f.text());
+
+    let (code, out) = jcall(&s, "POST", "/api/revise", Some(json!({"note": "霧", "shots": ["s01_gate", "s03_window", "s03_window"]})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["edited"], json!(["s03_window"]));
+    let user = calls.lock().unwrap().last().unwrap()["messages"][0]["content"].to_string();
+    assert!(user.contains("shots s01_gate, s03_window"), "{user}");
+}
+
+#[test]
 fn cut_sheet_edits_and_undo_over_http() {
     let (s, _) = srv_with_claude(json!({
         "summary": "寄った", "edits": [{"id": "s03_window", "yaml": S03_CLOSER, "reason": "r"}], "order": []}));
@@ -411,6 +461,46 @@ fn cut_sheet_edits_and_undo_over_http() {
     assert!(out["error"].as_str().unwrap().contains("unknown script line"));
     let (code, _) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "sideways"})));
     assert_eq!(code, 400);
+}
+
+#[test]
+fn nudges_take_an_amount_and_refuse_what_they_do_not_know() {
+    let s = srv();
+    let original = s.f.text();
+    // the amount is s / m / l and defaults to m
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "higher", "amount": "l"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!(["s01_gate"]));
+    assert_eq!(out["changes"]["s01_gate"][0]["path"], "camera.offset");
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "aim_up", "amount": null})));
+    assert_eq!(code, 200, "{out}");
+    // brightness is editorial: nothing goes stale
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s02_well", "kind": "brighter", "amount": "s"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["stale"], json!([]));
+    assert_eq!(out["changes"]["s02_well"][0]["path"], "exposure");
+    // unknown kinds and amounts, and nudges past an end, are refused with the reason
+    for body in [
+        json!({"shot": "s01_gate", "kind": "closer", "amount": "xl"}),
+        json!({"shot": "s01_gate", "kind": "closer", "amount": 2}),
+        json!({"shot": "s01_gate", "kind": "spin"}),
+        json!({"shot": "s02_well", "kind": "move_longer"}),
+    ] {
+        let (code, out) = jcall(&s, "POST", "/api/nudge", Some(body.clone()));
+        assert_eq!(code, 400, "{body} {out}");
+        assert!(out["error"].is_string());
+    }
+    // a large aim nudge stops at the end, and one more is refused
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "aim_up", "amount": "l"})));
+    assert_eq!(code, 200, "{out}");
+    let (code, out) = jcall(&s, "POST", "/api/nudge", Some(json!({"shot": "s01_gate", "kind": "aim_up"})));
+    assert_eq!(code, 400, "{out}");
+    // the taps come back off, one at a time
+    for _ in 0..4 {
+        let (code, out) = jcall(&s, "POST", "/api/undo", Some(json!({})));
+        assert_eq!(code, 200, "{out}");
+    }
+    assert_eq!(s.f.text(), original);
 }
 
 #[test]
@@ -702,6 +792,16 @@ fn library_lists_plays_and_imports_without_rendering() {
     assert_eq!(launches(&s.f.ws).len(), before);
     let (_, out) = jcall(&s, "GET", "/api/library?q=impact", None);
     assert_eq!(out["items"][0]["imported"], true);
+    assert_eq!(out["items"][0]["others"], 0, "this teaser's own sound is not another's");
+    let (code, _) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:b1"})));
+    assert_eq!(code, 200);
+    // another game's teaser takes the drone: the panel says so (D-64)
+    let mut other = ws();
+    let open = shotpilot::library::Library::open(Some(lib.path())).unwrap();
+    let file = open.import("splice:d1", &other.ws.root).unwrap();
+    other.ws.edit_sound(&[("s01_gate".into(), Some(json!([{"file": file, "at": 0}])))], None, "").unwrap();
+    let (_, out) = jcall(&s, "GET", "/api/library?q=drones", None);
+    assert_eq!(out["items"][0]["others"], 1, "{out}");
     let (code, _) = jcall(&s, "POST", "/api/library/import", Some(json!({"id": "splice:zz"})));
     assert_eq!(code, 400);
 }
@@ -892,6 +992,21 @@ fn finishing_notes_over_http() {
 }
 
 #[test]
+fn every_page_draws_its_own_scrollbars() {
+    // scrollbars and sliders use the app's colours on every page; scrollbar-color/-width would switch
+    // Chromium back to the OS bar (arrows, white track) on that element, so neither may appear
+    for (name, html) in [("index", shotpilot::server::INDEX_HTML), ("home", shotpilot::server::HOME_HTML)] {
+        for rule in ["::-webkit-scrollbar {", "::-webkit-scrollbar-thumb {", "::-webkit-scrollbar-button { display: none",
+            "::-webkit-slider-thumb {", "--scroll:"] {
+            assert!(html.contains(rule), "{name} lacks {rule}");
+        }
+        for banned in ["scrollbar-color", "scrollbar-width"] {
+            assert!(!html.contains(banned), "{name} uses {banned}");
+        }
+    }
+}
+
+#[test]
 fn the_pages_switch_to_english_with_a_dictionary() {
     // the pages load the English mode; it decides from the PC's language and keeps Japanese on a Japanese PC
     let s = srv();
@@ -977,4 +1092,123 @@ fn a_look_picked_in_the_app_brings_its_faces_and_motion_and_a_logo_can_be_named(
     assert_eq!(out["logo"], Value::Null);
     // editorial: nothing launched
     assert!(launches(&s.f.ws).is_empty());
+}
+
+#[test]
+fn precise_values_offer_one_vocabulary_and_re_render_only_what_changes_the_picture() {
+    let s = srv();
+    // the choices the page offers come from the server, once
+    let st = jcall(&s, "GET", "/api/status", None).1;
+    let v = &st["vocab"];
+    assert_eq!(v["time_of_day"][0], "dawn");
+    assert_eq!(v["time_of_day"].as_array().unwrap().len(), 7);
+    assert!(v["transitions"].as_array().unwrap().contains(&json!("whiteout")));
+    assert!(v["moves"].as_array().unwrap().contains(&json!("dolly_in")));
+    assert_eq!(v["aims"], json!(["base", "center", "upper"]));
+    assert_eq!(v["fx"].as_array().unwrap().len(), 7);
+    assert!(v["lens_steps"].as_array().unwrap().contains(&json!(50.0)));
+
+    // what changes the picture makes that cut, and only that cut, stale (one at a time, taken again between)
+    for (path, value) in [
+        ("camera.lens.focal_length", json!(50)),
+        ("camera.offset", json!([-300, -250, 120])),
+        ("camera.aim", json!("upper")),
+        ("camera.move.distance", json!(300)),
+        ("camera.move.type", json!("dolly_out")),
+        ("environment.time_of_day", json!("night")),
+    ] {
+        render(&s, "previz");
+        let (code, rep) = jcall(&s, "POST", "/api/shots/s01_gate", Some(json!({"set": {path: value}})));
+        assert_eq!(code, 200, "{path}: {rep}");
+        assert_eq!(rep["stale"], json!(["s01_gate"]), "{path}");
+        let (mut again, _) = render(&s, "previz");
+        assert_eq!(again.remove("s01_gate").unwrap(), "rendered", "{path}");
+        assert!(again.values().all(|a| a == "reused"), "{path}");
+    }
+
+    // editorial values (hand-over, effects, brightness, caption timing) never re-render
+    render(&s, "previz");
+    for (path, value) in [
+        ("transition", json!("dip")),
+        ("fx", json!(["glitch", {"type": "flicker", "at": 0.5}])),
+        ("exposure", json!(0.25)),
+        ("caption", json!({"text": "ここ", "at": 0.5, "duration": 1.5})),
+    ] {
+        let (code, rep) = jcall(&s, "POST", "/api/shots/s02_well", Some(json!({"set": {path: value}})));
+        assert_eq!(code, 200, "{path}: {rep}");
+        assert_eq!(rep["stale"], json!([]), "{path}");
+    }
+    let (second, _) = render(&s, "previz");
+    assert!(second.values().all(|a| a == "reused"));
+
+    // a word outside the vocabulary is refused and nothing is written
+    let before = s.f.text();
+    for (path, value) in [
+        ("environment.time_of_day", json!("teatime")),
+        ("transition", json!("wipe")),
+        ("fx", json!(["nope"])),
+        ("camera.aim", json!("top")),
+        ("camera.move.type", json!("spin")),
+    ] {
+        let (code, out) = jcall(&s, "POST", "/api/shots/s02_well", Some(json!({"set": {path: value}})));
+        assert_eq!(code, 400, "{path}: {out}");
+    }
+    assert_eq!(s.f.text(), before);
+}
+
+#[test]
+fn the_design_panel_controls_are_checked_by_the_server_and_never_re_render() {
+    let s = srv();
+    let st = jcall(&s, "GET", "/api/status", None).1;
+    let v = &st["vocab"];
+    assert_eq!(v["energies"], json!(["calm", "measured", "driving"]));
+    assert!(v["avoidable"].as_array().unwrap().contains(&json!("flash")));
+    assert!(v["faces"].as_array().unwrap().len() > 50);
+    // the offered faces leave out the overused ones
+    assert!(v["faces"].as_array().unwrap().iter().all(|f| shotpilot::fonts::overused(f["f"].as_str().unwrap()).is_none()));
+
+    let cat = shotpilot::fonts::catalog();
+    let ok_title = cat.families.iter().find(|f| f.script != "latin" && f.kanji != "none" && shotpilot::fonts::title_faces().iter().any(|t| t.family == f.family)).unwrap();
+    let latin_title = shotpilot::fonts::title_faces().into_iter().find(|f| f.script == "latin").unwrap();
+    let no_title_role = cat.families.iter().find(|f| !f.roles.iter().any(|r| r == "title") && shotpilot::fonts::overused(&f.family).is_none()).unwrap();
+    let overused = &cat.overused[0].family; // not in the catalogue either, so never fetched
+    let post = |set: Value| jcall(&s, "POST", "/api/finish", Some(json!({"set": set})));
+
+    let before = s.f.text();
+    // a Japanese title needs a face with its glyphs
+    let (code, out) = post(json!({"title": {"text": "灯の無い家"}, "fonts": {"title": format!("{}:700", latin_title.family)}}));
+    assert_eq!(code, 400, "{out}");
+    assert!(out.to_string().contains("no Japanese glyphs"), "{out}");
+    for (set, what) in [
+        (json!({"fonts": {"title": "Comic Sans MS"}}), "catalog"),
+        (json!({"fonts": {"title": overused}}), "catalog"),
+        (json!({"fonts": {"display": overused}}), "catalog"),
+        (json!({"fonts": {"title": no_title_role.family.clone()}}), "not a title face"),
+        (json!({"title_size": 0.9}), "title_size"),
+        (json!({"title_size": 0.01}), "title_size"),
+        (json!({"motion": {"energy": "frantic"}}), "energy"),
+        (json!({"motion": {"avoid": ["sparkle"]}}), "not a move"),
+    ] {
+        let (code, out) = post(set.clone());
+        assert_eq!(code, 400, "{set}: {out}");
+        assert!(out.to_string().contains(what), "{set}: {out}");
+    }
+    assert_eq!(s.f.text(), before, "a refused write must not touch the file");
+
+    // good values are taken, and nothing re-renders
+    render(&s, "previz");
+    let n = launches(&s.f.ws).len();
+    let (code, out) = post(json!({
+        "fonts": {"title": format!("{}:700", ok_title.family), "display": format!("{}:700", ok_title.family)},
+        "title_size": 0.18,
+        "motion": {"profile": "base", "energy": "calm", "avoid": ["flash", "glitch"]}}));
+    assert_eq!(code, 200, "{out}");
+    let st = jcall(&s, "GET", "/api/status", None).1;
+    assert_eq!(st["finish"]["title_size"], json!(0.18));
+    assert!(st["finish"]["fonts"]["title"].as_str().unwrap().starts_with(&ok_title.family));
+    assert_eq!(st["finish"]["motion"]["energy"], "calm");
+    assert!(st["finish"]["motion"]["avoid"].as_array().unwrap().contains(&json!("flash")));
+    let (again, _) = render(&s, "previz");
+    assert!(again.values().all(|a| a == "reused"), "{again:?}");
+    assert_eq!(launches(&s.f.ws).len(), n);
 }

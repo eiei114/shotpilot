@@ -290,6 +290,7 @@ pub fn cut_pieces(defn: &Definition, picks: &[Pick], fps: i64) -> Vec<crate::fin
                     caption: crate::finish::caption(&raw),
                     transition: crate::finish::transition(&raw),
                     exposure: crate::finish::exposure(&raw),
+                    fx: crate::fx::of(&raw),
                     overlays: crate::script::overlays(&defn.script, &s.id).into_iter().cloned().collect(),
                 })
             }

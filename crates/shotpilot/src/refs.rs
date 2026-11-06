@@ -32,7 +32,11 @@ const MOTION_DOC: &str = include_str!("../../../references/motion/MOTION.md");
 pub fn motion_text() -> String {
     let body = MOTION_DOC.find("\n## 6.").map_or("", |i| &MOTION_DOC[i + 1..]);
     let body = body.split_once('\n').map_or("", |(_, b)| b);
-    format!("\n## Text motion (which entrance a line asks for; the look's profile moves the rest)\n{}\n", nested(body.trim()))
+    format!(
+        "\n## Text motion (which entrance a line asks for; the look's profile moves the rest)\n{}\n\n## Camera effects\n{}",
+        nested(body.trim()),
+        crate::fx::guide()
+    )
 }
 
 /// The writing side of the type rules (D-52): section 10 of TEASER-TYPE.md, the only part a
@@ -471,4 +475,136 @@ fn style_text(s: &Style) -> String {
         blacks = if blacks.is_empty() { String::new() } else { format!(", black at {}", blacks.join(", ")) },
         prose = nested(s.prose()),
     )
+}
+
+// --------------------------------------------------------------------------- accessors for the eval harness
+
+/// Additive read access to the measured numbers (eval.rs scores a plan against them).
+impl Reference {
+    /// `(p25, median, p75)` of a measured metric over this package's teasers.
+    pub fn band(&self, metric: &str) -> Option<(f64, f64, f64)> {
+        let m = &self.tokens["metrics"][metric];
+        Some((m["p25"].as_f64()?, m["median"].as_f64()?, m["p75"].as_f64()?))
+    }
+
+    /// Edit density by quarter against the average (1 = average).
+    pub fn density_by_quarter(&self) -> Option<[f64; 4]> {
+        self.density()
+    }
+}
+
+impl Style {
+    /// Shots (cuts) it was measured to have.
+    pub fn shot_count(&self) -> Option<f64> {
+        self.tokens["shot_count"].as_f64()
+    }
+
+    /// Mean shot length (s).
+    pub fn asl(&self) -> Option<f64> {
+        self.tokens["asl_s"].as_f64()
+    }
+
+    /// Cuts in each quarter of its runtime, as counts.
+    pub fn cuts_by_quarter(&self) -> Option<[f64; 4]> {
+        let q: Vec<f64> = self.tokens["cuts_by_quarter"].as_array()?.iter().filter_map(Value::as_f64).collect();
+        (q.len() == 4).then(|| [q[0], q[1], q[2], q[3]])
+    }
+}
+
+// --------------------------------------------------------------------------- beats of a measured teaser
+
+/// The four beats of the teaser type, in order.
+pub const BEAT_ORDER: [&str; 4] = ["hook", "establish", "escalate", "title"];
+
+/// Where a teaser's beats fall and how fast each one cuts: what the skeleton copies.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Beats {
+    /// Share of the runtime each beat takes (hook, establish, escalate, title; sums to 1).
+    pub share: [f64; 4],
+    /// Pieces (shots and cards) per second inside each beat.
+    pub rate: [f64; 4],
+    /// Where it came from: a style id, `genre:<id>` or `all`.
+    pub source: String,
+}
+
+/// The first number in `s` (digits and one dot), with the rest of the string.
+fn leading_number(s: &str) -> Option<(f64, &str)> {
+    let s = s.trim_start();
+    let end = s.char_indices().find(|(_, c)| !(c.is_ascii_digit() || *c == '.')).map_or(s.len(), |(i, _)| i);
+    Some((s[..end].parse().ok()?, &s[end..]))
+}
+
+/// A beat line of section 2 of an analysis: `- **hook（0–3.7s）**: ...` -> ("hook", 0.0).
+fn beat_line(line: &str) -> Option<(usize, f64)> {
+    let rest = line.trim().strip_prefix("- **")?;
+    let beat = BEAT_ORDER.iter().position(|b| rest.starts_with(b))?;
+    let open = rest.find(['（', '('])?;
+    let inside = &rest[open + rest[open..].chars().next()?.len_utf8()..];
+    let (start, after) = leading_number(inside)?;
+    // a range follows: "0–3.7s", "0-3.7", "0〜3.7"
+    after.trim_start().starts_with(['–', '-', '~', '〜']).then_some((beat, start))
+}
+
+impl Style {
+    /// When each beat starts (s), read from section 2 of the analysis. None unless all four
+    /// are there in order (the first line of a beat counts).
+    pub fn beat_starts(&self) -> Option<[f64; 4]> {
+        let mut starts = [None; 4];
+        for (beat, at) in self.prose().lines().filter_map(beat_line) {
+            starts[beat].get_or_insert(at);
+        }
+        let s = [starts[0]?, starts[1]?, starts[2]?, starts[3]?];
+        (s[0] <= 0.5 && s.windows(2).all(|w| w[0] < w[1]) && s[3] < self.duration).then_some(s)
+    }
+
+    /// Its beats: each one runs from its start to the next one's (gaps the analysis leaves go
+    /// to the beat before), and its pieces are the measured cuts inside it plus the one it
+    /// opens with.
+    pub fn beats(&self) -> Option<Beats> {
+        let starts = self.beat_starts()?;
+        let cuts = self.cuts();
+        let mut share = [0.0; 4];
+        let mut rate = [0.0; 4];
+        for i in 0..4 {
+            let (a, b) = (starts[i], if i == 3 { self.duration } else { starts[i + 1] });
+            // a cut within 0.3 s of a beat's start is the cut that opens it
+            let inside = cuts.iter().filter(|c| **c > a + 0.3 && **c < b - 0.3).count() as f64;
+            share[i] = (b - a) / self.duration;
+            rate[i] = (inside + 1.0) / (b - a);
+        }
+        // a beat boundary the analysis puts between cuts counts one piece too many: scale so
+        // the beats hold as many pieces as the teaser was measured to have
+        let pieces: f64 = (0..4).map(|i| rate[i] * share[i] * self.duration).sum();
+        let k = (cuts.len() as f64 + 1.0) / pieces;
+        Some(Beats { share, rate: rate.map(|r| r * k), source: self.id.to_string() })
+    }
+}
+
+/// The average of some styles' beats (None when none of them has its beats written down).
+fn mean_beats(of: &[&'static Style], source: String) -> Option<Beats> {
+    let all: Vec<Beats> = of.iter().filter_map(|s| s.beats()).collect();
+    if all.is_empty() {
+        return None;
+    }
+    let n = all.len() as f64;
+    let mut b = Beats { share: [0.0; 4], rate: [0.0; 4], source };
+    for x in &all {
+        for i in 0..4 {
+            b.share[i] += x.share[i] / n;
+            b.rate[i] += x.rate[i] / n;
+        }
+    }
+    Some(b)
+}
+
+/// The beats a brief's skeleton follows: the style it names, else the average of its genre's
+/// styles, else of every style.
+pub fn beats(brief: &BriefCfg) -> Option<Beats> {
+    if let Some(b) = style(&brief.style).and_then(Style::beats) {
+        return Some(b);
+    }
+    if let Some(b) = genre_for(&brief.genre).and_then(|r| mean_beats(&styles_for(r.id), format!("genre:{}", r.id))) {
+        return Some(b);
+    }
+    mean_beats(&styles().iter().collect::<Vec<_>>(), "all".into())
 }

@@ -46,6 +46,8 @@ pub struct Family {
     pub kanji: String,
     pub registers: Vec<String>,
     pub roles: Vec<String>,
+    /// What the face is for, in a line (Japanese).
+    pub note: String,
 }
 
 impl Family {
@@ -66,6 +68,8 @@ pub struct Overused {
 pub struct Catalog {
     pub families: Vec<Family>,
     pub overused: Vec<Overused>,
+    /// The registers each look draws on (`looks`: look id -> registers).
+    pub looks: Vec<(String, Vec<String>)>,
 }
 
 pub fn catalog() -> &'static Catalog {
@@ -81,6 +85,7 @@ pub fn catalog() -> &'static Catalog {
             kanji: e["coverage"]["kanji"].as_str().unwrap_or(if e["script"] == "latin" { "none" } else { "full" }).to_string(),
             registers: strs(&e["registers"]),
             roles: strs(&e["roles"]),
+            note: e["note"].as_str().unwrap_or("").to_string(),
         };
         let families = v["japanese"].as_array().into_iter().flatten().chain(v["latin"].as_array().into_iter().flatten()).map(fam).collect();
         let overused = v["overused"]
@@ -93,8 +98,58 @@ pub fn catalog() -> &'static Catalog {
                 instead: strs(&e["instead"]),
             })
             .collect();
-        Catalog { families, overused }
+        let looks = v["looks"].as_object().into_iter().flatten().map(|(k, regs)| (k.clone(), strs(regs))).collect();
+        Catalog { families, overused, looks }
     })
+}
+
+/// Faces that can set a title (role `title`, not overused), for the planner's choice (D-59).
+pub fn title_faces() -> Vec<&'static Family> {
+    catalog().families.iter().filter(|f| f.roles.iter().any(|r| r == "title") && overused(&f.family).is_none()).collect()
+}
+
+/// The face a title may take (D-59): a catalogue family with the title role, not overused, with
+/// glyphs for the titles it will set (a Latin face sets only a Latin title, a kana face no
+/// kanji), at its weight nearest 700. The error says why not, for a note.
+pub fn title_spec(name: &str, titles: &[&str]) -> std::result::Result<Spec, String> {
+    if let Some(o) = overused(name) {
+        return Err(format!("{} is overused (instead: {})", o.family, o.instead.join(", ")));
+    }
+    let Some(f) = family(name) else { return Err(format!("{} is not in the font catalogue", name.trim())) };
+    if !f.roles.iter().any(|r| r == "title") {
+        return Err(format!("{} is not a title face", f.family));
+    }
+    let non_latin = |t: &str| t.chars().any(|c| c.is_alphabetic() && c as u32 > 0x24F);
+    let kanji = |t: &str| t.chars().any(|c| matches!(c as u32, 0x3400..=0x4DBF | 0x4E00..=0x9FFF));
+    if f.script == "latin" && titles.iter().any(|t| non_latin(t)) {
+        return Err(format!("{} has no Japanese glyphs for the title", f.family));
+    }
+    if f.kanji == "none" && titles.iter().any(|t| kanji(t)) {
+        return Err(format!("{} has no kanji for the title", f.family));
+    }
+    Ok(Spec { family: f.family.clone(), weight: f.nearest_weight(700) })
+}
+
+/// The title faces a look may reach for: those of its registers, and the worn and broken ones
+/// whatever the look (a damaged world shows in its title). Without a look, every title face.
+pub fn title_text(look: &str) -> String {
+    let regs: Vec<String> = catalog().looks.iter().find(|(k, _)| k == look).map(|(_, r)| r.clone()).unwrap_or_default();
+    let mut out = String::from(
+        "\n## Title faces (`title_face`)\nThe look sets the faces of the cards and lines. The title may take its own face \
+         from this list when the pitch, the plan or the place calls for one: a worn or broken face for a damaged place \
+         or a story told through damaged things, a scrawl for a note someone left, a carved or burned face for what \
+         the place went through. Leave it empty to keep the look's display face. A Latin face (latin) sets only a \
+         Latin title; a face without kanji (kana) sets no kanji.\n",
+    );
+    for f in title_faces() {
+        let reach = regs.is_empty() || f.registers.iter().any(|r| r == "worn" || regs.contains(r));
+        if !reach {
+            continue;
+        }
+        let script = if f.script == "latin" { "latin" } else if f.kanji == "none" { "kana" } else { "ja" };
+        out.push_str(&format!("- `{}` ({}, {}; {}): {}\n", f.family, script, f.class, f.registers.join("/"), f.note));
+    }
+    out
 }
 
 pub fn family(name: &str) -> Option<&'static Family> {
@@ -475,5 +530,32 @@ mod tests {
         let css = "@font-face {\n  src: url(https://fonts.gstatic.com/s/x/v1/abc.ttf) format('truetype');\n}";
         assert_eq!(ttf_url(css).as_deref(), Some("https://fonts.gstatic.com/s/x/v1/abc.ttf"));
         assert_eq!(ttf_url("src: url(https://x/y.woff2)"), None);
+    }
+
+    /// Guards D-52: fetching is off unless a binary calls `allow_fetch`, so a catalogue face
+    /// that is not cached is reported as unavailable instead of being downloaded. The spec
+    /// names a family that cannot be in any cache, so no env var needs to change.
+    #[test]
+    fn an_uncached_face_is_unavailable_without_allow_fetch() {
+        assert!(!fetch_allowed(), "no test may turn fetching on");
+        let spec = Spec { family: "Zz Not Cached Anywhere".into(), weight: 400 };
+        let err = resolve(&spec).expect_err("must not resolve without a cache or a fetch");
+        assert!(err.msg.contains("not downloaded yet"), "should refuse before any network call: {}", err.msg);
+        let report = fetch_now(&[spec]);
+        assert_eq!(report.len(), 1);
+        assert!(report[0].contains("not downloaded yet"), "{report:?}");
+        // prefetch is a no-op while fetching is off
+        prefetch(&[Spec { family: "Zz Not Cached Anywhere".into(), weight: 400 }]);
+    }
+
+    /// Guards D-52: only families of the catalogue can be named, so nothing else is fetched.
+    #[test]
+    fn a_family_outside_the_catalogue_is_refused() {
+        for name in ["Comic Sans MS", "Arial", "Totally Made Up Face:700", ""] {
+            assert!(Spec::parse(name).is_err(), "{name} must be refused");
+        }
+        assert!(family("Totally Made Up Face").is_none());
+        let first = catalog().families.first().expect("catalogue has families").family.clone();
+        assert!(Spec::parse(&first).is_ok());
     }
 }

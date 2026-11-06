@@ -30,7 +30,8 @@ pub const ROLES: &[&str] = &["card", "caption", "count", "title", "end"];
 pub const ENERGIES: &[&str] = &["calm", "measured", "driving"];
 /// Moves a look or a note may rule out.
 pub const AVOIDABLE: &[&str] =
-    &["fade", "flicker", "focus", "slam", "pop", "type", "wipe", "glitch", "drift", "glow", "dip", "flash", "whiteout"];
+    &["fade", "flicker", "focus", "slam", "pop", "type", "wipe", "glitch", "drift", "glow", "dip", "flash", "whiteout",
+      "chroma", "static", "vhs", "shake", "redflash"];
 
 /// Seconds an entrance takes when a line asks for one its profile has no time for
 /// (measured: slams 0.10-0.17 s, glitches 0.3-0.75 s, focus pulls 0.9-1.8 s).
@@ -618,5 +619,63 @@ mod tests {
         assert!((timing(&slow, 0.0, 2.0).fin - 0.7).abs() < 1e-9);
         assert_eq!(type_steps(10, &timing(&rm, 1.0, 4.0)).len(), 10);
         assert_eq!(type_steps(60, &timing(&rm, 1.0, 9.0)).len(), 20); // in chunks
+    }
+
+    /// Guards D-53: whatever the vocabulary word, profile, energy or (huge) override, the
+    /// entrance takes at most 35% of the line's time and the exit at most 25%.
+    #[test]
+    fn no_entrance_or_exit_outruns_its_share_of_the_line() {
+        assert!(!profiles().is_empty());
+        let spans = [0.8, 1.5, 4.0];
+        let check = |m: &Motion, what: &str| {
+            for (role, rm) in [("card", &m.card), ("caption", &m.caption), ("count", &m.count), ("title", &m.title), ("end", &m.end)] {
+                for span in spans {
+                    let tm = timing(rm, 2.0, 2.0 + span);
+                    assert!(tm.fin <= 0.35 * span + 1e-9, "{what} {role} in {} span {span}: {}", rm.enter, tm.fin);
+                    assert!(tm.fout <= 0.25 * span + 1e-9, "{what} {role} out {} span {span}: {}", rm.exit, tm.fout);
+                }
+            }
+        };
+        for p in profiles() {
+            for &e in ENERGIES {
+                let m = resolve(&cfg(json!({"profile": p.id, "energy": e})));
+                check(&m, &format!("{}/{e}", p.id));
+                for &role in ROLES {
+                    for &ent in ENTRANCES {
+                        for (&hold, &ex) in HOLDS.iter().zip(EXITS.iter().cycle()) {
+                            let c = cfg(json!({"profile": p.id, role: {"in": ent, "in_s": 3.0, "hold": hold, "out": ex, "out_s": 3.0}}));
+                            check(&resolve(&c), &format!("{}/{role}/{ent}/{hold}/{ex}", p.id));
+                        }
+                    }
+                    for &ex in EXITS {
+                        let c = cfg(json!({"profile": p.id, role: {"out": ex, "out_s": 3.0}}));
+                        check(&resolve(&c), &format!("{}/{role}/out {ex}", p.id));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Guards D-53: profiles only use words of the closed vocabulary.
+    #[test]
+    fn every_profile_speaks_the_closed_vocabulary() {
+        for p in profiles() {
+            let m = resolve(&cfg(json!({"profile": p.id})));
+            for rm in [&m.card, &m.caption, &m.count, &m.title, &m.end] {
+                assert!(ENTRANCES.contains(&rm.enter.as_str()), "{}: entrance {}", p.id, rm.enter);
+                assert!(HOLDS.contains(&rm.hold.as_str()), "{}: hold {}", p.id, rm.hold);
+                assert!(EXITS.contains(&rm.exit.as_str()), "{}: exit {}", p.id, rm.exit);
+            }
+        }
+    }
+
+    /// Guards D-25 / D-53: no transition may overlap two cuts (that would shorten the cut).
+    #[test]
+    fn the_transition_vocabulary_has_no_crossfade() {
+        for t in crate::finish::TRANSITIONS {
+            for bad in ["dissolve", "crossfade", "cross", "mix", "xfade", "blend"] {
+                assert!(!t.contains(bad), "transition '{t}' looks like a crossfade");
+            }
+        }
     }
 }
