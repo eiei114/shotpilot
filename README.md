@@ -58,7 +58,7 @@ shotpilot --file Teaser/shots.yaml claude install   # Skill とフックを入�
 
 ## ハッカソン期間中に作ったもの
 
-開発期間は 2026-11-02 12:30 〜 11-08 20:00。既存のプロジェクトのコードと設計は使っていない（D-05）。git の記録は次のとおり（決定の記録は `.claude/rules/product-decisions.md` の D-01〜D-66）。
+開発期間は 2026-11-02 12:30 〜 11-08 20:00。既存のプロジェクトのコードと設計は使っていない（D-05）。git の記録は次のとおり（決定の記録は `.claude/rules/product-decisions.md` の D-01〜D-69）。
 
 | 日 | したこと |
 |---|---|
@@ -68,6 +68,7 @@ shotpilot --file Teaser/shots.yaml claude install   # Skill とフックを入�
 | 11/04 | ホーム画面（D-30）、台本が先の流れ（D-31）、実測したティザー 701 本からの型（D-29）、絵コンテ（D-33） |
 | 11/05 | ゲームの変化の検知（D-37）、カット表での確認（D-36）、previz で止める（D-38）、企画（D-45）、構成画（D-46）、発信計画（D-47）、書体と動き（D-52、D-53） |
 | 11/05〜06 | サンプルのゲーム4本（D-54、D-61）、カメラ効果（D-57）、チップで積む指示（D-62）、ノードのキャンバス（D-63）、音を作品ごとに変える（D-64）、不変条件をテストに結ぶ（D-65）、Claude Code との連携（D-66） |
+| 11/06〜07 | サンプルの場所の作り込み（D-69）。構造の点検、GeometryScripting の形、Niagara の効果集、ジャンルごとの動き、4本のティザーの撮り直し |
 
 ## Claude の使い方
 
@@ -223,8 +224,8 @@ shotpilot cut final
 手元に UE5 のゲームが無いときに試すための、グレーボックスのゲームを自分で作れる。ゲームの仕組みは無く、テンプレートのキャラクターで歩けるだけ。4本ある（D-54、D-61）。ホラーの `Lanternless`（夜の閉じた病棟）、コージーの `KettleHill`（丘の上の茶屋の村。アンカーなしで、場所選びを Claude に任せる）、アクション・アドベンチャーの `AshenPillars`（灰の降る廃神殿）、ストラテジーの `Gridhold`（平原の砦）。どれも UE 5.8 の Third Person テンプレートから作り、Epic のアセットはリポジトリに入れない。以下は Lanternless の手順（ほかの3本も同じスクリプトで組む）。
 
 1. UE 5.8 のエディタで、新規プロジェクトを「ゲーム → 三人称 → Blueprint」、スターターコンテンツ無し、名前 `Lanternless` で作る。
-2. 上の4つのプラグインを有効にして、エディタを再起動する。
-3. 「ファイル → Python スクリプトを実行」で `tools/ue_sample/build_graybox.py` を選ぶ。`/Game/Lanternless/Maps/Lvl_Ward` ができ、起動マップになる。再生すると歩ける。エディタを開かずに組むなら、コマンドレットで同じスクリプトを走らせる（数秒で終わる）。
+2. 上の4つのプラグインと、効果を組むための実験的なプラグイン `ToolsetRegistry` と `NiagaraToolsets`（Epic 同梱）を有効にして、エディタを再起動する。後の2つが無いと、効果（火・煙・霧など）の無いレベルになる。
+3. 「ファイル → Python スクリプトを実行」で `tools/ue_sample/build_graybox.py` を選ぶ。`/Game/Lanternless/Maps/Lvl_Ward` ができ、起動マップになる。再生すると歩ける。エディタを開かずに組むなら、コマンドレットで同じスクリプトを走らせる（エディタの起動を含めて1〜2分）。
 
    ```bash
    UnrealEditor-Cmd.exe C:/path/Lanternless/Lanternless.uproject -run=pythonscript -script=C:/path/shotpilot/tools/ue_sample/build_graybox.py -unattended -nopause -NullRHI
@@ -232,9 +233,9 @@ shotpilot cut final
 
 4. アプリのホームで UE5 を選んで `.uproject` とマップを指定する（または `init --engine ue5 --uproject ... --map /Game/Lanternless/Maps/Lvl_Ward`）。アンカーは `SP_` の付いたアクター（受付、ストレッチャー、空の椅子、倒れた患者、廊下の奥の人影）。
 
-マネキンは動く。廊下の奥の人影はこちらへ歩き、R1 の患者は部屋を往復し、R2 の入口の患者は痙攣する（歩くものはレベルの自動再生シーケンス `LS_WardLife` が動かす）。動きは全コマを撮る `preview` と `final` で写る。`still` は飛び飛びの3コマなので、レベルの中の時間がほとんど進まない。
+マネキンは、ジャンルごとの動き（`tools/ue_sample/graybox/moves_<ジャンル>.py`、9〜12 個）で動く。Lanternless なら、廊下の奥の人影がよろめきながら近づき、壁に向かって揺れる患者、床を這う患者、戸口から覗く患者、クリップボードに書く看護師がいる（歩くものはレベルの自動再生シーケンスが動かす）。動きは全コマを撮る `preview` と `final` で写る。`still` は飛び飛びの3コマなので、レベルの中の時間がほとんど進まない。
 
-マップは普通のアセットなので、組んだあとはエディタで手を入れてよい。スクリプトは既存のマップを上書きしないので、作り直すときはマップを消してから走らせる。
+マップは普通のアセットなので、組んだあとはエディタで手を入れてよい。スクリプトは既存のマップを上書きしない。作り直すときは引数に `--rebuild` を付ける（`/Game/<ゲーム>/` を `<プロジェクト>/Saved/GrayboxBackups/<時刻>/` に写してから組み直すので、手で直した分はそこに残る）。`--audit` は組まずに構造の点検（z-fighting、浮いた部品、壁にめり込んだ体）だけを出す。組み直したら、ティザーは `shotpilot render <品質> --force` で撮り直す（レベルの配置の変化は、ゲームの変化の検知に入らない）。
 
 ### Sequencer で直した場合
 
@@ -347,7 +348,7 @@ fingerprint は Python 版（〜0.1）と同じ正規化 JSON を hash するの
 - サウンドチェック（`soundcheck.rs`）は earshot（MIT License, Copyright (c) 2026 Leon Lin）の `critique` / `profile` / `features` を Rust に移植したもの。基準のプロファイル、重み、許容幅、判定の区切りは earshot のものをそのまま使う。
 - 企画・ルック・スキルの形は open-design（nexu-io/open-design、Apache-2.0）の OD Next の計画ターン、`design-systems/`、`skills/` に倣った（コードは写していない）。ルックは汎用で、実在のゲームやスタジオの名前・ロゴ・色を写さない。
 - 書体は Google Fonts のもの（OFL。Kosugi・Kosugi Maru・Rock Salt は Apache 2.0）。使うときに取ってきてキャッシュし、リポジトリにもバイナリにも入れない。
-- サンプルのゲームは Epic の UE 5.8 Third Person テンプレートのアセット（マネキン、試作用の箱）で作る。アセットはリポジトリに入れず、組み立てのスクリプト（`tools/ue_sample/build_graybox.py`）だけを置く。
+- サンプルのゲームは Epic の UE 5.8 Third Person テンプレートのアセット（マネキン、試作用の箱）で作る。アセットはリポジトリに入れず、組み立てのスクリプト（`tools/ue_sample/`）だけを置く。効果・形・動きもエンジンと Epic 同梱のプラグイン（Niagara、NiagaraToolsets、GeometryScripting）でコードから作り、外部の素材は使わない。
 - 効果音と曲は、作者が Splice で購入したサンプルを手元のライブラリ（リポジトリの外）から使う。リポジトリには入れず、再配布しない。`shotpilot init` の仮の音（`drone.wav` など）はコードで合成したもの。
 - ムードボードと構成画は OpenAI の画像生成（参照のみ）。ティザーの画はすべてゲームから撮る。
 - 実測したティザー（`references/teasers/`）は、長さ・カット・明るさなどの測定値と分析だけを置く。動画とフレーム画像は入れていない。
