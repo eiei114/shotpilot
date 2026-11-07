@@ -1435,7 +1435,7 @@ function stageState() {
   return {
     scout: photos ? ["ok", `写真 ${photos} · prop ${nprops}`] : nprops ? ["", `prop ${nprops}`] : ["", "未"],
     brief: !b.written ? ["", "未記入"] : b.missing?.length ? ["warn", `未記入 ${b.missing.length}`] : ["ok", b.kind === "gameplay" ? "ゲームプレイ" : "ティザー"],
-    structure: count("P0") ? ["bad", `P0 ${count("P0")}`] : count("P1") ? ["warn", `要確認 ${count("P1")}`] : ["ok", n ? "問題なし" : "カットなし"],
+    structure: !n ? ["", "カットなし"] : count("P0") ? ["bad", `P0 ${count("P0")}`] : count("P1") ? ["warn", `要確認 ${count("P1")}`] : ["ok", "問題なし"],
     framing: f.some((x) => x.severity === "P0" && x.shot) ? ["bad", `承認 ${approved}/${n}`] : n && approved === n ? ["ok", `承認 ${n}/${n}`] : ["", `承認 ${approved}/${n}`],
     capture: n && finalFresh === n ? ["ok", `final ${n}/${n}`] : ["", bestQ ? `${bestQ} まで済` : `final ${finalFresh}/${n}`],
     finish: st.cut ? ["ok", `cut · ${st.cut.quality}`] : ["", "未"],
