@@ -236,6 +236,9 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 .dock-go small { grid-column: 1; font-weight: 400; font-size: 11px; opacity: .78; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dock-go kbd { grid-column: 2; grid-row: 1 / span 2; font: 400 10px var(--mono); opacity: .7; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
 .dock-go:disabled { opacity: .45; cursor: default; }
+.dock-go.dock-said { background: var(--soft); color: var(--ink); border: 1px solid var(--line); cursor: default; font-weight: 600; }
+.dock-go.dock-said.done { color: var(--ok); }
+.dock-go.dock-said small { color: var(--muted); opacity: 1; }
 .dock-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
 .dock-row .need { color: var(--stale); }
 .dock-row button { border: 0; background: none; color: var(--muted); text-decoration: underline; padding: 0; font-size: 11px; }
@@ -1801,7 +1804,8 @@ function roadState() {
     sound: done(sound),
     capture: done(n && shots.every((s) => s.qualities.final === "fresh")),
     cut: done(st.cut),
-    publish: done(publishState(st.promo)[0] === "ok"),
+    // this project's own video: the human's turn once it is cut, done when its checklist is ticked
+    publish: !st.cut ? "" : unpublished() ? "yours" : "done",
   };
   const run = runningRoad();
   if (run) out[run] = "running";
@@ -2896,7 +2900,14 @@ function nextStep() {
   const finalStale = approved.filter((x) => x.qualities.final !== "fresh");
   if (finalStale.length) return { stage: "capture", what: `承認済みを final で撮る（${finalStale.length} 本）`, why: "変わったカットだけを撮り、ほかは前の take を使います", act: "final" };
   if (!st.cut) return { stage: "finish", what: "Cut でつなぐ", why: "take をカット順につなぎ、BGM と SE があれば載せます", act: "cut" };
-  return { stage: "finish", what: "仕上げを確認する", why: "映像とサウンドチェックを見て、気になるところだけ直します", act: "goto" };
+  // once cut, the road goes on to publishing this video (the finish can still be fixed and cut again from the dock)
+  if (unpublished()) return { stage: "publish", what: "公開前の確認をして出す", why: "音なしで伝わるか・最初の数秒・エンドカードの事実を確かめ、ストアや SNS に出したらチェックを付けます", act: "goto" };
+  return { stage: "publish", what: "このティザーは公開済みです", why: "次の動画は、公開の画面の発信計画から隣のプロジェクトとして作れます", act: "done" };
+}
+
+/** The next step is the human's, on the screen already open: nothing to go to. */
+function nextIsHere(n) {
+  return n?.act === "goto" && STAGE_OF[ui.tab] === n.stage && (!n.shot || ui.sel === n.shot);
 }
 
 // ------------------------------------------------------------------ the dock (D-84)
@@ -2975,13 +2986,16 @@ function dockScope() {
 
 function drawDock() {
   const el = $("dock"), st = ui.status; if (!el || !st) return;
-  const n = nextStep(), acts = dockActions();
-  const key = JSON.stringify([n && [n.what, n.act, n.need, n.why, n.skip], acts.map((a) => [a.k, a.label, a.off, a.tip]), !!ui.busy, [...pinsOf()].sort(), dockScope()]);
+  const n = nextStep(), acts = dockActions(), here = nextIsHere(n);
+  const key = JSON.stringify([n && [n.what, n.act, n.need, n.why, n.skip], here, acts.map((a) => [a.k, a.label, a.off, a.tip]), !!ui.busy, [...pinsOf()].sort(), dockScope()]);
   if (drawDock.key === key && el.childElementCount) return;
   drawDock.key = key;
   const busy = !!ui.busy;
-  const go = n ? `<button type="button" class="dock-go" data-dock-go${busy || n.need ? " disabled" : ""} title="${esc(n.why || "")}">▶ ${n.act === "goto" ? "そこへ行く" : "続ける"}<kbd>Ctrl+Enter</kbd><small>次: ${esc(n.what)}</small></button>
-    ${n.need || n.skip ? `<div class="dock-row">${n.need ? `<span class="need">${esc(n.need)}</span>` : ""}${n.skip ? `<button type="button" data-dock-skip="${esc(n.skip)}">飛ばす</button>` : ""}</div>` : ""}` : "";
+  // nothing to press when the step is done, or is the human's on this very screen: say so instead of a ▶ that goes nowhere
+  const go = !n ? "" : n.act === "done" || here
+    ? `<div class="dock-go dock-said${n.act === "done" ? " done" : ""}" title="${esc(n.why || "")}">${n.act === "done" ? `✓ ${esc(n.what)}` : `あなたの番: ${esc(n.what)}`}<small>${esc(n.why || "")}</small></div>`
+    : `<button type="button" class="dock-go" data-dock-go${busy || n.need ? " disabled" : ""} title="${esc(n.why || "")}">▶ ${n.act === "goto" ? "そこへ行く" : "続ける"}<kbd>Ctrl+Enter</kbd><small>次: ${esc(n.what)}</small></button>
+    ${n.need || n.skip ? `<div class="dock-row">${n.need ? `<span class="need">${esc(n.need)}</span>` : ""}${n.skip ? `<button type="button" data-dock-skip="${esc(n.skip)}">飛ばす</button>` : ""}</div>` : ""}`;
   const list = acts.length ? `<div class="dock-hd">${esc(dockScope())}</div>
     <div class="dock-acts">${acts.map((a) => `<button type="button" data-dock-act="${esc(a.k)}"${busy || a.off ? " disabled" : ""} title="${esc(a.tip || "")}">${esc(a.label)}</button>`).join("")}</div>` : "";
   el.innerHTML = go + list;
@@ -2991,7 +3005,7 @@ function drawDock() {
 function drawNext() { drawDock(); }
 
 async function runNext() {
-  const n = nextStep(); if (!n || ui.busy || n.need) return;
+  const n = nextStep(); if (!n || ui.busy || n.need || n.act === "done") return;
   // the first pass opens its own stages as it goes (and must be busy before the scouting stage opens)
   if (n.act !== "produce") goStage(n.stage === "framing" ? "framing" : n.stage);
   if (n.shot) selectShot(n.shot);
@@ -5380,13 +5394,9 @@ function dueHtml(days, date, finished) {
   return `<span class="pill${days <= 7 ? " soon" : ""}">${esc(shortDay(date))} · あと ${days} 日</span>`;
 }
 
-/** The stage bar's badge from the status (promo::summary). */
-function publishState(p) {
-  if (!p) return ["", "未"];
-  if (p.post_days != null && p.post_days < 0) return ["warn", `投稿 ${-p.post_days} 日遅れ`];
-  if (!p.saved) return ["", "未"];
-  return [p.videos && p.published === p.videos ? "ok" : "", `公開 ${p.published}/${p.videos}`];
-}
+/** This project's own video is on the release plan and its checklist is not ticked yet (promo::summary).
+ *  The plan's other videos are projects of their own and never hold this project's road. */
+function unpublished() { return ui.status?.promo?.own === false; }
 
 async function loadPromo() {
   try { ui.promo = await api("GET", "/api/promo"); }

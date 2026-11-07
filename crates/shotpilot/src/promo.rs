@@ -571,7 +571,8 @@ pub fn view(ws: &Workspace, today: NaiveDate) -> Result<Value> {
     }))
 }
 
-/// A line for the stage bar: how many videos are done, and when the next post is due.
+/// A line for the road: how many videos are done, whether this project's own video is,
+/// and when the next post is due.
 pub fn summary(ws: &Workspace, today: NaiveDate) -> Value {
     let Ok(plan) = Plan::open(ws) else { return Value::Null };
     let videos = plan.videos();
@@ -580,11 +581,15 @@ pub fn summary(ws: &Workspace, today: NaiveDate) -> Value {
     let next = last_done.map(|d| d + Duration::days(every));
     let all = |v: &Value| {
         let k = kind(v["kind"].as_str().unwrap_or("")).unwrap_or(&KINDS[0]);
-        let ticked = v["checks"].as_object().map(|m| m.len()).unwrap_or(0);
-        ticked >= checks_for(k).iter().filter(|c| !c.auto).count()
+        let ticked = v["checks"].as_object();
+        checks_for(k).iter().filter(|c| !c.auto).all(|c| ticked.and_then(|m| m.get(c.id)).and_then(Value::as_bool).unwrap_or(false))
     };
+    // the road's last step is this project's video (one project, one video): the rest of the
+    // plan are other projects, made later, with roads of their own
+    let own = videos.iter().find(|v| plan.project_of(v).is_some_and(|p| crate::projects::same_path(&p, &ws.path)));
     json!({
         "saved": plan.path.is_file(), "videos": videos.len(), "published": videos.iter().filter(|v| all(v)).count(),
+        "own": own.map(all),
         "post_days": next.map(|d| (d - today).num_days()),
     })
 }

@@ -911,8 +911,9 @@ fn etag(app: &App) -> String {
         }
         crate::content::stamp_files(&w.1)
     };
-    // the release plan behind the stage badge (this project's promo.json, D-47)
-    let promo = stamp(root.join(crate::promo::FILE));
+    // the release plan behind the road's last step (D-47): the plan file itself, which is
+    // another project's promo.json when this one links to it
+    let promo = stamp(crate::promo::plan_of(&root));
     format!("\"{which}.{}.{state}.{content}.{settings}.{promo}\"", stamp(shots))
 }
 

@@ -1135,6 +1135,33 @@ fn the_release_plan_is_a_checklist_the_app_ticks() {
 }
 
 #[test]
+fn the_road_ends_when_this_projects_own_video_is_published() {
+    // the road's last step is this project's video; the plan's other videos are projects of
+    // their own, so they never keep this one's road open
+    let s = srv();
+    let st = call(&s, "GET", "/api/status", None, &[]).json();
+    assert_eq!(st["promo"]["own"], json!(false), "{}", st["promo"]);
+    let plan = call(&s, "GET", "/api/promo", None, &[]).json();
+    let own = plan["videos"].as_array().unwrap().iter().find(|v| v["here"] == true).unwrap().clone();
+    let hand: Vec<String> = own["checks"].as_array().unwrap().iter().filter(|c| c["auto"] == false).map(|c| c["id"].as_str().unwrap().to_string()).collect();
+    assert!(hand.len() > 2, "{hand:?}");
+    for (i, check) in hand.iter().enumerate() {
+        let r = call(&s, "POST", "/api/promo", Some(json!({"op": "check", "video": own["id"], "check": check, "done": true})), &[]);
+        assert_eq!(r.code, 200);
+        let st = call(&s, "GET", "/api/status", None, &[]).json();
+        // published only once every hand check is ticked
+        assert_eq!(st["promo"]["own"], json!(i + 1 == hand.len()), "after {check}");
+    }
+    let st = call(&s, "GET", "/api/status", None, &[]).json();
+    assert_eq!((st["promo"]["published"].as_i64(), st["promo"]["videos"].as_i64()), (Some(1), Some(3)));
+    // unticking one opens it again
+    call(&s, "POST", "/api/promo", Some(json!({"op": "check", "video": own["id"], "check": hand[0], "done": false})), &[]);
+    let st = call(&s, "GET", "/api/status", None, &[]).json();
+    assert_eq!(st["promo"]["own"], json!(false));
+    assert!(launches(&s.f.ws).is_empty());
+}
+
+#[test]
 fn a_look_picked_in_the_app_brings_its_faces_and_motion_and_a_logo_can_be_named() {
     // D-52 / D-53: picking a look writes its typefaces, title size and motion; the logo is a
     // file inside the project (the app's dialog copies one from outside into art/)
