@@ -1715,7 +1715,7 @@ impl Workspace {
     /// `cands`: the level's candidates when already known (else one survey asks for them).
     pub fn match_concept(&mut self, claude: &dyn crate::ai::Claude, cands: Option<Vec<crate::scout::Candidate>>) -> Result<MatchReport> {
         use crate::concept;
-        let mut frames = concept::load(&self.root);
+        let mut frames = concept::load_live(&self.defn);
         let mut rep = MatchReport::default();
         let mut cands = cands.filter(|c| !c.is_empty());
         let mut fresh: Option<Vec<String>> = None; // anchors added in the last round (None: compare with all)

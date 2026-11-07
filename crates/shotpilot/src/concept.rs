@@ -161,6 +161,18 @@ pub fn image_block(root: &Path, rel: &str) -> Option<(Value, usize)> {
         .then(|| (json!({"type": "image", "source": {"type": "base64", "media_type": media, "data": crate::ai::base64(&bytes)}}), bytes.len()))
 }
 
+/// The frames with the places they were matched to, minus a place that is no longer an
+/// anchor (re-scouted away): that frame is open again, to be matched among the new places.
+pub fn load_live(defn: &Definition) -> Vec<Frame> {
+    let mut frames = load(&defn.root());
+    for f in &mut frames {
+        if f.found.as_ref().is_some_and(|p| defn.anchor(&p.anchor).is_none()) {
+            f.found = None;
+        }
+    }
+    frames
+}
+
 /// What the planner gets: each frame's picture and, when the scout found it, the photo of
 /// the place, each preceded by a line naming it.
 pub fn planner_blocks(defn: &Definition) -> (Vec<Value>, String) {

@@ -650,7 +650,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "review": review_json(ws),
         "brief": brief_json(&ws.defn.brief),
         "own_design": crate::designsys::project_doc(&ws.root).is_some(),
-        "concept": crate::concept::load(&ws.root).iter().map(crate::concept::Frame::to_json).collect::<Vec<_>>(),
+        "concept": crate::concept::load_live(&ws.defn).iter().map(crate::concept::Frame::to_json).collect::<Vec<_>>(),
         "scout": scout["anchors"].as_object().cloned().unwrap_or_default(), // scout::summary
         "scout_taken": scout["taken"],
         "finish": {

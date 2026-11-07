@@ -395,6 +395,12 @@ fn frames_with_no_place_stay_mood_only() {
     assert_eq!(launches(&f.ws).iter().filter(|l| l["kind"] == "survey").count(), 2); // asked the level for others once
     let (_, text) = shotpilot::concept::planner_blocks(&f.ws.defn);
     assert!(text.contains("`c1` (hook): no place in the level looks like it; take its mood"), "{text}");
+
+    // the place c3 was found at is scouted away: c3 is open again, to be matched among the new places
+    assert!(shotpilot::concept::load_live(&f.ws.defn).iter().any(|x| x.id == "c3" && x.found.is_some()));
+    f.ws.defn.anchors.retain(|(n, _)| n != "crate");
+    let live = shotpilot::concept::load_live(&f.ws.defn);
+    assert!(live.iter().any(|x| x.id == "c3" && x.found.is_none() && x.open()), "{:?}", live.iter().map(|x| (&x.id, &x.found)).collect::<Vec<_>>());
 }
 
 // ---------------------------------------------------------------------------
