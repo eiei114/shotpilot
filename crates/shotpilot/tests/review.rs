@@ -95,6 +95,31 @@ fn the_first_pass_stops_at_the_review_and_resumes_after_it() {
 }
 
 #[test]
+fn a_pass_stops_where_the_human_pinned_and_goes_on_past_what_is_done() {
+    // D-84: the human pins the plan and the scouting; each press runs up to the next pin
+    let mut f = ws();
+    let claude = Director(Default::default());
+    let opts = ProduceOpts { review: true, mood: false, stop: vec!["discover".into(), "scout".into()], ..Default::default() };
+    let run = |f: &mut common::Fixture| {
+        let mut events = Vec::new();
+        let mut on = |e: &str, d: &Value| events.push((e.to_string(), d.clone()));
+        let out = produce::produce(&mut f.ws, &claude, None, &opts, &mut on).unwrap();
+        (out["stopped"].as_str().unwrap_or("").to_string(), steps(&events))
+    };
+    assert_eq!(run(&mut f), ("discover".into(), vec!["discover:done".to_string()]));
+    assert!(f.ws.defn.shots.iter().all(|s| s["id"] != "h"), "nothing was planned yet");
+    // the plan is done, so its pin is passed; the scouting runs and stops
+    let (at, did) = run(&mut f);
+    assert_eq!((at.as_str(), did), ("scout", vec!["discover:skipped".to_string(), "scout:done".into(), "stage:done".into(), "mood:skipped".into()]));
+    assert_eq!(f.ws.state.history().last().unwrap()["stopped"], "scout");
+    // and the next press goes on to the review, asking nothing twice
+    let (at, did) = run(&mut f);
+    assert_eq!(at, "review");
+    assert_eq!(did.last().unwrap(), "review:done");
+    assert_eq!(*claude.0.borrow(), ["discover", "stage", "plan"]);
+}
+
+#[test]
 fn without_review_the_pass_goes_all_the_way_as_before() {
     let mut f = ws();
     let claude = Director(Default::default());

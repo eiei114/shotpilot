@@ -29,11 +29,15 @@ pub struct ProduceOpts {
     /// human to check them on the cut sheet. [`resume`] then designs the sound, renders and
     /// cuts. Without it the pass goes all the way, as before.
     pub review: bool,
+    /// Where the pass stops before the review, for a human who wants to look first (D-84):
+    /// "discover" after the plan, "scout" after the photos, the stage and the mood board. A pass
+    /// stops there only when that part ran this time, so pressing on goes past what is done.
+    pub stop: Vec<String>,
 }
 
 impl Default for ProduceOpts {
     fn default() -> Self {
-        ProduceOpts { quality: "previz".into(), direction: String::new(), mood: true, library: None, review: false }
+        ProduceOpts { quality: "previz".into(), direction: String::new(), mood: true, library: None, review: false, stop: Vec::new() }
     }
 }
 
@@ -83,6 +87,9 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         let d = ai::discover(&ws.defn, &opts.direction, "", false, claude)?;
         ws.apply_discovery(&d, &opts.direction, &Value::Null)?;
         step("discover", "done", d.direction.clone(), emit, &mut steps);
+        if opts.stop.iter().any(|s| s == "discover") {
+            return stopped(ws, opts, "discover", steps, notes);
+        }
     } else {
         step("discover", "skipped", "企画済み".into(), emit, &mut steps);
     }
@@ -152,6 +159,12 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         _ => step("mood", "skipped", "作成済み".into(), emit, &mut steps),
     }
 
+    // a stop after the scouting: only when something of it ran now (photos, stage or mood board)
+    let scouted = steps.iter().any(|s| ["scout", "stage", "mood"].contains(&s["key"].as_str().unwrap_or("")) && s["status"] == "done");
+    if scouted && opts.stop.iter().any(|s| s == "scout") {
+        return stopped(ws, opts, "scout", steps, notes);
+    }
+
     // 4. the shot list and the finish, in one call with every constraint
     step("plan", "start", String::new(), emit, &mut steps);
     let direction = Some(opts.direction.as_str()).filter(|d| !d.trim().is_empty());
@@ -194,6 +207,18 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
         return Ok(Value::Object(entry));
     }
     finish(ws, claude, opts, emit, steps, notes, entry)
+}
+
+/// End a pass at a stop the human asked for (D-84): logged like a pass, so the next press goes on.
+fn stopped(ws: &mut Workspace, opts: &ProduceOpts, at: &str, steps: Vec<Value>, notes: Vec<String>) -> Result<Value> {
+    let mut entry = Map::new();
+    entry.insert("note".into(), json!(opts.direction));
+    entry.insert("stopped".into(), json!(at));
+    entry.insert("steps".into(), json!(steps));
+    entry.insert("notes".into(), json!(notes));
+    ws.state.log("produce", Value::Object(entry.clone()));
+    ws.state.save()?;
+    Ok(Value::Object(entry))
 }
 
 /// After the review: design the sound (when none was designed yet), render, cut. The

@@ -1733,6 +1733,7 @@ fn produce_stream(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()
         mood: body.get("mood").and_then(Value::as_bool).unwrap_or(true),
         library: None,
         review: body.get("review").and_then(Value::as_bool).unwrap_or(false),
+        stop: body.get("stop").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect(),
     }
     .with_user_library();
     let resume = body.get("resume").and_then(Value::as_bool).unwrap_or(false);

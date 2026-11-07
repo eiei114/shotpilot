@@ -795,7 +795,7 @@ fn run(cli: Cli) -> Result<u8> {
             let settings = Settings::load(Settings::default_path().as_deref());
             let claude = connect::make_claude(&settings)?;
             let images = if no_mood || resume { None } else { connect::make_image_gen(&settings).ok() };
-            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood, library: None, review }
+            let opts = shotpilot::produce::ProduceOpts { quality, direction: note, mood: !no_mood, library: None, review, stop: Vec::new() }
                 .with_user_library();
             let mut print = |e: &str, d: &Value| {
                 if e == "step" && d["status"] != "start" {
