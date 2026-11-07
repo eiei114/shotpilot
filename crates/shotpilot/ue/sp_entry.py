@@ -1077,7 +1077,19 @@ def finish_render_process():
     unreal.SystemLibrary.quit_editor()
 
 
+class SetupError(Exception):
+    """The editor lacks something the job needs; the message says what to do (no traceback)."""
+
+
 def run_render(job):
+    # Movie Render Queue comes from a plugin; without it nothing can be filmed, so say so
+    # before building anything
+    if getattr(unreal, "MoviePipelineQueueSubsystem", None) is None:
+        raise SetupError(
+            "Movie Render Queue is not available in this editor. shotpilot asked for it with "
+            "-EnablePlugins=MovieRenderPipeline; if this still shows, enable the Movie Render Queue "
+            "plugin in the project (Edit > Plugins > Movie Render Queue, or add "
+            '{"Name": "MovieRenderPipeline", "Enabled": true} to the .uproject Plugins) and try again.')
     result = {"build": None, "renders": {}}
     if job.get("build") or job.get("master"):
         result["build"] = run_build(job)
@@ -1190,6 +1202,10 @@ def main():
         res = {"build": run_build, "pull": run_pull, "scan": run_scan, "assets": run_assets,
                "survey": run_survey}[kind](job)
         write_result(res)
+    except SetupError as e:
+        write_result({"fatal": str(e)})
+        if kind == "render":
+            finish_render_process()
     except Exception:
         write_result({"fatal": traceback.format_exc()})
         if kind == "render":

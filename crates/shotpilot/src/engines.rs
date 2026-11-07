@@ -449,6 +449,8 @@ pub struct Ue5Engine {
     defn: Definition,
     uproject: PathBuf,
     cmd: PathBuf,
+    /// Plugins the script needs that the .uproject does not enable (turned on per launch).
+    enable: Vec<&'static str>,
     logs: PathBuf,
     timeout: Duration,
 }
@@ -463,11 +465,12 @@ impl Ue5Engine {
             bail!("project.uproject not found: {}", uproject.display());
         }
         let cmd = find_ue_cmd(defn, &uproject)?;
+        let enable = plugins_to_enable(&std::fs::read_to_string(&uproject).unwrap_or_default());
         let logs = defn.root().join(".shotpilot").join("logs");
         std::fs::create_dir_all(&logs)?;
         jobs_dir(defn)?;
         let timeout = std::env::var("SHOTPILOT_UE_TIMEOUT").ok().and_then(|s| s.parse().ok()).unwrap_or(3600);
-        Ok(Ue5Engine { defn: defn.clone(), uproject, cmd, logs, timeout: Duration::from_secs(timeout) })
+        Ok(Ue5Engine { defn: defn.clone(), uproject, cmd, enable, logs, timeout: Duration::from_secs(timeout) })
     }
 
     fn common(&self) -> Vec<String> {
@@ -475,6 +478,9 @@ impl Ue5Engine {
             .iter()
             .map(|s| s.to_string())
             .collect();
+        if !self.enable.is_empty() {
+            args.push(format!("-EnablePlugins={}", self.enable.join(",")));
+        }
         args.extend(self.defn.project.ue_args.iter().cloned());
         if self.defn.project.isolate_userdir {
             args.push(format!("-UserDir={}", self.defn.root().join(".shotpilot").join("ue_userdir").display()));
@@ -580,6 +586,26 @@ impl Engine for Ue5Engine {
     }
 }
 
+/// Plugins sp_entry.py needs in the editor: Python, the editor scripting helpers, Sequencer's
+/// scripting and Movie Render Queue.
+pub const NEEDED_PLUGINS: &[&str] =
+    &["PythonScriptPlugin", "EditorScriptingUtilities", "SequencerScripting", "LevelSequenceEditor", "MovieRenderPipeline"];
+
+/// The needed plugins a .uproject (its text) does not enable. shotpilot turns them on for its
+/// own launch with `-EnablePlugins`, so the game's project file is never rewritten. A file
+/// that does not read as JSON asks for all of them (enabling an enabled plugin changes nothing).
+pub fn plugins_to_enable(uproject: &str) -> Vec<&'static str> {
+    let on: Vec<String> = serde_json::from_str::<Value>(uproject)
+        .ok()
+        .and_then(|v| v["Plugins"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|p| p["Enabled"].as_bool() == Some(true))
+        .filter_map(|p| p["Name"].as_str().map(str::to_ascii_lowercase))
+        .collect();
+    NEEDED_PLUGINS.iter().copied().filter(|n| !on.contains(&n.to_ascii_lowercase())).collect()
+}
+
 fn find_ue_cmd(defn: &Definition, uproject: &Path) -> Result<PathBuf> {
     if let Some(c) = defn.project.ue_cmd.clone().or_else(|| std::env::var("SHOTPILOT_UE_CMD").ok()) {
         let p = PathBuf::from(&c);
@@ -650,4 +676,31 @@ fn lookup_on_path(name: &str) -> Option<PathBuf> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_project_without_movie_render_queue_gets_it_for_the_launch_only() {
+        // RoomSeven's own .uproject: Python and the scripting helpers, but no Sequencer
+        // scripting and no Movie Render Queue
+        let room_seven = r#"{"FileVersion": 3, "EngineAssociation": "5.8", "Plugins": [
+            {"Name": "ModelingToolsEditorMode", "Enabled": true},
+            {"Name": "PythonScriptPlugin", "Enabled": true, "TargetAllowList": ["Editor"]},
+            {"Name": "EditorScriptingUtilities", "Enabled": true}]}"#;
+        assert_eq!(plugins_to_enable(room_seven), ["SequencerScripting", "LevelSequenceEditor", "MovieRenderPipeline"]);
+        // the samples enable all of them. A plugin the project switches off is still asked for,
+        // but UE keeps the project's word (PluginManager skips configured names): then the
+        // script's own message says how to turn it on
+
+        let all = NEEDED_PLUGINS.iter().map(|n| format!(r#"{{"Name": "{n}", "Enabled": true}}"#)).collect::<Vec<_>>().join(",");
+        assert!(plugins_to_enable(&format!(r#"{{"Plugins": [{all}]}}"#)).is_empty());
+        let off = format!(r#"{{"Plugins": [{}]}}"#, all.replace(r#""MovieRenderPipeline", "Enabled": true"#, r#""MovieRenderPipeline", "Enabled": false"#));
+        assert_eq!(plugins_to_enable(&off), ["MovieRenderPipeline"]);
+        // no plugin list, or a file that does not read: ask for every one
+        assert_eq!(plugins_to_enable(r#"{"FileVersion": 3}"#), NEEDED_PLUGINS);
+        assert_eq!(plugins_to_enable("not json"), NEEDED_PLUGINS);
+    }
 }

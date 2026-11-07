@@ -12,6 +12,7 @@ paths:
 - `build` / `pull` / `scan` / `assets` / `survey` は `-run=pythonscript -script=<sp_entry.py>` で動かす（commandlet で軽い）。
 - `render` は `-ExecutePythonScript=<sp_entry.py>` で動かす。フルエディタを起動して MRQ を PIE executor で回し、終わったら終了する。
 - 既定では、隔離した `-UserDir` で起動する（`project.isolate_userdir`）。owner の普段のエディタ設定を汚さない。
+- `sp_entry.py` が要るプラグイン（`engines::NEEDED_PLUGINS`: PythonScriptPlugin、EditorScriptingUtilities、SequencerScripting、LevelSequenceEditor、MovieRenderPipeline）のうち、.uproject が有効にしていないものは、起動引数 `-EnablePlugins=` でその起動だけ有効にする。ゲームの .uproject は書き換えない（2026-11-07、七号室の本体で MRQ が無く `MoviePipelineQueueSubsystem` が無いと落ちた）。UE 5.8 の `PluginManager.cpp` は、.uproject に書いてあるプラグイン（`"Enabled": false` も含む）は引数で上書きしない。そのときは render の前に `sp_entry.py` が「Movie Render Queue を有効にする」手順だけを返す（トレースバックは出さない）。
 - Remote Control HTTP は使わない（Beta 扱いで、Sequencer 編集の汎用 API ではないため）。
 
 ## `ue/sp_entry.py`
