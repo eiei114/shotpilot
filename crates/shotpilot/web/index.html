@@ -196,7 +196,7 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 .btn { white-space: nowrap; }
 .btn .ulabel { max-width: 16em; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 @media (max-width: 1360px) { #summary { display: none; } }
-@media (max-width: 1180px) { .stage-btn .sub { display: none; } .stage-btn { padding: 6px 9px 9px 8px; } }
+@media (max-width: 1360px) { .road-btn { padding: 4px 6px; gap: 5px; } .road-btn .who { display: none; } }
 #cut-nav { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
 #cut-nav .icon { width: 26px; height: 26px; font-size: 16px; }
 #cut-label { font-size: 12.5px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
@@ -204,19 +204,28 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 #cut-label span { color: var(--muted); }
 #summary b { color: var(--ink); }
 
-/* ------------------------------------------------------------------ workflow stages */
-.stages { display: flex; align-items: stretch; gap: 2px; }
-.stage-btn { position: relative; border: 0; background: none; padding: 6px 12px 9px 10px; border-radius: 9px 9px 0 0; color: var(--muted);
-  display: grid; grid-template-columns: auto auto; column-gap: 7px; align-items: center; text-align: left; font-size: 12.5px; }
-.stage-btn .no { grid-row: span 2; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center;
-  font-size: 11px; font-weight: 700; color: var(--muted); background: var(--card); }
-.stage-btn .lb { font-weight: 600; white-space: nowrap; }
-.stage-btn .sub { font-size: 10.5px; color: var(--faint); white-space: nowrap; }
-.stage-btn.on { background: var(--soft); color: var(--ink); }
-.stage-btn.on .no { border-color: var(--ink); color: var(--ink); }
-.stage-btn.ok .no { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.stage-btn.warn .no { background: var(--stale); border-color: var(--stale); color: #241900; }
-.stage-btn.bad .no { background: var(--err); border-color: var(--err); color: #fff; }
+/* ------------------------------------------------------------------ the road (D-74, D-79): who has the ball, step by step */
+.road { display: flex; align-items: center; gap: 1px; min-width: 0; overflow-x: auto; padding: 4px 0 6px; }
+.road-sep { color: var(--faint); font-size: 12px; flex: none; }
+.road-btn { flex: none; border: 1px solid transparent; background: none; padding: 4px 9px; border-radius: 999px; color: var(--muted);
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
+.road-btn:hover { background: var(--soft); color: var(--ink); }
+.road-btn .lb { font-weight: 600; }
+.road-btn .ic { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line); flex: none; display: grid; place-items: center; }
+.road-btn .who { font-size: 11px; font-weight: 600; }
+.road-btn .who:empty { display: none; }
+.road-btn.done { color: var(--ink); }
+.road-btn.done .ic { border-color: var(--accent); background: var(--accent); }
+.road-btn.done .ic::after { content: ""; width: 6px; height: 3px; border: solid var(--accent-ink); border-width: 0 0 1.6px 1.6px; transform: translateY(-1px) rotate(-45deg); }
+.road-btn.yours { color: var(--ink); border-color: var(--stale); background: color-mix(in srgb, var(--stale) 12%, transparent); }
+.road-btn.yours .ic { border-color: var(--stale); }
+.road-btn.yours .ic::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--stale); }
+.road-btn.running { color: var(--ink); }
+.road-btn.running .ic { border-color: var(--accent); }
+.road-btn.running .ic::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: road-pulse 1.2s ease-in-out infinite; }
+.road-btn.on { background: var(--soft); box-shadow: inset 0 -2px 0 var(--ink); }
+@keyframes road-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .road-btn.running .ic::after { animation: none; } }
 
 /* the next step, one at a time */
 #next { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--line); background: var(--soft); font-size: 12.5px; }
@@ -988,15 +997,17 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
   <!-- right: canvas -->
   <section id="canvas" aria-label="canvas">
     <div class="tabs">
-      <div class="stages" id="stages">
-        <button class="stage-btn" data-stage="scout" title="プロジェクトの中に何があるか（場所の写真と、出せるもの）"><span class="no">0</span><span class="lb">ロケハン</span><span class="sub" id="sg-scout"></span></button>
-        <button class="stage-btn" data-stage="brief" title="何のための映像か"><span class="no">1</span><span class="lb">ブリーフ</span><span class="sub" id="sg-brief"></span></button>
-        <button class="stage-btn" data-stage="structure" title="ビートの並びとカット検査"><span class="no">2</span><span class="lb">構成</span><span class="sub" id="sg-structure"></span></button>
-        <button class="stage-btn" data-stage="framing" title="安いプレビューで構図を決めて承認する"><span class="no">3</span><span class="lb">構図</span><span class="sub" id="sg-framing"></span></button>
-        <button class="stage-btn" data-stage="capture" title="承認したカットを本番品質で撮る"><span class="no">4</span><span class="lb">撮影</span><span class="sub" id="sg-capture"></span></button>
-        <button class="stage-btn" data-stage="finish" title="つなぐ・音・書き出し"><span class="no">5</span><span class="lb">仕上げ</span><span class="sub" id="sg-finish"></span></button>
-        <button class="stage-btn" data-stage="publish" title="公開後の動画と定期発信のチェックシート"><span class="no">6</span><span class="lb">公開</span><span class="sub" id="sg-publish"></span></button>
-      </div>
+      <nav class="road" id="stages" aria-label="道">
+        <button class="road-btn" data-road="plan" title="何のための映像か（方向・ルック・型）"><span class="ic"></span><span class="lb">企画</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="scout" title="ゲームの中に何があるか（場所の写真と、出せるもの）"><span class="ic"></span><span class="lb">ロケハン</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="script" title="文字とカットの並び（カット表）"><span class="ic"></span><span class="lb">台本</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="blocking" title="1カットずつ、画とカメラを見て細かく直す"><span class="ic"></span><span class="lb">配置とカメラ</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="review" title="previz を見て、分かれ道を選び、はみ出しを戻す"><span class="ic"></span><span class="lb">previz</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="sound" title="BGM と SE"><span class="ic"></span><span class="lb">音</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="capture" title="承認したカットを本番品質で撮る"><span class="ic"></span><span class="lb">撮影</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="cut" title="つないで仕上げを焼き込んだ映像"><span class="ic"></span><span class="lb">Cut</span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="publish" title="公開後の動画と定期発信のチェックシート"><span class="ic"></span><span class="lb">公開</span><span class="who"></span></button>
+      </nav>
       <div class="right">
         <span id="summary"></span>
         <button class="btn" id="cut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Cut</button>
@@ -1423,33 +1434,69 @@ const findings = () => ui.status?.checks || [];
 const findingsFor = (id) => findings().filter((f) => f.shot === id);
 const moveOf = (s) => s.node?.camera?.end ? "keyframed" : s.node?.camera?.move?.type || "static";
 
-function stageState() {
-  const st = ui.status, n = st.shots.length, f = findings();
-  const b = st.brief || {};
-  const count = (sev) => f.filter((x) => x.severity === sev).length;
-  const approved = st.shots.filter((s) => s.approval === "approved").length;
-  const finalFresh = st.shots.filter((s) => s.qualities.final === "fresh").length;
-  const bestQ = [...st.qualities].reverse().find((q) => n && st.shots.every((s) => s.qualities[q] === "fresh"));
+// The road (D-74, D-79): each step is done, yours (the human has the ball), running (Claude is on it)
+// or still ahead. It only says whose turn it is; the counts live on each step's own screen.
+const ROAD_TAB = { plan: "brief", scout: "scout", script: "structure", blocking: "shot", review: "structure",
+  sound: "sound", capture: "capture", cut: "teaser", publish: "publish" };
+const ROAD_OF = { brief: "plan", scout: "scout", structure: "script", shot: "blocking", review: "review",
+  sound: "sound", capture: "capture", teaser: "cut", design: "cut", publish: "publish" };
+// what Claude is busy with -> the step it works on (a first pass reports its own steps)
+const BUSY_ROAD = { discover: "plan", mood: "plan", concept: "plan", scout: "scout", stage: "scout", assets: "scout", match: "scout",
+  plan: "script", sound: "sound", cut: "cut" };
+const STEP_ROAD = { discover: "plan", mood: "plan", scout: "scout", stage: "scout", plan: "script", review: "review",
+  sound: "sound", render: "capture", see: "capture", repair: "capture", cut: "cut" };
+
+function runningRoad() {
+  if (ui.busy === "produce" && ui.produce) {
+    const cur = Object.values(ui.produce.steps).filter((d) => d.status === "start").pop();
+    return cur ? STEP_ROAD[cur.key] || null : null;
+  }
+  if (ui.busy === "render") return ui.renderQ === "previz" ? "review" : "capture";
+  return BUSY_ROAD[ui.busy] || null;
+}
+
+function roadState() {
+  const st = ui.status, shots = st.shots, n = shots.length, b = st.brief || {};
   const photos = Object.values(st.scout || {}).reduce((a, v) => a + v.length, 0);
-  const nprops = (st.props || []).length;
-  return {
-    scout: photos ? ["ok", `写真 ${photos} · prop ${nprops}`] : nprops ? ["", `prop ${nprops}`] : ["", "未"],
-    brief: !b.written ? ["", "未記入"] : b.missing?.length ? ["warn", `未記入 ${b.missing.length}`] : ["ok", b.kind === "gameplay" ? "ゲームプレイ" : "ティザー"],
-    structure: !n ? ["", "カットなし"] : count("P0") ? ["bad", `P0 ${count("P0")}`] : count("P1") ? ["warn", `要確認 ${count("P1")}`] : ["ok", "問題なし"],
-    framing: f.some((x) => x.severity === "P0" && x.shot) ? ["bad", `承認 ${approved}/${n}`] : n && approved === n ? ["ok", `承認 ${n}/${n}`] : ["", `承認 ${approved}/${n}`],
-    capture: n && finalFresh === n ? ["ok", `final ${n}/${n}`] : ["", bestQ ? `${bestQ} まで済` : `final ${finalFresh}/${n}`],
-    finish: st.cut ? ["ok", `cut · ${st.cut.quality}`] : ["", "未"],
-    publish: publishState(st.promo),
+  const lines = (st.script || []).length;
+  const approved = shots.filter((s) => s.approval === "approved").length;
+  const scriptOk = !lines || st.script_approval === "approved";
+  const p0 = findings().some((f) => f.severity === "P0");
+  const a = st.audio || {};
+  const sound = !!(a.bgm || (a.music || []).length || shots.some((s) => (s.node.sfx || []).length));
+  const done = (yes) => (yes ? "done" : "");
+  const out = {
+    plan: done(b.direction || b.plan || (b.written && !(b.missing || []).length)),
+    scout: done(photos),
+    script: done(lines || n),
+    blocking: done(n),
+    // the human's turn from the first cut on, until every cut and the script are approved
+    review: !n ? "" : approved === n && scriptOk && !p0 ? "done" : "yours",
+    sound: done(sound),
+    capture: done(n && shots.every((s) => s.qualities.final === "fresh")),
+    cut: done(st.cut),
+    publish: done(publishState(st.promo)[0] === "ok"),
   };
+  const run = runningRoad();
+  if (run) out[run] = "running";
+  return out;
 }
 
 function drawStages() {
-  const ss = stageState();
-  for (const b of document.querySelectorAll(".stage-btn")) {
-    const [cls, sub] = ss[b.dataset.stage];
-    b.className = `stage-btn ${cls}${STAGE_OF[ui.tab] === b.dataset.stage ? " on" : ""}`;
-    $(`sg-${b.dataset.stage}`).textContent = sub;
+  const rs = roadState();
+  for (const b of document.querySelectorAll(".road-btn")) {
+    const state = rs[b.dataset.road];
+    b.className = `road-btn ${state}${ROAD_OF[ui.tab] === b.dataset.road ? " on" : ""}`;
+    b.querySelector(".who").textContent = state === "yours" ? "あなたの番" : state === "running" ? "Claude" : "";
   }
+}
+
+/** A step of the road the human picked. */
+function goRoad(k) {
+  const tab = ROAD_TAB[k];
+  if (tab === "shot") goStage("framing");
+  else if (tab === "sound" || tab === "teaser") { ui.tab = ui.fin = tab; ui.region = null; draw(); }
+  else goStage(tab);
 }
 
 function findingHtml(f, { open = false } = {}) {
@@ -1723,7 +1770,7 @@ function drawNext() {
   const el = $("next"), n = nextStep();
   el.hidden = !n || !!ui.busy;
   if (el.hidden) return;
-  const stageName = { scout: "ロケハン", brief: "ブリーフ", structure: "構成", framing: "構図", capture: "撮影", finish: "仕上げ" }[n.stage];
+  const stageName = { scout: "ロケハン", brief: "企画", structure: "台本", framing: "配置とカメラ", capture: "撮影", finish: "Cut" }[n.stage];
   const onSheet = n.stage === "framing" && n.act === "goto" && ui.tab === "structure";
   const here = STAGE_OF[ui.tab] === n.stage || onSheet;
   // at the review the cut sheet's green bar holds the one button; do not repeat it here
@@ -5482,7 +5529,7 @@ async function sendNote() {
 async function render(quality = ui.quality, shots = [], opts = {}) {
   if (ui.busy) return;
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
-  ui.busy = "render"; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
+  ui.busy = "render"; ui.renderQ = quality; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
   if (quality !== ui.quality && !opts.keep) ui.quality = quality;
   draw();
   try {
@@ -5833,7 +5880,7 @@ $("open-ext").addEventListener("click", async () => {
   try { await api("POST", "/api/open", { url: cut.storyboard }); } catch (err) { toast(err.message, true); }
 });
 // a stage the human picks wins over the run's walk along the bar
-for (const b of document.querySelectorAll(".stage-btn")) b.addEventListener("click", () => { stopFollowing(); goStage(b.dataset.stage); });
+for (const b of document.querySelectorAll(".road-btn")) b.addEventListener("click", () => { stopFollowing(); goRoad(b.dataset.road); });
 for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventListener("click", () => { stopFollowing(); ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { stopFollowing(); ui.tab = ui.fin = b.dataset.fin; ui.region = null; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
