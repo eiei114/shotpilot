@@ -740,10 +740,11 @@ script:
     assert_eq!(typed, 3, "{g}");
     // the wipe: a black plate slides off the rule
     assert!(g.contains("[mk") && g.contains("overlay=x='"), "{g}");
-    // whiteout and glitch hand-overs; the flash is avoided, so that cut stays a cut
-    assert!(g.contains("fade=t=out") && g.contains(":color=white"), "{g}");
-    assert!(g.contains("rgbashift=") && g.contains("noise=alls=40"), "{g}");
-    assert_eq!(g.matches("color=white").count(), 2, "{g}"); // the whiteout's two sides, no flash
+    // whiteout and glitch hand-overs, drawn by their recipes (D-70: eased covers, jittering
+    // colour layers); the flash is avoided, so that cut stays a cut
+    assert!(g.contains(":eval=frame:enable=") && g.contains("0.9216*"), "{g}");
+    assert!(g.contains("rgbashift=") && g.contains("noise=alls=40") && g.contains("*not(mod(n,2))"), "{g}");
+    assert_eq!(g.matches("0.9216*").count(), 2, "{g}"); // the whiteout's two sides (up to white, back), no flash
     // the cut keeps its length: shots plus slots
     let slots: f64 = f.ws.defn.script.iter().map(|l| l.dur).sum();
     let shots_len: f64 = shots.iter().map(|s| s.duration).sum();
@@ -823,6 +824,27 @@ fn camera_effects_are_burned_in_at_the_cut_and_never_rerender() {
     assert_eq!(notes.iter().filter(|n| n.contains("left out") && n.contains("`flash`")).count(), 2, "{notes:?}");
     // the flicker alone (two dips) is under the limit once the flashes are gone
     assert!(!f.ws.check().unwrap().iter().any(|x| x.rule == "flash.rate"));
+}
+
+#[test]
+fn more_than_two_kinds_of_hand_over_are_pointed_out() {
+    // D-70 (open-design: one primary transition and one or two accents): a P2, counted as drawn
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let mix = |f: &common::Fixture| f.ws.check().unwrap().into_iter().filter(|x| x.rule == "transition.mix").collect::<Vec<_>>();
+    f.ws.set_fields("s01_gate", &set(&[("transition", json!("dip"))])).unwrap();
+    f.ws.set_fields("s02_well", &set(&[("transition", json!("flash"))])).unwrap();
+    assert!(mix(&f).is_empty());
+    f.ws.set_fields("s03_window", &set(&[("transition", json!("glitch"))])).unwrap();
+    let found = mix(&f);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].severity.as_str(), "P2");
+    assert!(found[0].message.starts_with("3 kinds of hand-over besides cut"), "{}", found[0].message);
+    // a cut that avoids glitches draws that one as a cut: two kinds again
+    f.ws.set_finish(&set(&[("motion", json!({"avoid": ["glitch"]}))])).unwrap();
+    assert!(mix(&f).is_empty());
+    // hand-overs are editorial: nothing re-renders
+    assert!(f.ws.status().unwrap().iter().all(|r| r.quality("previz") == "fresh"));
 }
 
 #[test]

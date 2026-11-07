@@ -130,7 +130,7 @@ pub const TRAILER_KINDS: &[&str] = &["teaser", "gameplay"];
 /// Fields of `brief:` a planner reads. Order is the order the app asks them in.
 pub const BRIEF_FIELDS: &[&str] = &[
     "kind", "genre", "style", "audience", "core", "must_show", "references", "notes", "images", "design", "skills", "plan",
-    "direction",
+    "direction", "reference_teaser",
 ];
 
 /// `brief:`: what the trailer is for, written before any shot. Editorial only: it never
@@ -158,6 +158,9 @@ pub struct BriefCfg {
     pub plan: String,
     /// The direction in one sentence, so the human can redirect cheaply.
     pub direction: String,
+    /// A measured reference teaser (reference/<id>/, D-71) whose rhythm and hand-overs the cut
+    /// borrows; never its pictures, words or sound.
+    pub reference_teaser: String,
     /// The raw mapping, for the app's form.
     pub raw: Map<String, Value>,
 }
@@ -711,6 +714,10 @@ fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
         let ids: Vec<&str> = crate::designsys::all().iter().map(|d| d.id).collect();
         errs.push(format!("brief.design: one of {} (got '{design}')", ids.join(", ")));
     }
+    let reference_teaser = opt_str(raw.get("reference_teaser")).unwrap_or_default();
+    if !reference_teaser.is_empty() && !crate::reference::valid_id(&reference_teaser) {
+        errs.push(format!("brief.reference_teaser: a reference id under reference/ (got '{reference_teaser}')"));
+    }
     let skills = list("skills", errs);
     for s in skills.iter().filter(|s| crate::skills::get(s).is_none()) {
         let ids: Vec<&str> = crate::skills::all().iter().map(|k| k.id).collect();
@@ -730,6 +737,7 @@ fn parse_brief(v: Option<&Value>, errs: &mut Vec<String>) -> BriefCfg {
         skills,
         plan: opt_str(raw.get("plan")).unwrap_or_default(),
         direction: opt_str(raw.get("direction")).unwrap_or_default(),
+        reference_teaser,
         raw,
     }
 }

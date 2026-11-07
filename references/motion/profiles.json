@@ -2,7 +2,8 @@
   "schemaVersion": "shotpilot-motion/v1",
   "sources": {
     "frames": "research_notes/モーションデザイン/corpus_*.md (33 teasers read frame by frame)",
-    "auto": "research_notes/モーションデザイン/auto_measure.md (736 teasers measured from luma: text on black, black gaps, white flashes)"
+    "auto": "research_notes/モーションデザイン/auto_measure.md (736 teasers measured from luma: text on black, black gaps, white flashes)",
+    "handovers": "references/motion/transitions.json (how each hand-over is drawn; `whiteout` and `glitch` default there; a cut with no finish.motion draws them as before D-70)"
   },
   "energies": {
     "calm": 1.4,
@@ -20,6 +21,8 @@
       "end":     {"in": "fade", "in_s": 0.45, "hold": "still", "out": "fade", "out_s": 0.5},
       "dip": 0.25,
       "flash": 0.12,
+      "whiteout": {"rise": 0.3, "peak": 0, "decay": 0.8, "burn": 1},
+      "glitch": 0.1,
       "accent": "flash"
     },
     "horror": {

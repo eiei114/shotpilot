@@ -83,3 +83,22 @@ pub fn discovery_reply() -> Value {
         "scout_targets": [{"look_for": "井戸", "why": "規則が指す場所"}], "assumptions": ["発売日は書かない"]
     })
 }
+
+/// A measured reference teaser (D-71) as `shotpilot reference` leaves it, without ffmpeg:
+/// 40 s, two blacks (one reached by a fade), two white flashes, a whiteout, two lines on black.
+pub fn measured_reference(ws: &Workspace, id: &str) {
+    let dir = ws.root.join("reference").join(id);
+    std::fs::create_dir_all(&dir).unwrap();
+    let facts = serde_json::json!({
+        "id": id, "source": "demo.mp4", "bytes": 1, "secs": 40.0,
+        "cuts": [2.0, 4.1, 6.0, 9.5, 12.0, 15.0, 18.0, 22.0, 26.0, 31.0, 35.0],
+        "blacks": [{"at": 10.0, "gap": 0.6, "fade_out": 0.0, "fade_in": 0.0}, {"at": 30.0, "gap": 0.5, "fade_out": 0.33, "fade_in": 0.0}],
+        "flashes": [{"at": 20.0, "len": 0.17}, {"at": 21.2, "len": 0.083}],
+        "whiteouts": [{"at": 36.0, "rise": 0.33, "hold": 0.42, "decay": 0.92}],
+        "texts": [
+            {"at": 1.2, "in": 0.5, "hold": 2.0, "out": 0.0, "in_dark": true, "out_dark": false, "contrast": 80, "steady": 0.02},
+            {"at": 24.0, "in": 0.58, "hold": 2.5, "out": 0.0, "in_dark": true, "out_dark": false, "contrast": 90, "steady": 0.03}
+        ]
+    });
+    std::fs::write(dir.join("facts.json"), serde_json::to_string_pretty(&facts).unwrap()).unwrap();
+}

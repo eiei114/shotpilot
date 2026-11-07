@@ -41,19 +41,21 @@ faces in the rest of the file are applied by code (`finish.rs`).
 - Both avoid self-review wording (D-22); section 10 reaches the planner, so
   `every_path_that_writes_shots_gets_the_frozen_spec` checks it with the rest of the spec.
 
-## Motion (D-53)
+## Motion (D-53, D-70)
 
 | Axis | open-design | here | holds |
 |---|---|---|---|
 | Motion rules | task profiles `motion-design`, `hyperframes` | `motion/MOTION.md` | the vocabulary (entrances, holds, exits, hand-overs), what code keeps (reading time, 3 flashes a second), section 6 for the planner |
 | Motion defaults | `references/transitions.md` energy table | `motion/profiles.json` | one profile per genre (and a Japanese-PV variant for four of them): each role's entrance, hold and exit with seconds, the dip length, the accent |
+| Transitions | Motion Design workflow (`skills/motion-design`), `hyperframes/references/transitions.md`, `transitions/catalog.md` and `css-*.md`, `motion-principles.md` | `motion/TRANSITIONS.md`, `motion/transitions.json` | how a hand-over is chosen (relationship, one main hand-over and one or two accents, narrative position; section 8 for the planner) and drawn (recipes: what covers each side of the cut, for how long, with which ease; swapped at the cut while covered) |
 
 The numbers come from 33 teasers read frame by frame (`research_notes/モーションデザイン/corpus_*.md`)
 and 736 measured from luma (`auto_measure.md`). A look's `tokens.json` picks a profile and
 overrides roles in `motion`; planning writes it to `finish.motion` and the planner may only set
 the energy, the Japanese-PV variant and the moves to avoid, plus one entrance per script line
 (`motion:`). `motion.rs` resolves the profile and writes the ffmpeg expressions; with no
-`finish.motion` the `base` profile gives the motion the cut had before.
+`finish.motion` the `base` profile gives the motion the cut had before. `handover.rs` draws each
+hand-over from its recipe in `transitions.json` (the `base` profile keeps the old straight fades).
 
 ## Design systems and skills (D-45)
 

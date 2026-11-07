@@ -301,7 +301,7 @@ fn cards_after(brief: &BriefCfg, slots: &[Slot]) -> (f64, f64) {
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}{}\n{}{}{}\n## Framing\n{}",
+        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}{}{}\n{}{}{}\n## Framing\n{}",
         brief_text(&defn.brief),
         plan_text(&defn.brief),
         skeleton_text_with(slots, Some(cards_after(&defn.brief, slots))),
@@ -310,6 +310,7 @@ pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
         crate::refs::type_text(),
         crate::fonts::title_text(&defn.brief.design),
         crate::refs::motion_text(),
+        crate::reference::planner_text(defn),
         crate::refs::planner_text(&defn.brief),
         crate::designsys::planner_text(defn),
         crate::skills::planner_text(&defn.brief),
@@ -349,6 +350,7 @@ pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
     out.push_str(&crate::refs::type_text());
     out.push_str(&crate::fonts::title_text(&b.design));
     out.push_str(&crate::refs::motion_text());
+    out.push_str(&crate::reference::planner_text(defn));
     out.push_str(&crate::designsys::planner_text(defn));
     out.push_str(&crate::skills::planner_text(b));
     // the place as the scout read it: the camera works in it, and the camera effects follow
@@ -397,13 +399,14 @@ pub fn script_text(defn: &Definition) -> String {
          - Lines are short: Japanese up to ~15 characters, English up to ~6 words. Never invent a release date, a \
            platform or a store claim; use only facts the brief states.\n\
          - `target` length is the whole cut, cards included.\n\
-         - `transition`: mostly `cut`; `dip` through black for a jump in time; `flash` (from white) on each short \
-           evidence shot of a count, or for one jolt.\n\
+         - `transition`: how the shot hands over to the next one: {handovers}. Where each kind goes is under \
+           \"Hand-overs between shots\".\n\
          - `grade`: follow the genre and style references: `horror` (cold, desaturated, grain), `red` (only for a \
            short jolt teaser), `warm` (cozy, bright, sunny), `vivid` (action, punchy colour), `cool` (sci-fi, mystery, \
            night), or `none` to keep the game's own look. \
            `letterbox`: 2.39 for a cinematic teaser, 0 for none.\n",
-        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) },
+        handovers = crate::handover::vocabulary()
     )
 }
 
@@ -413,12 +416,13 @@ pub fn finish_text(defn: &Definition) -> String {
         "\n## Finish (burned in when the cut is assembled; never re-renders)\n\
          - `caption`: at most 3 in the whole teaser, each short (Japanese up to ~15 characters, English up to ~6 words), \
            so the teaser reads with the sound off. Leave it empty on the hook and the title shot.\n\
-         - `transition`: mostly `cut`. `dip` (through black) before the title or for a jump in time; `flash` (through \
-           white) only for one jolt at most.\n\
+         - `transition`: how the shot hands over to the next one: {handovers}. Mostly `cut`; `dip` before the \
+           title or for a jump in time.\n\
          - `title_card`: the game's title{}.\n\
          - `end_card`: only facts the brief states (platforms, release window, a call to action written there). \
            Never invent a date or a platform; with none given, leave it empty.\n",
-        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) }
+        if defn.teaser.title.is_empty() { String::new() } else { format!(" exactly as written: {}", defn.teaser.title) },
+        handovers = crate::handover::vocabulary()
     )
 }
 

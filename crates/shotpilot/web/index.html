@@ -1090,6 +1090,7 @@ const RULE_JA = {
   "tempo.escalate": "escalate が establish より長い", "repeat.move": "同じ動きが続く", "repeat.lens": "同じレンズが続く",
   "title.short": "タイトルの尺が短い", "frame.lost": "被写体が小さすぎる", "frame.cropped": "被写体が大きすぎて切れている",
   "text.hold": "文字が読み切れない長さ", "frame.blocked": "撮った画に被写体が写っていない",
+  "transition.mix": "つなぎの種類が多すぎる",
 };
 const SIZE_JA = { detail: "ディテール", close: "寄り", medium: "ミディアム", full: "全身・全体", wide: "引き" };
 /** "well 62% · ミディアム": how much of the frame height the subject fills (from its box). */
@@ -1485,7 +1486,7 @@ function drawApprove() {
 
 function drawDesign() {
   const st = ui.status, f = st.finish || {};
-  const key = JSON.stringify([f, st.shots.map((s) => [s.id, s.node.caption, s.node.transition, s.duration])]);
+  const key = JSON.stringify([f, st.reference, st.shots.map((s) => [s.id, s.node.caption, s.node.transition, s.duration])]);
   if (drawDesign.key === key && $("designpanel").childElementCount) return; // keep what is being typed
   drawDesign.key = key;
   const lb = f.letterbox ?? "";
@@ -1529,6 +1530,8 @@ function drawDesign() {
       <div class="dfaces">${faces}<span class="pctl"><em title="タイトルの大きさ（画面の高さの %）">Aa</em>${sizeCtl}<small>%</small></span></div>
       <label>動き</label>
       <div class="dmotion"><span class="pctl" id="d-energy">${energyCtl}</span><span class="pctl" id="d-avoid" title="使わない動き">⊘ ${avoidCtl}</span></div>
+      <label title="好きなティザーの動画を測り、つなぎの長さ（黒・白フラッシュ・白飛び・黒地の文字）を写す。画・文字・音は写さない">参照のティザー</label>
+      <div>${referenceHtml(st.reference)}</div>
       <label title="最後のカットの後ろに付く黒い画面。1行に1つ（発売日、プラットフォーム、ウィッシュリスト）">エンドカード</label>
       <div><textarea id="d-end" rows="3" placeholder="Steam でウィッシュリスト登録受付中&#10;2026年 冬">${esc((e.lines || []).join("\n"))}</textarea>
         <input type="number" id="d-end-d" step="0.5" min="0.5" max="10" value="${esc(e.duration ?? 3)}" style="width:80px;margin-top:6px" title="長さ（秒）"> 秒</div>
@@ -1594,6 +1597,62 @@ async function saveDesign(thenCut) {
   } catch (err) { toast(err.message, true); ui.busy = null; await refresh(); return; }
   ui.busy = null; drawDesign.key = ""; await refresh();
   if (thenCut) cut();
+}
+
+/** A reference teaser (D-71): what was measured, what the cut borrowed, and how the newest Cut
+ *  compares (the reference on the left, the Cut on the right, at the same share of each). */
+function referenceHtml(ref) {
+  const pick = `<button class="btn" id="d-ref-pick" type="button">動画を選んで測る…</button>`;
+  if (!ref) return `<div class="mood-bar"><span class="sp-hint">まだ測っていません</span>${pick}</div>`;
+  const s = ref.summary || {}, b = ref.borrowed || {};
+  const parts = [];
+  if (b.dip != null) parts.push(`黒をはさむ長さ ${b.dip} 秒`);
+  if (b.flash != null) parts.push(`白フラッシュ ${b.flash} 秒`);
+  if (b.whiteout) parts.push(`白飛び 上がり ${b.whiteout.rise} 秒・白 ${b.whiteout.peak} 秒・戻り ${b.whiteout.decay} 秒`);
+  if (b.accent) parts.push(`差し色 ${b.accent}`);
+  if (b.card) {
+    parts.push(b.card.in === "cut" ? "黒地の文字はカットで入る" : `黒地の文字は ${b.card.in_s} 秒で浮かぶ`);
+    parts.push(b.card.out === "cut" ? "黒地の文字はカットで消える" : `黒地の文字は ${b.card.out_s} 秒で消える`);
+  }
+  const borrowed = parts.length ? parts.map((x) => `<span>${esc(x)}</span>`).join(" · ") : `<span>写すつなぎはありません</span>`;
+  const facts = (m) => [`${m.secs} 秒`, `${m.cuts} 回（${m.median_shot} 秒ごと）`, `${m.blacks} 回`, `${m.flashes} 回`, `${m.whiteouts} 回`, `${m.texts} 行`];
+  let cmp = "";
+  if (ref.compare) {
+    const a = facts(s), c = facts(ref.compare.cut || {});
+    const labels = ["長さ", "カット", "黒", "白フラッシュ", "白飛び", "黒地の文字"];
+    const rows = labels.map((l, i) => `<tr><td>${l}</td><td>${esc(a[i])}</td><td>${esc(c[i])}</td></tr>`).join("");
+    const pairs = (ref.compare.pairs || []).filter((x) => x.url).map((x) => `<img src="${esc(x.url)}" alt="" loading="lazy" style="width:100%;border-radius:4px">`).join("");
+    cmp = `<div class="assets-wrap" style="max-height:none;margin-top:8px"><table class="assets"><thead><tr><th></th><th>参照</th><th>Cut</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="sp-hint">左が参照、右が Cut（それぞれの長さの同じ割合の時刻）。参照の黒・白フラッシュ・白飛びの瞬間を並べています</div>
+      <div style="display:grid;gap:6px;margin-top:6px">${pairs}</div>`;
+  }
+  const s0 = facts(s);
+  return `<div class="sp-hint"><span>${esc(ref.source)}</span> · <span>${esc(s0[0])}</span> · <span>カット ${esc(s0[1])}</span></div>
+    <div class="sp-hint"><span>黒 ${esc(s0[2])}</span> · <span>白フラッシュ ${esc(s0[3])}</span> · <span>白飛び ${esc(s0[4])}</span> · <span>黒地の文字 ${esc(s0[5])}</span></div>
+    <div class="sp-hint">写した長さ: ${borrowed}</div>
+    <div class="mood-bar">${pick}<button class="btn" id="d-ref-compare" type="button">Cut と比べる</button></div>${cmp}`;
+}
+
+/** Measure a reference teaser the director picks, and borrow its hand-over lengths (D-71). */
+async function pickReference() {
+  if (ui.busy) return;
+  ui.busy = "reference"; draw();
+  try {
+    const r = await api("POST", "/api/reference", { pick: true });
+    if (!r.cancelled) toast("測って、つなぎの長さを写しました。Cut で焼き込むと見られます（撮り直しなし）");
+  } catch (err) { toast(err.message, true); }
+  ui.busy = null; drawDesign.key = ""; await refresh();
+}
+
+/** Measure the newest Cut the same way as the reference and pair their frames. */
+async function compareReference() {
+  if (ui.busy) return;
+  ui.busy = "reference"; draw();
+  try {
+    await api("POST", "/api/reference/compare", {});
+    toast("比べました。左が参照、右が Cut です");
+  } catch (err) { toast(err.message, true); }
+  ui.busy = null; drawDesign.key = ""; await refresh();
 }
 
 /** The game's logo for the title, picked with the app's file dialog (copied into art/). */
@@ -5740,6 +5799,8 @@ $("designpanel").addEventListener("click", (e) => {
   if (e.target.closest("#d-save")) saveDesign(false);
   else if (e.target.closest("#d-cut")) saveDesign(true);
   else if (e.target.closest("#d-logo-pick")) pickLogo();
+  else if (e.target.closest("#d-ref-pick")) pickReference();
+  else if (e.target.closest("#d-ref-compare")) compareReference();
   const sg = e.target.closest("[data-sg]");
   if (sg && !sg.disabled) {
     const [f, k] = sg.dataset.sg.split("|"), wasOn = sg.classList.contains("on");

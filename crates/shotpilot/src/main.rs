@@ -128,6 +128,21 @@ enum Cmd {
     },
     /// the teaser playbooks the planning turn can pick from
     Skills,
+    /// borrow a reference teaser's rhythm and hand-overs (D-71): measure a video (up to 180 s),
+    /// write its lengths into finish.motion, compare the latest cut with it
+    Reference {
+        /// the video to measure; with none, list the references measured so far
+        video: Option<String>,
+        /// measure only: leave the brief and finish.motion as they are
+        #[arg(long)]
+        measure_only: bool,
+        /// borrow a reference measured before
+        #[arg(long = "use")]
+        use_id: Option<String>,
+        /// measure the latest cut the same way and pair its frames with the reference's
+        #[arg(long)]
+        compare: bool,
+    },
     /// concept frames (D-46): make the pictures the plan describes | --match: find their places in the level
     Concept {
         #[arg(long)]
@@ -431,6 +446,17 @@ fn short_list(packages: &[Value]) -> String {
     match names.len() {
         0..=3 => names.join(", "),
         n => format!("{} +{}", names[..3].join(", "), n - 3),
+    }
+}
+
+/// What a reference lent `finish.motion` (D-71).
+fn print_borrowed(notes: &[String], id: &str) {
+    if notes.is_empty() {
+        return;
+    }
+    println!("borrowed from `{id}` into finish.motion (no shot re-renders; run `shotpilot cut` to see it):");
+    for n in notes {
+        println!("  {n}");
     }
 }
 
@@ -909,6 +935,46 @@ fn run(cli: Cli) -> Result<u8> {
             for f in shotpilot::concept::load(&ws.root) {
                 let at = f.found.as_ref().map(|p| format!("{}/{} ({})", p.anchor, p.side, p.fit)).unwrap_or_else(|| "-".into());
                 println!("  {:<4} {:<10} {:<40} {}", f.id, f.beat, f.file.as_deref().unwrap_or("(no picture)"), at);
+            }
+        }
+        Cmd::Reference { video, measure_only, use_id, compare } => {
+            let mut ws = ws(file)?;
+            let mut told = false;
+            if let Some(v) = &video {
+                let (r, notes) = ws.add_reference(std::path::Path::new(v), !measure_only)?;
+                println!("measured {} -> reference/{}/ (facts.json, contact.jpg, proxy.mp4)", r.source, r.id);
+                for (k, v) in r.measure.rows() {
+                    println!("  {k:<14} {v}");
+                }
+                print_borrowed(&notes, &r.id);
+                told = true;
+            } else if let Some(id) = &use_id {
+                let notes = ws.use_reference(id)?;
+                print_borrowed(&notes, id);
+                told = true;
+            }
+            if compare {
+                let c = ws.compare_reference(use_id.as_deref().filter(|_| video.is_none()))?;
+                println!("{:<14} {:<44} cut", "", format!("reference `{}`", c.reference.id));
+                for ((k, a), (_, b)) in c.reference.measure.rows().into_iter().zip(c.cut.rows()) {
+                    println!("{k:<14} {a:<44} {b}");
+                }
+                for p in &c.pairs {
+                    println!("  {}  {:<9} reference {}s / cut {}s", p.file, p.label, shotpilot::model::fmt_g(p.at_ref), shotpilot::model::fmt_g(p.at_cut));
+                }
+                println!("pairs: {}", c.dir.join("sheet.jpg").display());
+                told = true;
+            }
+            if !told {
+                let active = ws.defn.brief.reference_teaser.clone();
+                let all = shotpilot::reference::list(&ws.root);
+                if all.is_empty() {
+                    println!("no reference teaser yet: shotpilot reference <video>");
+                }
+                for r in all {
+                    let mark = if r.id == active { "*" } else { " " };
+                    println!("{mark} {:<24} {:<30} {}s, {} cuts", r.id, r.source, shotpilot::model::fmt_g(shotpilot::geometry::round_to(r.measure.secs, 1)), r.measure.cuts.len());
+                }
             }
         }
         Cmd::Skills => {

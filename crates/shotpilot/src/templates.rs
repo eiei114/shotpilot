@@ -168,7 +168,10 @@ defaults:
 shots: []
 "#;
 
-pub const GITIGNORE: &str = "render/\ncut/\n.shotpilot/jobs/\n.shotpilot/logs/\n.shotpilot/ue_userdir/\n.shotpilot/mock_engine/\n.shotpilot/sp_entry.py\npromo/posts/\n";
+/// A reference teaser's copies of its pictures (D-71) stay out as well: only what was measured
+/// (`facts.json`) belongs with the project.
+pub const GITIGNORE: &str = "render/\ncut/\n.shotpilot/jobs/\n.shotpilot/logs/\n.shotpilot/ue_userdir/\n.shotpilot/mock_engine/\n.shotpilot/sp_entry.py\npromo/posts/\n\
+                              reference/*/proxy.mp4\nreference/*/contact.jpg\nreference/*/compare/\n";
 
 /// Fill a template. `uproject` and `map` are YAML scalars (use "null" for none).
 pub fn render(tpl: &str, name: &str, engine: &str, uproject: &str, map: &str) -> String {

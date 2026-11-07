@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
-use common::{launches, set, ws, Fixture};
+use common::{launches, measured_reference, set, ws, Fixture};
 use serde_json::{json, Value};
 use shotpilot::server::Server;
 
@@ -1211,4 +1211,33 @@ fn the_design_panel_controls_are_checked_by_the_server_and_never_re_render() {
     let (again, _) = render(&s, "previz");
     assert!(again.values().all(|a| a == "reused"), "{again:?}");
     assert_eq!(launches(&s.f.ws).len(), n);
+}
+
+#[test]
+fn a_reference_teaser_is_borrowed_from_the_design_panel() {
+    // D-71: one measured before is borrowed by its id; the status shows what was measured and
+    // what the cut borrowed, in counts the panel writes out
+    let s = srv();
+    measured_reference(&s.f.ws, "demo");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    assert_eq!(st["reference"], Value::Null);
+    let (code, out) = jcall(&s, "POST", "/api/reference", Some(json!({"id": "demo"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["notes"].as_array().map(Vec::len), Some(5), "{out}");
+    let (_, st) = jcall(&s, "GET", "/api/status", None);
+    let r = &st["reference"];
+    assert_eq!((r["id"].clone(), r["source"].clone()), (json!("demo"), json!("demo.mp4")));
+    assert_eq!(r["summary"], json!({"secs": 40.0, "cuts": 11, "median_shot": 3.25, "blacks": 2, "flashes": 2, "whiteouts": 1, "texts": 2}));
+    assert_eq!((r["borrowed"]["dip"].clone(), r["borrowed"]["accent"].clone()), (json!(0.08), json!("flash")));
+    assert_eq!(r["compare"], Value::Null);
+    // no native dialog behind this server, and no cut video to compare yet
+    let (code, out) = jcall(&s, "POST", "/api/reference", Some(json!({"pick": true})));
+    assert_eq!(code, 400, "{out}");
+    let (code, out) = jcall(&s, "POST", "/api/reference/compare", Some(json!({})));
+    assert_eq!(code, 400, "{out}");
+    assert!(out.to_string().contains("no cut video yet"), "{out}");
+    let (code, _) = jcall(&s, "POST", "/api/reference", Some(json!({"id": "nope"})));
+    assert_eq!(code, 400);
+    // editorial: nothing launched
+    assert!(launches(&s.f.ws).is_empty());
 }

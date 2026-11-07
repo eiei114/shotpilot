@@ -1,7 +1,7 @@
 # Teaser motion — 文字とつなぎの動き
 
 > 出典: open-design（nexu-io/open-design、Apache-2.0）の `motion-design` と `hyperframes` のタスクプロファイル（動きの帯、入りと抜け、動きの強さ、つなぎの選び方）を、ゲームのティザー向けに言い換えた（D-53）。数値は、33 本を 1 コマずつ見た記録（`research_notes/モーションデザイン/corpus_*.md`）と、736 本を明るさから自動で測った値（`research_notes/モーションデザイン/auto_measure.md`）から取った。
-> 6 節だけが plan と、画・文字を変える修正に渡る（`refs::motion_text`）。それより前の節は、コード（`motion.rs`、`finish.rs`）が描くときの値と、その根拠。ジャンルごとの値は `profiles.json`。
+> 6 節だけが plan と、画・文字を変える修正に渡る（`refs::motion_text`）。それより前の節は、コード（`motion.rs`、`finish.rs`）が描くときの値と、その根拠。ジャンルごとの値は `profiles.json`。カットのつなぎの作り方と書き方は `TRANSITIONS.md`（D-70）。
 
 ## 1. 語彙
 
@@ -22,7 +22,7 @@ Claude は語を選ぶだけで、秒数はコードが決める（open-design �
 | 抜け | `cut` / `fade` / `glitch` | 消える / 静かに消える / 崩れて消える |
 | つなぎ | `cut` / `dip` / `flash` / `whiteout` / `glitch` | 切る / 黒をはさむ / 白から入る / 白に飛んで戻る / 数コマ崩す |
 
-どのつなぎもカットの尺を変えない（重ねるクロスフェードは入れない）。黒の間は台本の `black` で作る。
+どのつなぎもカットの尺を変えない（重ねるクロスフェードは入れない）。黒の間は台本の `black` で作る。つなぎのレシピ（何を、何秒で、どの緩急で覆い、どこで入れ替えるか）は `TRANSITIONS.md` と `transitions.json`。
 
 ## 2. ジャンルの既定
 
@@ -57,7 +57,7 @@ Claude は語を選ぶだけで、秒数はコードが決める（open-design �
 
 ## 5. ffmpeg での描き方
 
-入りと保ち方は drawtext の不透明度と大きさの式（`t` の関数）で描く。`focus` は大きめの薄い写しが 2 枚寄ってくる形（ぼかしの近似）、`glitch` は赤と水色の写しが揺れる形、`type` は先頭から k 字の行を時間で切り替える形、`wipe` は黒い板を `overlay` で横に滑らせる形。つなぎの `glitch` は `rgbashift` と `noise` を境目の 0.1 秒だけかける。
+入りと保ち方は drawtext の不透明度と大きさの式（`t` の関数）で描く。`focus` は大きめの薄い写しが 2 枚寄ってくる形（ぼかしの近似）、`glitch` は赤と水色の写しが揺れる形、`type` は先頭から k 字の行を時間で切り替える形、`wipe` は黒い板を `overlay` で横に滑らせる形。つなぎは `TRANSITIONS.md` 5 節のレシピを `handover.rs` が描く（既定の `base` だけは、それまでの直線のフェードのまま）。
 
 ## 6. 台本に動きを書くとき
 
@@ -65,6 +65,5 @@ Claude は語を選ぶだけで、秒数はコードが決める（open-design �
 
 - 入り方の意味で選ぶ。`cut` は告げる、`fade` は静かに浮かぶ、`flicker` は不穏に点く、`focus` は壮大に像が合う、`slam` は衝撃の一語、`pop` は軽快に弾む、`type` は記録や通信のように打たれる、`wipe` は名前や章の見出し、`glitch` は電子的に崩れる。
 - 1 本の中で、profile の動きに足す入り方は 1〜2 種まで。全部の行を違う動きにしない。
-- `flicker`、`transition: flash`、`transition: whiteout` は間を空けて使う（1 秒に 3 回まで）。短いカットが続く数え上げでも、毎カットに `flash` を付けない。
-- つなぎは理由で選ぶ。`dip` は時間や場所が飛ぶとき、`whiteout` は回想や光の中への転換、`glitch` は電子的な断絶、`flash` は衝撃の一瞬。
+- `flicker` で入る行は間を空ける（つなぎの `flash`・`whiteout` と合わせて 1 秒に 3 回まで）。
 - 計画の `motion` は、ブリーフや方向に「静かに」「派手に」「日本の PV のように」「フラッシュは嫌」のような言葉があるときだけ、`energy`・`variant`・`avoid` に書く。無ければ空にして、ルックに任せる。

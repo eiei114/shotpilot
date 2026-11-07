@@ -4,7 +4,7 @@ mod common;
 
 use std::cell::RefCell;
 
-use common::{ids, ws};
+use common::{ids, measured_reference, ws};
 use serde_json::{json, Value};
 use shotpilot::ai::{self, Claude};
 use shotpilot::Result;
@@ -224,11 +224,13 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
     // D-48: open-design hands the same frozen spec to every path that writes the artifact.
     // Each path that asks Claude for shots, and which parts of the spec it carries.
     let mut f = ws();
+    measured_reference(&f.ws, "demo");
     f.ws.set_brief(&[
         ("genre".into(), json!("一人称ホラー")),
         ("design".into(), json!("quiet-dread")),
         ("skills".into(), json!(["count-run"])),
         ("direction".into(), json!("記録映像のふりをする。")),
+        ("reference_teaser".into(), json!("demo")),
     ])
     .unwrap();
     let defn = &f.ws.defn;
@@ -275,14 +277,16 @@ fn every_path_that_writes_shots_gets_the_frozen_spec() {
         ("title faces", "## Title faces"),
         ("motion", "## Text motion"),
         ("sound", "## The look's sound"),
+        ("hand-overs", "## Hand-overs between shots"),
+        ("reference", "## Reference teaser `demo`"),
     ];
     // which blocks each path must carry: picture notes get all of it, text notes the look, the
     // baseline and how lines are written (D-52), sound notes the brief and the direction only
     let want = |name: &str| -> &[&str] {
         match name {
-            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "title faces", "motion"],
+            "revise: its finishing" => &["brief", "direction", "look", "skill", "baseline", "type", "title faces", "motion", "hand-overs", "reference"],
             "revise: the sound" | "sound design" => &["brief", "direction", "sound"],
-            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "title faces", "motion"],
+            _ => &["brief", "direction", "look", "skill", "craft rules", "framing", "baseline", "type", "title faces", "motion", "hand-overs", "reference"],
         }
     };
     for (name, text) in &paths {
@@ -636,4 +640,52 @@ fn a_free_note_on_a_cut_may_set_its_camera_effects() {
     let rev = ai::revise_at(&f.ws.defn, "もっと怖く", Some(&ids(&["s03_window"])), &ai::Pointer::default(), &c).unwrap();
     let fx = rev.edits.iter().find(|(k, _)| k == "s03_window").and_then(|(_, v)| v.get("fx").cloned());
     assert_eq!(fx, Some(json!(["shake"])));
+}
+
+#[test]
+fn a_plan_hands_over_with_cut_and_two_others() {
+    // D-70 (open-design: one primary transition and one or two accents): code keeps dip and the
+    // look's accent (the base profile's is flash); the planner's other hand-overs become cuts
+    let f = ws();
+    let shot = |id: &str, beat: &str, t: &str| {
+        let mut s = plan_shot(id, beat, 3.0, "well");
+        s["transition"] = json!(t);
+        s
+    };
+    let fake = FakeClaude::new(json!({"rationale": "r", "grade": "none", "letterbox": 0, "shots": [
+        shot("a", "hook", "glitch"), shot("b", "establish", "whiteout"), shot("c", "escalate", "flash"),
+        shot("d", "escalate", "dip"), shot("e", "title", "cut")]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let kinds: Vec<&str> = p.shots.iter().map(|s| s["transition"].as_str().unwrap_or("cut")).collect();
+    assert_eq!(kinds, ["cut", "cut", "flash", "dip", "cut"]);
+    assert!(p.adjustments.iter().any(|a| a == "つなぎを cut のほか 2 種（flash, dip）に絞った: a glitch, b whiteout"), "{:?}", p.adjustments);
+    // the planner was told what each hand-over says and where it goes, in one wording
+    let text = request_text(&fake.calls.borrow()[0]);
+    assert!(text.contains("## Hand-overs between shots") && text.contains("whiteout (up to white and back"), "{text}");
+    assert!(!text.contains("on each short evidence shot of a count"), "the old, contradicting line is gone");
+}
+
+#[test]
+fn a_plan_keeps_what_the_reference_measured() {
+    // D-71: measured outranks the look; a fresh plan writes the look's motion with the
+    // reference's lengths on top, and keeps the reference's accent when it shapes hand-overs
+    let mut f = ws();
+    measured_reference(&f.ws, "demo");
+    f.ws.set_brief(&common::set(&[("design", json!("epic-fantasy")), ("reference_teaser", json!("demo"))])).unwrap();
+    let shot = |id: &str, beat: &str, t: &str| {
+        let mut s = plan_shot(id, beat, 3.0, "well");
+        s["transition"] = json!(t);
+        s
+    };
+    let fake = FakeClaude::new(json!({"rationale": "r", "grade": "none", "letterbox": 0, "shots": [
+        shot("a", "hook", "whiteout"), shot("b", "establish", "flash"), shot("c", "escalate", "glitch"),
+        shot("d", "escalate", "dip"), shot("e", "title", "cut")]}));
+    let p = ai::plan(&f.ws.defn, None, None, None, None, &fake).unwrap();
+    let motion = &p.finish.iter().find(|(k, _)| k == "motion").unwrap().1;
+    assert_eq!((motion["profile"].clone(), motion["dip"].clone(), motion["flash"].clone()), (json!("rpg"), json!(0.08), json!(0.13)));
+    assert_eq!(motion["accent"], json!("flash"), "the look's accent was whiteout; the reference jolts with flashes");
+    let kinds: Vec<&str> = p.shots.iter().map(|s| s["transition"].as_str().unwrap_or("cut")).collect();
+    assert_eq!(kinds, ["cut", "flash", "cut", "dip", "cut"]);
+    let text = request_text(&fake.calls.borrow()[0]);
+    assert!(text.contains("## Reference teaser `demo`") && text.contains("2 white flashes, at 50%, 53%"), "{text}");
 }
