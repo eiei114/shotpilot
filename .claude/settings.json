@@ -27,16 +27,24 @@
       "Bash(git log *)",
       "Bash(git show *)"
     ],
-    "ask": [
-      "Bash(git push *)",
-      "Bash(UnrealEditor-Cmd *)",
-      "Bash(UnrealEditor *)"
-    ],
     "deny": [
       "Edit(./.git/**)",
       "Edit(./render/**)",
       "Read(./.env)",
       "Read(./.env.*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/tools/hooks/dev_guard.js\" post-tool", "timeout": 30 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/tools/hooks/dev_guard.js\" stop", "timeout": 600 }]
+      }
     ]
   }
 }
