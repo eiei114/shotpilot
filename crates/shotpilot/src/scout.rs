@@ -208,6 +208,9 @@ pub struct Candidate {
     pub label: String,
     /// The actor class.
     pub class: String,
+    /// What it is to a scout (room, corridor, light, door, character, effect, item, prop, start),
+    /// with what else stands there; empty from an older engine script.
+    pub kind: String,
     /// How much it is there (cube root of its volume, capped).
     pub score: f64,
     pub at: Vec3,
@@ -221,6 +224,10 @@ impl Candidate {
         Some(Candidate {
             label: v.get("label").map(str_of).unwrap_or_else(|| name.clone()),
             class: v.get("cls").or_else(|| v.get("class")).map(str_of).unwrap_or_default(),
+            kind: {
+                let kinds: Vec<String> = v.get("kinds").and_then(Value::as_array).into_iter().flatten().map(str_of).collect();
+                if kinds.len() > 1 { kinds.join(" + ") } else { v.get("kind").map(str_of).unwrap_or_default() }
+            },
             score: v.get("score").and_then(num).unwrap_or(0.0),
             name,
             at,
@@ -241,7 +248,8 @@ impl Candidate {
     /// One line for the planner: name, what it is, size, where.
     pub fn line(&self) -> String {
         let f = |v: Vec3| v.iter().map(|x| fmt_g(g::round_to(*x, 0))).collect::<Vec<_>>().join(", ");
-        format!("- `{}` ({}, {}): size [{}] cm at [{}]", self.name, self.label, self.class, f(self.b.size), f(self.b.center))
+        let what = if self.kind.is_empty() { String::new() } else { format!("{}: ", self.kind) };
+        format!("- `{}` ({what}{}, {}): size [{}] cm at [{}]", self.name, self.label, self.class, f(self.b.size), f(self.b.center))
     }
 }
 
@@ -266,4 +274,24 @@ pub fn spread(cands: &[Candidate], limit: usize) -> Vec<Candidate> {
         picked.push(pool.remove(i));
     }
     picked.into_iter().cloned().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_candidate_tells_the_picker_what_kind_of_place_it_is() {
+        // D-84: places, not building blocks: what stands there reaches Claude's pick
+        let v = serde_json::json!({"name": "doorframe", "label": "BP_DoorFrame + SpotLight7", "cls": "BP_DoorFrame_C",
+            "kind": "door", "kinds": ["door", "light"], "score": 540.0,
+            "at": [-1700, -1250, 0], "size": [500, 900, 400], "center": [-1700, -1250, 200]});
+        let c = Candidate::from_json(&v).unwrap();
+        assert_eq!(c.kind, "door + light");
+        assert!(c.line().starts_with("- `doorframe` (door + light: BP_DoorFrame + SpotLight7, BP_DoorFrame_C)"), "{}", c.line());
+        // an older engine script sends no kind: the line reads as before
+        let old = serde_json::json!({"name": "well", "label": "SM_Well", "cls": "StaticMeshActor", "score": 1.0,
+            "at": [0, 0, 0], "size": [100, 100, 100]});
+        assert!(Candidate::from_json(&old).unwrap().line().starts_with("- `well` (SM_Well, StaticMeshActor)"));
+    }
 }

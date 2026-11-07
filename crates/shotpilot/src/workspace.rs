@@ -446,11 +446,16 @@ impl Workspace {
             if !force && pushed_fp.as_deref() == Some(bfp.as_str()) {
                 continue;
             }
-            items.push(json!({
+            let mut it = json!({
                 "id": s.id, "asset": shot_asset(&self.defn, &s.id), "fingerprint": bfp,
                 "payload": s.engine_payload(),
                 "base": self.state.pushed_payload(&s.id).map(|p| readback_subset(&p)),
-            }));
+            });
+            let lead = crate::engines::streaming_lead(&self.defn);
+            if lead > 0 {
+                it["lead"] = json!(lead);
+            }
+            items.push(it);
         }
         items
     }
@@ -1835,9 +1840,14 @@ impl Workspace {
             let mut items = Vec::new();
             for (s, c) in shots.iter().zip(&cams) {
                 let asset = format!("{}/Scout/SEQ_{}", self.defn.project.content_root, s.id);
-                build.push(json!({"id": s.id, "asset": asset, "fingerprint": fp::build_fingerprint(&self.defn, s),
-                                  "payload": s.engine_payload(), "base": Value::Null,
-                                  "clear_view": {"target": c.look_at}}));
+                let mut b = json!({"id": s.id, "asset": asset, "fingerprint": fp::build_fingerprint(&self.defn, s),
+                                   "payload": s.engine_payload(), "base": Value::Null,
+                                   "clear_view": {"target": c.look_at}});
+                let lead = crate::engines::streaming_lead(&self.defn);
+                if lead > 0 {
+                    b["lead"] = json!(lead);
+                }
+                build.push(b);
                 let d = raw.join(&s.id);
                 if d.exists() {
                     std::fs::remove_dir_all(&d)?;

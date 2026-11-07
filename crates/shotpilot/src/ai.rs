@@ -2457,13 +2457,15 @@ pub fn locations_schema() -> Value {
 pub fn pick_locations(defn: &Definition, cands: &[crate::scout::Candidate], limit: usize, want: Option<&str>, claude: &dyn Claude)
     -> Result<Vec<String>> {
     let system = "You are the location scout on a game teaser shoot. The level has no marked places yet. From the \
-                  candidate objects found in the level, choose the places to photograph so the plan can be filmed: \
+                  candidate places found in the level, choose the places to photograph so the plan can be filmed: \
                   the places the plan and its scout targets need first, then places that give the teaser range \
-                  (different rooms or areas, a strong opening image, a place for the title). Prefer objects that \
-                  mark a place (a door, a bed, an altar, a gate) over clutter. Spread the picks across the level.";
+                  (different rooms or areas, a strong opening image, a place for the title). Each candidate says what \
+                  it is (a room or corridor read from the floors, a light, a door, a character, an effect, an item, a \
+                  prop, the player start) and what else stands there. Prefer what marks a place (a door, a lit spot, \
+                  a character, a bed, an altar, a gate) over clutter. Spread the picks across the level.";
     let b = &defn.brief;
     let mut user = format!(
-        "## Plan\nDirection: {}\n{}\n\nCore experience: {}\nMust show: {}\n\n## Candidates (name, label, class, size, centre)\n{}\n\n\
+        "## Plan\nDirection: {}\n{}\n\nCore experience: {}\nMust show: {}\n\n## Candidates (name, what it is: labels, class, size, centre)\n{}\n\n\
          Choose up to {limit} candidates, most important first.",
         b.direction,
         if b.plan.is_empty() { defn.teaser.pitch.as_str() } else { b.plan.as_str() },

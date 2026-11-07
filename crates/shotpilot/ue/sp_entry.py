@@ -298,6 +298,9 @@ def build_shot(item, project, force):
     seq = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
         name, folder, unreal.LevelSequence, unreal.LevelSequenceFactoryNew())
     fps, frames = int(payload["fps"]), int(payload["frames"])
+    # a streamed level: the camera and its cut start this many frames early, holding the first
+    # pose, so MRQ can warm up on the shot's camera while the level streams in around it
+    lead = int(item.get("lead", 0))
     seq.set_display_rate(unreal.FrameRate(fps, 1))
     seq.set_playback_start(0)
     seq.set_playback_end(frames)
@@ -324,7 +327,7 @@ def build_shot(item, project, force):
               else unreal.MovieSceneKeyInterpolation.AUTO)
     tr = cam.add_track(unreal.MovieScene3DTransformTrack)
     sec = tr.add_section()
-    sec.set_range(0, frames)
+    sec.set_range(-lead, frames)
     ch = transform_channels(sec)
     a, b = xform_values(payload["start"]), xform_values(payload["end"])
     for n, v in a.items():
@@ -337,7 +340,7 @@ def build_shot(item, project, force):
 
     cc = add_root_track(seq, unreal.MovieSceneCameraCutTrack)
     cs = cc.add_section()
-    cs.set_range(0, frames)
+    cs.set_range(-lead, frames)
     cs.set_camera_binding_id(binding_id(seq, cam))
 
     env = payload.get("environment") or {}
@@ -526,52 +529,208 @@ def _anchor_name(label):
     return name[:40]
 
 
-# Actors that are never landmarks: lights, cameras, volumes, sky, the level's own machinery.
-_SKIP_CLASS = ("Light", "Camera", "Volume", "Sky", "Fog", "PostProcess", "PlayerStart", "Landscape", "Brush",
-               "WorldSettings", "Info", "Reflection", "Decal", "Note", "Atmosphere", "Cloud", "Navigation",
-               "LevelSequence", "Emitter", "Niagara", "Audio", "Sound", "Trigger", "Blocking", "HLOD")
+# Actors that are never places by themselves: cameras, volumes, sky, the level's own machinery.
+_SKIP_CLASS = ("Camera", "Volume", "Sky", "Fog", "PostProcess", "Landscape", "Brush", "WorldSettings", "Info",
+               "Reflection", "Decal", "Note", "Atmosphere", "Cloud", "Navigation", "LevelSequence", "Audio", "Sound",
+               "Trigger", "Blocking", "HLOD", "DirectionalLight", "SkyLight")
+# the engine's and the prototyping packs' plain shapes: what a blockout builds walls and floors from
+_SHAPES = ("cube", "cylinder", "cone", "sphere", "plane", "ramp", "quartercylinder", "wedge", "pipe", "torus",
+           "stair", "wall", "floor", "ceiling", "pillar", "column", "beam", "trim")
+# what marks a place, first: a door or a character is where something happens; a lamp says where to look
+_PRIORITY = {"character": 5.0, "door": 5.0, "effect": 4.0, "item": 4.0, "light": 3.0, "corridor": 2.5,
+             "prop": 2.0, "room": 2.0, "start": 1.5, "shape": 0.5}
+_DOORISH = ("door", "gate", "shutter", "hatch", "elevator", "lift")
+
+
+def _box(a):
+    """(min, max) of an actor's bounds, or None."""
+    try:
+        o, e = a.get_actor_bounds(False)
+    except Exception:
+        return None
+    if e.x <= 0.5 and e.y <= 0.5 and e.z <= 0.5:
+        return None
+    return ([o.x - e.x, o.y - e.y, o.z - e.z], [o.x + e.x, o.y + e.y, o.z + e.z])
+
+
+def _mesh_name(a):
+    try:
+        comp = a.get_component_by_class(unreal.StaticMeshComponent)
+        sm = comp.get_editor_property("static_mesh") if comp else None
+        return sm.get_name().lower() if sm else ""
+    except Exception:
+        return ""
+
+
+def _has(a, cls_name):
+    cls = getattr(unreal, cls_name, None)
+    if cls is None:
+        return False
+    try:
+        return bool(a.get_components_by_class(cls))
+    except Exception:
+        return False
+
+
+def _kind(a, cls, label, box):
+    """What an actor is to a location scout: a place-maker (door, character, light, ...), a
+    structural piece of the building ("structure"), or nothing (None)."""
+    lo = (label + " " + cls).lower()
+    if box is not None and (cls == "SkeletalMeshActor" or _has(a, "SkeletalMeshComponent")):
+        return "character"
+    if cls in ("PointLight", "SpotLight", "RectLight") or _has(a, "LocalLightComponent"):
+        try:
+            comp = a.get_component_by_class(unreal.LocalLightComponent)
+            if comp and (comp.get_editor_property("intensity") <= 0 or not comp.is_visible()):
+                return None
+        except Exception:
+            pass
+        return "light"
+    if cls == "PlayerStart":
+        return "start"
+    if any(k in cls for k in _SKIP_CLASS):
+        return None
+    if cls in ("NiagaraActor", "Emitter") or _has(a, "NiagaraComponent") or _has(a, "ParticleSystemComponent"):
+        return "effect"
+    if box is None:
+        return None
+    if not _has(a, "MeshComponent"):
+        return None
+    size = [box[1][i] - box[0][i] for i in range(3)]
+    big, thin = max(size), min(size)
+    if any(k in lo for k in _DOORISH):
+        return "door"
+    # walls, floors, ceilings and plain blocks frame the places; they are not places
+    shape = _mesh_name(a)
+    plain = any(s in shape.replace("sm_", "").replace("shape_", "") for s in _SHAPES)
+    if big > 2500 or (big >= 250 and thin < 0.15 * big) or (plain and cls == "StaticMeshActor"):
+        return "structure"
+    if big < 40 or size[2] < 15:
+        return None
+    return "item" if cls.endswith("_C") else "prop"
+
+
+def _floor_under(p, boxes):
+    """The top of the highest horizontal piece under a point (no collision in a commandlet: bounds only)."""
+    best = None
+    for lo, hi in boxes:
+        if hi[0] - lo[0] < 100 or hi[1] - lo[1] < 100:
+            continue
+        if lo[0] - 10 <= p[0] <= hi[0] + 10 and lo[1] - 10 <= p[1] <= hi[1] + 10 and hi[2] <= p[2] + 20:
+            if best is None or hi[2] > best:
+                best = hi[2]
+    return best
+
+
+def _rooms(slabs, boxes):
+    """Floors from the horizontal slabs of a blockout: a slab with a ceiling over it (the storey
+    above or a roof) is a floor; the top slab is the roof. A long narrow floor is a corridor."""
+    out = []
+    for i, (lo, hi) in enumerate(slabs):
+        sx, sy = hi[0] - lo[0], hi[1] - lo[1]
+        if min(sx, sy) < 200:
+            continue
+        def overlaps(b):
+            return min(hi[0], b[1][0]) - max(lo[0], b[0][0]) > 0.5 * sx and min(hi[1], b[1][1]) - max(lo[1], b[0][1]) > 0.5 * sy
+        above = [b for j, b in enumerate(slabs) if j != i and hi[2] + 150 <= b[0][2] <= hi[2] + 900 and overlaps(b)]
+        below = [b for j, b in enumerate(slabs) if j != i and lo[2] - 900 <= b[1][2] <= lo[2] - 150 and overlaps(b)]
+        if not above and below:
+            continue  # a roof
+        top = hi[2]
+        out.append({"kind": "corridor" if max(sx, sy) >= 3 * min(sx, sy) else "room",
+                    "label": "floor", "cls": "StaticMeshActor",
+                    "p": [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, top], "floor": top,
+                    "size": [min(sx, 2000.0), min(sy, 2000.0), 250.0]})
+    return out
 
 
 def _candidates(limit):
-    """Landmark candidates when nothing is tagged: medium-to-large visible meshes, one per kind
-    (by label), largest first. shotpilot picks among them (Claude, by the plan; else the most
-    spread-out ones)."""
-    cands = []
+    """Places to scout when nothing is tagged (D-44, D-45, D-84). A place is where something
+    happens or can be seen: a door, a character, an effect, a lamp, a prop, the player start, a
+    room or corridor read from the floors. Walls, floors, ceilings and plain blocks are the
+    building, never a place (a blockout is made of them). Things within 3.5 m make one place,
+    named after its most telling member. shotpilot picks among them (Claude, by the plan; else
+    the most spread-out ones)."""
+    things, boxes, slabs, shapes = [], [], [], []
     for a in all_actors():
         cls = a.get_class().get_name()
-        if any(k in cls for k in _SKIP_CLASS):
-            continue
         try:
             if a.is_hidden_ed() or a.is_editor_only():
                 continue
         except Exception:
             pass
-        try:
-            if not a.get_components_by_class(unreal.MeshComponent):
-                continue
-        except Exception:
-            continue
-        e = _actor_entry(a, require_size=True)
-        if not isinstance(e, dict):
-            continue
-        sx, sy, sz = e["size"]
-        big, flat = max(sx, sy, sz), min(sx, sy, sz)
-        # floors, ceilings and whole buildings frame nothing; tiny clutter is not a place
-        if big < 40 or big > 2500 or sz < 15:
-            continue
+        box = _box(a)
+        if box is not None and _has(a, "MeshComponent"):
+            boxes.append(box)
         label = a.get_actor_label()
-        name = _anchor_name(label)
-        if not name:
+        kind = _kind(a, cls, label, box)
+        if kind is None:
             continue
-        score = min((sx * sy * sz) ** (1.0 / 3.0), 400.0) * (0.5 if flat < 25 else 1.0)
-        cands.append(dict(e, name=name, label=label, cls=cls, score=round(score, 1)))
-    best = {}
-    for c in cands:  # one per kind: six chairs are one landmark
-        if c["name"] not in best or c["score"] > best[c["name"]]["score"]:
-            best[c["name"]] = c
-    out = sorted(best.values(), key=lambda c: -c["score"])[:limit]
-    log("scan: %d landmark candidates (%d kinds), returning %d" % (len(cands), len(best), len(out)))
-    return out
+        if kind == "structure":
+            size = [box[1][i] - box[0][i] for i in range(3)]
+            if size[2] <= min(150.0, max(60.0, 0.12 * min(size[0], size[1]))) and size[0] >= 200 and size[1] >= 200:
+                slabs.append(box)
+            shapes.append((a, cls, label, box))
+            continue
+        loc = a.get_actor_location()
+        p = [loc.x, loc.y, loc.z]
+        if box is not None and kind not in ("light", "start"):
+            p = [(box[0][0] + box[1][0]) / 2, (box[0][1] + box[1][1]) / 2, box[0][2]]
+        things.append({"kind": kind, "label": label, "cls": cls, "p": p, "box": box})
+    for t in things:
+        f = _floor_under(t["p"], boxes) if t["kind"] in ("light", "start", "effect") else t["p"][2]
+        t["floor"] = t["p"][2] if f is None else f
+    things += _rooms(slabs, boxes)
+    if not things:  # nothing but blocks: the old way, the plain shapes themselves
+        for a, cls, label, box in shapes:
+            things.append({"kind": "shape", "label": label, "cls": cls, "box": box, "floor": box[0][2],
+                           "p": [(box[0][0] + box[1][0]) / 2, (box[0][1] + box[1][1]) / 2, box[0][2]]})
+    # one place per neighbourhood, seeded by the most telling thing
+    things.sort(key=lambda t: -_PRIORITY[t["kind"]])
+    places = []
+    for t in things:
+        for pl in places:
+            s = pl[0]
+            if math.hypot(t["p"][0] - s["p"][0], t["p"][1] - s["p"][1]) <= 350 and abs(t["floor"] - s["floor"]) < 200:
+                pl.append(t)
+                break
+        else:
+            places.append([t])
+    out, used = [], {}
+    for pl in places:
+        s = pl[0]
+        base = {"light": "light", "start": "start", "room": "room", "corridor": "corridor"}.get(s["kind"]) or _anchor_name(s["label"]) or s["kind"]
+        used[base] = used.get(base, 0) + 1
+        name = base if used[base] == 1 else "%s_%d" % (base, used[base])
+        solid = [t["box"] for t in pl if t.get("box") is not None and t["kind"] not in ("light", "start")]
+        floor = s["floor"]
+        if s["kind"] in ("room", "corridor"):
+            cx, cy = s["p"][0], s["p"][1]
+            size = s["size"]
+            center = [cx, cy, floor + 120]
+        elif solid:
+            lo = [min(b[0][i] for b in solid) for i in range(3)]
+            hi = [max(b[1][i] for b in solid) for i in range(3)]
+            cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
+            size = [max(hi[0] - lo[0], 60.0), max(hi[1] - lo[1], 60.0), max(hi[2] - lo[2], 60.0)]
+            center = [cx, cy, max((lo[2] + hi[2]) / 2, floor + 60)]
+        else:  # a lamp or the start alone: the floor around it, looked at from eye height
+            cx, cy = s["p"][0], s["p"][1]
+            size = [300.0, 300.0, 240.0]
+            center = [cx, cy, floor + 120]
+        r = lambda v: [round(x, 1) for x in v]
+        kinds = sorted({t["kind"] for t in pl}, key=lambda k: -_PRIORITY[k])
+        labels = [t["label"] for t in pl[:4]]
+        score = 100.0 * _PRIORITY[s["kind"]] + 20.0 * min(len(pl) - 1, 5)
+        out.append({"name": name, "label": " + ".join(labels), "cls": s["cls"], "kind": s["kind"], "kinds": kinds,
+                    "score": round(score, 1), "at": r([cx, cy, floor]), "size": r(size), "center": r(center)})
+    out.sort(key=lambda c: -c["score"])
+    counts = {}
+    for t in things:
+        counts[t["kind"]] = counts.get(t["kind"], 0) + 1
+    log("scan: %d places from %s (%d structural pieces left out), returning %d" % (
+        len(out), ", ".join("%s %d" % kv for kv in sorted(counts.items())), len(shapes), min(len(out), limit)))
+    return out[:limit]
 
 
 def run_scan(job):

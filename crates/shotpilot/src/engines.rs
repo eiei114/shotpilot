@@ -586,6 +586,29 @@ impl Engine for Ue5Engine {
     }
 }
 
+/// Frames the camera cut starts before a shot on a streamed (World Partition) level, so the
+/// engine loads the level around the shot's camera before its first frame. Without them the
+/// first frame of every shot showed nothing but the sky and fog: MRQ warms up wherever the
+/// player view starts, and the level streams in around the camera only from the first frame.
+pub const STREAMING_LEAD: i64 = 24;
+
+/// [`STREAMING_LEAD`] for a UE project whose map keeps its actors in external files (World
+/// Partition, one file per actor), else 0. Other levels and engines are left exactly as before.
+pub fn streaming_lead(defn: &Definition) -> i64 {
+    if defn.project.engine != "ue5" {
+        return 0;
+    }
+    let Some(map) = defn.project.map.as_deref().and_then(|m| m.strip_prefix("/Game/")) else { return 0 };
+    let map = map.split('.').next().unwrap_or(map);
+    let Some(up) = defn.project.uproject.as_deref() else { return 0 };
+    let mut up = PathBuf::from(up);
+    if !up.is_absolute() {
+        up = defn.root().join(up);
+    }
+    let streamed = up.parent().is_some_and(|d| d.join("Content").join("__ExternalActors__").join(map).is_dir());
+    if streamed { STREAMING_LEAD } else { 0 }
+}
+
 /// Plugins sp_entry.py needs in the editor: Python, the editor scripting helpers, Sequencer's
 /// scripting and Movie Render Queue.
 pub const NEEDED_PLUGINS: &[&str] =

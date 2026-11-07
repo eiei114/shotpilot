@@ -310,6 +310,40 @@ fn fingerprints_match_the_python_version() {
     }
 }
 
+#[test]
+fn a_streamed_level_warms_up_on_the_shot_camera_and_other_levels_keep_their_fingerprints() {
+    // A World Partition map (its actors in __ExternalActors__) streams in around the camera: its
+    // shots start their camera cut early and MRQ warms up there. Every other level keeps the
+    // fingerprints it had, so no take anywhere else goes stale.
+    let mut f = ws();
+    let game = tempfile::tempdir().unwrap();
+    std::fs::write(game.path().join("Game.uproject"), "{}").unwrap();
+    f.ws.defn.project.engine = "ue5".into();
+    f.ws.defn.project.uproject = Some(game.path().join("Game.uproject").display().to_string());
+    f.ws.defn.project.map = Some("/Game/Maps/Lvl_Dark".into());
+    let s = f.ws.select_one("s02_well").unwrap();
+    let before = (fp::build_fingerprint(&f.ws.defn, &s), fp::render_fingerprint(&f.ws.defn, &s, "still").unwrap(),
+                  fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap());
+    assert_eq!(shotpilot::engines::streaming_lead(&f.ws.defn), 0);
+    assert!(fp::quality(&f.ws.defn, "still").unwrap().get("warmup_camera_cut").is_none());
+
+    let actors = game.path().join("Content/__ExternalActors__/Maps/Lvl_Dark");
+    std::fs::create_dir_all(&actors).unwrap();
+    assert_eq!(shotpilot::engines::streaming_lead(&f.ws.defn), shotpilot::engines::STREAMING_LEAD);
+    assert_eq!(fp::quality(&f.ws.defn, "still").unwrap()["warmup_camera_cut"], json!(true));
+    assert_ne!(fp::build_fingerprint(&f.ws.defn, &s), before.0, "its sequences are rebuilt with the lead-in");
+    assert_ne!(fp::render_fingerprint(&f.ws.defn, &s, "still").unwrap(), before.1, "its engine takes are filmed again");
+    assert_eq!(fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap(), before.2, "previz draws no level");
+
+    // a mock project with the same folder is not streamed; and without the folder all is as before
+    f.ws.defn.project.engine = "mock".into();
+    assert_eq!(shotpilot::engines::streaming_lead(&f.ws.defn), 0);
+    f.ws.defn.project.engine = "ue5".into();
+    std::fs::remove_dir_all(game.path().join("Content")).unwrap();
+    assert_eq!((fp::build_fingerprint(&f.ws.defn, &s), fp::render_fingerprint(&f.ws.defn, &s, "still").unwrap(),
+                fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap()), before);
+}
+
 // Computed with the Python implementation (commit 9a84aeb) on the same DEMO template.
 const PY_BUILD_S02: &str = "2541818c6abdd7ebe482d6484d5205cd4c2c7f88518f5fc0e65d51f83241cb07";
 const PY_STILL_S02: &str = "88b637b4e357e81d799e9d4dbe97b035ed6220325f031f576264aca235cc4075";

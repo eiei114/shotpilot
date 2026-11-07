@@ -61,6 +61,10 @@ pub fn quality(defn: &Definition, name: &str) -> Result<Map<String, Value>> {
     for (k, v) in [("runner", json!("engine")), ("frames", json!("all")), ("format", json!("png")), ("scale", json!(1.0))] {
         base.entry(k).or_insert(v);
     }
+    // a streamed level warms up on the shot's own camera (the lead-in of its camera cut)
+    if base.get("runner").and_then(Value::as_str) == Some("engine") && crate::engines::streaming_lead(defn) > 0 {
+        base.entry("warmup_camera_cut").or_insert(json!(true));
+    }
     Ok(base)
 }
 
@@ -151,13 +155,19 @@ pub fn digest(v: &Value) -> String {
 
 /// What the engine's shot sequence must contain.
 pub fn build_fingerprint(defn: &Definition, shot: &ResolvedShot) -> String {
-    digest(&json!({
+    let mut body = json!({
         "v": RENDERER_VERSION,
         "map": defn.project.map,
         "content_root": defn.project.content_root,
         "sun_actor": defn.project.sun_actor,
         "shot": shot.engine_payload(),
-    }))
+    });
+    // a streamed level builds its sequences with a lead-in (only there, so others keep their builds)
+    let lead = crate::engines::streaming_lead(defn);
+    if lead > 0 {
+        body["lead"] = json!(lead);
+    }
+    digest(&body)
 }
 
 /// What a human approves when signing off the script (D-38): the text and where it sits,
