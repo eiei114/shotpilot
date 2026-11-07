@@ -151,7 +151,7 @@ shots.yaml ──build──▶ UE: /Game/Shotpilot/Shots/SEQ_<shot>   (ショ�
 | ショット単位で再レンダ | ショットごとに Level Sequence と MRQ ジョブを分ける。fingerprint が変わったショットだけを撮る |
 | 定義と出力の分離 | 正本は `shots.yaml` だけ。シーケンスアセットも `render/` も、すべてそこから導出する |
 | 状態の保持 | `.shotpilot/state.json` に、push した内容・最新の take・履歴を残す。take は fingerprint ごとのフォルダに置き、上書きしない。定義を元に戻すと、古い take をそのまま再利用する |
-| 安いプレビュー | `previz`（エンジン不要のワイヤーフレーム。6ショットで数秒）→ `still`（1ショット3フレーム）→ `preview`（半解像度）→ `final` |
+| 安いプレビュー | `previz`（エンジン不要のグレーボックス。読んだレベルや three のゲームを灰色の立体で描く。6ショットで数秒）→ `still`（1ショット3フレーム）→ `preview`（半解像度）→ `final` |
 
 並び順、`purpose`、`notes`、`beat`、音（`audio`、`sfx`）は fingerprint に入れていない。だから並べ替えやメモの修正、BGM や SE の直しでは何も再レンダされない。`cut` は既存の take をつなぐだけなので、すぐ終わる。
 

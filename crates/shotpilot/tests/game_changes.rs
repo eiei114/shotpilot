@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use common::{actions, launches, ws, Fixture};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 fn write(f: &Fixture, rel: &str, text: &str) {
     let p = f.ws.root.join(rel);
@@ -132,6 +132,57 @@ fn previz_never_goes_stale_from_the_game_and_the_cut_falls_back_to_it() {
         let want = if with_well.contains(&s.id) { "previz" } else { "still" };
         assert_eq!(q.as_deref(), Some(want), "{}", s.id);
     }
+}
+
+#[test]
+fn a_level_read_from_the_engine_is_drawn_in_previz_and_only_previz_follows_it() {
+    // D-86's plan of the level is what previz draws around the anchors. Engine takes film the
+    // level itself, so reading the plan (again) never touches them.
+    let mut f = ws();
+    write(&f, "content/well.txt", "v1");
+    f.ws.render(&[], "previz", false, None).unwrap();
+    f.ws.render(&[], "still", false, None).unwrap();
+    let s = f.ws.select_one("s02_well").unwrap();
+    let fp = |f: &Fixture, q: &str| shotpilot::fingerprint::render_fingerprint(&f.ws.defn, &s, q).unwrap();
+    let (pv, still) = (fp(&f, "previz"), fp(&f, "still"));
+    let world = shotpilot::previz::World::load(&f.ws.defn);
+    assert!(!world.has_level());
+    let before = shotpilot::previz::render_frame(&s, 0, &world, 160, 90, None).png();
+
+    let level = json!({"shapes": [
+            {"label": "SM_Wall", "kind": "structure", "center": [-300, 0, 150], "half": [20, 900, 150], "yaw": 0},
+            {"label": "BP_Door", "kind": "door", "center": [-280, 0, 110], "half": [10, 60, 110], "yaw": 0},
+            {"label": "PlayerStart", "kind": "prop", "center": [0, 0, 92], "half": [140, 80, 92], "yaw": 0}],
+        "points": [{"kind": "light", "label": "Lamp", "at": [0, 0, 300]}, {"kind": "start", "label": "PlayerStart", "at": [0, 0, 92]}],
+        "floors": [0.0]});
+    shotpilot::scout::save_level(&f.ws.root, &level).unwrap();
+    let world = shotpilot::previz::World::load(&f.ws.defn);
+    assert!(world.has_level());
+    assert_ne!(shotpilot::previz::render_frame(&s, 0, &world, 160, 90, None).png(), before);
+    assert_ne!(fp(&f, "previz"), pv, "previz draws the level from now on");
+    assert_eq!(fp(&f, "still"), still, "engine takes stay");
+    assert!(status_of(&f, "still").iter().all(|(_, st, _)| st == "fresh"));
+    let acts = actions(&f.ws.render(&[], "previz", false, None).unwrap());
+    assert!(acts.values().all(|a| a == "rendered"), "{acts:?}");
+    let all: BTreeSet<String> = f.ws.defn.shot_ids().into_iter().collect();
+    assert_eq!(showing(&f, "previz", "scout/level.json"), all);
+
+    // read again with a wall moved: previz goes stale for the level, engine takes do not
+    let mut moved = level.clone();
+    moved["shapes"][0]["center"] = json!([-400, 0, 150]);
+    shotpilot::scout::save_level(&f.ws.root, &moved).unwrap();
+    for (id, st, changed) in status_of(&f, "previz") {
+        assert_eq!((st.as_str(), changed), ("stale", vec!["scout/level.json".to_string()]), "{id}");
+    }
+    assert!(status_of(&f, "still").iter().all(|(_, st, _)| st == "fresh"));
+    let acts = actions(&f.ws.render(&[], "previz", false, None).unwrap());
+    assert!(acts.values().all(|a| a == "rendered"), "{acts:?}");
+
+    // read back as it was: the previz drawn with it is used again
+    shotpilot::scout::save_level(&f.ws.root, &level).unwrap();
+    assert!(status_of(&f, "previz").iter().all(|(_, st, _)| st == "fresh"));
+    let acts = actions(&f.ws.render(&[], "previz", false, None).unwrap());
+    assert!(acts.values().all(|a| a == "reused"), "{acts:?}");
 }
 
 #[test]

@@ -255,7 +255,7 @@ fn palette(elev: Option<f64>) -> (Rgb, Rgb, Rgb) {
 /// at night: previz judges framing, not exposure.
 fn tone(elev: Option<f64>) -> Col {
     match elev {
-        Some(e) if e < -5.0 => [0.60, 0.66, 0.80],
+        Some(e) if e < -5.0 => [0.68, 0.73, 0.88],
         Some(e) if e < 12.0 => [0.98, 0.86, 0.76],
         _ => [1.0, 1.0, 1.0],
     }

@@ -281,8 +281,8 @@ fn storyboard_frames_are_a_preview_outside_the_takes() {
         // the scout photos of what is in frame come along as references
         assert!(jobs.iter().any(|j| j.refs.iter().any(|r| r.starts_with(f.ws.root.join("scout")))));
         let (ins, _) = shotpilot::moodboard::CodexImages::instruction(&jobs[..1]);
-        assert!(ins.contains("Attached image #1 is a wireframe layout") && ins.contains("frames from the actual game"));
-        assert!(jobs[0].attachment_note().starts_with("The first attached image is a wireframe layout"));
+        assert!(ins.contains("Attached image #1 is a graybox layout") && ins.contains("frames from the actual game"));
+        assert!(jobs[0].attachment_note().starts_with("The first attached image is a graybox layout"));
     }
     // a preview only: no engine launch, no take, shots.yaml untouched, nothing goes stale
     assert_eq!(launches(&f.ws).len(), before_launches);

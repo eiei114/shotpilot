@@ -30,18 +30,19 @@ pub fn image_model() -> String {
 pub struct ImageJob {
     pub prompt: String,
     pub base: Option<PathBuf>,
-    /// The base is a wireframe layout (a previz frame), not a frame of the game: keep its
-    /// camera and the placement of every box, replace the drawing with a finished picture.
+    /// The base is a graybox layout (a previz frame), not a frame of the game: keep its
+    /// camera and the placement of every block, replace the drawing with a finished picture.
     pub layout: bool,
     /// Frames of the actual game to match for materials, architecture and light (not framing).
     pub refs: Vec<PathBuf>,
 }
 
 /// Said of a layout base (after "Attached image #k" / "The first attached image").
-const LAYOUT_NOTE: &str = "is a wireframe layout of this exact shot: keep its camera position, lens, horizon line, and \
-                           the position and size on screen of every box (each labelled box is an object or place in the \
-                           scene; the red cross is where the camera looks). Replace the wireframe, grid and labels with a \
-                           finished picture; draw no boxes, lines or labels.";
+const LAYOUT_NOTE: &str = "is a graybox layout of this exact shot: keep its camera position, lens, horizon line, and \
+                           the position and size on screen of every block and labelled box (the gray blocks are the \
+                           level's walls, floors and things; each labelled box is an object or place in the scene; the \
+                           red cross is where the camera looks). Replace the gray blocks, outlines, grid and labels with \
+                           a finished picture; draw no boxes, lines or labels.";
 /// Said of reference images (after "Attached images #a, #b" / "The other attached images").
 const REFS_NOTE: &str = "are frames from the actual game: match their materials, architecture, props and lighting, not \
                          their framing.";

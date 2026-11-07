@@ -448,7 +448,7 @@
  "アドベンチャー・ナラティブ": "Adventure / narrative",
  "エア 8–16 kHz の割合": "Air 8-16 kHz share",
  "エアがなく、こもった低ビットレートの音に聞こえる。帯域の広い素材（44.1 / 48 kHz、ローパスなし）を使う": "There is no air, so it sounds muffled and low-bitrate. Use wide-band material (44.1 / 48 kHz, no low-pass)",
- "エンジンを起動せず、ワイヤーフレーム（仮撮り）で確かめる": "Checks with a wireframe (previz), without launching the engine",
+ "エンジンを起動せず、グレーボックス（仮撮り）で確かめる": "Checks with a graybox (previz), without launching the engine",
  "エンドカード": "End card",
  "エンドカードには今決まっている事実だけを書く": "Put only facts that are settled now on the end card",
  "エンドカードの日付・プラットフォーム・ストア名が今の事実と合っている": "The end card's date, platforms and store name match current facts",

@@ -333,7 +333,7 @@ fn a_streamed_level_warms_up_on_the_shot_camera_and_other_levels_keep_their_fing
     assert_eq!(fp::quality(&f.ws.defn, "still").unwrap()["warmup_camera_cut"], json!(true));
     assert_ne!(fp::build_fingerprint(&f.ws.defn, &s), before.0, "its sequences are rebuilt with the lead-in");
     assert_ne!(fp::render_fingerprint(&f.ws.defn, &s, "still").unwrap(), before.1, "its engine takes are filmed again");
-    assert_eq!(fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap(), before.2, "previz draws no level");
+    assert_eq!(fp::render_fingerprint(&f.ws.defn, &s, "previz").unwrap(), before.2, "previz needs no warm-up");
 
     // a mock project with the same folder is not streamed; and without the folder all is as before
     f.ws.defn.project.engine = "mock".into();
@@ -418,10 +418,10 @@ fn previz_digest() -> (usize, String) {
 /// its version, so changing the drawing without bumping PREVIZ_VERSION fails here.
 #[test]
 fn previz_drawing_is_pinned_to_its_version() {
-    const PINNED_PREVIZ_VERSION: i64 = 2;
+    const PINNED_PREVIZ_VERSION: i64 = 3;
     const PINNED_RENDERER_VERSION: i64 = 1;
     const PINNED_FRAMES: usize = 281;
-    const PINNED_DIGEST: &str = "1928f4d1d135336f4ba5dd622100a22167e19693f0c2b0814adb8e5f99cb0438";
+    const PINNED_DIGEST: &str = "b88cf101fc43721e72881fa89ec3f85ee11b5d4a7633cb337c514db54f75d7cf";
 
     let a = previz_digest();
     assert_eq!(a, previz_digest(), "previz output must be deterministic across runs");

@@ -220,7 +220,7 @@ fn the_three_game_offers_its_anchors_places_and_props() {
 
 #[test]
 fn three_takes_carry_their_own_renderer_version() {
-    let (_d, ws) = ward();
+    let (d, ws) = ward();
     let text = std::fs::read_to_string(&ws.path).unwrap();
     let dir = tempfile::tempdir().unwrap();
     threegame::write(&dir.path().join("game")).unwrap();
@@ -228,9 +228,55 @@ fn three_takes_carry_their_own_renderer_version() {
     let s3 = &ws.resolved().unwrap()[2];
     let sm = &mock.resolved().unwrap()[2];
     let fp = |w: &Workspace, s, q| shotpilot::fingerprint::render_fingerprint(&w.defn, s, q).unwrap();
-    // engine takes of the two never stand for each other; the previz of the same shot is the same
+    // engine takes of the two never stand for each other; the previz differs only in drawing the game
     assert_ne!(fp(&ws, s3, "still"), fp(&mock, sm, "still"));
+    assert_ne!(fp(&ws, s3, "previz"), fp(&mock, sm, "previz"), "the three previz draws its game");
+    std::fs::remove_dir_all(d.path().join("game")).unwrap();
     assert_eq!(fp(&ws, s3, "previz"), fp(&mock, sm, "previz"));
+}
+
+#[test]
+fn previz_draws_the_game_and_redraws_only_the_shots_that_showed_a_changed_thing() {
+    let (d, mut ws) = ward();
+    // the ward's rooms are drawn around the anchors, without a browser
+    let s1 = ws.resolved().unwrap()[0].clone();
+    let world = shotpilot::previz::World::load(&ws.defn);
+    assert!(world.has_level());
+    let bare = shotpilot::previz::World::bare(ws.defn.anchor_boxes(), 0.0);
+    let png = |w: &shotpilot::previz::World| shotpilot::previz::render_frame(&s1, 0, w, 160, 90, None).png();
+    assert_ne!(png(&world), png(&bare));
+    let out = ws.render(&[], "previz", false, None).unwrap();
+    assert!(out.iter().all(|o| o.action == "rendered"), "{out:?}");
+    assert!(launches(&ws).is_empty(), "previz started a browser");
+
+    // each previz take keeps the objects it drew, as the engine takes do (D-37)
+    let seen = seen(&ws, "previz");
+    let with: BTreeSet<String> = seen.iter().filter(|(_, n)| n.contains("stretcher")).map(|(k, _)| k.clone()).collect();
+    assert!(with.contains("s03_stretcher_empty"), "{seen:?}");
+    assert!(!with.contains("s01_chair_hook"), "{seen:?}");
+
+    let file = d.path().join("game").join("objects").join("stretcher.json");
+    let original = std::fs::read_to_string(&file).unwrap();
+    let mut v: Value = serde_json::from_str(&original).unwrap();
+    v["parts"][0]["at"][2] = json!(v["parts"][0]["at"][2].as_f64().unwrap_or(0.0) + 30.0);
+    std::fs::write(&file, serde_json::to_string_pretty(&v).unwrap()).unwrap();
+    for (id, (st, changed)) in status_of(&ws, "previz") {
+        if with.contains(&id) {
+            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/stretcher".to_string()]), "{id}");
+        } else {
+            assert_eq!((st.as_str(), changed.len()), ("fresh", 0), "{id}");
+        }
+    }
+    let acts = actions(&ws.render(&[], "previz", false, None).unwrap());
+    for (id, a) in &acts {
+        assert_eq!(a, if with.contains(id) { "rendered" } else { "reused" }, "{id}");
+    }
+
+    // put the stretcher back: the first previz takes are used again
+    std::fs::write(&file, original).unwrap();
+    assert!(status_of(&ws, "previz").values().all(|(st, _)| st == "fresh"));
+    let acts = actions(&ws.render(&[], "previz", false, None).unwrap());
+    assert!(acts.values().all(|a| a == "reused"), "{acts:?}");
 }
 
 #[test]
