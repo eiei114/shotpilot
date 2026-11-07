@@ -93,7 +93,8 @@ pub fn record(root: &Path, reported: &[Value]) -> Vec<Value> {
 }
 
 /// The packages of a take whose files changed (or went away) since it was rendered. Empty
-/// for a take that recorded none (previz, or an engine that does not report them).
+/// for a take that recorded none (previz with no level drawn, or an engine that does not
+/// report them).
 pub fn changed(root: &Path, take: &Take) -> Vec<String> {
     let mut out = Vec::new();
     for d in take.info.get("deps").and_then(Value::as_array).into_iter().flatten() {

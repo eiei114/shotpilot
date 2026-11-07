@@ -82,7 +82,9 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .changes .b { color: var(--faint); text-decoration: line-through; }
 .done-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .done-row .ok { color: var(--ink); font-weight: 600; display: flex; align-items: center; gap: 5px; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; flex: none; }
+/* In a log line that wraps, the dot sits on the first line instead of the middle of the block. */
+.event > .dot, .done-row .ok > .dot { align-self: flex-start; margin-top: calc((1.5em - 9px) / 2); }
 .dot.warn { background: var(--stale); } .dot.bad { background: var(--err); }
 .done-row .t { margin-left: auto; }
 .suggest { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
@@ -666,7 +668,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .stk-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-width: 0; }
 .stk-row .lbl { --c: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; color: var(--muted); display: inline-flex; gap: 5px;
   align-items: center; margin-right: 2px; white-space: nowrap; }
-.stk-row .lbl i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); display: inline-block; }
+.stk-row .lbl i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); display: inline-block; flex: none; }
 .stk-row.ai .lbl { background: linear-gradient(90deg, var(--hook), var(--escalate), var(--establish)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .pchip { --c: var(--line); position: relative; border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); background: var(--card); border-radius: 999px;
   padding: 3px 10px 3px 8px; font-size: 12px; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -791,7 +793,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
   display: grid; gap: 7px; }
 .cv-tray .tabs { display: flex; gap: 2px; align-items: center; flex-wrap: wrap; }
 .cv-tray .tabs button { --c: var(--muted); border: 0; background: none; padding: 3px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; }
-.cv-tray .tabs button i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.cv-tray .tabs button i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); flex: none; }
 .cv-tray .tabs button.on { background: var(--soft); color: var(--ink); font-weight: 600; }
 .cv-tray .tabs .hint { margin-left: auto; font-size: 11px; color: var(--faint); }
 .cv-tray .chips { display: flex; gap: 6px; flex-wrap: wrap; max-height: 64px; overflow: auto; }
@@ -909,6 +911,9 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 #board.on { background: var(--accent); color: var(--accent-ink); }
 .scrub { display: flex; align-items: center; gap: 12px; padding: 8px 14px; color: #c9cfd2; font-size: 12px; font-variant-numeric: tabular-nums; background: #141617; }
 .scrub input { flex: 1; --range: var(--accent); }
+.scrub .play { flex: none; width: 26px; height: 26px; color: #c9cfd2; font-size: 11px; }
+.scrub .play:hover, .scrub .play.on { background: #262b2d; color: #fff; }
+.scrub .play:disabled { opacity: .35; }
 
 /* tweak (precise edits by hand) */
 #tweak { overflow: auto; padding: 16px 18px; background: var(--card); display: grid; gap: 10px; align-content: start; }
@@ -950,7 +955,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .clip .top .id { overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11px; }
 .clip .bot { margin-top: auto; display: flex; gap: 6px; align-items: center; padding: 0 7px 5px; color: #e9eded; font-size: 10.5px; white-space: nowrap; overflow: hidden; }
 .ladder { display: inline-flex; gap: 3px; margin-left: auto; }
-.ladder i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgb(255 255 255 / .55); display: inline-block; }
+.ladder i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgb(255 255 255 / .55); display: inline-block; flex: none; }
 .ladder i.fresh { background: var(--accent); border-color: var(--accent); }
 .ladder i.stale { background: var(--stale); border-color: var(--stale); }
 .clip.sel { border-color: var(--sel); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--sel); }
@@ -1139,7 +1144,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-empty { display: grid; gap: 4px; padding: 16px 2px; font-size: 12px; color: var(--muted); }
 .rv-empty b { color: var(--ink); }
 .rv-foot { position: sticky; bottom: 0; margin-top: auto; padding: 8px 0 10px; background: var(--card); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.rv-foot i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.rv-foot i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
 .rv-feed { display: grid; gap: 6px; font-size: 12px; }
 .rv-feed div { display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
 .rv-feed .cur { background: var(--soft); border-radius: 6px; padding: 6px 4px; }
@@ -1149,6 +1154,8 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-frame .ph { place-self: center; color: #93a4a7; font-size: 12px; text-align: center; }
 .rv-frame .tg { position: absolute; top: 8px; left: 8px; font: 10px var(--mono); color: #c4d0d1; background: rgb(13 19 21 / .85); border: 1px solid #354247; padding: 1px 6px; border-radius: 3px; }
 .rv-frame .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 12px; text-align: center; font-size: 12px; color: #e3e9e9; background: linear-gradient(transparent, rgb(5 7 8 / .8)); }
+.rv-frame .play { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 50%; background: rgb(13 19 21 / .85); border: 1px solid #354247; color: #e3e9e9; font-size: 11px; }
+.rv-frame .play:hover, .rv-frame .play.on { background: rgb(13 19 21 / .95); border-color: #6d8085; color: #fff; }
 .rv-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10.5px; color: var(--muted); }
 .rv-ladder { display: flex; gap: 8px; font-family: var(--mono); }
 .rv-nav { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); white-space: nowrap; }
@@ -1263,7 +1270,8 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .bk-facts dd { margin: 0; font-family: var(--mono); }
 .bk-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .bk-acts .btn { font-size: 11.5px; padding: 3px 9px; }
-.bk-scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
+.bk-scrub { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
+.bk-scrub .play { width: 24px; height: 24px; font-size: 10px; }
 
 #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--primary); color: var(--card); padding: 8px 14px;
   border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
@@ -1320,7 +1328,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <button class="road-btn" data-road="scout" title="ゲームの中に何があるか（場所の写真と、出せるもの）"><span class="ic"></span><span class="lb">ロケハン</span><span class="pin" data-pin="scout" role="button" title="ここで止まる（📍）。押して付け外し"></span><span class="who"></span></button><span class="road-sep">›</span>
         <button class="road-btn" data-road="script" title="文字とカットの並び（カット表）"><span class="ic"></span><span class="lb">台本</span><span class="who"></span></button><span class="road-sep">›</span>
         <button class="road-btn" data-road="blocking" title="1カットずつ、画とカメラを見て細かく直す"><span class="ic"></span><span class="lb">配置とカメラ</span><span class="who"></span></button><span class="road-sep">›</span>
-        <button class="road-btn" data-road="review" title="previz を見て、分かれ道を選び、はみ出しを戻す"><span class="ic"></span><span class="lb">previz</span><span class="pin" data-pin="review" role="button" title="ここで止まる（📍）。押して付け外し"></span><span class="who"></span></button><span class="road-sep">›</span>
+        <button class="road-btn" data-road="review" title="仮撮り（エンジンなしの線画）を見て、分かれ道を選び、はみ出しを戻す"><span class="ic"></span><span class="lb">仮撮り</span><span class="pin" data-pin="review" role="button" title="ここで止まる（📍）。押して付け外し"></span><span class="who"></span></button><span class="road-sep">›</span>
         <button class="road-btn" data-road="sound" title="BGM と SE"><span class="ic"></span><span class="lb">音</span><span class="who"></span></button><span class="road-sep">›</span>
         <button class="road-btn" data-road="capture" title="承認したカットを本番品質で撮る"><span class="ic"></span><span class="lb">撮影</span><span class="who"></span></button><span class="road-sep">›</span>
         <button class="road-btn" data-road="cut" title="つないで仕上げを焼き込んだ映像"><span class="ic"></span><span class="lb">Cut</span><span class="who"></span></button><span class="road-sep">›</span>
@@ -1349,7 +1357,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
       <div class="right">
         <button class="btn" id="approve" hidden></button>
-        <button class="btn pro-only" id="board" title="previz の線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
+        <button class="btn pro-only" id="board" title="仮撮りの線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
@@ -1366,7 +1374,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div id="blockpanel" class="main" hidden aria-label="配置図"></div>
     <div id="stage" class="main">
       <div id="view"></div>
-      <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
+      <div class="scrub" id="scrub"><button type="button" class="icon play" id="play" title="再生・停止 (Space)">▶</button><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
     </div>
     <div id="tweak" class="main" hidden></div>
     <div id="soundpanel" class="main" hidden>
@@ -1403,7 +1411,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 function tabLead(text, more = "", warn = "") {
   return `<div class="lead">${esc(text)}${more ? `<details class="more"><summary title="詳細">ⓘ</summary><div>${esc(more)}</div></details>` : ""}${warn ? ` ${warn}` : ""}</div>`;
 }
-const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final: "final" };
+const QUALITY_JA = { previz: "仮撮り", still: "still", preview: "preview", final: "final" };
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 // The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
@@ -1679,6 +1687,7 @@ function drawStage() {
   }
   $("scrub").hidden = false;
   const fr = $("frame"); fr.max = n - 1; fr.value = ui.frame; fr.disabled = n < 2;
+  $("play").disabled = n < 2;
   const num = tk.t.frame_numbers?.[ui.frame] ?? ui.frame;
   const total = Math.round(s.duration * (ui.status.fps || 30));
   $("f-label").textContent = `コマ ${num + 1} / ${total}`;
@@ -1700,7 +1709,7 @@ function drawBoard(s) {
   if (view.dataset.board === key && view.querySelector(".board-bar")) return;
   view.dataset.board = key;
   if (!s || !b) {
-    view.innerHTML = `<div class="placeholder"><b>絵コンテはまだありません</b>previz の線画を下絵に、ロケハン写真とムードボードを参考にして 1 枚描きます。確認用で、ティザーには入りません。</div><div class="board-bar">${s ? btns : ""}</div>`;
+    view.innerHTML = `<div class="placeholder"><b>絵コンテはまだありません</b>仮撮りの線画を下絵に、ロケハン写真とムードボードを参考にして 1 枚描きます。確認用で、ティザーには入りません。</div><div class="board-bar">${s ? btns : ""}</div>`;
     return;
   }
   const label = `絵コンテ（生成画像・ティザーには入りません）${b.fresh ? "" : " · 画が変わったので古い"}`;
@@ -1755,6 +1764,130 @@ function drawTeaser() {
   if (cur && cur.dataset.src === cut.video_url + cut.stamp) return;
   view.innerHTML = `<video controls preload="metadata" data-src="${esc(cut.video_url + cut.stamp)}" src="${esc(cut.video_url)}?v=${encodeURIComponent(cut.stamp || "")}"></video>
     <span class="badge-q">${esc(cut.quality)} · cut.mp4</span>`;
+}
+
+// ------------------------------------------------------------------ playback: Space plays and stops what is on screen
+
+/** The screens that play something. There Space always plays or stops (it never clicks a focused button). */
+const PLAY_TABS = new Set(["shot", "review", "blocking", "teaser", "sound"]);
+
+/** The frames playing on the cut, your turn or the map: {tab, id, urls, times, i, from, t0, end, map, at, raf}, or null.
+ *  The cut's video and the sound mix are media elements and keep their own state. */
+let playing = null;
+
+/** Seconds into the cut of each frame of a take (from its frame numbers, else spread evenly). */
+function frameTimes(s, t) {
+  const fps = ui.status.fps || 30, n = t.frames.length;
+  return t.frames.map((_, i) => (t.frame_numbers?.[i] != null ? t.frame_numbers[i] / fps : (i * s.duration) / n));
+}
+
+/** The frame on screen at second `sec` of the cut. */
+function frameAt(times, sec) {
+  let i = 0;
+  while (i + 1 < times.length && times[i + 1] <= sec + 1e-6) i++;
+  return i;
+}
+
+/** The take whose picture this screen shows for a cut. */
+function playTake(s) {
+  const tk = ui.tab === "shot" ? shownTake(s) : bestTake(s);
+  return tk?.t.frames?.length ? tk.t : null;
+}
+
+const playGlyph = () => (playing ? "❚❚" : "▶");
+
+/** The ▶ buttons follow the playback. */
+function playIcons() {
+  for (const b of document.querySelectorAll("#play, [data-play]")) { b.textContent = playGlyph(); b.classList.toggle("on", !!playing); }
+}
+
+/** Space (or a ▶): play or stop what this screen shows. */
+function playToggle() {
+  if (playing) { playStop(); return; }
+  if (ui.tab === "sound" && previewAudio && !previewAudio.paused) {
+    previewAudio.pause();
+    if (libPlaying) { libPlaying = ""; drawLibList(); }
+    return;
+  }
+  const media = ui.tab === "teaser" ? $("view").querySelector("video") : ui.tab === "sound" ? $("mixplayer") : null;
+  if (media) {
+    if (media.paused) media.play().catch((err) => toast(err.message, true)); else media.pause();
+    return;
+  }
+  const s = shot(), t = s && playTake(s), frames = t && t.frames.length > 1;
+  const b = ui.tab === "blocking" && s && blkShot(s.id), travels = b && blkCam(b).travels;
+  if (!["shot", "review", "blocking"].includes(ui.tab) || (ui.tab === "shot" && ui.board) || !(frames || travels)) {
+    toast("ここで再生できるものはまだありません");
+    return;
+  }
+  const times = frames ? frameTimes(s, t) : [0];
+  const end = Math.max(s.duration, times[times.length - 1]);
+  const p = { tab: ui.tab, id: s.id, urls: frames ? t.frames : [], times, t0: performance.now(), end };
+  if (ui.tab === "blocking") {
+    const at = (ui.blkT || 0) >= 1 ? 0 : ui.blkT || 0; // at the end of the move: from the top again
+    p.map = true; p.from = at * end;
+    mapShow(p, at);
+  } else {
+    let i = ui.tab === "shot" ? ui.frame : ui.rvFrame?.id === s.id ? ui.rvFrame.i : 0;
+    if (i >= times.length - 1) i = 0;
+    p.i = i; p.from = times[i];
+    playShow(p);
+  }
+  // the frames are fetched ahead, so none of them blinks in late
+  p.keep = p.urls.map((u) => Object.assign(new Image(), { src: u }));
+  playing = p;
+  playIcons();
+  p.raf = requestAnimationFrame(playTick);
+}
+
+function playStop() {
+  if (!playing) return;
+  cancelAnimationFrame(playing.raf);
+  playing = null;
+  playIcons();
+}
+
+function playTick(now) {
+  const p = playing; if (!p) return;
+  // the viewer moved on (another screen, another cut, a hand on the scrubber or the arrows): playback gives way
+  const here = p.map ? ui.blkT === p.at : (p.tab === "shot" ? ui.frame : ui.rvFrame?.id === p.id ? ui.rvFrame.i : p.i) === p.i;
+  if (ui.tab !== p.tab || ui.sel !== p.id || !here) { playStop(); return; }
+  const sec = Math.min(p.from + (now - p.t0) / 1000, p.end);
+  if (p.map) {
+    const t = sec / p.end;
+    // the map is redrawn at the slider's steps, not every screen refresh (a UE level has many shapes)
+    if (Math.round(t * 100) !== Math.round(p.at * 100) || sec >= p.end) mapShow(p, t);
+  } else {
+    const i = frameAt(p.times, sec);
+    if (i !== p.i) { p.i = i; playShow(p); }
+  }
+  if (sec >= p.end) { playStop(); return; }
+  p.raf = requestAnimationFrame(playTick);
+}
+
+/** Moves the map's camera, slider and picture to `t` (0..1 of the cut) without redrawing the page. */
+function mapShow(p, t) {
+  p.at = ui.blkT = t;
+  drawBlkSvg(); blkThumb();
+  const r = $("blockpanel").querySelector("[data-bk-t]"); if (r) r.value = Math.round(t * 100);
+}
+
+/** Puts the playing frame on screen without redrawing the page. */
+function playShow(p) {
+  if (p.tab === "shot") { ui.frame = p.i; drawStage(); placeFramePlayhead(); return; }
+  ui.rvFrame = { id: p.id, i: p.i };
+  const img = $("reviewpanel").querySelector(".rv-frame img");
+  if (img && img.getAttribute("src") !== p.urls[p.i]) img.src = p.urls[p.i];
+}
+
+/** The map's picture of the cut: the take's frame at the moment the travel slider is on. */
+function blkFrameUrl(s, tk) {
+  if (!(ui.blkT > 0) || !(tk.t.frames?.length > 1)) return tk.t.url;
+  return tk.t.frames[frameAt(frameTimes(s, tk.t), ui.blkT * s.duration)];
+}
+function blkThumb() {
+  const s = shot(), tk = s && bestTake(s), el = $("blockpanel").querySelector(".bk-thumb");
+  if (el && tk) el.style.backgroundImage = `url("${blkFrameUrl(s, tk)}")`;
 }
 
 // ------------------------------------------------------------------ workflow: stages, findings, approval
@@ -1860,7 +1993,7 @@ function reviewDecisions() {
   for (const f of [...findings()].filter((f) => uiPro() || f.severity !== "P2").sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity])) {
     out.push({ id: `f:${f.rule}:${f.shot || ""}`, tag: f.severity, tagText: f.severity, shot: f.shot, f,
       title: `${f.shot ? `${f.shot} · ` : ""}${RULE_JA[f.rule] || f.rule}`, why: `${f.message} — ${f.fix}`,
-      acts: [["fix", "Claude に直させる"], ...(f.shot ? [["see", "このカットを見る"]] : [])] });
+      acts: [["fix", "← 左に積む"],...(f.shot ? [["see", "このカットを見る"]] : [])] });
   }
   for (const s of shots) {
     const g = gameChanged(s);
@@ -1870,8 +2003,8 @@ function reviewDecisions() {
   const old = shots.filter((s) => s.qualities.previz !== "fresh");
   if (old.length && st.qualities.includes("previz")) {
     const list = old.slice(0, 4).map((s) => s.id).join(", "), ids = old.length > 4 ? `${list} ほか ${old.length - 4} 件` : list;
-    out.push({ id: "previz", tag: "old", tagText: "古い", title: `previz が古いカット ${old.length} 本`, why: `${ids}。エンジンを使わず数秒で描き直します`,
-      acts: [["previz", "previz を撮る"]] });
+    out.push({ id: "previz", tag: "old", tagText: "古い", title: `仮撮りが古いカット ${old.length} 本`, why: `${ids}。エンジンを使わず数秒で描き直します`,
+      acts: [["previz", "仮撮りする"]] });
   }
   if (st.review?.stopped && st.script_approval === "approved") {
     out.push({ id: "resume", tag: "ask", tagText: "次へ", title: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", acts: [["resume", "続ける"]] });
@@ -1882,7 +2015,7 @@ function reviewDecisions() {
 function drawReview() {
   const box = $("reviewpanel"), st = ui.status;
   if (!st.shots.length) {
-    box.innerHTML = `<div class="rv-over"><div class="rv-empty"><b>まだカットがありません</b>左の欄で企画すると、Claude が台本とカットを組んで previz まで撮り、ここで止まります。</div></div>${reviewQueueHtml([])}`;
+    box.innerHTML = `<div class="rv-over"><div class="rv-empty"><b>まだカットがありません</b>左の欄で企画すると、Claude が台本とカットを組んで仮撮りまで済ませ、ここで止まります。</div></div>${reviewQueueHtml([])}`;
     return;
   }
   const ds = reviewDecisions();
@@ -2007,17 +2140,19 @@ function reviewCutHtml() {
   const st = ui.status, s = shot(); if (!s) return "";
   const tk = bestTake(s), n = st.shots.length;
   const cap = (st.script || []).filter((l) => l.on === s.id).map((l) => l.ja).filter(Boolean).join(" / ");
-  const frame = tk ? `<img src="${esc(tk.t.url)}" alt="">` : `<div class="ph">まだ撮っていません<br>「previz を撮る」で、エンジンなしで描きます</div>`;
+  const at = ui.rvFrame?.id === s.id && tk?.t.frames?.[ui.rvFrame.i];
+  const frame = tk ? `<img src="${esc(at || tk.t.url)}" alt="">` : `<div class="ph">まだ撮っていません<br>「仮撮りする」で、エンジンなしで描きます</div>`;
+  const play = tk?.t.frames?.length > 1 ? `<button type="button" class="icon play${playing ? " on" : ""}" data-play title="再生・停止 (Space)">${playGlyph()}</button>` : "";
   const ladder = st.qualities.map((q) => `<span class="${s.qualities[q] === "fresh" ? "fresh" : s.qualities[q] === "stale" ? "stale" : "none"}" title="${esc(`${q}: ${s.qualities[q]}`)}">${esc(q)}</span>`).join("");
   const p0 = findingsFor(s.id).find((f) => f.severity === "P0");
   const a = s.approval;
   const fl = ui.flash?.id === s.id ? ui.flash : null;
   const cost = fl
-    ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "previz を描いています…" : "previz を描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
+    ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "仮撮りを描いています…" : "仮撮りを描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
     : `直すと、撮り直しになるカットだけがここに出ます。直し方は左の欄でチップを積んで送ります（このカットに効きます）。`;
   const mv = moveOf(s);
   return `<div class="rv-det">
-    <div><div class="rv-frame">${frame}<span class="tg">${esc(s.id)} · ${esc(tk ? tk.q : "—")}</span>${cap ? `<div class="cap">${esc(cap)}</div>` : ""}</div>
+    <div><div class="rv-frame">${frame}<span class="tg">${esc(s.id)} · ${esc(tk ? tk.q : "—")}</span>${play}${cap ? `<div class="cap">${esc(cap)}</div>` : ""}</div>
       <div class="rv-meta"><span class="rv-ladder">${ladder}</span>
         <span class="rv-nav"><button class="icon" data-rv-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button> ${s.index + 1} / ${n} <button class="icon" data-rv-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></span></div></div>
     <div class="rv-side">
@@ -2389,16 +2524,16 @@ function drawBlkSide() {
   el.innerHTML = `<h3><span class="bk-no" style="--c:${beatVar(s.beat)}">${s.index + 1}</span><span class="id">${esc(s.id)}</span><small>${esc(s.beat || "")} · ${s.duration}s</small><span class="sp"></span>
       <button class="icon" data-bk-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button><button class="icon" data-bk-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></h3>
     <div class="pur">${esc(s.purpose || "")}</div>
-    <div class="bk-thumb" style="${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(tk ? tk.q : "まだ撮っていません")}"></div>
+    <div class="bk-thumb" style="${tk ? `background-image:url('${esc(blkFrameUrl(s, tk))}')` : ""}" title="${esc(tk ? tk.q : "まだ撮っていません")}"></div>
     <dl class="bk-facts pro-only"><dt>置き方</dt><dd>${esc(how)}</dd><dt>向き</dt><dd>${esc(aim)}</dd>
       <dt>位置</dt><dd>${r0(c.start[0])}, ${r0(c.start[1])}, ${r0(b.start.location[2])} cm</dd><dt>レンズ</dt><dd>${b.lens}mm · 画角 ${Math.round(b.hfov)}°</dd>
       <dt>動き</dt><dd>${esc(MOVE_JA[mv] || mv)}</dd></dl>
-    ${c.travels ? `<div class="bk-scrub"><span>動きを見る</span><input type="range" min="0" max="100" value="${Math.round((ui.blkT || 0) * 100)}" data-bk-t><span>${s.duration}s</span></div>` : ""}
+    ${c.travels || tk?.t.frames?.length > 1 ? `<div class="bk-scrub"><button type="button" class="icon play${playing ? " on" : ""}" data-play title="再生・停止 (Space)">${playGlyph()}</button><span>${c.travels ? "動きを見る" : "画を見る"}</span><input type="range" min="0" max="100" value="${Math.round((ui.blkT || 0) * 100)}" data-bk-t><span>${s.duration}s</span></div>` : ""}
     ${(ui.blk.anchors || []).length > 1 ? `<div><div class="pur">場所を移す</div><div class="bk-places">${ui.blk.anchors.filter((a) => a.name !== placeOf(s)).map((a) => `<button class="btn" data-bk-place="${esc(a.name)}" title="${esc(`${a.name} を 5m 手前から狙う置き方にする（あとは図で動かす）`)}">${esc(a.name)}</button>`).join("")}</div></div>` : ""}
     <div class="bk-acts">${c.travels ? `<button class="btn" data-bk-still title="動きの終わりを消して、止めた画にする">動きを消す</button>` : `<button class="btn" data-bk-path title="向いている方へ 2m 進む道を足す。中抜きの番号で終わりを動かせます">道を引く</button>`}
       <button class="btn" data-bk-frame title="このカットの画とカメラを細かく直す画面へ">画で確かめる →</button></div>
-    <div class="rv-cost">${fl ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "previz を描いています…" : "previz を描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
-      : `動かすと、このカットの previz だけが描き直されます。元に戻すは Ctrl+Z。`}</div>`;
+    <div class="rv-cost">${fl ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "仮撮りを描いています…" : "仮撮りを描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
+      : `動かすと、このカットの仮撮りだけが描き直されます。元に戻すは Ctrl+Z。`}</div>`;
 }
 
 /** The screen point of a pointer event, in world cm. */
@@ -2635,7 +2770,7 @@ function reviewKey(e) {
 }
 
 function findingHtml(f, { open = false } = {}) {
-  const fix = `<button class="mini" data-fix="${esc(JSON.stringify([f.rule, f.shot]))}" title="指摘を指示欄に入れます（送信は自分で）">Claude に直させる</button>`;
+  const fix = `<button class="mini" data-fix="${esc(JSON.stringify([f.rule, f.shot]))}" title="この指摘を左の欄に積みます（送ると Claude が直します）">← 左に積む</button>`;
   const go = open && f.shot ? `<button class="mini" data-open="${esc(f.shot)}">${esc(f.shot)} を開く</button>` : "";
   return `<div class="find"><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span>
     <span><b>${esc(RULE_JA[f.rule] || f.rule)}</b>${f.shot && open ? ` · <span class="mono">${esc(f.shot)}</span>` : ""}<span class="basis">${esc(BASIS_JA[f.basis] || "")}</span></span>
@@ -2660,7 +2795,7 @@ function drawApprove() {
   b.className = `btn ${a === "approved" ? "ok" : a === "outdated" ? "warn" : "dark"}`;
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
   // the storyboard is a generated picture, not the shot: approve only while looking at the take
-  b.title = ui.board ? "絵コンテは生成画像です。「絵コンテ」を押して previz / take に戻ってから承認します"
+  b.title = ui.board ? "絵コンテは生成画像です。「絵コンテ」を押して撮った画に戻ってから承認します"
     : p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認カットへ移ります。画が変わる修正をすると自動で外れます";
   b.disabled = !!ui.busy || ui.board || (!!p0 && a !== "approved");
 }
@@ -2706,7 +2841,7 @@ function drawDesign() {
       <label title="映画の上下の黒帯。画面比で指定">帯</label>
       <div><select id="d-lb">${opt("", "なし")}${opt(1.85, "1.85（ビスタ）")}${opt(2, "2.00")}${opt(2.39, "2.39（シネスコ）")}</select></div>
       <label title="title ビートのカット（無ければ最後）に重ねる。秒はそのカットの頭から">タイトル</label>
-      <div class="mood-bar"><input type="text" id="d-title" value="${esc(t.text || st.title || "")}" placeholder="タイトル"><input type="number" id="d-title-at" step="0.1" min="0" value="${esc(t.at ?? 0.5)}" style="width:80px" title="開始（秒）"><input type="number" id="d-title-d" step="0.1" min="0.5" value="${esc(t.duration ?? 3)}" style="width:80px" title="長さ（秒）"></div>
+      <div class="mood-bar"><input type="text" id="d-title" value="${esc(t.text || st.title || "")}" placeholder="タイトル"><input type="number" class="pro-only" id="d-title-at" step="0.1" min="0" value="${esc(t.at ?? 0.5)}" style="width:80px" title="開始（秒）"><input type="number" class="pro-only" id="d-title-d" step="0.1" min="0.5" value="${esc(t.duration ?? 3)}" style="width:80px" title="長さ（秒）"></div>
       <label title="台本のタイトルの文字の代わりに出す。透明の背景の PNG がよい。プロジェクトの外の画像は art/ に写します">ロゴ</label>
       <div class="mood-bar"><input type="text" id="d-logo" value="${esc(f.logo || "")}" placeholder="art/logo.png"><button class="btn" id="d-logo-pick" type="button">選ぶ…</button></div>
       <label class="pro-only" title="ルックが決める。初めての Cut で取ってきて、書体に無い字はシステムの書体で描く">書体</label>
@@ -2717,12 +2852,12 @@ function drawDesign() {
       <div class="pro-only">${referenceHtml(st.reference)}</div>
       <label title="最後のカットの後ろに付く黒い画面。1行に1つ（発売日、プラットフォーム、ウィッシュリスト）">エンドカード</label>
       <div><textarea id="d-end" rows="3" placeholder="Steam でウィッシュリスト登録受付中&#10;2026年 冬">${esc((e.lines || []).join("\n"))}</textarea>
-        <input type="number" id="d-end-d" step="0.5" min="0.5" max="10" value="${esc(e.duration ?? 3)}" style="width:80px;margin-top:6px" title="長さ（秒）"> 秒</div>
+        <span class="pro-only"><input type="number" id="d-end-d" step="0.5" min="0.5" max="10" value="${esc(e.duration ?? 3)}" style="width:80px;margin-top:6px" title="長さ（秒）"> 秒</span></div>
     </div>
     <h4 class="sec pro-only">カットごと</h4>
     <div class="pctl pro-only" title="字幕の出始め（全カット）"><em>⏱</em>${segHtml("capat", [{ k: "0", label: "頭" }, { k: "0.3", label: "0.3" }, { k: "0.5", label: "0.5" }, { k: "mid", label: "中央" }])}</div>
     <div class="assets-wrap pro-only" style="max-height:none"><table class="assets"><thead><tr><th>カット</th><th>字幕</th><th>開始(秒)</th><th>次へのつなぎ</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="btns"><button class="btn dark" id="d-save">保存</button><button class="btn" id="d-cut">保存して Cut で焼き込む</button></div>`;
+    <div class="btns"><button class="btn dark" id="d-save">保存</button><span class="sp-hint">焼き込んで見るのは左の「✂ Cut でつなぐ」から（撮り直しは起きません）</span></div>`;
 }
 
 async function saveDesign(thenCut) {
@@ -2870,7 +3005,7 @@ function nextStep() {
     || !!st.cut || shots.some((x) => st.qualities.some((q) => x.qualities[q] === "fresh"));
   const lastPass = [...(ui.log || [])].reverse().find((e) => e.action === "produce");
   const paused = !shots.length && (lastPass?.stopped === "discover" || lastPass?.stopped === "scout");
-  if ((!produced || paused) && !skipped("produce")) return { stage: "scout", what: passWhat(), why: "企画 → ロケハン → 台本と構成 → previz を、道の 📍 まで続けて進めます。📍 は道の 企画・ロケハン・previz の横の印を押して付け外しします", act: "produce", skip: paused ? null : "produce", need: ai.ready ? null : "Claude が未接続です" };
+  if ((!produced || paused) && !skipped("produce")) return { stage: "scout", what: passWhat(), why: "企画 → ロケハン → 台本と構成 → 仮撮りを、道の 📍 まで続けて進めます。📍 は道の 企画・ロケハン・仮撮りの横の印を押して付け外しします", act: "produce", skip: paused ? null : "produce", need: ai.ready ? null : "Claude が未接続です" };
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
   if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
@@ -2925,7 +3060,7 @@ function togglePin(k) {
   const p = pinsOf(), on = !p.has(k);
   if (on) p.add(k); else p.delete(k);
   try { localStorage.setItem(pinKey(), JSON.stringify([...p])); } catch { /* private window: this session only */ }
-  const name = { plan: "企画", scout: "ロケハン", review: "previz" }[k] || k;
+  const name = { plan: "企画", scout: "ロケハン", review: "仮撮り" }[k] || k;
   toast(on ? `📍 ${name}で止まります` : `${name}では止まらずに進みます`);
   drawStages(); drawDock();
 }
@@ -2935,7 +3070,7 @@ const passStops = () => { const p = pinsOf(); return [p.has("plan") && "discover
 function passWhat() {
   const st = ui.status, b = st.brief || {}, pins = pinsOf();
   const photos = Object.keys(st.scout || {}).length;
-  const seq = [["plan", "企画", !!(b.plan || "").trim()], ["scout", "ロケハン", photos > 0 && !!st.stage?.summary], ["review", "台本と構成 → previz", false]];
+  const seq = [["plan", "企画", !!(b.plan || "").trim()], ["scout", "ロケハン", photos > 0 && !!st.stage?.summary], ["review", "台本と構成 → 仮撮り", false]];
   const todo = seq.filter(([, , done]) => !done);
   const stop = todo.findIndex(([k]) => pins.has(k));
   const parts = (stop < 0 ? todo : todo.slice(0, stop + 1)).map(([, l]) => l);
@@ -2970,6 +3105,18 @@ function dockActions() {
   }
   if (ui.tab === "blocking" && st.engine === "ue5") {
     add("level", ui.blk?.level ? "🗺 レベルの形を読み直す" : "🗺 レベルの形を読む", "UE を起動して、壁・床・物・扉・灯り・階を読み、配置図に描きます（1〜2分。レベルは書き換えません）");
+  }
+  if (ui.tab === "structure") {
+    if ((st.shots || []).length) {
+      add("cams", "📷 カメラだけ組み直す", "台本・目的・秒数はそのまま（コードで守ります）、カメラだけを全カット組み直します。左の欄に書いた方向があれば、それに沿って組みます", !ai.ready);
+      add("plan", "📐 構成を組み直す", "ブリーフ・骨格・セオリーから組み直します（いまのカットは置き換わります）", !ai.ready);
+    } else add("plan", "📐 構成だけ組ませる", "ステージ・ブリーフ・ロケハン写真から、台本とカットだけを組ませます", !ai.ready);
+  }
+  if (ui.tab === "capture") {
+    const ok = (st.shots || []).filter((s) => s.approval === "approved").length;
+    for (const q of ["preview", "final"].filter((x) => st.qualities.includes(x))) {
+      add(`cap-${q}`, `● 承認済み ${ok} 本を ${q} で撮る`, ok ? "撮るのは定義が変わったカットだけで、ほかは前の take を使い回します。未承認のカットは撮りません" : "まだ承認したカットがありません", !ok);
+    }
   }
   // filming and cutting are the machine's work too: once there are cuts they are always here
   if ((st.shots || []).length) {
@@ -3038,6 +3185,12 @@ function runDockAct(k) {
   });
   else if (k === "render") render();
   else if (k === "cut") cut();
+  else if (k === "cams") rebuildCameras();
+  else if (k === "plan") planShots();
+  else if (k === "cap-preview" || k === "cap-final") {
+    const ids = ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id);
+    if (ids.length) render(k.slice(4), ids);
+  }
 }
 
 // ------------------------------------------------------------------ stage 0: location scouting
@@ -3056,7 +3209,7 @@ function subOf(tab, def) { ui.sub = ui.sub || {}; return ui.sub[tab] || def; }
 function setSub(tab, k) {
   ui.sub = ui.sub || {}; ui.sub[tab] = k;
   if (tab === "scout") { drawScout.key = ""; drawScout(); } else { drawBrief.key = ""; drawBrief(); }
-  drawDock();
+  drawDock(); drawChips(); // the left box can point at the part on screen (simple: the mood board's direction)
 }
 /** The parts of a step: [key, label, count or null, done?, tip]. */
 function subsHtml(tab, items, cur) {
@@ -3393,7 +3546,8 @@ function drawMood() {
   if (drawMood.key === key && el.childElementCount) return;
   drawMood.key = key;
   // the mood is stacked from atmosphere words; Claude predicts them from the brief and what the scout saw
-  const stack = ai.ready ? stackHtml("mood", { code: moodChips(), ask: { target: "mood" }, send: false, aiLabel: "✦", aiTip: "ロケハンとブリーフから予測します",
+  // simple: the direction is written in the left box (D-82); the canvas keeps the pictures
+  const stack = ai.ready && uiPro() ? stackHtml("mood", { code: moodChips(), ask: { target: "mood" }, send: false, aiLabel: "✦", aiTip: "ロケハンとブリーフから予測します",
     ctx: hashOf(JSON.stringify([b.direction, b.genre, b.design, b.core, st.stage?.summary, (st.stage?.anchors || []).length])),
     hint: "＋ 光・色・空気", tip: "光・色・空気を積むと、その方向で生成します（積まなければブリーフとロケハンから）" }) : "";
   const imgs = (b.images || []).map((rel) => `<div class="mood-item"><img alt="" data-mood-img="${esc(rel)}" src="/files/${esc(rel)}">
@@ -3408,12 +3562,14 @@ function drawMood() {
 
 async function generateMood() {
   if (ui.busy) return;
-  const direction = stackNote("mood", typedOf("mood"), window.SP_LANG === "en" ? ", " : "、");
+  const left = isCmp("mood"), typed = left ? $("note").value : typedOf("mood"); // simple: the direction is written in the left box
+  const direction = stackNote("mood", typed, window.SP_LANG === "en" ? ", " : "、");
   ui.busy = "mood"; ui.typing = null; drawMood();
   toast("ムードボードを生成しています（4 枚で数分かかります）");
   try {
     const out = await api("POST", "/api/moodboard/generate", { direction, n: 4 });
     toast(`${out.added.length} 枚を追加しました`);
+    if (left && $("note").value === typed) $("note").value = "";
   } catch (e) { toast(e.message, true); }
   finally { ui.busy = null; await refresh(); }
 }
@@ -3525,7 +3681,9 @@ function redrawStack(key) {
 const STK_OPTS = {};
 /** The composer's stack: its own cmp: keys, or the selected cut's row key when the composer is pointed at that cut (one stack per cut and part).
  * On the sheet a row keeps its own stack in pro; in simple the left box is the row's (D-82). */
-const isCmp = (key) => key.startsWith("cmp:") || (key.startsWith("row:") && (ui.tab !== "structure" || !uiPro()));
+const isCmp = (key) => key.startsWith("cmp:") || (key.startsWith("row:") && (ui.tab !== "structure" || !uiPro())) || (key === "mood" && moodLeft());
+/** Simple: on the plan's mood part the left box gives the mood board its direction (pro stacks it on the canvas). */
+const moodLeft = () => ui.tab === "brief" && !uiPro() && subOf("brief", "dir") === "mood";
 /** Simple: the row of the sheet (a cut or a card) the left box speaks for, when one is selected and shown. */
 function sheetRowLeft() {
   if (ui.tab !== "structure" || uiPro() || ui.scopeAll || !ui.row || selHidden()) return null;
@@ -3837,6 +3995,9 @@ function slotExamples(l) {
 const rowKey = (id) => `row:${id}:${shotById(id) ? ui.aspect : "card"}`;
 const fixNote = (x) => `カット検査の指摘を直して: ${RULE_JA[x.rule] || x.rule}。${x.message}（${x.fix}）`;
 const fixChip = (x) => chipOf(`指摘を直す: ${RULE_JA[x.rule] || x.rule}`, { note: fixNote(x), c: "var(--stale)", g: "カット検査" });
+/** The cuts with a P0 or P1 finding, in cut order: [[id, findings]]. P2 (an inferred threshold) and the
+ *  findings on the whole teaser are left out: those stay one chip at a time. */
+const shotFixes = () => (ui.status?.shots || []).map((s) => [s.id, findingsFor(s.id).filter((x) => x.severity !== "P2")]).filter(([, fs]) => fs.length);
 
 /** Put an example in a note box, the caret where it is worth typing (inside an empty 「」). */
 function fillNote(el, text) {
@@ -3926,8 +4087,7 @@ function drawStructure() {
     box.innerHTML = `<div class="sheet-head"><h3>カット表</h3></div>
       <div class="sheet-empty"><b>まだカットがありません</b>
         ブリーフとロケハン写真から、Claude に台本とカットを組ませます。できたら、ここに1行1カットで並びます。
-        <div class="capbar"><button class="btn dark" data-produce${ai && !ui.busy ? "" : " disabled"}>⚡ 一気に作る</button>
-          <button class="btn" data-plan${ai && !ui.busy ? "" : " disabled"}>📐 構成だけ組ませる</button></div>
+        <span class="sp-hint">組ませるのは左の ▶ か「📐 構成だけ組ませる」から</span>
         ${ai ? "" : `<span class="sp-hint" title="左下から接続">Claude 未接続</span>`}</div>`;
     return;
   }
@@ -3944,9 +4104,7 @@ function drawStructure() {
       <div class="seg">${[["all", "すべて", ""], ["todo", "未承認", todo], ["flag", "指摘あり", flagged]].map(([k, l, c]) =>
         `<button data-filter="${k}" class="${ui.filter === k ? "on" : ""}">${l}${c !== "" ? `<small>${c}</small>` : ""}</button>`).join("")}</div>
       <span class="sp"></span>
-      ${st.undo ? `<button class="btn" data-undo title="元に戻す: ${esc(undoLabel(st.undo))}（Ctrl+Z）${ui.busy ? "" : "。撮った take は消えないので、戻した画はすぐ表示されます"}"${ui.busy ? " disabled" : ""}>↶ <span class="ulabel">${esc(undoLabel(st.undo))}</span></button>` : ""}
-      <button class="btn" data-cams${ai && !ui.busy ? "" : " disabled"} title="カメラだけ組み直す: 台本・目的・秒数はそのまま（コードで守ります）、カメラだけを全カット組み直します。左の欄に方向を積んでから押すと、それに沿って組み直します">📷 カメラ</button>
-      <button class="btn" data-plan${ai && !ui.busy ? "" : " disabled"} title="ブリーフ・骨格・セオリーから組み直します（いまのカットは置き換わります）">📐 組み直す</button></div>
+      ${st.undo ? `<button class="btn" data-undo title="元に戻す: ${esc(undoLabel(st.undo))}（Ctrl+Z）${ui.busy ? "" : "。撮った take は消えないので、戻した画はすぐ表示されます"}"${ui.busy ? " disabled" : ""}>↶ <span class="ulabel">${esc(undoLabel(st.undo))}</span></button>` : ""}</div>
     ${scriptBar(st)}
     ${whole.length ? `<div class="sheet-lead">${whole.map((x) => `<button class="fchip ${x.severity}" data-fix-all="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("")}</div>` : ""}
     <div class="sheet" role="list">${rows || `<div class="sheet-empty">この絞り込みに当てはまるカットはありません</div>`}</div>
@@ -3963,14 +4121,13 @@ function drawStructure() {
 function scriptBar(st) {
   const a = st.script_approval || "none";
   const label = { approved: "✓ 台本を承認済み", outdated: "台本が変わった · 承認し直す", none: "台本は未承認" }[a];
-  // at the review the bar's own button approves and continues, so the chip only tells
-  const btn = st.review?.stopped && a !== "approved" ? "" : a === "approved"
+  // approving is the human's OK and stays here; going on (sound → shoot → Cut) is the machine's, from the dock's ▶ (D-84)
+  const btn = a === "approved"
     ? `<button class="mini" data-script="off" title="承認を取り消す"${ui.busy ? " disabled" : ""}>取り消す</button>`
     : `<button class="mini" data-script="on" title="いまの文字・並び・秒数・見せるもので承認します。変わると自動で外れます"${ui.busy ? " disabled" : ""}>承認</button>`;
   const chip = `<span class="scr ${a}"><b>${esc(label)}</b>${btn}</span>`;
   if (!st.review?.stopped) return `<div>${chip}</div>`;
-  return `<div class="review-bar">${chip}<span>一気に作るは、ここで止まっています。台本とカットを確かめて直し、よければ続けます（音 → 撮影 → Cut）。</span><span class="sp"></span>
-    <button class="btn dark" data-resume${st.ai?.ready && !ui.busy ? "" : " disabled"}>${a === "approved" ? "▶ 続ける" : "▶ 台本を承認して続ける"}</button></div>`;
+  return `<div class="review-bar">${chip}<span>一気に作るは、ここで止まっています。台本とカットを確かめて直し、よければ台本を承認して、左の ▶ で続けます（音 → 撮影 → Cut）。</span></div>`;
 }
 
 function shotRow(s, it) {
@@ -4440,7 +4597,7 @@ function shotTools(s) {
 function flashHtml() {
   const fl = ui.flash; if (!fl) return "";
   const stale = fl.stale || [];
-  const pv = fl.previz === "running" ? "（previz を撮っています…）" : fl.previz === "done" ? "（previz を更新しました）" : "";
+  const pv = fl.previz === "running" ? "（仮撮りしています…）" : fl.previz === "done" ? "（仮撮りを更新しました）" : "";
   const again = stale.length ? `撮り直し: <b>${esc(stale.join(", "))}</b> だけ${pv}` : "撮り直しなし";
   const detail = changeText(fl.changes);
   // nothing to re-take: the change shows once the cut is assembled again (seconds, no render).
@@ -5267,7 +5424,7 @@ function sheetKey(e) {
     else if (!s && lineById(ui.row) && lineById(ui.row).kind !== "black") startEdit("line", ui.row);
     return true;
   }
-  if (e.key === " " && s) { selectShot(s.id); return true; }
+  if (e.key === " " && s) { if (!e.repeat) { selectShot(s.id); playToggle(); } return true; }
   if ((e.key === "/" || e.key === "e") && ui.status?.ai?.ready) { openTyping(rowKey(ui.row)); return true; }
   if (e.key === "Tab" && !e.shiftKey && tabFree() && ui.chipSets[rowKey(ui.row)]?.length && ui.status?.ai?.ready) { pickChip(rowKey(ui.row), 0); return true; }
   if (e.key === "Backspace" && !e.repeat && stackOf(rowKey(ui.row)).length) { stackDrop(rowKey(ui.row), stackOf(rowKey(ui.row)).length - 1); return true; }
@@ -5371,13 +5528,11 @@ function drawCapture() {
   const rows = st.shots.map((s) => `<tr><td>${s.index + 1}</td><td class="id" data-open="${esc(s.id)}">${esc(s.id)}</td><td>${esc(s.beat || "-")}</td>
     <td><span class="appr ${esc(s.approval)}">${esc(APPROVAL_JA[s.approval])}</span></td>
     ${st.qualities.map((q) => `<td><span class="qs ${esc(s.qualities[q])}"${s.changed?.[q] ? ` title="${esc(s.changed[q].join(", "))}"` : ""}>${esc(s.changed?.[q] ? "ゲーム変更" : { fresh: "済", stale: "古い", none: "-" }[s.qualities[q]] || s.qualities[q])}</span></td>`).join("")}</tr>`).join("");
-  const dis = ui.busy || !approved.length ? " disabled" : "";
+  // shooting is the engine's work: it is asked for in the dock on the left (D-84); here is what will be shot
   $("capturepanel").innerHTML = `<h3>撮影</h3>
-    ${tabLead("変わったカットだけ撮る", "構図を承認したカットを、本番の品質で撮ります。撮るのは定義が変わったカットだけで、ほかは前の take を使い回します。未承認のカットは、構図の段階（previz / still）で確かめてから進めます。")}
+    ${tabLead("変わったカットだけ撮る", "構図を承認したカットを、本番の品質で撮ります。撮るのは定義が変わったカットだけで、ほかは前の take を使い回します。未承認のカットは、構図の段階（仮撮り / still）で確かめてから進めます。")}
     <div class="capbar">
-      <button class="btn dark" data-cap="preview"${dis}>承認済み ${approved.length} 本を preview で撮る</button>
-      <button class="btn dark" data-cap="final"${dis}>承認済み ${approved.length} 本を final で撮る</button>
-      <span class="sp-hint">${unapproved ? `未承認 ${unapproved} 本は撮りません` : "全カット承認済み"}</span>
+      <span class="sp-hint">撮るのは左の「● 承認済み ${approved.length} 本を … で撮る」から · ${unapproved ? `未承認 ${unapproved} 本は撮りません` : "全カット承認済み"}</span>
     </div>
     <table class="cap"><thead><tr><th>#</th><th>カット</th><th>ビート</th><th>構図</th>${qh}</tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -5654,6 +5809,7 @@ function askFix(rule, shotId) {
   if (!f) return;
   if (shotId) { ui.sel = shotId; ui.scopeAll = false; if (ui.tab !== "shot") ui.tab = "shot"; } else ui.scopeAll = true;
   draw(); addChip(cmpTarget().key, fixChip(f));
+  toast("左の欄に積みました。送ると Claude が直します");
 }
 
 function goStage(stage) {
@@ -5752,25 +5908,23 @@ function drawTimeline() {
     m.innerHTML = `<span>目標</span>`;
     body.appendChild(m);
   }
-  const s = shot();
-  if (s && ui.tab === "shot") {
-    const start = (st.timeline || []).find((it) => it.id === s.id)?.start ?? st.shots.slice(0, s.index).reduce((a, x) => a + x.duration, 0);
-    const tk = shownTake(s);
-    const num = tk ? (tk.t.frame_numbers?.[ui.frame] ?? 0) : 0;
-    const t = start + Math.min(num / (st.fps || 30), s.duration);
-    const track = $("track");
-    // clips are flex boxes with gaps; place by the clip's own box
-    const clip = track.querySelector(`.clip[data-id="${CSS.escape(s.id)}"]`);
-    if (clip) {
-      const ph = document.createElement("div"); ph.className = "playhead";
-      const frac = s.duration ? (t - start) / s.duration : 0;
-      ph.style.left = `${clip.offsetLeft + frac * clip.offsetWidth - 1}px`;
-      ph.style.top = `${track.offsetTop - 4}px`; ph.style.bottom = "0";
-      body.appendChild(ph);
-    }
-  }
+  placeFramePlayhead();
   drawLanes();
   if (ui.tab === "sound") placePlayhead();
+}
+
+/** The cut's playhead at the frame on screen, moved without redrawing the timeline. */
+function placeFramePlayhead() {
+  const body = $("tl-body"), s = shot(), tk = s && ui.tab === "shot" && shownTake(s);
+  let ph = body.querySelector(".playhead.frm");
+  // clips are flex boxes with gaps; place by the clip's own box
+  const track = $("track"), clip = s && track.querySelector(`.clip[data-id="${CSS.escape(s.id)}"]`);
+  if (!tk || !clip) { ph?.remove(); return; }
+  const sec = frameTimes(s, tk.t)[ui.frame] ?? 0;
+  const frac = s.duration ? Math.min(sec, s.duration) / s.duration : 0;
+  if (!ph) { ph = document.createElement("div"); ph.className = "playhead frm"; body.appendChild(ph); }
+  ph.style.left = `${clip.offsetLeft + frac * clip.offsetWidth - 1}px`;
+  ph.style.top = `${track.offsetTop - 4}px`; ph.style.bottom = "0";
 }
 
 /** The sound player's playhead, moved without redrawing the timeline. */
@@ -6050,12 +6204,22 @@ function setCuts(o, v) {
   return o;
 }
 
+/** The picked sound: pro tunes it in a form; simple asks on the left (D-82), where the left box already points at it. */
 function drawInspector() {
+  drawInspectorForm();
+  if (uiPro()) return;
+  const box = $("sp-insp");
+  if (!ui.snd || !box.childElementCount || box.querySelector(".ask-left")) return;
+  box.querySelectorAll(".fields, .sp-hint").forEach((el) => el.remove());
+  box.querySelector(".btns")?.insertAdjacentHTML("beforebegin", `<div class="ask-left"><button type="button" data-ask-left title="左の欄に書くかチップを積んで送ると、この音だけに効きます（映像は変わりません）">← 左の欄で Claude に頼む</button></div>`);
+}
+
+function drawInspectorForm() {
   const box = $("sp-insp"), snd = ui.sound;
   if (!snd) { box.innerHTML = ""; return; }
   const sel = ui.snd && soundItem(ui.snd);
   const files = snd.files.map((f) => f.file);
-  const key = JSON.stringify([ui.snd, sel?.p, files, ui.status?.audio, sel && sfxList(sel.p.shot ?? ""), sel && lineSfx(sel.p.shot ?? "")]);
+  const key = JSON.stringify([ui.snd, sel?.p, files, ui.status?.audio, sel && sfxList(sel.p.shot ?? ""), sel && lineSfx(sel.p.shot ?? ""), uiPro()]);
   // do not wipe a field being typed into; rebuild when the selection or its data changed
   if (box.dataset.key === key && box.childElementCount) return;
   if (box.contains(document.activeElement) && box.dataset.sel === JSON.stringify(ui.snd)) return;
@@ -6156,7 +6320,7 @@ function drawCheck() {
   const vcls = String(c.verdict).replace(/[ .]/g, "-");
   const acts = (c.actions || []).map((a, i) => `<div class="act"><span class="wpill ${WEIGHT_CLS[a.weight] || "minor"}">${esc(a.weight_ja)}</span>
       <div>${esc(a.action)}</div>
-      <div class="ops">${a.at != null ? `<button data-seek="${a.at}" title="その位置へ">${esc(fmtT(a.at))}</button>` : ""}<button data-ask="${i}" title="この指摘を Claude に直してもらう">Claude に頼む</button></div></div>`).join("");
+      <div class="ops">${a.at != null ? `<button data-seek="${a.at}" title="その位置へ">${esc(fmtT(a.at))}</button>` : ""}<button data-ask="${i}" title="この指摘を左の欄に積みます（送ると Claude が直します）">← 左に積む</button></div></div>`).join("");
   const tips = (c.tips || []).map((t) => `<div class="tip">${esc(t)}</div>`).join("");
   const groups = new Map();
   for (const m of c.metrics || []) { if (!groups.has(m.group_ja)) groups.set(m.group_ja, []); groups.get(m.group_ja).push(m); }
@@ -6172,7 +6336,7 @@ function drawCheck() {
     ${acts ? `<div class="sp-box"><h3>まず直す <small>重要な順</small></h3><div class="acts">${acts}</div>${tips}</div>` : `<div class="sp-box"><h3>直すところはありません</h3>${tips}</div>`}
     <div class="sp-box curve"><h3>ラウドネスの流れ <small>平均との差（LU）</small></h3>${curveSvg(c)}
       <div class="legend2"><span><i style="background:var(--ink)"></i>このミックス（3秒窓）</span><span><i style="background:color-mix(in srgb, var(--establish) 40%, transparent)"></i>基準7本の幅（p10–p90）</span><span><i style="background:var(--establish)"></i>基準の中央値</span><span><i style="background:var(--stale)"></i>音の立ち上がりがないカット</span></div></div>
-    <div class="sp-box"><details><summary>採点表（${(c.metrics || []).length} 指標）</summary><table class="metrics"><tr><th>指標</th><th>値</th><th>基準</th><th></th></tr>${table}</table>
+    <div class="sp-box pro-only"><details><summary>採点表（${(c.metrics || []).length} 指標）</summary><table class="metrics"><tr><th>指標</th><th>値</th><th>基準</th><th></th></tr>${table}</table>
       ${nm ? `<div class="sp-hint" style="margin-top:8px">未計測（ML モデルが必要）: ${esc(nm)}</div>` : ""}</details></div>`;
 }
 
@@ -6322,6 +6486,7 @@ function drawChips() {
  * and every line of examples is a line less of the conversation. */
 function composerExamples() {
   // before there is a cut, a note is about the plan, not a shot
+  if (moodLeft()) return MOOD_GROUPS.flatMap((m) => m.items);
   if (planning() || !(ui.status?.shots || []).length) return ["静かに始めて最後に崩す", "ジャンプスケアなし", "30秒・7カット前後"];
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
@@ -6343,6 +6508,7 @@ function cmpTarget() {
   const st = ui.status || {}, b = st.brief || {};
   const brief = hashOf(JSON.stringify([b.direction, b.genre, b.design, b.core, st.pitch, st.stage?.summary]));
   if (ui.tab === "design") return { key: "cmp:design", ask: { target: "design" }, ctx: brief, hint: "＋ 仕上げ", tip: "仕上げ全体の直し方を積む（文字・つなぎ・色・帯。撮り直しなし）" };
+  if (moodLeft()) return { key: "mood", ask: null, ctx: brief, hint: "＋ 光・色・空気", tip: "光・色・空気を積むと、その方向で生成します（積まなければブリーフとロケハンから）" };
   if (planning()) return { key: "cmp:plan", ask: { target: "plan" }, ctx: brief, hint: "＋ 方向", tip: "方向を積む（書いた文に足して送ります）" };
   if (ui.tab === "sound") {
     const it = ui.snd && soundItem(ui.snd);
@@ -6390,6 +6556,12 @@ function drawScope() {
     $("chips").innerHTML = "";
     setScope("✎ 仕上げ", "✎ 全体の仕上げに指示");
     $("note").placeholder = "仕上げをどう直す？ 文字・つなぎ・明るさ・色調・帯だけを直し、カメラ・光・音は変えません";
+    return;
+  }
+  if (moodLeft()) {
+    $("chips").innerHTML = "";
+    setScope("🎨 ムードボード", "🎨 ムードボードの方向（送ると 4 枚作ります）");
+    $("note").placeholder = "どんな雰囲気？ 例: 霧の夜、冷たい青に赤を一点（書かなければブリーフとロケハンから作ります）";
     return;
   }
   if (planning()) {
@@ -6637,7 +6809,7 @@ function entryHtml(e, isLast) {
         ${e.rationale ? `<div>${esc(e.rationale)}</div>` : ""}${adj}
         <div class="done-row"><span class="ok"><span class="dot"></span>${(e.shots || []).length} カットを shots.yaml に書いた</span>
           <span>カット検査: ${sev || "指摘なし"}</span><span class="t">${esc(timeOf(e.at))}</span></div>
-        ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ 構成で並びと検査を見る</button><button data-render="previz">↗ previz で全部撮る（エンジンなし、数秒）</button></div>` : ""}</div>`;
+        ${isLast ? `<div class="suggest"><button data-goto-stage="structure">↗ 構成で並びと検査を見る</button><button data-render="previz">↗ 全部を仮撮りする（エンジンなし、数秒）</button></div>` : ""}</div>`;
   }
   if (e.action === "nudge") {
     return `<div class="event"><span class="dot${e.stale?.length ? " warn" : ""}"></span><span><b>${esc(e.shot || (e.edited || [])[0] || "")}</b> を${esc(NUDGE_DONE[e.kind || e.note] || e.note)}${e.stale?.length ? ` · 撮り直し: ${esc(e.stale.join(", "))}` : ""}</span><span style="margin-left:auto">${esc(timeOf(e.at))}</span></div>`;
@@ -6677,7 +6849,7 @@ function drawChat() {
       <div class="msg-ai thinking"><div class="who"><span class="logo">C</span>Claude<span class="state" id="think-state">考えています ${Math.round((Date.now() - ui.started) / 1000)}s</span></div></div>`;
   }
   if (!html && !(ui.status?.shots || []).length) {
-    html = `<div class="empty-chat"><b title="下の欄に、ゲームのことと撮りたいものを書いて「企画する」を押します。Claude が企画（方向・ルック・型）を立て、足りないことがあるときだけ質問します。そのあとロケハン、台本と構成、previz まで進んで止まります。">どんなティザーを撮りたいか</b>
+    html = `<div class="empty-chat"><b title="下の欄に、ゲームのことと撮りたいものを書いて「企画する」を押します。Claude が企画（方向・ルック・型）を立て、足りないことがあるときだけ質問します。そのあとロケハン、台本と構成、仮撮りまで進んで止まります。">どんなティザーを撮りたいか</b>
       <div class="suggest" style="margin-top:10px"><button data-discover-now>🧭 企画する</button></div></div>`;
   }
   if (!html) {
@@ -6715,7 +6887,7 @@ async function planShots() {
   try {
     const out = await api("POST", "/api/plan", { note, replace: n > 0 });
     ui.outcome = {}; ui.summary = ""; ui.sel = out.shots[0] ?? null; ui.tab = "structure";
-    toast(`${out.shots.length} カットを組みました。構図の段で previz を撮って確かめてください`);
+    toast(`${out.shots.length} カットを組みました。構図の段で仮撮りして確かめてください`);
   } catch (e) {
     c.restore(); toast(e.message, true);
   } finally {
@@ -6868,6 +7040,7 @@ async function rebuildCameras() {
 }
 
 async function sendNote() {
+  if (moodLeft()) return generateMood(); // simple: what is written is the mood board's direction
   if (planning()) return planShots();
   if (sheetRowLeft()) return sendRowNote(); // simple: the left box speaks for the selected row, with the row's scope
   const c = takeComposer(), note = c.note;
@@ -7031,6 +7204,7 @@ $("track").addEventListener("click", (e) => {
 });
 
 $("frame").addEventListener("input", (e) => { ui.frame = Number(e.target.value); draw(); });
+$("play").addEventListener("click", () => playToggle());
 $("quality").addEventListener("change", (e) => { ui.quality = e.target.value; ui.outcome = {}; ui.summary = ""; draw(); });
 $("render").addEventListener("click", () => render());
 $("cut").addEventListener("click", cut);
@@ -7197,7 +7371,12 @@ $("sp-check").addEventListener("click", (e) => {
     if (act.at != null) seek(act.at);
     ui.snd = null; drawSoundBits(); drawChips();
     addChip(cmpTarget().key, chipOf(`サウンドチェック: ${act.action}`, { note: `サウンドチェックの指摘を直して: ${act.action}`, c: "var(--stale)" }));
+    toast("左の欄に積みました。送ると Claude が直します");
   }
+});
+// simple: "ask on the left" outside the sheet (the sheet's own also points the box back at its row)
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.("[data-ask-left]") && !e.target.closest("#structpanel")) $("note").focus();
 });
 $("note").addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey) || e.isComposing || e.keyCode === 229) return;
@@ -7302,6 +7481,7 @@ for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventL
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { stopFollowing(); ui.tab = ui.fin = b.dataset.fin; ui.region = null; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 $("blockpanel").addEventListener("click", (e) => {
+  if (e.target.closest("[data-play]")) { playToggle(); return; }
   const s = shot(), b = s && blkShot(s.id);
   if (e.target.closest("[data-bk-all]")) { ui.blkAll = ui.blkAll !== true; drawBlocking(); return; }
   if (e.target.closest("[data-bk-fit]")) { blkFit(); drawBlkSvg(); return; }
@@ -7323,7 +7503,7 @@ $("blockpanel").addEventListener("click", (e) => {
 });
 $("blockpanel").addEventListener("input", (e) => {
   const r = e.target.closest("[data-bk-t]");
-  if (r) { ui.blkT = Number(r.value) / 100; drawBlkSvg(); }
+  if (r) { ui.blkT = Number(r.value) / 100; drawBlkSvg(); blkThumb(); }
 });
 // a cut's tile under the map and its pin on the map light each other up
 $("blockpanel").addEventListener("pointerover", (e) => {
@@ -7352,6 +7532,7 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTrPop(); });
 $("reviewpanel").addEventListener("click", (e) => {
+  if (e.target.closest("[data-play]")) { playToggle(); return; }
   const trc = e.target.closest("[data-rv-tr]");
   if (trc) { openTrPop(trc.dataset.rvTr, trc); return; }
   const air = e.target.closest("[data-rv-air]");
@@ -7375,7 +7556,6 @@ $("reviewpanel").addEventListener("click", (e) => {
 // panels and the findings bar: one delegated handler
 $("designpanel").addEventListener("click", (e) => {
   if (e.target.closest("#d-save")) saveDesign(false);
-  else if (e.target.closest("#d-cut")) saveDesign(true);
   else if (e.target.closest("#d-logo-pick")) pickLogo();
   else if (e.target.closest("#d-ref-pick")) pickReference();
   else if (e.target.closest("#d-ref-compare")) compareReference();
@@ -7508,8 +7688,13 @@ document.addEventListener("keydown", (e) => {
     if (k && (stackOf(k).length || $("note").value.trim())) stackSend(k); else runNext();
     e.preventDefault(); return;
   }
-  if (e.target.closest("input, textarea, select")) return;
+  // Space plays and stops what the screen shows; a slider in hand (the frame scrubber, the map's travel) hands it over too
+  const playKey = e.key === " " && !e.ctrlKey && !e.metaKey && !e.altKey && PLAY_TABS.has(ui.tab) && !(ui.tab === "shot" && ui.mode === "tweak");
+  if (e.target.closest("input, textarea, select") && !(playKey && e.target.matches('input[type="range"]'))) return;
   const st = ui.status; if (!st) return;
+  // a video or the mix in hand has its own Space (taking it too would toggle twice)
+  if (playKey && e.target.closest("video, audio")) return;
+  if (playKey) { if (!e.repeat) playToggle(); e.preventDefault(); return; }
   // a stack that is not the sheet's (the composer's, a board's) takes Backspace only while the focus is inside it
   const inStk = e.target.closest?.(".stk");
   if (e.key === "Backspace" && !e.repeat && inStk && !(ui.tab === "structure" && st.shots.length)) {
@@ -7534,7 +7719,6 @@ document.addEventListener("keydown", (e) => {
   const i = st.shots.findIndex((s) => s.id === ui.sel);
   if (ui.tab === "sound") {
     if ((e.key === "Delete" || e.key === "Backspace") && ui.snd?.kind === "sfx") { deleteSfx(); e.preventDefault(); return; }
-    if (e.key === " ") { const a = $("mixplayer"); if (a) { a.paused ? a.play() : a.pause(); e.preventDefault(); } return; }
   }
   if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
     const s = shot(); const tk = s && shownTake(s); const n = tk ? tk.t.frames.length : 1;

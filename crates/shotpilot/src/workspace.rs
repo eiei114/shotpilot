@@ -555,7 +555,7 @@ impl Workspace {
         }
 
         if !todo.is_empty() && fp::is_previz(&q) {
-            let done = self.render_previz(&todo, quality, &q, emit)?;
+            let done = self.render_previz(&todo, quality, &q, force, emit)?;
             outcomes.extend(done);
         } else if !todo.is_empty() {
             let done = self.render_engine(&todo, quality, &q, force)?;
@@ -592,22 +592,28 @@ impl Workspace {
         v.as_object().cloned().unwrap_or_default()
     }
 
-    fn render_previz(&mut self, todo: &[(ResolvedShot, String)], quality: &str, q: &Map<String, Value>,
+    fn render_previz(&mut self, todo: &[(ResolvedShot, String)], quality: &str, q: &Map<String, Value>, force: bool,
                      emit: Progress) -> Result<Vec<RenderOutcome>> {
         let (w, h) = fp::resolution(&self.defn, q);
-        let ground_z = self.defn.defaults.get("previz").and_then(|p| p.get("ground_z")).and_then(num).unwrap_or(0.0);
+        let world = previz::World::load(&self.defn);
         let mut out = Vec::new();
         for (s, rfp) in todo {
             let t0 = Instant::now();
-            let d = self.state.take_dir(&s.id, quality, rfp);
+            // as with engine takes (D-37): a take whose level changed under it stays, and the
+            // new one goes next to it; a forced re-render replaces this definition's take
+            let d = if force { self.state.take_dir(&s.id, quality, rfp) } else { self.state.new_take_dir(&s.id, quality, rfp) };
             if d.exists() {
-                std::fs::remove_dir_all(&d)?; // forced re-render: drop old frames and cached segments
+                std::fs::remove_dir_all(&d)?; // drop old frames and cached segments
             }
             let frames = fp::frame_list(s, q);
-            let files = previz::render_shot(s, &frames, &self.defn.anchor_boxes(), &d, w as u32, h as u32, ground_z, None)?;
+            let drawn = previz::render_shot(s, &frames, &world, &d, w as u32, h as u32, None)?;
+            let files = drawn.files;
             let dt = t0.elapsed().as_secs_f64();
-            let info = self.take_info(s, q, &frames, &files, dt, "previz");
-            self.state.write_take(&s.id, quality, rfp, info)?;
+            let mut info = self.take_info(s, q, &frames, &files, dt, "previz");
+            if !drawn.deps.is_empty() {
+                info.insert("deps".into(), json!(crate::content::record(&self.root, &drawn.deps)));
+            }
+            self.state.write_take_at(&d, &s.id, quality, rfp, info)?;
             let o = RenderOutcome {
                 shot_id: s.id.clone(),
                 quality: quality.into(),
@@ -1897,11 +1903,10 @@ impl Workspace {
             }
             let _ = std::fs::remove_dir_all(&raw);
         } else {
-            let boxes = self.defn.anchor_boxes();
-            let ground_z = self.defn.defaults.get("previz").and_then(|p| p.get("ground_z")).and_then(num).unwrap_or(0.0);
+            let world = previz::World::load(&self.defn);
             for (i, s) in shots.iter().enumerate() {
                 let name = format!("{}-{}.png", cams[i].anchor, cams[i].side);
-                std::fs::write(dir.join(&name), previz::render_frame(s, 0, &boxes, w, h, ground_z, None).png())?;
+                std::fs::write(dir.join(&name), previz::render_frame(s, 0, &world, w, h, None).png())?;
                 files[i] = Some(name);
             }
         }

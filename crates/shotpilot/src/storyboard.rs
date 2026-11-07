@@ -161,10 +161,9 @@ pub fn job(defn: &Definition, shot: &ResolvedShot, direction: &str) -> Result<Im
     let root = defn.root();
     let dir = shot_dir(&root, &shot.id);
     std::fs::create_dir_all(&dir)?;
-    let ground_z = defn.defaults.get("previz").and_then(|p| p.get("ground_z")).and_then(num).unwrap_or(0.0);
     let frame = mid_frame(shot);
     let layout = dir.join(format!("{}.layout.png", key(defn, shot)));
-    let cv = crate::previz::render_layout(shot, frame, &defn.anchor_boxes(), LAYOUT_W, LAYOUT_H, ground_z);
+    let cv = crate::previz::render_layout(shot, frame, &crate::previz::World::load(defn), LAYOUT_W, LAYOUT_H);
     std::fs::write(&layout, cv.png())?;
     let mut refs: Vec<PathBuf> = visible(defn, shot, frame).iter().filter_map(|s| scout_photo(defn, &s.name)).collect();
     refs.dedup();

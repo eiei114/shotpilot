@@ -309,8 +309,8 @@ impl Engine for MockEngine {
             // cap mock resolution: it's a stand-in, not a renderer
             let k = (480.0 / w).min(1.0);
             let frames: Vec<i64> = it["frames"].as_array().map(|a| a.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
-            previz::render_shot(&shot, &frames, &self.defn.anchor_boxes(), Path::new(it["out_dir"].as_str().unwrap_or(".")),
-                                ((w * k) as u32).max(2), ((h * k) as u32).max(2), 0.0, Some([255, 170, 60]))?;
+            previz::render_shot(&shot, &frames, &world, Path::new(it["out_dir"].as_str().unwrap_or(".")),
+                                ((w * k) as u32).max(2), ((h * k) as u32).max(2), Some([255, 170, 60]))?;
             let mut r = json!({"status": "ok"});
             if let Some(deps) = self.visible_content(&shot, w as u32, h as u32) {
                 r["deps"] = json!(deps);

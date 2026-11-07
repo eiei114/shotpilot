@@ -94,6 +94,18 @@ impl Obb {
     }
 }
 
+/// What shape a part is, for previz to draw it (the page draws more; previz draws these).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Form {
+    Box,
+    /// Along its local axis 0 (x), 1 (y) or 2 (z).
+    Cylinder(usize),
+    Sphere,
+    Figure,
+    Light,
+    Dust,
+}
+
 /// One part of an object, in the object's own frame (cm; `yaw` about Z).
 #[derive(Debug, Clone)]
 struct Part {
@@ -104,6 +116,7 @@ struct Part {
     solid: bool,
     /// Has a body at all (lights do not, so they are never "seen").
     body: bool,
+    form: Form,
 }
 
 /// A thing in the level: one file of `objects/` (or `props/`).
@@ -140,31 +153,32 @@ fn parse_part(v: &Value, where_: &str) -> Result<Part> {
     let at = v.get("at").and_then(vec3).unwrap_or([0.0; 3]);
     let yaw = v.get("yaw").and_then(num).unwrap_or(0.0);
     let solid = v.get("solid").and_then(Value::as_bool);
-    let part = |center: Vec3, size: Vec3, yaw: f64, solid_default: bool, body: bool| Part {
+    let part = |center: Vec3, size: Vec3, yaw: f64, solid_default: bool, body: bool, form: Form| Part {
         center,
         half: size.map(|s| s.abs() / 2.0),
         yaw,
         solid: solid.unwrap_or(solid_default),
         body,
+        form,
     };
     if let Some(size) = v.get("box") {
         let Some(size) = vec3(size) else { bail!("{where_}: `box` must be [w, d, h] in cm") };
-        return Ok(part(at, size, yaw, true, true));
+        return Ok(part(at, size, yaw, true, true, Form::Box));
     }
     if let Some(c) = v.get("cylinder") {
         let rh: Vec<f64> = c.as_array().map(|a| a.iter().filter_map(num).collect()).unwrap_or_default();
         let [r, h] = rh[..] else { bail!("{where_}: `cylinder` must be [radius, height] in cm") };
-        let size = match v.get("axis").and_then(Value::as_str).unwrap_or("z") {
-            "x" => [h, 2.0 * r, 2.0 * r],
-            "y" => [2.0 * r, h, 2.0 * r],
-            _ => [2.0 * r, 2.0 * r, h],
+        let (size, axis) = match v.get("axis").and_then(Value::as_str).unwrap_or("z") {
+            "x" => ([h, 2.0 * r, 2.0 * r], 0),
+            "y" => ([2.0 * r, h, 2.0 * r], 1),
+            _ => ([2.0 * r, 2.0 * r, h], 2),
         };
         // thin poles and pipes never hide what is behind them
-        return Ok(part(at, size, yaw, r >= 15.0, true));
+        return Ok(part(at, size, yaw, r >= 15.0, true, Form::Cylinder(axis)));
     }
     if let Some(r) = v.get("sphere") {
         let Some(r) = num(r) else { bail!("{where_}: `sphere` must be a radius in cm") };
-        return Ok(part(at, [2.0 * r; 3], yaw, r >= 15.0, true));
+        return Ok(part(at, [2.0 * r; 3], yaw, r >= 15.0, true, Form::Sphere));
     }
     if let Some(mv) = v.get("figure") {
         let mv = mv.as_str().unwrap_or("idle");
@@ -173,14 +187,14 @@ fn parse_part(v: &Value, where_: &str) -> Result<Part> {
         let (c, size) = figure_box(mv, h);
         let (s, co) = facing.to_radians().sin_cos();
         let center = [at[0] + c[0] * co - c[1] * s, at[1] + c[0] * s + c[1] * co, at[2] + c[2]];
-        return Ok(part(center, size, facing, false, true));
+        return Ok(part(center, size, facing, false, true, Form::Figure));
     }
     if v.get("dust").is_some() {
         let size = v.get("dust").and_then(vec3).unwrap_or([200.0, 200.0, 200.0]);
-        return Ok(part(at, size, yaw, false, true));
+        return Ok(part(at, size, yaw, false, true, Form::Dust));
     }
     if v.get("light").is_some() {
-        return Ok(part(at, [0.0; 3], 0.0, false, false));
+        return Ok(part(at, [0.0; 3], 0.0, false, false, Form::Light));
     }
     bail!("{where_}: a part is one of box, cylinder, sphere, figure, light or dust")
 }
@@ -244,6 +258,12 @@ impl Object {
     pub fn boxes_at(&self, t: f64) -> Vec<(Obb, bool)> {
         let (at, yaw) = self.pose_at(t);
         self.parts.iter().filter(|p| p.body).map(|p| (self.placed(p, at, yaw), p.solid)).collect()
+    }
+
+    /// Every part in the world at `t` with its shape, lights and dust included: what previz draws.
+    pub fn forms_at(&self, t: f64) -> Vec<(Obb, Form)> {
+        let (at, yaw) = self.pose_at(t);
+        self.parts.iter().map(|p| (self.placed(p, at, yaw), p.form)).collect()
     }
 
     /// The box around all of it at `t`: (min, max), None when it has no body (lights only).

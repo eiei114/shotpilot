@@ -20,13 +20,13 @@ use crate::model::{num, Definition, ResolvedShot};
 pub const RENDERER_VERSION: i64 = 1;
 /// Bump when the local previz drawing changes. Kept separate so a previz change
 /// never invalidates expensive engine takes.
-pub const PREVIZ_VERSION: i64 = 2;
+pub const PREVIZ_VERSION: i64 = 3;
 
 pub const BUILTIN_ORDER: &[&str] = &["previz", "still", "preview", "final"];
 
 fn builtin(name: &str) -> Option<Value> {
     Some(match name {
-        // Local wireframe previz. No engine launch at all: seconds per shot.
+        // Local graybox previz. No engine launch at all: seconds per shot.
         "previz" => json!({"runner": "previz", "scale": 1.0 / 6.0, "frame_step": 3, "format": "png"}),
         // Engine, three frames per shot (first/mid/last) to check framing and light.
         "still" => json!({"runner": "engine", "scale": 0.5, "frames": "keys", "spatial_samples": 1,
@@ -228,6 +228,10 @@ pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: 
             body["anchor_boxes"] = Value::Object(b.into_iter().map(|(k, v)| (k, v.to_json())).collect());
         }
         body["previz"] = json!(PREVIZ_VERSION);
+        // whether a level is drawn around the anchors; what it holds is in the take's deps
+        if let Some(kind) = crate::previz::set_kind(defn) {
+            body["set"] = json!(kind);
+        }
     } else {
         body["map"] = json!(defn.project.map);
         body["sun_actor"] = json!(defn.project.sun_actor);
