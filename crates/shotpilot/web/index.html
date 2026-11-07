@@ -12,15 +12,19 @@
   --err: #d92d20; --bubble: #111312; --bubble-ink: #ffffff; --shadow: 0 1px 3px rgb(16 24 40 / .06);
   --hook: #ff6b3d; --establish: #3d8bff; --escalate: #b45cff; --title: #3be02b;
   --scroll: #c9d1d5; --scroll-hover: #a3acb1;
+  /* sel: outline of what is chosen, hovered or focused; primary: filled main buttons; err-fg: red text */
+  --sel: var(--ink); --primary: var(--ink); --err-fg: var(--err); --ok: #2e7d32; --warn: #b26a00;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #6b7276; --line: #2a2e30;
+    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
     --scroll: #34393c; --scroll-hover: #4b5155;
     --soft: #202325; --stage: #050505; --bubble: #ecefef; --bubble-ink: #111312; --shadow: none;
+    --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
   }
 }
+:root { color-scheme: light dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -70,7 +74,7 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .msg-user .ctx { color: var(--muted); font-size: 11.5px; }
 .msg-ai { display: grid; gap: 8px; }
 .who { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.who .logo { width: 20px; height: 20px; border-radius: 6px; background: var(--ink); color: var(--card); display: grid; place-items: center; font-size: 11px; }
+.who .logo { width: 20px; height: 20px; border-radius: 6px; background: var(--primary); color: var(--card); display: grid; place-items: center; font-size: 11px; }
 .who .state { font-weight: 500; color: var(--muted); font-size: 12px; }
 .changes { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: grid; gap: 3px;
   font-family: var(--mono); font-size: 11.5px; box-shadow: var(--shadow); }
@@ -90,7 +94,7 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .qform .q > b { font-size: 12.5px; }
 .qform .opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .qform .opts label { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; background: var(--card); }
-.qform .opts label:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.qform .opts label:has(input:checked) { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); }
 .qform .opts input { margin: 0; }
 .qform input[type=text], .qform textarea, .qform select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--soft); font: inherit; font-size: 12.5px; color: var(--ink); }
 .qform .btns { display: flex; gap: 8px; }
@@ -101,8 +105,8 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .kitchips { display: flex; flex-wrap: wrap; gap: 5px; }
 .skchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .skchip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; background: var(--card); color: var(--ink); }
-.skchip:hover { border-color: var(--ink); }
-.skchip.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.skchip:hover { border-color: var(--sel); }
+.skchip.on { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
 .skchip.auto { border-style: dashed; }
 .dscard .sw { display: flex; gap: 3px; margin: 2px 0; }
 .dscard .sw i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
@@ -131,7 +135,7 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .chip.scope { cursor: pointer; white-space: nowrap; flex: none; }
 .tgs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .tg { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); color: var(--muted); cursor: pointer; }
-.tg.on { background: var(--card); color: var(--ink); border-color: var(--ink); font-weight: 600; }
+.tg.on { background: var(--card); color: var(--ink); border-color: var(--sel); font-weight: 600; }
 .tg img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
 .form .tgs input.tgin, .tgs input.tgin { width: 9em; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: var(--soft); font-size: 12px; }
 .vstep { display: inline-flex; align-items: center; gap: 2px; }
@@ -146,7 +150,7 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 #note::placeholder { color: var(--faint); }
 .comp-row { display: flex; align-items: center; gap: 8px; }
 .comp-row .model { margin-left: auto; color: var(--muted); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
-.send { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--ink); display: grid; place-items: center; }
+.send { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--primary); display: grid; place-items: center; }
 .send svg { stroke: var(--accent); }
 .warn-ai { font-size: 12px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 8px 10px; }
 .warn-ai button { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 600; text-decoration: underline; }
@@ -160,7 +164,7 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 #conn h4 { margin: 0; font-size: 13px; }
 .opt { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; padding: 8px 10px; border: 1px solid var(--line);
   border-radius: 10px; cursor: pointer; }
-.opt.on { border-color: var(--ink); }
+.opt.on { border-color: var(--sel); }
 .opt input[type=radio] { margin: 3px 0 0; accent-color: var(--ink); }
 .opt .t { font-weight: 600; }
 .opt .d { grid-column: 2; color: var(--muted); font-size: 12px; word-break: break-all; }
@@ -182,7 +186,7 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .tabs { display: flex; align-items: center; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
 .tabs .right { margin-left: auto; display: flex; gap: 8px; align-items: center; padding-bottom: 6px; }
 .btn { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 6px 12px; display: inline-flex; gap: 7px; align-items: center; font-size: 12.5px; font-weight: 500; }
-.btn.dark { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn.dark { background: var(--primary); color: var(--card); border-color: var(--primary); }
 .btn svg, .icon svg { width: 15px; height: 15px; }
 .toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; }
@@ -207,6 +211,15 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 /* ------------------------------------------------------------------ simple / pro (D-82): simple shows what must be fixed, pro adds the fine fields and the predictions */
 body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, body:not(.pro) #chips { display: none !important; }
 #ui-mode button { font-size: 11.5px; padding: 3px 9px; }
+/* simple: a selected row only points the left box at itself (what to change is said there) */
+.ask-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.ask-left [data-ask-left] { border: 1px dashed color-mix(in srgb, var(--ink) 30%, var(--line)); background: none; border-radius: 999px; padding: 4px 12px;
+  font-size: 12px; color: var(--muted); }
+.ask-left [data-ask-left]:hover { border-style: solid; border-color: var(--sel); color: var(--ink); }
+.ask-left .part { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 10px; border-radius: 999px; background: var(--soft); color: var(--ink); font-weight: 600; }
+.ask-left .part button { border: 0; background: none; color: var(--muted); font-size: 10.5px; padding: 0 4px; }
+.ask-left .part button:hover { color: var(--err-fg); }
+.ask-left .n { font-weight: 700; color: var(--escalate); }
 .rv-cell.tr { cursor: pointer; color: var(--muted); }
 .rv-cell.tr.set { color: var(--ink); background: color-mix(in srgb, var(--escalate) 14%, var(--soft)); }
 .rv-cell.tr:hover { box-shadow: inset 0 0 0 1px var(--muted); }
@@ -219,7 +232,7 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 #dock { display: grid; gap: 6px; margin-bottom: 2px; }
 #dock:empty { display: none; }
 .dock-go { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1px 8px; width: 100%; text-align: left; border: 0;
-  border-radius: 10px; padding: 8px 11px; background: var(--ink); color: var(--card); font-weight: 700; font-size: 13px; cursor: pointer; }
+  border-radius: 10px; padding: 8px 11px; background: var(--primary); color: var(--card); font-weight: 700; font-size: 13px; cursor: pointer; }
 .dock-go small { grid-column: 1; font-weight: 400; font-size: 11px; opacity: .78; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dock-go kbd { grid-column: 2; grid-row: 1 / span 2; font: 400 10px var(--mono); opacity: .7; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
 .dock-go:disabled { opacity: .45; cursor: default; }
@@ -229,7 +242,7 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 .dock-hd { font-size: 10.5px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dock-acts { display: flex; flex-wrap: wrap; gap: 5px; }
 .dock-acts button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 10px; font-size: 11.5px; white-space: nowrap; }
-.dock-acts button:hover:not(:disabled) { border-color: var(--ink); }
+.dock-acts button:hover:not(:disabled) { border-color: var(--sel); }
 .dock-acts button:disabled { opacity: .45; }
 /* the machine's work moved to the dock: the canvas header keeps only what the human looks at */
 #canvas .tabs #render, #canvas .tabs #cut, #next { display: none !important; }
@@ -295,7 +308,7 @@ body.pro .simple-only { display: none !important; }
 /* the air of a place (D-76): a lane under the places, and its picker */
 .rv-cell.air { cursor: pointer; color: var(--muted); font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; justify-content: flex-start; padding: 0 6px; border: 1px dashed var(--line); }
 .rv-cell.air.set { color: var(--ink); border-style: solid; background: color-mix(in srgb, var(--establish) 12%, var(--soft)); }
-.rv-cell.air.missing { border-color: var(--err); color: var(--err); }
+.rv-cell.air.missing { border-color: var(--err); color: var(--err-fg); }
 .rv-cell.air.off { justify-content: center; }
 .rv-cell.air:hover { box-shadow: inset 0 0 0 1px var(--muted); }
 .rv-pop.air { width: 250px; }
@@ -309,7 +322,7 @@ body.pro .simple-only { display: none !important; }
 .rv-pop-list { display: flex; flex-direction: column; gap: 1px; max-height: 240px; overflow: hidden auto; }
 .rv-pop-list > *, .rv-pop-list button { flex: none; }
 .rv-pop-list button { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rv-pop button.danger { color: var(--err); margin-top: 4px; }
+.rv-pop button.danger { color: var(--err-fg); margin-top: 4px; }
 .lane.air-lane .sblock.ambience span { color: var(--ink); }
 .bk-places { display: flex; flex-wrap: wrap; gap: 5px; }
 .bk-places .btn { font-size: 11px; padding: 2px 8px; }
@@ -333,7 +346,8 @@ body.pro .simple-only { display: none !important; }
 .road-btn.running { color: var(--ink); }
 .road-btn.running .ic { border-color: var(--accent); }
 .road-btn.running .ic::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: road-pulse 1.2s ease-in-out infinite; }
-.road-btn.on { background: var(--soft); box-shadow: inset 0 -2px 0 var(--ink); }
+.road-btn.on { background: var(--soft); box-shadow: inset 0 0 0 1px var(--sel); }
+.road-btn.yours.on { box-shadow: none; background: color-mix(in srgb, var(--stale) 22%, transparent); }
 @keyframes road-pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .road-btn.running .ic::after { animation: none; } }
 
@@ -353,7 +367,7 @@ body.pro .simple-only { display: none !important; }
 .sev.P0 { background: var(--err); color: #fff; } .sev.P1 { background: var(--stale); color: #241900; } .sev.P2 { background: var(--soft); color: var(--muted); }
 .basis { font-size: 10px; color: var(--faint); margin-left: 6px; font-weight: 500; }
 .mini { border: 1px solid var(--line); background: var(--card); border-radius: 7px; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
-.mini:hover { border-color: var(--ink); }
+.mini:hover { border-color: var(--sel); }
 .btn.ok { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn.warn { background: var(--stale); color: #241900; border-color: var(--stale); }
 
@@ -371,24 +385,24 @@ body.pro .simple-only { display: none !important; }
 .form > label { font-weight: 600; font-size: 12.5px; padding-top: 6px; }
 .form > label small { display: block; font-weight: 400; color: var(--muted); font-size: 11.5px; line-height: 1.45; margin-top: 2px; }
 .form input[type=text], .form textarea { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; background: var(--soft); outline: 0; resize: vertical; }
-.form input:focus, .form textarea:focus { border-color: var(--ink); background: var(--card); }
-.form .dirty { border-color: var(--ink); }
+.form input:focus, .form textarea:focus { border-color: var(--sel); background: var(--card); }
+.form .dirty { border-color: var(--sel); }
 .kinds { display: flex; gap: 8px; flex-wrap: wrap; }
 .kinds label { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; cursor: pointer; max-width: 300px; font-size: 12.5px; }
-.kinds label.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.kinds label.on { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); }
 .kinds input { display: none; }
 .kinds b { font-size: 13px; } .kinds span { color: var(--muted); font-size: 11.5px; }
 /* genre and style pickers (D-39) */
 .gcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .gcard { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; text-align: left; background: var(--card); }
-.gcard:hover { border-color: var(--ink); }
-.gcard.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.gcard:hover { border-color: var(--sel); }
+.gcard.on { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
 .gcard b { font-size: 13px; } .gcard span { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
 .gcard small { color: var(--faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .stcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
 .stcard { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; text-align: left; background: var(--card); align-content: start; }
-.stcard:hover { border-color: var(--ink); }
-.stcard.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.stcard:hover { border-color: var(--sel); }
+.stcard.on { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
 .stcard .nm { font-weight: 600; font-size: 12.5px; line-height: 1.35; }
 .stcard .meta { color: var(--faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .stcard .sum { font-size: 12px; color: var(--ink); line-height: 1.45; }
@@ -396,7 +410,7 @@ body.pro .simple-only { display: none !important; }
 .rhythm .cut { stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .rhythm .blk { fill: color-mix(in srgb, var(--ink) 55%, transparent); }
 .stnone { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; text-align: left; background: none; color: var(--muted); font-size: 12px; }
-.stnone.on { border-style: solid; border-color: var(--ink); color: var(--ink); }
+.stnone.on { border-style: solid; border-color: var(--sel); color: var(--ink); }
 .scout-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: start; max-width: 1100px; }
 .scout-row .nm { font-family: var(--mono); font-size: 12px; padding-top: 4px; }
 .scout-row .nm small { display: block; color: var(--muted); font-family: inherit; }
@@ -421,7 +435,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
   font-size: 11px; padding: 2px 7px; }
 .mood-item .missing { color: #c9cfd2; font-size: 11px; padding: 10px; }
 .mood-empty { border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); font-size: 12.5px; text-align: center; }
-.mood-empty.drag, .mood.drag .mood-grid { outline: 2px dashed var(--ink); outline-offset: 3px; }
+.mood-empty.drag, .mood.drag .mood-grid { outline: 2px dashed var(--sel); outline-offset: 3px; }
 .mood-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .mood-bar input[type=text] { flex: 1; min-width: 220px; border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; background: var(--soft); outline: 0; }
 .readonly { padding: 7px 10px; border-radius: 9px; background: var(--soft); color: var(--muted); font-size: 12.5px; }
@@ -431,7 +445,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .beatcol h4 small { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .beatcol .guide { color: var(--muted); font-size: 11.5px; }
 .scard { border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; display: grid; gap: 3px; cursor: pointer; background: var(--card); font-size: 12px; text-align: left; }
-.scard:hover { border-color: var(--ink); }
+.scard:hover { border-color: var(--sel); }
 .scard .id { font-family: var(--mono); font-size: 11px; display: flex; gap: 6px; align-items: center; }
 .scard .meta { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .scard .p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -480,7 +494,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .item { position: relative; border-top: 1px solid var(--line); background: var(--card); }
 .item:first-child { border-top: 0; }
 .item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c, transparent); z-index: 1; }
-.item.sel { background: color-mix(in srgb, var(--ink) 3.5%, var(--card)); box-shadow: inset 0 0 0 2px var(--ink); z-index: 2; }
+.item.sel { background: color-mix(in srgb, var(--ink) 3.5%, var(--card)); box-shadow: inset 0 0 0 2px var(--sel); z-index: 2; }
 .item.slot { background: var(--soft); }
 .item.slot.sel { background: color-mix(in srgb, var(--ink) 6%, var(--soft)); }
 .item.flash { animation: rowflash 1.4s ease-out; }
@@ -542,9 +556,9 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .slot-kind { font-size: 11px; color: var(--muted); }
 .fchip { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 5px; cursor: pointer; border: 0; white-space: nowrap; }
 .fchip.P0 { background: var(--err); color: #fff; } .fchip.P1 { background: var(--stale); color: #241900; } .fchip.P2 { background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
-.fchip:hover { filter: brightness(1.06); box-shadow: 0 0 0 1.5px var(--ink); }
+.fchip:hover { filter: brightness(1.06); box-shadow: 0 0 0 1.5px var(--sel); }
 .gchip { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 5px; white-space: nowrap; background: var(--stale); color: #241900; }
-.inl { width: 100%; border: 1.5px solid var(--ink); border-radius: 6px; padding: 2px 6px; background: var(--card); outline: 0; font: inherit; color: var(--ink); }
+.inl { width: 100%; border: 1.5px solid var(--sel); border-radius: 6px; padding: 2px 6px; background: var(--card); outline: 0; font: inherit; color: var(--ink); }
 .inl.small { font-size: 11.5px; margin-top: 3px; }
 .dur .inl { width: 52px; text-align: center; padding: 2px; }
 .dur .stp { flex-direction: column-reverse; border-radius: 10px; width: 100%; }
@@ -554,7 +568,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .cv-insp .hd .meta.ov { gap: 4px; }
 /* the selected shot's tools: say what to change, or change it in one tap */
 .tools { display: grid; gap: 8px; padding: 0 14px 12px 54px; }
-.ask { display: flex; gap: 8px; align-items: center; background: var(--card); border: 1.5px solid var(--ink); border-radius: 12px; padding: 4px 4px 4px 4px; box-shadow: var(--shadow); }
+.ask { display: flex; gap: 8px; align-items: center; background: var(--card); border: 1.5px solid var(--sel); border-radius: 12px; padding: 4px 4px 4px 4px; box-shadow: var(--shadow); }
 .ask .seg { flex: none; }
 .ask .seg button { padding: 4px 9px; font-size: 12px; }
 .ask input { flex: 1; min-width: 120px; border: 0; outline: 0; background: transparent; padding: 6px 2px; }
@@ -562,20 +576,20 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .ask .send { width: 30px; height: 30px; flex: none; }
 .quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .quick button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 11px; font-size: 12px; }
-.quick button:hover:not(:disabled) { border-color: var(--ink); }
+.quick button:hover:not(:disabled) { border-color: var(--sel); }
 .quick .lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
 .quick .gap { width: 8px; }
 .quick .ngrp { display: inline-flex; gap: 2px; }
 .quick button.ic { padding: 3px 8px; line-height: 1.2; }
 .quick button.amt { padding: 3px 7px; }
-.quick button.amt.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.quick button.amt.on { background: var(--primary); color: var(--card); border-color: var(--primary); }
 .quick button:disabled { opacity: .4; cursor: default; }
 /* the cut's numbers: one line of values; a pressed value opens its control in place */
 .prec { display: grid; gap: 6px; }
 .pline { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .pline button, .pctl .sg button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 2px 9px; font-size: 12px; font-variant-numeric: tabular-nums; }
-.pline button:hover:not(:disabled), .pctl .sg button:hover:not(:disabled) { border-color: var(--ink); }
-.pline button.on, .pctl .sg button.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.pline button:hover:not(:disabled), .pctl .sg button:hover:not(:disabled) { border-color: var(--sel); }
+.pline button.on, .pctl .sg button.on { background: var(--primary); color: var(--card); border-color: var(--primary); }
 .pline button.raw { color: var(--muted); font-family: var(--mono); }
 .pctl .sg button:disabled { opacity: .4; cursor: default; }
 .pctl { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
@@ -588,13 +602,13 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .stp .v { min-width: 44px; text-align: center; font-size: 12px; cursor: text; font-variant-numeric: tabular-nums; padding: 2px 2px; }
 .stp .v small { color: var(--muted); margin-left: 1px; font-size: 10px; }
 .stp input { border: 0; background: transparent; outline: 0; text-align: center; font: inherit; font-size: 12px; width: 56px; color: var(--ink); padding: 2px; min-width: 0; }
-.stp .pin { border-bottom: 1.5px solid var(--ink); }
+.stp .pin { border-bottom: 1.5px solid var(--sel); }
 .fields .stp { width: fit-content; }
 .sfxm { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
 .sfxm .pctl i { font-style: normal; font-size: 12px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sfxm .sg { display: inline-flex; gap: 3px; }
 .sfxm .sg button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 2px 9px; font-size: 12px; }
-.sfxm .sg button.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.sfxm .sg button.on { background: var(--primary); color: var(--card); border-color: var(--primary); }
 .dfaces, .dmotion { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .dfaces .fc { display: inline-flex; flex-direction: column; gap: 2px; }
 .dfaces .fc small { color: var(--muted); font-size: 10px; }
@@ -606,7 +620,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .examples .lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
 .examples button { border: 1px dashed color-mix(in srgb, var(--muted) 45%, var(--line)); background: transparent; border-radius: 999px;
   padding: 2px 10px; font-size: 12px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.examples button:hover, .examples button:focus-visible { border-style: solid; border-color: var(--ink); color: var(--ink); }
+.examples button:hover, .examples button:focus-visible { border-style: solid; border-color: var(--sel); color: var(--ink); }
 .examples .cost { margin-left: auto; font-size: 11px; color: var(--faint); white-space: nowrap; }
 .examples .cost.free { color: color-mix(in srgb, var(--accent) 45%, var(--ink)); font-weight: 600; }
 .composer .examples button { font-size: 11.5px; padding: 1px 9px; }
@@ -629,7 +643,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
    Stacked chips form a chain; Claude's predictions for the next link wear the beat colours. */
 .stk { display: grid; gap: 7px; min-width: 0; }
 .stk-rail { position: relative; display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px; min-height: 42px; padding: 6px 6px 6px 8px;
-  border-radius: 14px; background: var(--card); border: 1.5px solid var(--ink); box-shadow: var(--shadow); min-width: 0; }
+  border-radius: 14px; background: var(--card); border: 1.5px solid var(--sel); box-shadow: var(--shadow); min-width: 0; }
 .stk.empty .stk-rail { border-style: dashed; border-color: color-mix(in srgb, var(--ink) 30%, var(--line)); box-shadow: none; }
 .stk-rail .sp { flex: 1 0 8px; }
 .stk-node { --c: var(--ink); display: inline-flex; align-items: center; gap: 6px; padding: 4px 5px 4px 9px; border-radius: 999px; font-size: 12.5px;
@@ -640,7 +654,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .stk-node.ai { --c: var(--escalate); }
 .stk-node.new { animation: stk-in .32s cubic-bezier(.2, .9, .3, 1.35) both; }
 .stk-node button { border: 0; background: none; padding: 0 3px; color: var(--muted); font-size: 10.5px; line-height: 1; border-radius: 50%; }
-.stk-node button:hover { color: var(--err); }
+.stk-node button:hover { color: var(--err-fg); }
 .stk-link { width: 16px; height: 2px; flex: none; border-radius: 2px; background: linear-gradient(90deg, var(--hook), var(--escalate), var(--establish)); opacity: .75; }
 @keyframes stk-in { from { opacity: 0; transform: translateY(8px) scale(.8); } }
 .stk-hint { color: var(--faint); font-size: 12.5px; padding: 0 4px; min-width: 0; }
@@ -654,7 +668,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .pchip { --c: var(--line); position: relative; border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); background: var(--card); border-radius: 999px;
   padding: 3px 10px 3px 8px; font-size: 12px; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   transition: transform .14s, border-color .14s, box-shadow .14s; }
-.pchip:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--ink); box-shadow: 0 3px 10px rgb(16 24 40 / .08); }
+.pchip:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--sel); box-shadow: 0 3px 10px rgb(16 24 40 / .08); }
 .pchip .plus { color: var(--faint); margin-right: 4px; font-weight: 700; }
 .pchip.ai { border-color: transparent; background: linear-gradient(var(--card), var(--card)) padding-box,
   linear-gradient(120deg, var(--hook), var(--escalate), var(--establish)) border-box; }
@@ -679,7 +693,7 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .composer .pchip { font-size: 11.5px; }
 .mood-stack { max-width: 900px; }
 .other-open { border: 1px dashed var(--line); background: none; border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); justify-self: start; }
-.other-open:hover { color: var(--ink); border-color: var(--ink); }
+.other-open:hover { color: var(--ink); border-color: var(--sel); }
 details.more { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; }
 details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 600; margin-bottom: 12px; }
 
@@ -711,7 +725,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
   cursor: grab; transition: box-shadow .15s, border-color .15s; }
 .cv-node:hover { border-color: color-mix(in srgb, var(--ink) 30%, var(--line)); }
 .cv-node.dragging { cursor: grabbing; box-shadow: 0 16px 40px rgb(16 24 40 / .22); z-index: 5; }
-.cv-node.sel { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--ink)) 35%, transparent), 0 14px 36px rgb(16 24 40 / .18); z-index: 4; }
+.cv-node.sel { border-color: var(--sel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--ink)) 35%, transparent), 0 14px 36px rgb(16 24 40 / .18); z-index: 4; }
 .cv-node.drop { border-color: var(--escalate); box-shadow: 0 0 0 4px color-mix(in srgb, var(--escalate) 35%, transparent), 0 0 30px color-mix(in srgb, var(--escalate) 35%, transparent); }
 .cv-node.cut { width: 232px; overflow: visible; }
 .cv-node.cut .bar { height: 5px; border-radius: 14px 14px 0 0; background: var(--c, var(--muted)); }
@@ -817,13 +831,13 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .pub input[type=text], .pub input[type=date], .pub input[type=number], .pub select { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px;
   font: inherit; font-size: 12.5px; background: var(--card); color: var(--ink); }
 .pub input[type=number] { width: 64px; }
-.pub input:focus, .pub select:focus { outline: 0; border-color: var(--ink); }
+.pub input:focus, .pub select:focus { outline: 0; border-color: var(--sel); }
 .pub-set { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .pill { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--soft); color: var(--muted); font-weight: 600; white-space: nowrap; }
-.pill.late { background: color-mix(in srgb, var(--err) 13%, var(--card)); color: var(--err); }
+.pill.late { background: color-mix(in srgb, var(--err) 13%, var(--card)); color: var(--err-fg); }
 .pill.soon { background: color-mix(in srgb, var(--stale) 24%, var(--card)); color: var(--ink); }
 .pill.ok { background: color-mix(in srgb, var(--accent) 28%, var(--card)); color: var(--ink); }
-.pill.here { background: var(--ink); color: var(--card); }
+.pill.here { background: var(--primary); color: var(--card); }
 .vlist { display: grid; gap: 8px; }
 .vcard { border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
 .vcard[open] { box-shadow: var(--shadow); }
@@ -849,7 +863,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .cl .t { font-size: 13px; }
 .cl li.done .t { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
 .cl .h { display: block; font-size: 11.5px; color: var(--faint); margin-top: 1px; }
-.cl .d { display: block; font-size: 11.5px; color: var(--err); margin-top: 1px; }
+.cl .d { display: block; font-size: 11.5px; color: var(--err-fg); margin-top: 1px; }
 .cl .tag { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
 .vfoot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--soft); font-size: 12px; }
 .vfoot .sp { flex: 1; }
@@ -936,8 +950,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .ladder i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgb(255 255 255 / .55); display: inline-block; }
 .ladder i.fresh { background: var(--accent); border-color: var(--accent); }
 .ladder i.stale { background: var(--stale); border-color: var(--stale); }
-.clip.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
-@media (prefers-color-scheme: dark) { .clip.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px #fff; } }
+.clip.sel { border-color: var(--sel); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--sel); }
 .clip.reused { filter: saturate(.3) brightness(.7); }
 .clip.slot { background: #0a0a0a; cursor: default; }
 .clip.slot::before { background: none; }
@@ -962,7 +975,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
   z-index: 3; pointer-events: none; background: var(--soft); padding: 2px 5px; border-radius: 4px; opacity: .92; }
 .lane .add { position: absolute; right: 4px; top: 3px; z-index: 3; border: 1px dashed var(--faint); background: var(--card); color: var(--muted);
   font-size: 10.5px; border-radius: 5px; padding: 1px 7px; }
-.lane .add:hover { color: var(--ink); border-color: var(--ink); }
+.lane .add:hover { color: var(--ink); border-color: var(--sel); }
 .sblock { position: absolute; height: 22px; border-radius: 5px; overflow: hidden; color: var(--c); cursor: grab; touch-action: none;
   background: color-mix(in srgb, var(--c) 18%, var(--card)); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
 .sblock.bgm { --c: var(--establish); top: 1px; cursor: pointer; }
@@ -972,7 +985,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .sblock svg path { fill: currentColor; opacity: .55; }
 .sblock span { position: absolute; left: 5px; top: 3px; font-size: 10px; font-weight: 600; color: var(--ink); white-space: nowrap;
   text-shadow: 0 0 3px var(--card), 0 0 3px var(--card); pointer-events: none; }
-.sblock.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; }
+.sblock.sel { outline: 2px solid var(--sel); outline-offset: 1px; z-index: 2; }
 .sblock.missing { border-style: dashed; border-color: var(--err); --c: var(--err); }
 .sblock.ro { cursor: default; opacity: .85; border-style: dotted; }
 .sblock.dragging { cursor: grabbing; opacity: .85; z-index: 4; box-shadow: 0 4px 14px rgb(0 0 0 / .2); }
@@ -980,7 +993,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .cutmark.ok { background: color-mix(in srgb, var(--accent) 70%, transparent); }
 .cutmark.miss { background: repeating-linear-gradient(var(--stale) 0 3px, transparent 3px 6px); }
 .lane-note { font-size: 11px; color: var(--muted); padding: 5px 8px; }
-.drag-t { position: absolute; top: -18px; font-size: 10px; background: var(--ink); color: var(--card); padding: 1px 5px; border-radius: 4px;
+.drag-t { position: absolute; top: -18px; font-size: 10px; background: var(--primary); color: var(--card); padding: 1px 5px; border-radius: 4px;
   white-space: nowrap; pointer-events: none; z-index: 6; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------ sound tab */
@@ -992,6 +1005,11 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .sp-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
 .sp-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
 .sp-box audio { width: 100%; height: 34px; }
+/* Chromium keeps a white panel behind its audio controls even under a dark color-scheme; paint it ourselves */
+@media (prefers-color-scheme: dark) {
+  .sp-box audio::-webkit-media-controls-enclosure, .sp-box audio::-webkit-media-controls-panel { background: var(--soft); border-radius: 999px; }
+  .sp-box audio::-webkit-media-controls-current-time-display, .sp-box audio::-webkit-media-controls-time-remaining-display { color: var(--ink); }
+}
 .sp-hint { color: var(--muted); font-size: 12px; }
 .sp-hint.warn { color: var(--stale); margin-top: 6px; }
 .fields { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 12px; }
@@ -1001,9 +1019,9 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .fields .pair input[type=range] { flex: 1; border: 0; }
 .fields .pair input[type=number] { width: 74px; flex: none; }
 .fields .pair.cut { flex-wrap: wrap; gap: 4px 6px; }
-.fields .pair.cut .mini.on { border-color: var(--ink); background: var(--soft); }
+.fields .pair.cut .mini.on { border-color: var(--sel); background: var(--soft); }
 .btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn.danger { color: var(--err); }
+.btn.danger { color: var(--err-fg); }
 .lib-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .lib-head input { flex: 1; min-width: 140px; border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; background: var(--soft); font-size: 12.5px; }
 .lib-head .seg button { padding: 3px 10px; font-size: 12px; }
@@ -1011,14 +1029,14 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .lib-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px; }
 .lib-row:hover { background: var(--soft); }
 .lib-row .play { width: 24px; height: 24px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 10px; padding: 0; }
-.lib-row .play.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.lib-row .play.on { background: var(--primary); color: var(--card); border-color: var(--primary); }
 .lib-row .nm { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-row .meta { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-row .meta b { font-weight: 600; color: var(--establish); }
 .lib-row .meta b.worn { color: var(--warn, #b26a00); }
 .lib-row .use { display: flex; gap: 4px; }
 .lib-row .use button { border: 1px solid var(--line); background: var(--card); border-radius: 7px; padding: 2px 8px; font-size: 11.5px; white-space: nowrap; }
-.lib-row .use button:hover { border-color: var(--ink); }
+.lib-row .use button:hover { border-color: var(--sel); }
 .verdict { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .vbadge { font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
 .vbadge.launch-grade { background: var(--accent); color: var(--accent-ink); }
@@ -1034,7 +1052,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .wpill.critical { background: var(--err); color: #fff; } .wpill.major { background: var(--stale); color: #241900; } .wpill.minor { background: var(--soft); color: var(--muted); }
 .act .ops { display: flex; gap: 6px; }
 .act .ops button, .tchip { border: 1px solid var(--line); background: var(--card); border-radius: 7px; font-size: 11px; padding: 2px 7px; white-space: nowrap; }
-.act .ops button:hover, .tchip:hover { border-color: var(--ink); }
+.act .ops button:hover, .tchip:hover { border-color: var(--sel); }
 .tip { font-size: 12px; color: var(--muted); padding-left: 10px; border-left: 3px solid var(--line); }
 .curve svg { width: 100%; height: 150px; display: block; }
 .curve .band { fill: color-mix(in srgb, var(--establish) 16%, transparent); }
@@ -1057,7 +1075,7 @@ table.metrics td.r { color: var(--muted); white-space: nowrap; font-size: 11.5px
 .st.crit { background: var(--err); color: #fff; }
 .st.info, .st.na { background: var(--soft); color: var(--muted); }
 details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
-.err-box { border: 1px solid var(--err); color: var(--err); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+.err-box { border: 1px solid var(--err); color: var(--err-fg); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
 
 /* ------------------------------------------------------------------ your turn (D-74, D-79): lanes, the decisions, the selected cut */
 #reviewpanel { display: grid; grid-template-columns: minmax(0, 1fr) 284px; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; background: var(--card); }
@@ -1075,7 +1093,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-track { display: grid; grid-template-columns: var(--rv-cols); gap: 3px; min-width: 0; }
 .rv-tile { position: relative; display: grid; grid-template-rows: 15px 1fr 15px; height: 76px; min-width: 0; padding: 0; text-align: left; overflow: hidden;
   border: 1px solid #344044; border-top: 3px solid var(--beat, var(--line)); border-radius: 4px; background: var(--stage) center / cover no-repeat; color: #d7dfe0; }
-.rv-tile.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rv-tile.sel { outline: 2px solid var(--sel); outline-offset: 2px; }
 .rv-tile.flag { border-bottom: 2px solid var(--stale); }
 .rv-tile.p0 { border-bottom: 2px solid var(--err); }
 .rv-tile .t { display: flex; justify-content: space-between; gap: 3px; padding: 0 4px; font: 10px var(--mono); background: rgb(5 7 8 / .55); white-space: nowrap; overflow: hidden; }
@@ -1086,7 +1104,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-cell { min-width: 0; min-height: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 4px; font-size: 10.5px;
   background: var(--soft); border: 1px solid transparent; border-radius: 3px; white-space: nowrap; overflow: hidden; }
 .rv-cell.empty { background: none; }
-.rv-cell.sel { box-shadow: inset 0 0 0 1px var(--ink); }
+.rv-cell.sel { box-shadow: inset 0 0 0 1px var(--sel); }
 .rv-cell.place { justify-content: flex-start; color: var(--ink); background: color-mix(in srgb, var(--place) 20%, var(--card)); border-color: color-mix(in srgb, var(--place) 38%, var(--line)); }
 .rv-cell.p2 { border-color: var(--stale); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--stale) 16%, var(--soft)) 0 4px, var(--soft) 4px 8px); }
 .rv-cell.p1, .rv-cell.p0 { border: 1.5px solid var(--err); background: color-mix(in srgb, var(--err) 6%, var(--soft)); }
@@ -1110,9 +1128,9 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-dq:not(.on) .why { display: none; }
 .rv-tag { flex: none; font-size: 9.5px; font-weight: 700; border: 1px solid var(--line); background: var(--soft); border-radius: 3px; padding: 0 5px; }
 .rv-tag.P0 { background: var(--err); border-color: var(--err); color: #fff; }
-.rv-tag.P1 { border-color: var(--err); color: var(--err); }
+.rv-tag.P1 { border-color: var(--err); color: var(--err-fg); }
 .rv-tag.P2, .rv-tag.game, .rv-tag.old { border-color: var(--stale); color: color-mix(in srgb, var(--stale) 80%, var(--ink)); }
-.rv-tag.ask { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.rv-tag.ask { background: var(--primary); border-color: var(--primary); color: var(--card); }
 .rv-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .rv-acts .btn { font-size: 11.5px; padding: 3px 8px; gap: 5px; }
 .rv-empty { display: grid; gap: 4px; padding: 16px 2px; font-size: 12px; color: var(--muted); }
@@ -1171,27 +1189,70 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 #bk-svg .lbl { fill: var(--muted); font-family: var(--mono); pointer-events: none; }
 #bk-svg .anc { fill: var(--card); stroke: var(--title); stroke-width: 2; vector-effect: non-scaling-stroke; }
 #bk-svg .anc.off, #bk-svg .anc-box.off, #bk-svg .lbl.off { opacity: .3; }
-#bk-svg .anc-box { fill: color-mix(in srgb, var(--title) 10%, transparent); stroke: color-mix(in srgb, var(--title) 55%, transparent); stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
-#bk-svg .cone { fill: color-mix(in srgb, var(--establish) 10%, transparent); stroke: color-mix(in srgb, var(--establish) 45%, transparent); vector-effect: non-scaling-stroke; }
-#bk-svg .cam .body { fill: var(--muted); }
-#bk-svg .cam { cursor: pointer; opacity: .55; }
-#bk-svg .cam.sel { opacity: 1; cursor: move; }
-#bk-svg .cam.sel .cone { fill: color-mix(in srgb, var(--stale) 16%, transparent); stroke: var(--stale); }
-#bk-svg .cam.sel .body { fill: var(--ink); }
-#bk-svg .path { stroke: var(--stale); stroke-width: 2; stroke-dasharray: 6 4; fill: none; vector-effect: non-scaling-stroke; }
+/* places: only the one the selected cut films is filled */
+#bk-svg .anc-box { fill: none; stroke: color-mix(in srgb, var(--title) 28%, transparent); stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+#bk-svg .anc-box.mine { fill: color-mix(in srgb, var(--title) 9%, transparent); stroke: color-mix(in srgb, var(--title) 60%, transparent); }
+/* cones take their cut's beat colour (--c): the selected one strong, the cuts before and after faint, the rest only when asked */
+#bk-svg .cone { fill: color-mix(in srgb, var(--c) 7%, transparent); stroke: color-mix(in srgb, var(--c) 55%, transparent); stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+#bk-svg .cone.far { display: none; }
+#bk-svg.all .cone.far { display: inline; fill: color-mix(in srgb, var(--c) 4%, transparent); stroke: color-mix(in srgb, var(--c) 30%, transparent); }
+#bk-svg .cone.hot { display: inline; fill: color-mix(in srgb, var(--c) 14%, transparent); stroke: var(--c); stroke-dasharray: none; stroke-width: 1.5; }
+#bk-svg .cone.sel { fill: color-mix(in srgb, var(--c) 18%, transparent); stroke: var(--c); stroke-width: 2; stroke-dasharray: none; }
+#bk-svg .cone.end { fill: none; stroke: color-mix(in srgb, var(--c) 75%, transparent); stroke-dasharray: 3 3; }
+/* pins: a numbered disc pointing where the camera looks */
+#bk-svg .pin { cursor: pointer; }
+#bk-svg .pin .disc { fill: var(--c); stroke: var(--card); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+#bk-svg .pin .wedge { fill: var(--c); }
+#bk-svg .pin text { fill: #0b0d0e; font-family: var(--mono); font-weight: 700; pointer-events: none; }
+#bk-svg .pin.off, #bk-svg .cone.off:not(.hot) { opacity: .3; }
+#bk-svg .pin.sel { cursor: move; }
+#bk-svg .pin.sel .disc, #bk-svg .pin.hot .disc { stroke: var(--ink); stroke-width: 2.5; }
+#bk-svg .pin.end { cursor: grab; }
+#bk-svg .pin.end .disc { fill: var(--card); stroke: var(--c); stroke-width: 2; }
+#bk-svg .pin.end .wedge { fill: none; stroke: var(--c); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+#bk-svg .pin.end text { fill: var(--c); }
+#bk-svg .lead { stroke: color-mix(in srgb, var(--ink) 45%, transparent); vector-effect: non-scaling-stroke; }
+#bk-svg .lead-dot { fill: color-mix(in srgb, var(--ink) 70%, transparent); }
+#bk-svg.hovering .pin:not(.hot):not(.sel):not(.end), #bk-svg.hovering .lead:not(.hot), #bk-svg.hovering .lead-dot:not(.hot) { opacity: .25; }
+#bk-svg .path { stroke: var(--c); stroke-width: 2; fill: none; vector-effect: non-scaling-stroke; }
+#bk-svg .arrow { fill: var(--c); }
+#bk-svg .tag { fill: var(--ink); stroke: var(--soft); paint-order: stroke; font-family: var(--mono); font-weight: 600; }
 #bk-svg .aim { stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
 #bk-svg .h { fill: var(--card); stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; cursor: grab; }
-#bk-svg .h.end { stroke: var(--stale); }
-#bk-svg .h.rot { stroke: var(--establish); }
-#bk-svg .aim, #bk-svg .path, #bk-svg .ghost, #bk-svg .cam.sel .cone { pointer-events: none; }
+#bk-svg .cone, #bk-svg .aim, #bk-svg .path, #bk-svg .arrow, #bk-svg .tag, #bk-svg .lead, #bk-svg .lead-dot, #bk-svg .ghost { pointer-events: none; }
 #bk-svg .ghost { fill: none; stroke: var(--ink); stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; opacity: .6; }
+.bk-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+/* the cuts in order under the map; the strip scrolls sideways inside its own frame */
+.bk-strip { position: relative; display: flex; gap: 6px; padding: 8px 10px; overflow-x: auto; overflow-y: hidden; border-top: 1px solid var(--line); background: var(--card); }
+.bk-tile { position: relative; flex: 0 0 auto; width: 96px; aspect-ratio: 16 / 9; padding: 0; border: 1px solid #344044; border-top: 3px solid var(--c); border-radius: 4px;
+  background: var(--stage) center / cover no-repeat; color: #d7dfe0; cursor: pointer; overflow: hidden; }
+.bk-tile .n { position: absolute; left: 3px; top: 3px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--c); color: #0b0d0e; font: 700 10.5px/18px var(--mono); text-align: center; }
+.bk-tile .id { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 4px; font: 10px var(--mono); text-align: left; background: rgb(5 7 8 / .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-tile.sel { outline: 2px solid var(--sel, var(--ink)); outline-offset: 2px; }
+.bk-tile.hot { outline: 2px solid var(--c); outline-offset: 2px; }
+.bk-tile.none { opacity: .45; }
+.bk-no { flex: none; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--c); color: #0b0d0e; font: 700 11px/20px var(--mono); text-align: center; }
+/* the picture under a pin, and what the hand is doing while it drags */
+.bk-peek { position: absolute; z-index: 3; width: 208px; display: grid; gap: 5px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / .25); pointer-events: none; }
+.bk-peek .im { aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: 4px; background: var(--stage) center / cover no-repeat; font-size: 11px; color: #93a4a7; }
+.bk-peek .t { display: flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; }
+.bk-peek .t b { font-family: var(--mono); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-peek .t small { color: var(--muted); white-space: nowrap; }
+.bk-peek .p { font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bk-hud { position: absolute; z-index: 3; display: grid; gap: 2px; padding: 5px 9px; border-radius: 7px; background: var(--primary, var(--ink)); color: var(--card);
+  font-size: 11.5px; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px rgb(0 0 0 / .2); }
+.bk-hud b { font-family: var(--mono); font-weight: 600; }
+.bk-hud span { opacity: .8; font-size: 11px; }
 .bk-tools { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; align-items: center; }
 .bk-tools .btn { font-size: 11.5px; padding: 3px 9px; background: var(--card); }
-.bk-tools .btn.on { border-color: var(--ink); }
+.bk-tools .btn.on { border-color: var(--sel); }
 .bk-hint { position: absolute; left: 10px; bottom: 10px; right: 10px; font-size: 11px; color: var(--muted); pointer-events: none; }
 .bk-side { border-left: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
 .bk-side h3 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .bk-side h3 .id { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-side h3 small { color: var(--muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.bk-side h3 .sp { flex: 1; }
 .bk-side .pur { font-size: 12px; color: var(--muted); }
 .bk-thumb { aspect-ratio: 16 / 9; background: var(--stage) center / contain no-repeat; border-radius: 4px; border: 1px solid #30393c; }
 .bk-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 11.5px; margin: 0; }
@@ -1201,7 +1262,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .bk-acts .btn { font-size: 11.5px; padding: 3px 9px; }
 .bk-scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
 
-#toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 8px 14px;
+#toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--primary); color: var(--card); padding: 8px 14px;
   border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
 #toast.err { background: var(--err); color: #fff; }
 @media (max-width: 860px) { #app { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } }
@@ -2043,10 +2104,13 @@ function blkFit() {
 function drawBlocking() {
   const box = $("blockpanel");
   if (!box.querySelector("#bk-svg")) {
-    box.innerHTML = `<div class="bk-map"><svg id="bk-svg" aria-label="配置図"></svg>
-        <div class="bk-tools"><span class="seg" id="bk-floors"></span><button class="btn" data-bk-all title="ほかのカットのカメラも薄く描く"></button><button class="btn" data-bk-fit title="全体を入れる (F)">全体</button></div>
+    box.innerHTML = `<div class="bk-main"><div class="bk-map"><svg id="bk-svg" aria-label="配置図"></svg>
+        <div class="bk-tools"><span class="seg" id="bk-floors"></span><button class="btn" data-bk-all title="ほかのカットの画角もすべて薄く描く（ふだんは前と次のカットだけ）">全カットの画角</button><button class="btn" data-bk-fit title="全体を入れる (F)">全体</button></div>
         <div class="bk-note" id="bk-note" hidden></div>
-        <div class="bk-hint">カメラをドラッグで動かす · 橙の丸: 動きの終わり · 青の丸: 向き · 背景をドラッグで視点を動かす · ホイールで拡大 · ←→ でカット</div></div>
+        <div class="bk-peek" id="bk-peek" hidden></div>
+        <div class="bk-hud" id="bk-hud" hidden></div>
+        <div class="bk-hint">番号を押してカットを選ぶ · 選んだカメラをドラッグで動かす · 中抜きの番号: 動きの終わり · 「向き」の丸で回す · 薄い画角: 前と次のカット · ←→ でカット</div></div>
+        <div class="bk-strip" id="bk-strip" aria-label="カット"></div></div>
       <aside class="bk-side" id="bk-side"></aside>`;
   }
   fetchBlocking();
@@ -2054,7 +2118,6 @@ function drawBlocking() {
   if (!ui.blk) { $("bk-side").innerHTML = `<div class="rv-empty">読み込み中…</div>`; return; }
   if (!ui.blkView) blkFit();
   blkFollow();
-  box.querySelector("[data-bk-all]").textContent = ui.blkAll === false ? "このカットだけ" : "全カット";
   // storeys (D-86): the map shows one floor, the selected cut's unless one is picked
   const floors = blkFloors(), cur = blkFloorZ();
   $("bk-floors").innerHTML = floors.length > 1 ? [["", "自動"], ...floors.map((f, i) => [String(i), `${i + 1}F`])]
@@ -2064,8 +2127,9 @@ function drawBlocking() {
   const note = ui.status.engine === "ue5" && !ui.blk.level;
   $("bk-note").hidden = !note;
   if (note) $("bk-note").textContent = "レベルの壁や物はまだ読んでいません。左の頼みごと「🗺 レベルの形を読む」で描けます";
-  box.querySelector("[data-bk-all]").classList.toggle("on", ui.blkAll !== false);
+  box.querySelector("[data-bk-all]").classList.toggle("on", ui.blkAll === true);
   drawBlkSvg();
+  drawBlkStrip();
   drawBlkSide();
 }
 
@@ -2115,39 +2179,199 @@ function drawBlkSvg() {
     .map((s) => `<text class="lbl" x="${s.center[0]}" y="${s.center[1]}" font-size="${fs * 0.85}" text-anchor="middle">${esc(s.label || s.name)}</text>`).join("");
   // places on another floor stay faint (a storey has its own map)
   const here = (a) => !blkFloors().length || (a.at[2] >= fz - 60 && a.at[2] < fz + 400);
+  // only the place the selected cut films is filled; the others are a faint outline
+  const filmed = shot() ? placeOf(shot()) : "";
   const anchors = d.anchors.map((a) => {
-    const off = here(a) ? "" : " off";
-    const boxHtml = a.size ? `<rect class="anc-box${off}" x="${a.center[0] - a.size[0] / 2}" y="${a.center[1] - a.size[1] / 2}" width="${a.size[0]}" height="${a.size[1]}"/>` : "";
-    return `${boxHtml}<circle class="anc${off}" cx="${a.at[0]}" cy="${a.at[1]}" r="${5 * px}"/><text class="lbl${off}" x="${a.at[0] + 8 * px}" y="${a.at[1] - 8 * px}" font-size="${fs}">${esc(a.name)}</text>`;
+    const cls = `${here(a) ? "" : " off"}${a.name === filmed ? " mine" : ""}`;
+    const boxHtml = a.size ? `<rect class="anc-box${cls}" x="${a.center[0] - a.size[0] / 2}" y="${a.center[1] - a.size[1] / 2}" width="${a.size[0]}" height="${a.size[1]}"/>` : "";
+    return `${boxHtml}<circle class="anc${cls}" cx="${a.at[0]}" cy="${a.at[1]}" r="${5 * px}"/><text class="lbl${cls}" x="${a.at[0] + 8 * px}" y="${a.at[1] - 8 * px}" font-size="${fs}">${esc(a.name)}</text>`;
   }).join("");
-  const sel = ui.sel;
-  const cams = d.shots.filter((s) => s.id === sel || ui.blkAll !== false).sort((a) => (a.id === sel ? 1 : -1)).map((s) => blkCamSvg(s, s.id === sel, px, fs)).join("");
+  const cams = blkCamsSvg(d, px);
   // lamps (where the light falls) and the player starts on this floor
   const pts = (d.points || []).filter((p) => p.at[2] >= fz - 50 && p.at[2] <= fz + 650).map((p) => p.kind === "start"
     ? `<path class="startpt" d="M${p.at[0]} ${p.at[1] - 9 * px}L${p.at[0] + 8 * px} ${p.at[1] + 6 * px}L${p.at[0] - 8 * px} ${p.at[1] + 6 * px}Z"><title>${esc(p.label)}</title></path>`
     : `<circle class="lightpt" cx="${p.at[0]}" cy="${p.at[1]}" r="${5 * px}"><title>${esc(p.label)}</title></circle>`).join("");
-  svg.innerHTML = `<g>${grid}</g><g>${shapes}${labels}${pts}</g><g>${anchors}</g><g>${cams}</g>`;
+  svg.innerHTML = `<g>${grid}</g><g>${shapes}${labels}${pts}</g><g>${anchors}</g>${cams}`;
+  svg.classList.toggle("all", ui.blkAll === true);
+  const pk = $("bk-peek"); if (pk) pk.hidden = true; // the pin it pointed at was redrawn
+  blkApplyHot();
 }
 
-function blkCamSvg(s, selected, px, fs) {
-  const c = blkCam(s), [x, y] = c.start, f = dirOf(c.yaw);
-  const reach = s.target ? Math.min(Math.max(Math.hypot(s.target[0] - x, s.target[1] - y), 250), 3000) : 900;
-  const a = dirOf(c.yaw - s.hfov / 2), b = dirOf(c.yaw + s.hfov / 2);
-  const cone = `<path class="cone" d="M${x} ${y}L${x + a[0] * reach} ${y + a[1] * reach}L${x + b[0] * reach} ${y + b[1] * reach}Z"/>`;
-  const body = `<g transform="translate(${x} ${y}) rotate(${c.yaw})"><rect class="body" x="${-9 * px}" y="${-6 * px}" width="${14 * px}" height="${12 * px}" rx="${2 * px}"/><path class="body" d="M${5 * px} ${-4 * px}L${11 * px} ${-7 * px}L${11 * px} ${7 * px}L${5 * px} ${4 * px}Z"/></g>`;
-  const label = `<text class="lbl" x="${x - 12 * px}" y="${y + 18 * px}" font-size="${fs}" text-anchor="end">${esc(s.id.split("_")[0])}</text>`;
-  if (!selected) return `<g class="cam" data-bk-cam="${esc(s.id)}">${cone}${body}${label}</g>`;
-  const [ex, ey] = c.finish;
-  const path = c.travels ? `<line class="path" x1="${x}" y1="${y}" x2="${ex}" y2="${ey}"/><circle class="h end" data-bk-h="end" cx="${ex}" cy="${ey}" r="${7 * px}"/>` : "";
-  const aim = s.target ? `<line class="aim" x1="${x}" y1="${y}" x2="${s.target[0]}" y2="${s.target[1]}"/><path class="aim" d="M${s.target[0] - 6 * px} ${s.target[1]}h${12 * px}M${s.target[0]} ${s.target[1] - 6 * px}v${12 * px}"/>` : "";
-  // the ring turns the camera only where it is not aimed at something (an aimed camera turns by moving)
-  const rot = s.target ? "" : `<line class="aim" x1="${x}" y1="${y}" x2="${x + f[0] * 70 * px}" y2="${y + f[1] * 70 * px}"/><circle class="h rot" data-bk-h="rot" cx="${x + f[0] * 70 * px}" cy="${y + f[1] * 70 * px}" r="${6 * px}"/>`;
-  let ghost = "";
-  if (c.travels && ui.blkT > 0) {
-    const t = ui.blkT, gx = x + (ex - x) * t, gy = y + (ey - y) * t, gy2 = c.yaw + (c.endYaw - c.yaw) * t, g2 = dirOf(gy2);
-    ghost = `<g class="ghost-cam"><circle class="ghost" cx="${gx}" cy="${gy}" r="${8 * px}"/><line class="ghost" x1="${gx}" y1="${gy}" x2="${gx + g2[0] * reach * 0.6}" y2="${gy + g2[1] * reach * 0.6}"/></g>`;
+const BEATS = ["hook", "establish", "escalate", "title"];
+/** A cut's colour on the map: its beat's, as on the cut tiles. */
+const beatVar = (b) => (BEATS.includes(b) ? `var(--${b})` : "var(--muted)");
+
+/** The field of view of a camera standing at `at` and facing `yaw`, as a path. */
+function blkCone(b, at, yaw) {
+  const [x, y] = at, reach = b.target ? Math.min(Math.max(Math.hypot(b.target[0] - x, b.target[1] - y), 250), 3000) : 900;
+  const l = dirOf(yaw - b.hfov / 2), r = dirOf(yaw + b.hfov / 2);
+  return `M${x} ${y}L${x + l[0] * reach} ${y + l[1] * reach}L${x + r[0] * reach} ${y + r[1] * reach}Z`;
+}
+
+/** A numbered pin of `r` screen px at (x, y), with a wedge pointing where the camera looks. */
+function blkPin(x, y, yaw, n, r, px, hollow) {
+  const f = dirOf(yaw), s = [-f[1], f[0]], R = r * px, base = R - 2 * px, half = 4.5 * px, tip = R + 6 * px;
+  const wedge = `M${x + f[0] * tip} ${y + f[1] * tip}L${x + f[0] * base + s[0] * half} ${y + f[1] * base + s[1] * half}L${x + f[0] * base - s[0] * half} ${y + f[1] * base - s[1] * half}Z`;
+  return `<path class="wedge" d="${wedge}"/><circle class="disc${hollow ? " hollow" : ""}" cx="${x}" cy="${y}" r="${R}"/><text x="${x}" y="${y}" font-size="${(r >= 11 ? 11.5 : 10) * px}" text-anchor="middle" dominant-baseline="central">${n}</text>`;
+}
+
+/** Where each pin is drawn: at its camera, unless pins would overlap on screen. A pile around the
+ *  selected camera fans out behind it (its cone and handles are in front); any other pile fans out
+ *  in a ring around its middle. A pin moved off its camera is tied to it by a thin line. */
+function blkPinLayout(items, px, sel) {
+  const near = 20 * px, groups = [];
+  const order = [...items].sort((a, b) => (a.b.id === sel ? -1 : b.b.id === sel ? 1 : a.b.index - b.b.index));
+  for (const it of order) {
+    const g = groups.find((g) => g.some((o) => Math.hypot(o.x - it.x, o.y - it.y) < near));
+    if (g) g.push(it); else groups.push([it]);
   }
-  return `<g class="cam sel" data-bk-cam="${esc(s.id)}">${cone}${aim}${path}${ghost}<g data-bk-h="body">${body}</g>${rot}${label}</g>`;
+  const at = new Map();
+  for (const g of groups) {
+    const [first] = g, k = g.length;
+    if (k === 1) { at.set(first.b.id, { x: first.x, y: first.y, moved: false }); continue; }
+    if (first.b.id === sel) {
+      at.set(sel, { x: first.x, y: first.y, moved: false });
+      const rest = g.slice(1), back = first.c.yaw + 180, ring = 32 * px;
+      rest.forEach((it, i) => {
+        const d = dirOf(back + (i - (rest.length - 1) / 2) * 40);
+        at.set(it.b.id, { x: first.x + d[0] * ring, y: first.y + d[1] * ring, moved: true });
+      });
+      continue;
+    }
+    const cx = g.reduce((t, it) => t + it.x, 0) / k, cy = g.reduce((t, it) => t + it.y, 0) / k;
+    const ring = Math.max(11, 10.5 / Math.sin(Math.PI / k)) * px;
+    g.forEach((it, i) => {
+      const d = dirOf(k === 2 ? 180 + i * 180 : -90 + (i * 360) / k);
+      at.set(it.b.id, { x: cx + d[0] * ring, y: cy + d[1] * ring, moved: true });
+    });
+  }
+  return at;
+}
+
+/** Every cut's camera as a numbered pin in its beat's colour. The selected cut gets its cone, its
+ *  move and its handles; the cuts just before and after it keep a faint cone (an onion skin), and
+ *  the rest draw theirs only when hovered or when all are asked for. */
+function blkCamsSvg(d, px) {
+  const sel = ui.sel, cur = blkShot(sel), fz = blkFloorZ(), storeys = blkFloors().length;
+  const near = new Set(cur ? [cur.index - 1, cur.index + 1] : []);
+  const onFloor = (b) => !storeys || (b.start.location[2] >= fz - 60 && b.start.location[2] < fz + 400);
+  const items = d.shots.map((b) => { const c = blkCam(b); return { b, c, x: c.start[0], y: c.start[1] }; });
+  const at = blkPinLayout(items, px, sel);
+  let cones = "", leads = "", pins = "", mine = { cone: "", top: "" };
+  for (const it of items) {
+    const { b, c } = it, col = beatVar(b.beat), n = b.index + 1, id = esc(b.id);
+    if (b.id === sel) { mine = blkSelSvg(b, c, col, n, px); continue; }
+    const off = onFloor(b) ? "" : " off";
+    cones += `<path class="cone ${near.has(b.index) ? "near" : "far"}${off}" data-bk-of="${id}" style="--c:${col}" d="${blkCone(b, c.start, c.yaw)}"/>`;
+    const p = at.get(b.id);
+    if (p.moved) leads += `<line class="lead" data-bk-of="${id}" x1="${p.x}" y1="${p.y}" x2="${it.x}" y2="${it.y}"/><circle class="lead-dot" data-bk-of="${id}" cx="${it.x}" cy="${it.y}" r="${2.5 * px}"/>`;
+    pins += `<g class="pin${off}" data-bk-cam="${id}" data-bk-of="${id}" style="--c:${col}">${blkPin(p.x, p.y, c.yaw, n, 9, px)}</g>`;
+  }
+  return `<g>${cones}</g><g>${mine.cone}</g><g>${leads}</g><g>${pins}</g><g>${mine.top}</g>`;
+}
+
+/** The selected cut: its cone; its move as an arrow to a hollow pin where it ends (with the end's
+ *  cone, dashed); what it aims at; the ring that turns it; and a big pin that drags it. */
+function blkSelSvg(b, c, col, n, px) {
+  const [x, y] = c.start, f = dirOf(c.yaw), id = esc(b.id), halo = `stroke-width="${3 * px}"`;
+  let cone = `<path class="cone sel" style="--c:${col}" d="${blkCone(b, c.start, c.yaw)}"/>`, move = "", ghost = "";
+  if (c.travels) {
+    const [ex, ey] = c.finish, len = Math.hypot(ex - x, ey - y) || 1, u = [(ex - x) / len, (ey - y) / len], s = [-u[1], u[0]];
+    cone += `<path class="cone end" style="--c:${col}" d="${blkCone(b, c.finish, c.endYaw)}"/>`;
+    const from = 14 * px, to = 12 * px, head = 9 * px;
+    if (len > from + to + head) {
+      const hx = ex - u[0] * to, hy = ey - u[1] * to, bx = hx - u[0] * head, by = hy - u[1] * head;
+      move = `<line class="path" x1="${x + u[0] * from}" y1="${y + u[1] * from}" x2="${bx}" y2="${by}"/>`
+        + `<path class="arrow" d="M${hx} ${hy}L${bx + s[0] * 5 * px} ${by + s[1] * 5 * px}L${bx - s[0] * 5 * px} ${by - s[1] * 5 * px}Z"/>`;
+    }
+    // the label stands beside the end, off the line of the move (where the arrow and the ring are)
+    const side = s[0] >= 0 ? 1 : -1;
+    move += `<g class="pin end" data-bk-h="end">${blkPin(ex, ey, c.endYaw, n, 10, px, true)}</g>`
+      + `<text class="tag" x="${ex + side * s[0] * 18 * px}" y="${ey + side * s[1] * 18 * px}" font-size="${10 * px}" ${halo} text-anchor="start" dominant-baseline="central">終わり</text>`;
+    if (ui.blkT > 0) {
+      const t = ui.blkT, gx = x + (ex - x) * t, gy = y + (ey - y) * t;
+      ghost = `<path class="ghost" d="${blkCone(b, [gx, gy], c.yaw + (c.endYaw - c.yaw) * t)}"/><circle class="ghost" cx="${gx}" cy="${gy}" r="${8 * px}"/>`;
+    }
+  }
+  const aim = b.target ? `<line class="aim" x1="${x}" y1="${y}" x2="${b.target[0]}" y2="${b.target[1]}"/><path class="aim" d="M${b.target[0] - 6 * px} ${b.target[1]}h${12 * px}M${b.target[0]} ${b.target[1] - 6 * px}v${12 * px}"/>` : "";
+  // the ring turns the camera only where it is not aimed at something (an aimed camera turns by moving);
+  // it stands ahead of the camera, clear of the end of a move that goes straight ahead
+  const clear = (k) => !c.travels || Math.hypot(x + f[0] * k * px - c.finish[0], y + f[1] * k * px - c.finish[1]) >= 28 * px;
+  const reach = [70, 44, 110].find(clear) ?? 70, rx = x + f[0] * reach * px, ry = y + f[1] * reach * px;
+  const rot = b.target ? "" : `<line class="aim" x1="${x}" y1="${y}" x2="${rx}" y2="${ry}"/><circle class="h rot" data-bk-h="rot" cx="${rx}" cy="${ry}" r="${6 * px}"/>`
+    + `<text class="tag" x="${rx + f[0] * 18 * px}" y="${ry + f[1] * 18 * px}" font-size="${10 * px}" ${halo} text-anchor="middle" dominant-baseline="central">向き</text>`;
+  const top = `<g class="mine" data-bk-cam="${id}" style="--c:${col}">${aim}${move}${ghost}${rot}<g class="pin sel" data-bk-h="body">${blkPin(x, y, c.yaw, n, 12, px)}</g></g>`;
+  return { cone, top };
+}
+
+/** Light one cut on the map and in the strip and dim the rest, without redrawing (hover stays cheap). */
+function blkApplyHot() {
+  const id = ui.blkHot || null, svg = $("bk-svg");
+  if (svg) {
+    svg.classList.toggle("hovering", !!id);
+    for (const el of svg.querySelectorAll("[data-bk-of]")) el.classList.toggle("hot", el.dataset.bkOf === id);
+  }
+  for (const el of document.querySelectorAll("#bk-strip [data-bk-tile]")) el.classList.toggle("hot", el.dataset.bkTile === id);
+}
+function blkSetHot(id) { if ((ui.blkHot || null) === (id || null)) return; ui.blkHot = id || null; blkApplyHot(); }
+
+/** The picture of the cut under a pin, shown beside it. */
+function blkPeek(id, el) {
+  const pk = $("bk-peek"); if (!pk) return;
+  const s = id && shotById(id);
+  if (!s || !el || ui.blkDrag) { pk.hidden = true; return; }
+  const tk = bestTake(s);
+  pk.innerHTML = `<div class="im" style="${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}">${tk ? "" : "まだ撮っていません"}</div>
+    <div class="t"><span class="bk-no" style="--c:${beatVar(s.beat)}">${s.index + 1}</span><b>${esc(s.id)}</b><small>${esc(s.beat || "")} · ${s.duration}s</small></div>
+    ${s.purpose ? `<div class="p">${esc(s.purpose)}</div>` : ""}`;
+  pk.hidden = false;
+  const map = pk.parentElement.getBoundingClientRect(), r = el.getBoundingClientRect(), w = pk.offsetWidth, h = pk.offsetHeight;
+  let left = r.right - map.left + 8, top = r.top - map.top - h - 6;
+  if (left + w > map.width - 8) left = r.left - map.left - w - 8;
+  if (top < 8) top = r.bottom - map.top + 6;
+  pk.style.left = `${Math.max(8, left)}px`; pk.style.top = `${Math.min(top, map.height - h - 8)}px`;
+}
+
+/** What the hand is doing, by the pointer: how far the camera moved or turned, and what it costs. */
+function blkHud(e, g, b, live) {
+  const hud = $("bk-hud"); if (!hud) return;
+  const n = b.index + 1, m = (v) => `${(Math.abs(v) / 100).toFixed(1)}m`;
+  let what = "";
+  if (g.kind === "body" && live.start) {
+    const dx = live.start[0] - b.start.location[0], dy = live.start[1] - b.start.location[1];
+    const parts = [Math.abs(dx) >= 5 ? `${dx > 0 ? "→" : "←"} ${m(dx)}` : "", Math.abs(dy) >= 5 ? `${dy > 0 ? "↓" : "↑"} ${m(dy)}` : ""].filter(Boolean).join(" ") || "—";
+    what = `${n} カメラ ${parts}`;
+  } else if (g.kind === "end") {
+    const c = blkCam(b);
+    what = `${n} 動きの終わり · 道 ${m(Math.hypot(c.finish[0] - c.start[0], c.finish[1] - c.start[1]))}`;
+  } else if (g.kind === "rot" && live.yaw != null) {
+    const turn = Math.round(((live.yaw - b.start.rotation[1] + 540) % 360) - 180);
+    what = `${n} 向き ${turn > 0 ? `+${turn}` : turn}°`;
+  }
+  if (!what) return;
+  hud.innerHTML = `<b>${esc(what)}</b><span>離すと撮り直し: このカットだけ</span>`;
+  hud.hidden = false;
+  const map = hud.parentElement.getBoundingClientRect(), w = hud.offsetWidth, h = hud.offsetHeight;
+  let left = e.clientX - map.left + 16;
+  if (left + w > map.width - 8) left = e.clientX - map.left - w - 16;
+  hud.style.left = `${Math.max(8, left)}px`; hud.style.top = `${Math.min(Math.max(8, e.clientY - map.top + 16), map.height - h - 8)}px`;
+}
+
+/** The cuts in order under the map, each with its picture: hovering lights its camera, pressing selects it. */
+function drawBlkStrip() {
+  const el = $("bk-strip"); if (!el) return;
+  el.innerHTML = ui.status.shots.map((s) => {
+    const tk = bestTake(s), cls = ["bk-tile", s.id === ui.sel ? "sel" : "", blkShot(s.id) ? "" : "none"].join(" ");
+    return `<button type="button" class="${cls}" data-bk-tile="${esc(s.id)}" style="--c:${beatVar(s.beat)};${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(`${s.id} — ${s.purpose || ""}`)}"><span class="n">${s.index + 1}</span><span class="id">${esc(s.id)}</span></button>`;
+  }).join("");
+  // keep the selected cut in sight without scrolling anything but the strip
+  const t = el.querySelector(".bk-tile.sel");
+  if (t) {
+    const l = t.offsetLeft, r = l + t.offsetWidth;
+    if (l < el.scrollLeft) el.scrollLeft = l - 10;
+    else if (r > el.scrollLeft + el.clientWidth) el.scrollLeft = r - el.clientWidth + 10;
+  }
+  blkApplyHot();
 }
 
 function drawBlkSide() {
@@ -2158,7 +2382,8 @@ function drawBlkSide() {
   const how = b.form === "anchor" ? `${typeof b.anchor === "string" ? b.anchor : "点"} を基準に置く` : "座標で置く";
   const aim = b.look_at ? `${typeof b.look_at === "string" ? b.look_at : "点"} を狙う` : b.form === "anchor" ? `${typeof b.anchor === "string" ? b.anchor : "点"} を狙う` : "向きで決める";
   const r0 = (v) => Math.round(v);
-  el.innerHTML = `<h3><button class="icon" data-bk-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button><span class="id">${esc(s.id)}</span><button class="icon" data-bk-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></h3>
+  el.innerHTML = `<h3><span class="bk-no" style="--c:${beatVar(s.beat)}">${s.index + 1}</span><span class="id">${esc(s.id)}</span><small>${esc(s.beat || "")} · ${s.duration}s</small><span class="sp"></span>
+      <button class="icon" data-bk-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button><button class="icon" data-bk-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></h3>
     <div class="pur">${esc(s.purpose || "")}</div>
     <div class="bk-thumb" style="${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(tk ? tk.q : "まだ撮っていません")}"></div>
     <dl class="bk-facts pro-only"><dt>置き方</dt><dd>${esc(how)}</dd><dt>向き</dt><dd>${esc(aim)}</dd>
@@ -2166,7 +2391,7 @@ function drawBlkSide() {
       <dt>動き</dt><dd>${esc(MOVE_JA[mv] || mv)}</dd></dl>
     ${c.travels ? `<div class="bk-scrub"><span>動きを見る</span><input type="range" min="0" max="100" value="${Math.round((ui.blkT || 0) * 100)}" data-bk-t><span>${s.duration}s</span></div>` : ""}
     ${(ui.blk.anchors || []).length > 1 ? `<div><div class="pur">場所を移す</div><div class="bk-places">${ui.blk.anchors.filter((a) => a.name !== placeOf(s)).map((a) => `<button class="btn" data-bk-place="${esc(a.name)}" title="${esc(`${a.name} を 5m 手前から狙う置き方にする（あとは図で動かす）`)}">${esc(a.name)}</button>`).join("")}</div></div>` : ""}
-    <div class="bk-acts">${c.travels ? `<button class="btn" data-bk-still title="動きの終わりを消して、止めた画にする">動きを消す</button>` : `<button class="btn" data-bk-path title="向いている方へ 2m 進む道を足す。橙の丸で終わりを動かせます">道を引く</button>`}
+    <div class="bk-acts">${c.travels ? `<button class="btn" data-bk-still title="動きの終わりを消して、止めた画にする">動きを消す</button>` : `<button class="btn" data-bk-path title="向いている方へ 2m 進む道を足す。中抜きの番号で終わりを動かせます">道を引く</button>`}
       <button class="btn" data-bk-frame title="このカットの画とカメラを細かく直す画面へ">画で確かめる →</button></div>
     <div class="rv-cost">${fl ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "previz を描いています…" : "previz を描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
       : `動かすと、このカットの previz だけが描き直されます。元に戻すは Ctrl+Z。`}</div>`;
@@ -2217,7 +2442,8 @@ function blkPointer() {
   svg.dataset.wired = "1";
   svg.addEventListener("pointerdown", (e) => {
     const h = e.target.closest("[data-bk-h]"), cam = e.target.closest("[data-bk-cam]");
-    if (cam && cam.dataset.bkCam !== ui.sel) { ui.sel = cam.dataset.bkCam; ui.scopeAll = false; draw(); return; }
+    blkSetHot(null); blkPeek(null);
+    if (cam && cam.dataset.bkCam !== ui.sel) { ui.sel = cam.dataset.bkCam; ui.scopeAll = false; ui.blkT = 0; draw(); return; }
     if (h && !ui.busy) {
       const b = blkShot(ui.sel); if (!b) return;
       ui.blkDrag = { kind: h.dataset.bkH, id: b.id, p0: blkWorld(e), moved: false };
@@ -2242,13 +2468,14 @@ function blkPointer() {
     }
     g.moved = true;
     drawBlkSvg();
+    blkHud(e, g, b, live);
   });
   const up = () => {
-    const g = ui.blkDrag; ui.blkDrag = null; svg.classList.remove("panning");
+    const g = ui.blkDrag; ui.blkDrag = null; svg.classList.remove("panning"); $("bk-hud").hidden = true;
     if (g && g.kind !== "pan" && g.moved) blkCommit(g.id, g.kind);
   };
   svg.addEventListener("pointerup", up);
-  svg.addEventListener("pointercancel", () => { ui.blkDrag = null; ui.blkLive = {}; drawBlkSvg(); });
+  svg.addEventListener("pointercancel", () => { ui.blkDrag = null; ui.blkLive = {}; $("bk-hud").hidden = true; drawBlkSvg(); });
   svg.addEventListener("wheel", (e) => {
     e.preventDefault();
     const v = ui.blkView, [wx, wy] = blkWorld(e), k = Math.pow(1.0015, e.deltaY);
@@ -3222,7 +3449,7 @@ function setUiMode(m) {
   ui.uiMode = m;
   try { localStorage.setItem("sp-ui-mode", m); } catch {}
   ui.preds = {}; drawDesign.key = ""; drawBrief.key = ""; drawStructure.key = "";
-  draw();
+  draw(); drawChat(); // the empty conversation says how to ask, which differs by mode
 }
 const predOn = () => { if (!uiPro()) return false; try { return localStorage.getItem("sp-predict") !== "0"; } catch { return true; } };
 /** The mood palette: atmosphere words grouped the way a mood board is talked about. */
@@ -3269,7 +3496,11 @@ function stackChanged(key, predict = true) {
 }
 /** Redraw the part of the page that shows this stack. */
 function redrawStack(key) {
-  if (isCmp(key)) drawCStack();
+  if (isCmp(key)) {
+    drawCStack();
+    // simple: the row's chips are on the left, and the sheet still counts them on the row
+    if (key.startsWith("row:") && ui.tab === "structure") { drawStructure.key = ""; drawStructure(); }
+  }
   else if (key.startsWith("row:") || key === "tray") { drawStructure.key = ""; if (ui.tab === "structure") drawStructure(); } // the board swaps only the stack (drawCanvas)
   else if (key === "mood") { drawMood.key = ""; drawMood(); }
   else drawCStack();
@@ -3278,8 +3509,14 @@ function redrawStack(key) {
 /** A prediction arriving must not rebuild the box someone is typing in (a Japanese conversion in progress would be cut):
  * while an input of ours has focus, only the chip rows and the foot of the stack are swapped. */
 const STK_OPTS = {};
-/** The composer's stack: its own cmp: keys, or the selected cut's row key when the composer is pointed at that cut (one stack per cut and part). */
-const isCmp = (key) => key.startsWith("cmp:") || (ui.tab !== "structure" && key.startsWith("row:"));
+/** The composer's stack: its own cmp: keys, or the selected cut's row key when the composer is pointed at that cut (one stack per cut and part).
+ * On the sheet a row keeps its own stack in pro; in simple the left box is the row's (D-82). */
+const isCmp = (key) => key.startsWith("cmp:") || (key.startsWith("row:") && (ui.tab !== "structure" || !uiPro()));
+/** Simple: the row of the sheet (a cut or a card) the left box speaks for, when one is selected and shown. */
+function sheetRowLeft() {
+  if (ui.tab !== "structure" || uiPro() || ui.scopeAll || !ui.row || selHidden()) return null;
+  return shotById(ui.row) || lineById(ui.row) || null;
+}
 function softRedraw(key) {
   const a = document.activeElement;
   if (a?.matches?.(".stk-in, .inl") && !isCmp(key)) { patchRows(key); return; }
@@ -3409,9 +3646,9 @@ function stackSend(key) {
 const tabFree = () => { const a = document.activeElement; return !a || a === document.body || !!a.closest?.(".stk"); };
 const selHidden = () => ui.tab === "structure" && ui.cvView === "canvas" && ui.cvInsp === false && !!ui.status?.shots?.length;
 
-/** The stack that keys act on: the selected row on the sheet, otherwise the composer's. */
+/** The stack that keys act on: the selected row on the sheet (pro), otherwise the composer's (in simple it is the row's, or the whole). */
 function activeStack() {
-  if (ui.tab === "structure" && ui.row && (shotById(ui.row) || lineById(ui.row)) && !selHidden()) return rowKey(ui.row);
+  if (ui.tab === "structure" && uiPro() && ui.row && (shotById(ui.row) || lineById(ui.row)) && !selHidden()) return rowKey(ui.row);
   return ui.status?.ai?.ready ? cmpTarget().key : null;
 }
 
@@ -3856,6 +4093,7 @@ function slotRow(it) {
 
 /** A selected card's tools: only its words, form and length go to Claude (code holds the rest). */
 function slotTools(l) {
+  if (!uiPro()) return `<div class="tools">${askLeftHtml(l.id)}${ui.flash?.id === l.id ? flashHtml() : ""}</div>`;
   const ai = ui.status.ai?.ready;
   const what = l.kind === "black" ? "この間" : `この${KIND_JA[l.kind] || "カード"}`;
   const stack = ai ? stackHtml(rowKey(l.id), {
@@ -4151,7 +4389,19 @@ document.addEventListener("click", (e) => {
 /** A number field with − and ＋ (Shift = fine) that still takes an exact value; the field's own step stays for the keyboard. */
 const bumpHtml = (input) => `<span class="stp"><button type="button" data-bump="-1" tabindex="-1" title="Shift で細かく">−</button>${input}<button type="button" data-bump="1" tabindex="-1" title="Shift で細かく">＋</button></span>`;
 
+/** Simple (D-82, D-84): the selected row points the left box at itself; nothing to type or tune on the right.
+ * The camera cell, a burned-in chip or the keys 1–5 still narrow what the left box speaks for. */
+function askLeftHtml(id) {
+  if (!ui.status.ai?.ready) return `<div class="sp-hint">Claude 未接続 · 直接編集は可</div>`;
+  const card = !shotById(id), n = stackOf(rowKey(id)).length; // the stack the left box shows now
+  const part = !card && ui.aspect !== "shot" ? ASPECT_JA[ui.aspect] : "";
+  return `<div class="ask-left"><button type="button" data-ask-left title="${card ? "左の欄に書くかチップを積んで送ると、このカードの文字・長さだけに効きます" : "左の欄に書くかチップを積んで送ると、このカットだけに効きます（ほかのカットはコードで守ります）"}">← 左の欄で Claude に頼む</button>
+    ${part ? `<span class="part">${esc(part)}<button type="button" data-aspect="shot" title="このカット全体に戻す">✕</button></span>` : ""}
+    ${n ? `<span class="n">${n} 積んだ</span>` : ""}</div>`;
+}
+
 function shotTools(s) {
+  if (!uiPro()) return `<div class="tools">${askLeftHtml(s.id)}${ui.flash?.id === s.id ? flashHtml() : ""}</div>`;
   const st = ui.status, ai = st.ai?.ready, busy = !!ui.busy;
   // what the chips depend on: a changed cut (or a new finding on it) asks Claude again
   const ctx = hashOf(JSON.stringify([s.node, s.purpose, s.duration, s.beat, findingsFor(s.id).map((x) => x.rule), (st.script || []).filter((l) => l.on === s.id)]));
@@ -4193,7 +4443,7 @@ function pickRow(id, scroll = true) {
   if (!id) return;
   if (ui.row !== id) precFlushAll(); // steps still waiting are written before the selection moves
   // a note (and an example quoting a cut's words) belongs to its row
-  if (ui.row !== id) { ui.aspect = "shot"; ui.edit = null; closeRowTyping(); }
+  if (ui.row !== id) { ui.aspect = "shot"; ui.edit = null; closeRowTyping(); ui.scopeAll = false; }
   if (ui.cvView === "canvas" && ui.tab === "structure") ui.cvInsp = true; // picking a card on the board opens its panel
   ui.row = id;
   if (shotById(id)) { if (ui.sel !== id) ui.region = null; ui.sel = id; }
@@ -4256,10 +4506,18 @@ async function sendRowNote() {
   const s = shotById(ui.row), l = !s && lineById(ui.row);
   if (!s && !l) return;
   const key = rowKey(ui.row);
-  const note = stackNote(key, typedOf(key)).trim();
+  const left = isCmp(key); // simple: what is typed is in the left box, not in the row
+  const typed = left ? $("note").value : typedOf(key);
+  const note = stackNote(key, typed).trim();
   if (!note || ui.busy || !ui.status?.ai?.ready) return;
   // a template whose quotes are still empty has nothing to say: the caret goes back inside them
-  if (EMPTY_PAIR.test(note)) { focusTyping(document.querySelector(`[data-stk="${CSS.escape(key)}"]`)); return; }
+  if (EMPTY_PAIR.test(note)) {
+    const m = left && EMPTY_PAIR.exec($("note").value);
+    if (m) { const at = $("note").value.indexOf(m[0]) + 1; $("note").focus(); $("note").setSelectionRange(at, at); }
+    else focusTyping(document.querySelector(`[data-stk="${CSS.escape(key)}"]`));
+    return;
+  }
+  if (left) $("note").value = ""; // it comes back if the send fails
   const sentChips = stackOf(key).slice(); // what goes out: a chip added while the request runs is not part of it
   // a card's note changes only its words, form and length (the server and Claude's scope hold it)
   const body = s ? { note, shot: s.id } : { note, line: l.id, aspect: "finish" };
@@ -4283,7 +4541,8 @@ async function sendRowNote() {
     ui.typed[key] = ""; if (ui.typing === key) ui.typing = null; ui.stackNew = ""; stackChanged(key, false);
   } catch (e) {
     toast(e.message, true);
-    if (String(ui.typed[key] || "").trim()) { ui.typing = key; redrawStack(key); } // the words typed come back with the box
+    if (left) { if (!$("note").value.trim()) $("note").value = typed; }
+    else if (String(ui.typed[key] || "").trim()) { ui.typing = key; redrawStack(key); } // the words typed come back with the box
   }
   finally { clearInterval(tick); ui.busy = null; ui.rowBusy = null; ui.pending = null; ui.logKey = ""; await refresh(); }
   if (out) refreshPreviz(out.stale);
@@ -4639,7 +4898,7 @@ function drawCanvas() {
   if (cvDrag) { ui.cvDirty = true; return; } // the board under a hand is not rebuilt; it is drawn once the hand lets go
   const base = JSON.stringify([st.timeline, st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.node, s.approval, s.framing, s.lens, s.thumbs]),
     st.script, st.checks, st.scout, st.scout_taken, st.stage, st.ai?.ready, st.script_approval, st.review, st.undo, st.path, ui.busy, ui.row, ui.aspect, ui.edit, ui.flash,
-    ui.rowBusy, ui.cvBusy, ui.outcome, ui.popped, ui.cvRev, ui.cvTray, ui.cvInsp]);
+    ui.rowBusy, ui.cvBusy, ui.outcome, ui.popped, ui.cvRev, ui.cvTray, ui.cvInsp, uiPro()]);
   const key = base + JSON.stringify([ui.stackRev, ui.typing, predOn()]);
   if (drawCanvas.key === key && box.querySelector(".cv")) return;
   // only a stack changed (a chip, a prediction, the typing box): swap that part, keep the rest as it is
@@ -4680,7 +4939,8 @@ function cvPatchStack(box) {
   const freshInsp = t.content.querySelector(".cv-insp"), freshTray = t.content.querySelector(".cv-tray");
   if (!!insp !== !!freshInsp || !tray || !freshTray) return false;
   if (insp) {
-    const a = insp.querySelector("[data-stk]"), b = freshInsp.querySelector("[data-stk]");
+    // pro swaps the panel's stack; simple has none, only the line that counts what is stacked on the left
+    const a = insp.querySelector("[data-stk], .ask-left"), b = freshInsp.querySelector("[data-stk], .ask-left");
     if (!a || !b) return false;
     a.replaceWith(b);
   }
@@ -5035,6 +5295,8 @@ $("structpanel").addEventListener("click", (e) => {
     return;
   }
   const nd = t.closest("[data-nudge]"); if (nd) { nudge(id, nd.dataset.nudge); return; }
+  // simple: the row hands the word to the left box (pointed back at this row if it was on the whole)
+  if (t.closest("[data-ask-left]")) { if (ui.scopeAll) { ui.scopeAll = false; draw(); } $("note").focus(); return; }
   const as = t.closest("[data-aspect]");
   if (as) {
     // pointing is never a toggle: the camera cell always means "the camera only" (Esc or このカット widens it)
@@ -6057,6 +6319,8 @@ function composerExamples() {
       : ["タイトル前で音を抜く", "BGM を少し下げる", "カードに低い一撃"];
   }
   if (ui.tab === "design") return ["カードを全部0.5秒長く", "title の前だけ白く飛ばす", "色をもっと冷たく", "帯を外す"];
+  const r = sheetRowLeft(); // simple: the left box speaks for a row of the sheet, so it offers what the row offered
+  if (r) return shotById(r.id) ? rowExamples(ui.aspect, r) : slotExamples(r);
   const whole = ui.scopeAll || ui.tab === "structure";
   if (whole && ui.tab === "teaser") return ["title の前だけ白く飛ばす", "字幕を全部0.3秒遅らせる", "30秒に収める"];
   if (whole) return ["30秒に収める", "hook のテンポを上げる", "カードの文字を短く"];
@@ -6075,6 +6339,10 @@ function cmpTarget() {
     const shotId = it?.p.role === "sfx" && isShotId(it.p.shot) ? it.p.shot : "";
     return { key: `cmp:sound:${it ? laneKey(it.p) : "all"}`, ask: { target: "sound", shot: shotId }, ctx: brief, hint: "＋ 音", tip: "音の直し方を積む（映像は変わりません）" };
   }
+  // simple: on the sheet the left box is the selected row's (its stack, and the same scope a row's send has)
+  const r = sheetRowLeft();
+  if (r && !shotById(r.id)) return { key: rowKey(r.id), ask: { target: "card", line: r.id }, ctx: hashOf(JSON.stringify(r)), hint: "＋ このカード", tip: "このカードの直し方を積む（文字・長さ・形だけ）" };
+  if (r) return { key: rowKey(r.id), ask: { target: "row", shot: r.id, aspect: ui.aspect }, ctx: hashOf(JSON.stringify([r.node, r.purpose, r.duration])), hint: "＋ このカット", tip: "このカットの直し方を積む" };
   const s = shot();
   if (ui.scopeAll || ui.tab === "structure" || !s) {
     return { key: "cmp:whole", ask: { target: "whole" }, ctx: hashOf(JSON.stringify([brief, (st.shots || []).map((x) => [x.id, x.duration, x.purpose]), (st.checks || []).length])),
@@ -6132,6 +6400,14 @@ function drawScope() {
     $("note").placeholder = it?.p.role === "sfx" ? "この SE をどう直す？ 例: もう少し大きく / 高域を消してこもらせて / カットの頭に合わせて"
       : it ? "この曲をどう直す？ 例: 少し下げて / 低音を削って軽く"
       : "音をどう直す？ 例: タイトルの前で一瞬音を抜いて / BGM をもう少し下げて";
+    return;
+  }
+  const r = sheetRowLeft();
+  if (r) { // simple: the selected row of the sheet (the scope chip widens it to the whole)
+    const card = !shotById(r.id);
+    $("chips").innerHTML = "";
+    setScope(card ? `🎯 ${r.id} 文字・長さだけ` : `🎯 ${r.id}${ui.aspect !== "shot" ? ` ${ASPECT_JA[ui.aspect]}` : ""}`, card ? "◎ このカードに指示（押すと全体）" : "◎ このカットに指示（押すと全体）");
+    $("note").placeholder = card ? "このカードをどう直す？ 例: もっと短く、言い切る形に（文字・長さだけを直します）" : "このカットをどう直す？ 例: もう少し手すりに寄せて";
     return;
   }
   const whole = ui.scopeAll || ui.tab === "structure";
@@ -6395,7 +6671,9 @@ function drawChat() {
       <div class="suggest" style="margin-top:10px"><button data-discover-now>🧭 企画する</button></div></div>`;
   }
   if (!html) {
-    html = `<div class="empty-chat"><b title="1カットだけ直すときは、カット表で行を選び、その行の候補を押して積んでから送ります。✦ は Claude が予測した次の一手です。直したカットだけが撮り直されます。">直し方はチップを積む</b>行を選ぶ ✦</div>`;
+    html = uiPro()
+      ? `<div class="empty-chat"><b title="1カットだけ直すときは、カット表で行を選び、その行の候補を押して積んでから送ります。✦ は Claude が予測した次の一手です。直したカットだけが撮り直されます。">直し方はチップを積む</b>行を選ぶ ✦</div>`
+      : `<div class="empty-chat"><b title="カット表で行を選ぶと、この欄の指示はそのカットだけに効きます。直したカットだけが撮り直されます。">直したいカットを選んで、ここに書く</b></div>`;
   }
   const log = $("log");
   const atBottom = !drawChat.seen || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
@@ -6581,6 +6859,7 @@ async function rebuildCameras() {
 
 async function sendNote() {
   if (planning()) return planShots();
+  if (sheetRowLeft()) return sendRowNote(); // simple: the left box speaks for the selected row, with the row's scope
   const c = takeComposer(), note = c.note;
   const s = shot();
   if (!note || ui.busy || !ui.status?.ai?.ready) return;
@@ -6758,8 +7037,12 @@ $("send").addEventListener("click", sendNote);
 $("note").addEventListener("input", drawExamples);
 $("scope").addEventListener("click", () => {
   // a plan, the sheet's composer and the design tab's finishing cover the whole teaser
-  if (planning() || ui.tab === "structure" || ui.tab === "design") return;
+  if (planning() || ui.tab === "design") return;
   if (ui.tab === "sound") { ui.snd = null; drawSoundBits(); drawChips(); return; } // sound notes: drop to BGM + all SE
+  if (ui.tab === "structure") { // simple: the selected row ⇄ the whole (pro: the sheet's left box is always the whole)
+    if (uiPro() || !ui.row || selHidden()) return;
+    ui.scopeAll = !ui.scopeAll; draw(); return;
+  }
   ui.scopeAll = !ui.scopeAll; drawChips();
 });
 
@@ -7010,8 +7293,10 @@ for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListe
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 $("blockpanel").addEventListener("click", (e) => {
   const s = shot(), b = s && blkShot(s.id);
-  if (e.target.closest("[data-bk-all]")) { ui.blkAll = ui.blkAll === false; drawBlocking(); return; }
+  if (e.target.closest("[data-bk-all]")) { ui.blkAll = ui.blkAll !== true; drawBlocking(); return; }
   if (e.target.closest("[data-bk-fit]")) { blkFit(); drawBlkSvg(); return; }
+  const tile = e.target.closest("[data-bk-tile]");
+  if (tile) { blkSetHot(null); ui.sel = tile.dataset.bkTile; ui.scopeAll = false; ui.blkT = 0; draw(); return; }
   const fl = e.target.closest("[data-bk-floor]");
   if (fl) { ui.blkFloor = fl.dataset.bkFloor === "" ? null : Number(fl.dataset.bkFloor); drawBlocking(); return; }
   if (e.target.closest("[data-bk-frame]")) { goStage("framing"); return; }
@@ -7030,6 +7315,15 @@ $("blockpanel").addEventListener("input", (e) => {
   const r = e.target.closest("[data-bk-t]");
   if (r) { ui.blkT = Number(r.value) / 100; drawBlkSvg(); }
 });
+// a cut's tile under the map and its pin on the map light each other up
+$("blockpanel").addEventListener("pointerover", (e) => {
+  if (ui.blkDrag) return;
+  const tile = e.target.closest("[data-bk-tile]"), pin = e.target.closest("#bk-svg .pin[data-bk-of]");
+  if (tile) { blkSetHot(tile.dataset.bkTile); blkPeek(null); }
+  else if (pin) { blkSetHot(pin.dataset.bkOf); blkPeek(pin.dataset.bkOf, pin); }
+  else { blkSetHot(null); blkPeek(null); }
+});
+$("blockpanel").addEventListener("pointerleave", () => { blkSetHot(null); blkPeek(null); });
 window.addEventListener("resize", () => { if (ui.tab === "blocking") drawBlkSvg(); });
 document.addEventListener("click", (e) => {
   const m = e.target.closest("[data-uimode]");

@@ -12,16 +12,20 @@
   --hook: #ff6b3d; --establish: #3d8bff; --escalate: #b45cff; --title: #3be02b;
   --shadow: 0 1px 3px rgb(16 24 40 / .06); --pop: 0 10px 34px rgb(16 24 40 / .16);
   --scroll: #c9d1d5; --scroll-hover: #a3acb1;
+  /* sel: outline of what is chosen, hovered or focused; primary: filled main buttons; err-fg: red text */
+  --sel: var(--ink); --primary: var(--ink); --err-fg: var(--err); --ok: #2e7d32; --warn: #b26a00;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   --serif: "Iowan Old Style", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #6b7276; --line: #2a2e30;
+    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
     --scroll: #34393c; --scroll-hover: #4b5155;
     --soft: #202325; --tray: #1d2022; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
+    --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
   }
 }
+:root { color-scheme: light dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -161,7 +165,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .vnode.new { animation: vin .34s cubic-bezier(.2, .9, .3, 1.35) both; }
 @keyframes vin { from { opacity: 0; transform: translateY(8px) scale(.8); } }
 .vnode button { border: 0; background: none; padding: 0 3px; color: var(--muted); font-size: 11px; line-height: 1; }
-.vnode button:hover { color: var(--err); }
+.vnode button:hover { color: var(--err-fg); }
 .vlink { width: 16px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--hook), var(--escalate), var(--establish)); opacity: .75; }
 .vibes { width: min(780px, 100%); margin-top: 16px; display: grid; gap: 10px; }
 .vhead { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
@@ -179,7 +183,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .vrow .muted { color: var(--faint); font-size: 12.5px; }
 .vchip { --c: var(--line); border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); background: var(--card); border-radius: 999px; padding: 5px 12px 5px 10px;
   font-size: 13px; color: var(--ink); transition: transform .14s, border-color .14s, box-shadow .14s; }
-.vchip:hover { transform: translateY(-1px); border-color: var(--ink); box-shadow: 0 3px 10px rgb(16 24 40 / .08); }
+.vchip:hover { transform: translateY(-1px); border-color: var(--sel); box-shadow: 0 3px 10px rgb(16 24 40 / .08); }
 .vchip .plus { color: var(--faint); margin-right: 5px; font-weight: 700; }
 .vchip.ai { border-color: transparent; background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(120deg, var(--hook), var(--escalate), var(--establish)) border-box; }
 .vchip.ai .plus { color: var(--escalate); }
@@ -200,7 +204,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .btn { border: 1px solid var(--line); background: var(--card); border-radius: 999px; height: 38px; padding: 0 16px; display: inline-flex; gap: 7px;
   align-items: center; font-size: 13.5px; font-weight: 500; }
 .btn:hover { background: var(--soft); }
-.btn.dark { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn.dark { background: var(--primary); color: var(--card); border-color: var(--primary); }
 .btn svg.i { width: 15px; height: 15px; }
 #search { height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 0 14px; background: var(--card); width: 220px; outline: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 28px 22px; }
@@ -241,7 +245,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .sec > p { margin: 0; color: var(--muted); font-size: 13px; }
 .opt { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; padding: 12px 14px; border: 1px solid var(--line);
   border-radius: 12px; cursor: pointer; }
-.opt.on { border-color: var(--ink); }
+.opt.on { border-color: var(--sel); }
 .opt input[type=radio] { margin: 3px 0 0; accent-color: var(--ink); }
 .opt .t { font-weight: 600; }
 .opt .d { grid-column: 2; color: var(--muted); font-size: 12.5px; word-break: break-all; }
