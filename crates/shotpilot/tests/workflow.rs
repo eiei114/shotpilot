@@ -199,8 +199,8 @@ fn previz_shows_the_prop_only_from_its_frame() {
     let ap = json!([{"prop": "stranger", "at": 2, "anchor": "door", "offset": [150, 0, -120]}]);
     f.ws.set_fields("s05_door", &set(&[("appear", ap)])).unwrap();
     let s = f.ws.select_one("s05_door").unwrap();
-    let boxes = f.ws.defn.anchor_boxes();
-    let png = |shot: &shotpilot::model::ResolvedShot, frame| shotpilot::previz::render_frame(shot, frame, &boxes, 320, 180, 0.0, None).png();
+    let world = shotpilot::previz::World::load(&f.ws.defn);
+    let png = |shot: &shotpilot::model::ResolvedShot, frame| shotpilot::previz::render_frame(shot, frame, &world, 320, 180, None).png();
     let mut without = s.clone();
     without.appear.clear();
     assert_eq!(png(&s, 30), png(&without, 30)); // 1 s: not there yet
