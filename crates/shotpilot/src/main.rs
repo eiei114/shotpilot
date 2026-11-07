@@ -128,7 +128,7 @@ enum Cmd {
     },
     /// the teaser playbooks the planning turn can pick from
     Skills,
-    /// borrow a reference teaser's rhythm and hand-overs (D-59): measure a video (up to 180 s),
+    /// borrow a reference teaser's rhythm and hand-overs (D-71): measure a video (up to 180 s),
     /// write its lengths into finish.motion, compare the latest cut with it
     Reference {
         /// the video to measure; with none, list the references measured so far
@@ -241,12 +241,35 @@ enum Cmd {
         #[arg(long)]
         replace: bool,
     },
+    /// score the planner against the collected teasers: eval [CASES...] [--models a,b] [--runs N] [--candidates N] [--out DIR] [--replay DIR]
+    Eval {
+        /// projects (shots.yaml or its folder); default: eval/cases/*/shots.yaml
+        cases: Vec<PathBuf>,
+        /// models to compare, comma separated (default: the current model)
+        #[arg(long, value_delimiter = ',')]
+        models: Vec<String>,
+        #[arg(long, default_value_t = 1)]
+        runs: usize,
+        /// plans written per run, the best one kept by code score (as SHOTPILOT_CANDIDATES does)
+        #[arg(long)]
+        candidates: Option<usize>,
+        /// where results.jsonl, replies/ and summary.md go (default: eval/runs/<time>)
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// re-score the saved replies in this folder with the current code (no model calls)
+        #[arg(long)]
+        replay: Option<PathBuf>,
+    },
     /// apply a note with Claude: revise "3番目はもっと寄って"
     Revise {
         note: String,
         /// limit edits to this shot (repeatable)
         #[arg(long)]
         shot: Vec<String>,
+        /// change only this part (every shot unless --shot): camera, light, or finish (text burned in at the
+        /// cut, hand-overs and camera effects; on every shot, also the script's words and the grade)
+        #[arg(long, value_parser = ["camera", "light", "finish"])]
+        aspect: Option<String>,
         #[arg(long)]
         yes: bool,
     },
@@ -256,6 +279,9 @@ enum Cmd {
         assignments: Vec<String>,
         #[arg(long)]
         json: bool,
+        /// design the music and effects afresh from the sound library (Claude), then mix
+        #[arg(long)]
+        design: bool,
     },
     /// the release plan (D-47): promo  |  promo post <shot> [--clip]  |  promo derive <video> [--shots]
     ///  |  promo update [version]  (an update trailer made from these shots; only changed cuts re-render)
@@ -272,6 +298,26 @@ enum Cmd {
         shots: bool,
         #[arg(long)]
         json: bool,
+    },
+    /// Claude Code hooks (D-66): run by Claude Code in the game's folder, never blocks.
+    /// session-start: what is out of date now  |  post-tool: what the last tool call changed
+    Hook {
+        #[arg(value_parser = ["session-start", "post-tool"])]
+        event: String,
+    },
+    /// Claude Code integration (D-66): install the Skill and the hooks into the game's folder
+    Claude {
+        #[arg(value_parser = ["install"])]
+        action: String,
+        /// the game's folder (default: the folder of project.uproject, else this project's)
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// overwrite a Skill that was edited by hand
+        #[arg(long)]
+        force: bool,
+        /// only print the hooks block to paste into .claude/settings.json
+        #[arg(long)]
+        print: bool,
     },
     /// list takes of one shot
     Takes { shot: String },
@@ -341,6 +387,33 @@ fn main() -> ExitCode {
     }
 }
 
+/// One Claude Code hook call: read what Claude Code sends on stdin, say what changed.
+fn run_hook(file: &PathBuf, event: &str) -> Result<()> {
+    use std::io::Read;
+    let mut input = String::new();
+    if !std::io::stdin().is_terminal() {
+        std::io::stdin().read_to_string(&mut input)?;
+    }
+    let input: Value = serde_json::from_str(&input).unwrap_or(Value::Null);
+    let ws = ws(file)?;
+    let root = shotpilot::claudecode::game_root(&ws);
+    let shots = shotpilot::claudecode::shots_arg(&ws, &root).replace("\"${CLAUDE_PROJECT_DIR}/", "").replace('"', "");
+    match event {
+        "session-start" => {
+            if let Some(text) = shotpilot::claudecode::session_start(&ws, &shots)? {
+                println!("{text}");
+            }
+        }
+        _ => {
+            let edited = shotpilot::claudecode::edited_file(&input);
+            if let Some(text) = shotpilot::claudecode::post_tool(&ws, &shots, edited.as_deref())? {
+                println!("{}", shotpilot::claudecode::post_tool_json(&text));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn ws(cli_file: &PathBuf) -> Result<Workspace> {
     Workspace::open(cli_file)
 }
@@ -376,7 +449,7 @@ fn short_list(packages: &[Value]) -> String {
     }
 }
 
-/// What a reference lent `finish.motion` (D-59).
+/// What a reference lent `finish.motion` (D-71).
 fn print_borrowed(notes: &[String], id: &str) {
     if notes.is_empty() {
         return;
@@ -389,6 +462,38 @@ fn print_borrowed(notes: &[String], id: &str) {
 
 fn dash(v: &[String]) -> String {
     if v.is_empty() { "-".into() } else { v.join(", ") }
+}
+
+/// A client that only reports why no real one could be made, so a run records the error per call.
+struct FailingClaude(String);
+
+impl ai::Claude for FailingClaude {
+    fn ask(&self, _request: &Value) -> Result<String> {
+        Err(shotpilot::Error::user(self.0.clone()))
+    }
+}
+
+/// The eval cases: explicit projects (a shots.yaml or its folder), else eval/cases/*/shots.yaml
+/// found from the current folder upwards.
+fn eval_cases(given: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    if !given.is_empty() {
+        return Ok(given.iter().map(|p| if p.is_dir() { p.join("shots.yaml") } else { p.clone() }).collect());
+    }
+    let mut dir = std::env::current_dir()?;
+    loop {
+        let cases = dir.join("eval").join("cases");
+        if cases.is_dir() {
+            let mut found: Vec<PathBuf> = std::fs::read_dir(&cases)?
+                .filter_map(|e| e.ok().map(|e| e.path().join("shots.yaml")))
+                .filter(|p| p.is_file())
+                .collect();
+            found.sort();
+            return Ok(found);
+        }
+        if !dir.pop() {
+            bail!("no eval/cases folder found; pass the projects to score");
+        }
+    }
 }
 
 fn run(cli: Cli) -> Result<u8> {
@@ -909,7 +1014,9 @@ fn run(cli: Cli) -> Result<u8> {
             println!("grade:      {}", f.grade);
             println!("letterbox:  {}", f.letterbox.map(fmt_g).unwrap_or_else(|| "-".into()));
             println!("typeface:   {} (the system font when a face is missing)", f.typeface);
-            for (role, spec) in [("display", &f.fonts.display), ("body", &f.fonts.body), ("latin", &f.fonts.latin)] {
+            for (role, spec) in
+                [("display", &f.fonts.display), ("body", &f.fonts.body), ("latin", &f.fonts.latin), ("title", &f.fonts.title)]
+            {
                 let line = match spec {
                     Some(s) if shotpilot::fonts::local(s).is_some() => format!("{} (downloaded)", s.label()),
                     Some(s) => format!("{} (downloaded at the next cut)", s.label()),
@@ -968,6 +1075,10 @@ fn run(cli: Cli) -> Result<u8> {
             for a in &p.adjustments {
                 println!("# adjusted by code: {a}");
             }
+            if !p.candidates.is_empty() {
+                let list: Vec<String> = p.candidates.iter().map(|c| c.map_or("failed".into(), fmt_g)).collect();
+                println!("# picked by code score from {} plans: {}", list.len(), list.join(" / "));
+            }
             print!("{}", yamlio::dumps(&json!({"script": p.script, "shots": planned})));
             if write {
                 if !ws.defn.shots.is_empty() && !replace {
@@ -980,16 +1091,62 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("(preview only; add --write to put these in shots.yaml)");
             }
         }
-        Cmd::Revise { note, shot, yes } => {
+        Cmd::Eval { cases, models, runs, candidates, out, replay } => {
+            if let Some(dir) = replay {
+                let report = shotpilot::eval::replay(&dir)?;
+                print!("{}", report.to_markdown("Replay"));
+                return Ok(0);
+            }
+            let cases = eval_cases(&cases)?;
+            if let Some(n) = candidates {
+                // read by ai::plan on this (single) thread
+                std::env::set_var("SHOTPILOT_CANDIDATES", n.to_string());
+            }
+            let out = out.unwrap_or_else(|| PathBuf::from("eval").join("runs").join(chrono::Local::now().format("%Y%m%d-%H%M%S").to_string()));
+            let settings = Settings::load(Settings::default_path().as_deref());
+            let make = |_model: &str| -> Box<dyn ai::Claude> {
+                match connect::make_claude(&settings) {
+                    Ok(c) => c,
+                    Err(e) => Box::new(FailingClaude(e.msg)),
+                }
+            };
+            let report = shotpilot::eval::run(&cases, &models, runs, &out, &make)?;
+            print!("{}", report.to_markdown("Eval summary"));
+            println!("results: {}", out.display());
+        }
+        Cmd::Revise { note, shot, aspect, yes } => {
             let mut ws = ws(file)?;
-            let scope: Option<Vec<String>> = if shot.is_empty() {
-                None
-            } else {
+            let scope: Option<Vec<String>> = if !shot.is_empty() {
                 Some(ws.select(&shot)?.into_iter().map(|s| s.id).collect())
+            } else if aspect.is_some() {
+                // one part of every shot (the app's "cameras only"): the script stays
+                Some(ws.defn.shot_ids())
+            } else {
+                None
             };
             let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
-            let rev = ai::revise(&ws.defn, &note, scope.as_deref(), claude.as_ref())?;
-            if rev.edits.is_empty() && rev.order.is_none() && rev.audio.is_none() {
+            let rev = match &aspect {
+                Some(a) => {
+                    let ids = scope.as_deref().unwrap_or_default();
+                    let on = if ids.len() == 1 { format!("shot {}", ids[0]) } else { format!("all {} shots", ids.len()) };
+                    let mut pointer = ai::Pointer {
+                        fields: ai::aspect_fields(a),
+                        context: Some(format!("{on}; the director points at this part of the shot: {a}")),
+                        ..Default::default()
+                    };
+                    if a == "finish" {
+                        // as the app: the whole teaser's finish gets every line and the grade, a shot its own lines
+                        let whole = shot.is_empty();
+                        pointer.texts = Some(ws.defn.script.iter()
+                            .filter(|l| whole || l.on.as_ref().is_some_and(|o| ids.contains(o)))
+                            .map(|l| l.id.clone()).collect());
+                        pointer.finish = whole;
+                    }
+                    ai::revise_at(&ws.defn, &note, scope.as_deref(), &pointer, claude.as_ref())?
+                }
+                None => ai::revise(&ws.defn, &note, scope.as_deref(), claude.as_ref())?,
+            };
+            if rev.edits.is_empty() && rev.order.is_none() && rev.audio.is_none() && rev.texts.is_empty() && rev.finish.is_empty() {
                 println!("no change: {}", rev.summary);
                 return Ok(0);
             }
@@ -1003,6 +1160,14 @@ fn run(cli: Cli) -> Result<u8> {
             if let Some(a) = &rev.audio {
                 println!("\n## audio\n- before:\n{}- after:\n{}", yamlio::dumps(&Value::Object(ws.defn.audio.clone())),
                          yamlio::dumps(&Value::Object(a.clone())));
+            }
+            for (id, set) in &rev.texts {
+                let fields: Vec<String> = set.iter().map(|(k, v)| format!("{k}={v}")).collect();
+                println!("\n## script {id}: {}", fields.join(", "));
+            }
+            if !rev.finish.is_empty() {
+                let fields: Vec<String> = rev.finish.iter().map(|(k, v)| format!("{k}={v}")).collect();
+                println!("\n## finish: {}", fields.join(", "));
             }
             if !yes {
                 if !std::io::stdin().is_terminal() {
@@ -1018,10 +1183,22 @@ fn run(cli: Cli) -> Result<u8> {
                     return Ok(0);
                 }
             }
-            print_edit_report(&ws.edit_definition_with(&rev.edits, rev.order.as_deref(), rev.audio.as_ref(), "revise", &note)?);
+            print_edit_report(&ws.apply_revision(&rev, "revise", &note)?);
         }
-        Cmd::Sound { assignments, json } => {
+        Cmd::Sound { assignments, json, design } => {
             let mut ws = ws(file)?;
+            if design {
+                let lib = shotpilot::library::Library::open(shotpilot::library::default_root().as_deref())?;
+                let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;
+                let d = shotpilot::sounddesign::design(&ws, &lib, claude.as_ref())?;
+                shotpilot::sounddesign::apply(&mut ws, &d)?;
+                if !json {
+                    println!("{}\n", d.rationale);
+                    for n in &d.notes {
+                        println!("note: {n}");
+                    }
+                }
+            }
             if !assignments.is_empty() {
                 let rep = ws.set_audio(&parse_assignments(&assignments)?)?;
                 if !json {
@@ -1053,6 +1230,31 @@ fn run(cli: Cli) -> Result<u8> {
                 println!("warning: {}", o.text());
             }
             println!("{}", soundcheck::text(&m.check));
+        }
+        Cmd::Hook { event } => {
+            // a hook reports facts and never stands in the way: any failure is silent (exit 0),
+            // since Claude Code shows a non-zero exit to the developer or feeds it to Claude
+            let _ = run_hook(file, &event);
+        }
+        Cmd::Claude { action: _, dir, force, print } => {
+            let ws = ws(file)?;
+            let root = match dir {
+                Some(d) if d.is_dir() => std::path::absolute(&d)?,
+                Some(d) => bail!("{} is not a folder", d.display()),
+                None => shotpilot::claudecode::game_root(&ws),
+            };
+            if print {
+                let hooks = shotpilot::claudecode::hooks_json(&shotpilot::claudecode::shots_arg(&ws, &root));
+                println!("{}", serde_json::to_string_pretty(&json!({ "hooks": hooks }))?);
+                return Ok(0);
+            }
+            let rep = shotpilot::claudecode::install(&ws, &root, force)?;
+            println!("game folder: {}", rep.game_root.display());
+            println!("skill:    {} ({})", rep.skill.display(), if rep.skill_written { "written" } else { "kept; --force to overwrite" });
+            println!("hooks:    {} ({})", rep.settings.display(),
+                     if rep.hooks_added.is_empty() { "already there".to_string() } else { format!("added {}", rep.hooks_added.join(", ")) });
+            println!("Claude Code now hears which teaser cuts went out of date when a session starts and after each tool call.");
+            println!("The hooks run `shotpilot`: keep it on PATH (cargo install --path crates/shotpilot).");
         }
         Cmd::Takes { shot } => {
             let ws = ws(file)?;

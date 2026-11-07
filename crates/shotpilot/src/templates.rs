@@ -168,7 +168,7 @@ defaults:
 shots: []
 "#;
 
-/// A reference teaser's copies of its pictures (D-59) stay out as well: only what was measured
+/// A reference teaser's copies of its pictures (D-71) stay out as well: only what was measured
 /// (`facts.json`) belongs with the project.
 pub const GITIGNORE: &str = "render/\ncut/\n.shotpilot/jobs/\n.shotpilot/logs/\n.shotpilot/ue_userdir/\n.shotpilot/mock_engine/\n.shotpilot/sp_entry.py\npromo/posts/\n\
                               reference/*/proxy.mp4\nreference/*/contact.jpg\nreference/*/compare/\n";

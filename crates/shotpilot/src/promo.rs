@@ -144,6 +144,18 @@ fn read_json(path: &Path) -> Result<Option<Value>> {
     }
 }
 
+/// The plan file the project at `root` belongs to: its own promo.json, or the one its link
+/// names. Projects with the same plan are videos of the same game (D-47).
+pub fn plan_of(root: &Path) -> PathBuf {
+    let own = root.join(FILE);
+    if let Ok(Some(v)) = read_json(&own) {
+        if let Some(link) = v.get("link").and_then(Value::as_str).filter(|s| !s.is_empty()) {
+            return normalize(&root.join(link));
+        }
+    }
+    normalize(&own)
+}
+
 impl Plan {
     /// The plan this project belongs to. Without a promo.json, a starting plan: this video,
     /// and the usual next ones (not written until something changes).

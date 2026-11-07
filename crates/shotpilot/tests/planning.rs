@@ -259,6 +259,16 @@ fn spread_skips_landmarks_on_top_of_each_other() {
     assert_eq!(names, ["big", "far"]);
 }
 
+#[test]
+fn a_scout_camera_the_engine_pulled_in_front_of_a_wall_is_recorded_where_it_stood() {
+    // ue/sp_entry.py answers a `clear_view` build item with where the camera ended up
+    let built = json!({"status": "built", "clear_view": {"location": [1200.0, -300.5, 30.0], "focal_length": 18.5}});
+    assert_eq!(shotpilot::scout::moved_camera(&built), Some(([1200.0, -300.5, 30.0], 18.5)));
+    // nothing in the way (or an engine without geometry): the camera stood where it was planned
+    assert_eq!(shotpilot::scout::moved_camera(&json!({"status": "built"})), None);
+    assert_eq!(shotpilot::scout::moved_camera(&Value::Null), None);
+}
+
 // --------------------------------------------------------------------------- concept frames (D-46)
 
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
@@ -385,4 +395,86 @@ fn frames_with_no_place_stay_mood_only() {
     assert_eq!(launches(&f.ws).iter().filter(|l| l["kind"] == "survey").count(), 2); // asked the level for others once
     let (_, text) = shotpilot::concept::planner_blocks(&f.ws.defn);
     assert!(text.contains("`c1` (hook): no place in the level looks like it; take its mood"), "{text}");
+}
+
+// ---------------------------------------------------------------------------
+// Invariant guards added for D-51 (English dictionary) and D-49 (reading time).
+
+/// D-51: every Japanese UI string in the pages and sources has an English entry in
+/// web/i18n-en.json. Runs the extractor on a scratch copy so the repo's i18n-free.json is
+/// never rewritten by a test run.
+#[test]
+fn every_ui_string_has_an_english_entry() {
+    if std::process::Command::new("node").arg("--version").output().is_err() {
+        eprintln!("skipped: node is not installed, so tools/i18n_extract.js cannot run");
+        return;
+    }
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let copy = tempfile::tempdir().unwrap();
+    let crate_dir = root.join("crates/shotpilot");
+    let (web, src) = (copy.path().join("crates/shotpilot/web"), copy.path().join("crates/shotpilot/src"));
+    std::fs::create_dir_all(&web).unwrap();
+    std::fs::create_dir_all(&src).unwrap();
+    for (from, to) in [(crate_dir.join("web"), &web), (crate_dir.join("src"), &src)] {
+        for e in std::fs::read_dir(from).unwrap().flatten() {
+            if e.path().is_file() {
+                std::fs::copy(e.path(), to.join(e.file_name())).unwrap();
+            }
+        }
+    }
+    let out = std::process::Command::new("node")
+        .arg(root.join("tools/i18n_extract.js"))
+        .arg(copy.path())
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr).to_string();
+    assert!(out.status.success(), "extractor failed: {err}");
+    let last = err.trim().lines().last().unwrap_or("");
+    assert!(last.contains(", 0 not in i18n-en.json"), "strings missing from web/i18n-en.json: {last}\n{}", String::from_utf8_lossy(&out.stdout));
+}
+
+/// D-49: the reading-time arithmetic lives in `script::reading_secs` only; no other source
+/// file carries its constants (4 characters or 3 words per second, plus 0.5 s).
+#[test]
+fn reading_time_is_computed_in_one_place() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let own = std::fs::read_to_string(dir.join("script.rs")).unwrap();
+    let squash = |s: &str| s.split_whitespace().collect::<String>();
+    // the scan must be looking for something that really is in script.rs
+    assert!(squash(&own).contains("/4.0+0.5"), "reading_secs no longer uses the constants this guard scans for");
+    let mut offenders = Vec::new();
+    for e in std::fs::read_dir(&dir).unwrap().flatten() {
+        let p = e.path();
+        if p.extension().is_none_or(|x| x != "rs") || p.file_name().unwrap() == "script.rs" {
+            continue;
+        }
+        let s = squash(&std::fs::read_to_string(&p).unwrap());
+        if s.contains("/4.0+0.5") || s.contains("/3.0+0.5") || s.contains("/4.+0.5") || s.contains("/3.+0.5") {
+            offenders.push(p.file_name().unwrap().to_string_lossy().to_string());
+        }
+    }
+    assert!(offenders.is_empty(), "reading time is reimplemented outside script::reading_secs in {offenders:?}");
+}
+
+/// D-49: a card whose words are rewritten through a revise (finishing note) is kept on screen
+/// long enough to read, by `reading_secs`, even when Claude returns a short `dur`; a hand-typed
+/// line is not touched by this path.
+#[test]
+fn revised_card_words_are_held_for_their_reading_time() {
+    let mut f = ws();
+    let mut text = f.text();
+    text.push_str("\nscript:\n  - {id: seven, kind: card, ja: 七号室, dur: 2, after: s02_well}\n");
+    f.write(&text);
+    f.ws.reload().unwrap();
+    let words = "今日から、ここに住む。";
+    let need = shotpilot::script::reading_secs("card", words, "");
+    assert!(need > 3.0, "the sample line must need more than the 1s Claude asks for");
+    let reply = json!({"summary": "s", "edits": [], "order": [],
+                       "texts": [{"id": "seven", "yaml": format!("ja: {words}\ndur: 1")}]});
+    let fake = Script::new(vec![reply]);
+    let pointer = ai::Pointer { fields: ai::aspect_fields("finish"), texts: Some(ids(&["seven"])), ..Default::default() };
+    let rev = ai::revise_at(&f.ws.defn, "言葉を変えて", Some(&ids(&["s02_well"])), &pointer, &fake).unwrap();
+    let (_, changes) = rev.texts.iter().find(|(id, _)| id == "seven").expect("the card edit comes back");
+    let dur = changes.iter().find(|(k, _)| k == "dur").expect("dur is lengthened").1.as_f64().unwrap();
+    assert!(dur + 0.05 >= need && dur <= need + 0.1, "dur {dur} should be the reading time {need}");
 }

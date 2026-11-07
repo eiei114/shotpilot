@@ -1,4 +1,4 @@
-//! A reference teaser (D-59): a video the director likes, measured the way the corpus was
+//! A reference teaser (D-71): a video the director likes, measured the way the corpus was
 //! (D-29, D-53) so the cut can borrow how it is paced and how it hands over. After open-design's
 //! "replicate a reference video" (`od media reference` / `od media compare`): measure the timeline,
 //! never estimate it, and let what was measured outrank taste.
@@ -475,7 +475,7 @@ impl Measure {
 
 // ------------------------------------------------------------------ what the cut borrows
 
-/// The `finish.motion` entries a measure sets (D-59): the lengths of its hand-overs and of its
+/// The `finish.motion` entries a measure sets (D-71): the lengths of its hand-overs and of its
 /// text on black, each with a note on where it came from. Seconds are as measured (energy does
 /// not scale them); what the reference never does is left to the look.
 pub fn motion_entries(m: &Measure) -> (Map<String, Value>, Vec<String>) {
@@ -713,7 +713,7 @@ fn shares(times: impl Iterator<Item = f64>, secs: f64) -> String {
     v.join(", ")
 }
 
-/// What the planner is told about the reference the brief names (D-59): its rhythm and where
+/// What the planner is told about the reference the brief names (D-71): its rhythm and where
 /// its hand-overs fall, in shares of its runtime. Nothing of its content.
 pub fn planner_text(defn: &Definition) -> String {
     let Some(r) = active(defn) else { return String::new() };

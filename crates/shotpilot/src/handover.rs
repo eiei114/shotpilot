@@ -1,4 +1,4 @@
-//! How shots hand over at a cut (D-58): the recipes in `references/motion/transitions.json`,
+//! How shots hand over at a cut (D-70): the recipes in `references/motion/transitions.json`,
 //! after open-design's transition references (hyperframes `transitions.md` and its catalog),
 //! turned into ffmpeg filters on the two shots either side of the cut.
 //!
@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn a_flash_holds_white_for_its_length_then_lets_go() {
-        // measured flash lengths are how long the white is seen (D-59 measures them that way)
+        // measured flash lengths are how long the white is seen (D-71 measures them that way)
         let m = motion(json!("horror")); // flash 0.12 s
         let inn = filters(&m, "flash", Side::In, 3.0, 1080, 30).join(",");
         assert!(inn.contains("clip((t-0.120)/0.050,0,1)") && inn.contains("between(t,0.000,0.170)"), "{inn}");

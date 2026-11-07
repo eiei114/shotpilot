@@ -24,87 +24,165 @@ pub struct Slot {
     pub size: &'static str,
 }
 
-/// Default shot count for a runtime: about one shot per 4.5 s, 5..10 shots.
+/// Default shot count for a runtime: about one shot per 4.5 s, 5..10 shots. Only used when
+/// no measured beats are at hand (refs::beats always has some with the embedded styles).
 pub fn default_shots(target: f64) -> usize {
     ((target / 4.5).round() as usize).clamp(5, 10)
 }
+
+/// Most shots a skeleton asks for: the plan has to stay writable in one reply.
+pub const MAX_SHOTS: usize = 18;
+
+/// How far under the shot check's `hook.long` a skeleton's hook stays.
+const HOOK_MARGIN: f64 = 0.5;
 
 fn half(v: f64) -> f64 {
     (v * 2.0).round() / 2.0
 }
 
+fn quarter(v: f64) -> f64 {
+    (v * 4.0).round() / 4.0
+}
+
+/// How long the `title` card the planner writes after the last shot should hold: the final
+/// shot of the measured teaser (a published teaser's last cut is usually its title or end
+/// card), kept between 2.5 and 5 s.
+pub fn title_card_secs(brief: &BriefCfg) -> f64 {
+    quarter(crate::refs::pace(brief).title.clamp(2.5, 5.0))
+}
+
+/// The time a skeleton leaves for the cards after its last shot: a `black` gap and the
+/// `title` card (other cards come out of the shots' time when the planner writes them).
+pub fn card_reserve(brief: &BriefCfg, target: f64) -> f64 {
+    (0.5 + title_card_secs(brief)).min(0.2 * target)
+}
+
+/// Split `n` into parts in proportion to `want`, each at least `min[i]` (largest remainder).
+fn apportion(n: usize, want: &[f64], min: &[usize]) -> Vec<usize> {
+    let floor: usize = min.iter().sum();
+    let n = n.max(floor);
+    let total: f64 = want.iter().sum::<f64>().max(1e-9);
+    let spare = (n - floor) as f64;
+    let exact: Vec<f64> = want.iter().map(|w| spare * w / total).collect();
+    let mut out: Vec<usize> = exact.iter().zip(min).map(|(e, m)| m + e.floor() as usize).collect();
+    let mut left = n - out.iter().sum::<usize>();
+    let mut order: Vec<usize> = (0..want.len()).collect();
+    order.sort_by(|a, b| (exact[*b] - exact[*b].floor()).total_cmp(&(exact[*a] - exact[*a].floor())));
+    for i in order.into_iter().cycle() {
+        if left == 0 {
+            break;
+        }
+        out[i] += 1;
+        left -= 1;
+    }
+    out
+}
+
 /// The teaser skeleton: hook, establishing shots, escalating shots that cut faster and
-/// move closer, and a held title shot. Durations sum to the target.
+/// move closer, and a calm title shot, followed by the cards (`card_reserve`). The beats take
+/// the share of the runtime, and cut as often, as in the measured teaser the brief follows
+/// (its style, else the average of its genre's styles, else of every style; refs::beats).
+/// Durations sum to the target less the reserve for the cards.
 pub fn skeleton(brief: &BriefCfg, target: f64, n_shots: Option<usize>) -> Vec<Slot> {
     let target = if target > 0.0 { target } else { 45.0 };
-    let n = n_shots.unwrap_or_else(|| default_shots(target)).max(4);
-    // hook and title lengths come from published teasers of the brief's genre (refs.rs)
     let pace = crate::refs::pace(brief);
-    let (hook_lo, hook_hi) = if brief.is_gameplay() { (1.5, 3.0) } else { (2.0, 5.0) };
-    let hook = half(pace.hook.clamp(hook_lo, hook_hi));
-    let title = half(pace.title.clamp(3.0, 6.0).min((0.2 * target).max(3.0)));
-    let middle = n - 2;
-    let establish = ((middle as f64 * 0.4).round() as usize).clamp(1, middle - 1);
-    let escalate = middle - establish;
-    // establishing shots breathe; escalation accelerates (each shot a little shorter)
-    let mut beat_weights: Vec<f64> = vec![1.3; establish];
-    for i in 0..escalate {
-        beat_weights.push(1.0 - 0.3 * i as f64 / (escalate.max(2) - 1) as f64);
-    }
-    let rest = (target - hook - title).max(middle as f64);
-    // then follow the measured cutting along the teaser (the style's, else the genre's): a
-    // shot in a busy quarter gets shorter, one in a calm quarter longer (D-29, D-39)
-    let density_at = |frac: f64| {
-        let c = [0.125, 0.375, 0.625, 0.875];
-        let d = pace.density;
-        let v = if frac <= c[0] {
-            d[0]
-        } else if frac >= c[3] {
-            d[3]
-        } else {
-            let i = c.iter().rposition(|x| *x <= frac).unwrap_or(0).min(2);
-            d[i] + (d[i + 1] - d[i]) * (frac - c[i]) / (c[i + 1] - c[i])
-        };
-        v.clamp(0.5, 2.0)
+    let (share, rate) = match crate::refs::beats(brief) {
+        Some(b) => (b.share, b.rate),
+        None => ([0.12, 0.3, 0.42, 0.16], [1.0 / 4.5; 4]),
     };
-    let mut weights = beat_weights.clone();
-    for _ in 0..2 {
-        let sum: f64 = weights.iter().sum();
-        let mut t = hook;
-        weights = beat_weights
-            .iter()
-            .zip(&weights)
-            .map(|(b, w)| {
-                let d = rest * w / sum;
-                let mid = (t + d / 2.0) / target;
-                t += d;
-                b / density_at(mid)
-            })
-            .collect();
+    let shots_time = target - card_reserve(brief, target);
+    // the first cut lands where the measured teaser's does
+    let (hook_lo, hook_hi) = if brief.is_gameplay() { (1.0, 3.0) } else { (1.0, 5.0) };
+    let first = quarter(pace.hook.clamp(hook_lo, hook_hi));
+    // the title shot holds what is left of the title beat once its card has had its time
+    let title = half((share[3] * target - title_card_secs(brief)).clamp(2.0, 6.0));
+    let hook_max = if brief.is_gameplay() { crate::shotcheck::HOOK_LONG_GAMEPLAY } else { crate::shotcheck::HOOK_LONG_TEASER } - HOOK_MARGIN;
+    let hook_beat = (share[0] * target).clamp(first, hook_max.max(first));
+    // pieces (shots and cards) each beat cuts to in the measured teaser, at this length
+    let pieces: Vec<f64> = (0..4).map(|i| rate[i] * share[i] * target).collect();
+    // the hook: the first shot, then short ones (1 s or more) as long as the hook allows
+    let hook_room = (hook_beat - first).floor().max(0.0) as usize;
+    let mut hook_n = 1 + (pieces[0].round() as usize).saturating_sub(1).min(hook_room);
+    let hook_secs = |n: usize| if n > 1 { hook_beat } else { first };
+    // the middle: the measured pieces less one card written there, at least 1 s a shot
+    let middle_room = |n: usize| (shots_time - title - hook_secs(n)).floor().max(2.0) as usize;
+    let mut middle_n = ((pieces[1] + pieces[2] - 1.0).round().max(2.0) as usize).min(middle_room(hook_n));
+    match n_shots {
+        Some(n) => {
+            let n = n.max(4);
+            let split = apportion(n - 1, &[pieces[0].max(0.5), pieces[1] + pieces[2]], &[1, 2]);
+            hook_n = split[0].min(1 + hook_room);
+            middle_n = n - 1 - hook_n;
+        }
+        None => {
+            let over = (hook_n + middle_n + 1).saturating_sub(MAX_SHOTS);
+            middle_n -= over.min(middle_n - 2);
+            // a shot holds 8 s at most, so a slow teaser still needs enough of them
+            middle_n = middle_n.max(((shots_time - title - hook_secs(hook_n)) / 8.0).ceil() as usize);
+        }
     }
-    let sum: f64 = weights.iter().sum();
-    let mut mids: Vec<f64> = weights.iter().map(|w| half(rest * w / sum).clamp(1.5, 8.0)).collect();
-    // rounding and the 1.5-8 s bounds leave some time over: hand it out half a second at a
-    // time to the shot furthest from its share that still has room
-    let mut drift = rest - mids.iter().sum::<f64>();
-    while drift.abs() >= 0.5 {
-        let step: f64 = if drift > 0.0 { 0.5 } else { -0.5 };
-        let want = |i: usize| (rest * weights[i] / sum - mids[i]) * step.signum();
-        let room = |i: &usize| (1.5..=8.0).contains(&(mids[*i] + step));
-        let Some(i) = (0..mids.len()).filter(room).max_by(|a, b| want(*a).total_cmp(&want(*b))) else { break };
-        mids[i] += step;
+    let hook_time = hook_secs(hook_n);
+    let middle = (shots_time - title - hook_time).max(middle_n as f64);
+    let split = apportion(middle_n, &[pieces[1], pieces[2]], &[1, 1]);
+    let (establish, escalate) = (split[0], split[1]);
+    // the middle's time goes as in the measured teaser. Where that teaser escalates faster
+    // than it establishes (most do; the shot check's tempo.escalate), rounding must not turn
+    // it around; where it escalates slower (a third of the styles), the skeleton does too
+    let faster = rate[2] >= rate[1];
+    let mut est_time = middle * share[1] / (share[1] + share[2]);
+    if faster && (middle - est_time) / escalate as f64 > est_time / establish as f64 / 1.1 {
+        // establishing shots 10% longer than the escalating ones
+        let (k1, k2) = (1.1 * establish as f64, escalate as f64);
+        est_time = middle * k1 / (k1 + k2);
+    }
+    let esc_time = middle - est_time;
+    // escalation accelerates: each shot a little shorter than the one before
+    let esc_w: Vec<f64> = (0..escalate).map(|i| 1.15 - 0.3 * i as f64 / (escalate.max(2) - 1) as f64).collect();
+    let esc_sum: f64 = esc_w.iter().sum();
+    let mut want: Vec<f64> = vec![first];
+    want.extend((1..hook_n).map(|_| (hook_time - first) / (hook_n - 1) as f64));
+    want.extend((0..establish).map(|_| est_time / establish as f64));
+    want.extend(esc_w.iter().map(|w| esc_time * w / esc_sum));
+    want.push(title);
+    let mut lens: Vec<f64> = want.iter().map(|d| quarter(*d).clamp(1.0, 8.0)).collect();
+    // rounding and the 1-8 s bounds leave some time over: hand it out a quarter second at a
+    // time to the middle shot furthest from its share that still has room
+    let mid = hook_n..hook_n + middle_n;
+    let mut drift = shots_time - lens.iter().sum::<f64>();
+    while drift.abs() >= 0.25 {
+        let step: f64 = if drift > 0.0 { 0.25 } else { -0.25 };
+        let room = |i: &usize| (1.0..=8.0).contains(&(lens[*i] + step));
+        let gap = |i: usize| (want[i] - lens[i]) * step.signum();
+        let Some(i) = mid.clone().filter(room).max_by(|a, b| gap(*a).total_cmp(&gap(*b))) else { break };
+        lens[i] += step;
         drift -= step;
     }
+    // rounding can even out the two middle beats: keep escalation the faster one
+    let (est, esc) = (hook_n..hook_n + establish, hook_n + establish..hook_n + middle_n);
+    let mean = |r: &std::ops::Range<usize>, l: &[f64]| l[r.clone()].iter().sum::<f64>() / r.len() as f64;
+    for _ in 0..4 * middle_n {
+        if !faster || mean(&esc, &lens) < mean(&est, &lens) {
+            break;
+        }
+        let from = esc.clone().filter(|i| lens[*i] > 1.0).max_by(|a, b| lens[*a].total_cmp(&lens[*b]));
+        let to = est.clone().filter(|i| lens[*i] < 8.0).min_by(|a, b| lens[*a].total_cmp(&lens[*b]));
+        let (Some(from), Some(to)) = (from, to) else { break };
+        lens[from] -= 0.25;
+        lens[to] += 0.25;
+    }
 
-    let mut out = vec![Slot { beat: "hook", duration: hook, size: "one striking image: an extreme close-up or a strange wide" }];
-    for (i, d) in mids.into_iter().enumerate() {
+    let mut out = vec![Slot { beat: "hook", duration: lens[0], size: "one striking image: an extreme close-up or a strange wide" }];
+    for (k, d) in lens[1..hook_n].iter().enumerate() {
+        out.push(Slot { beat: "hook", duration: *d, size: if k % 2 == 0 { "a flash of what is coming: close" } else { "a flash of what is coming: wide" } });
+    }
+    for (i, d) in lens[mid].iter().enumerate() {
         let (beat, size) = if i < establish {
-            ("establish", if i == 0 { "wide / establishing: where we are" } else { "medium: what kind of game this is" })
+            ("establish", if i == 0 { "wide / establishing: where we are" } else if i % 2 == 1 { "medium: what kind of game this is" } else { "detail: something that belongs here" })
         } else {
             let k = i - establish;
             ("escalate", if k + 1 == escalate { "close-up: the peak" } else if k % 2 == 0 { "medium, moving closer" } else { "close" })
         };
-        out.push(Slot { beat, duration: d, size });
+        out.push(Slot { beat, duration: *d, size });
     }
     out.push(Slot { beat: "title", duration: title, size: "wide and calm, room in the upper third for the title card" });
     out
@@ -185,24 +263,52 @@ fn brief_text(b: &BriefCfg) -> String {
 
 /// The skeleton as a table for the prompt.
 pub fn skeleton_text(slots: &[Slot]) -> String {
+    skeleton_text_with(slots, None)
+}
+
+/// The skeleton as a table, with what follows the last shot: the time left for the cards
+/// and how long the `title` card holds.
+pub fn skeleton_text_with(slots: &[Slot], cards: Option<(f64, f64)>) -> String {
     let total: f64 = slots.iter().map(|s| s.duration).sum();
     let mut lines = vec![format!("{} shots, {}s in total. Follow this skeleton; adjust a duration by up to ~1s when a shot needs it:", slots.len(), fmt_g(total))];
     for (i, s) in slots.iter().enumerate() {
-        lines.push(format!("  {:>2}. {:<10} {:>4}s  {}", i + 1, s.beat, fmt_g(s.duration), s.size));
+        lines.push(format!("  {:>2}. {:<10} {:>5}s  {}", i + 1, s.beat, fmt_g(s.duration), s.size));
+    }
+    if let (Some(first), Some(_)) = (slots.first(), cards) {
+        lines.push(format!("Shot 1 holds {}s exactly: the measured teaser makes its first cut there.", fmt_g(first.duration)));
+    }
+    if let Some((reserve, title_card)) = cards {
+        lines.push(format!(
+            "After the last shot: a `black` slot of about 0.5s, then the `title` card for about {}s ({}s with the shots). \
+             Any other card comes out of the shots' time.",
+            fmt_g(title_card),
+            fmt_g(total + reserve)
+        ));
     }
     lines.join("\n")
+}
+
+/// What follows a skeleton's last shot: the time it left for the cards (`card_reserve` at the
+/// target the slots were cut for) and how long the `title` card holds.
+fn cards_after(brief: &BriefCfg, slots: &[Slot]) -> (f64, f64) {
+    let total: f64 = slots.iter().map(|s| s.duration).sum();
+    let reserve = 0.5 + title_card_secs(brief);
+    // the target t had t - min(reserve, 0.2 t) = total
+    let target = if total + reserve >= 5.0 * reserve { total + reserve } else { total / 0.8 };
+    (target - total, title_card_secs(brief))
 }
 
 /// Everything the planner is told about the brief and the craft, in the order it reads it.
 pub fn plan_spec(defn: &Definition, slots: &[Slot]) -> String {
     format!(
-        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}{}\n{}{}{}\n## Framing\n{}",
+        "## Brief\n{}\n{}\n## Skeleton\n{}\n\n## Craft rules\n{}\n{}{}{}{}{}\n{}{}{}\n## Framing\n{}",
         brief_text(&defn.brief),
         plan_text(&defn.brief),
-        skeleton_text(slots),
+        skeleton_text_with(slots, Some(cards_after(&defn.brief, slots))),
         rules_text(),
         crate::refs::baseline_text(),
         crate::refs::type_text(),
+        crate::fonts::title_text(&defn.brief.design),
         crate::refs::motion_text(),
         crate::reference::planner_text(defn),
         crate::refs::planner_text(&defn.brief),
@@ -234,6 +340,7 @@ pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
         plan_text(b)
     );
     if reach == Reach::Sound {
+        out.push_str(&crate::designsys::sound_text(defn));
         return out;
     }
     if reach == Reach::Picture {
@@ -241,12 +348,15 @@ pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
     }
     out.push_str(&crate::refs::baseline_text());
     out.push_str(&crate::refs::type_text());
+    out.push_str(&crate::fonts::title_text(&b.design));
     out.push_str(&crate::refs::motion_text());
     out.push_str(&crate::reference::planner_text(defn));
     out.push_str(&crate::designsys::planner_text(defn));
     out.push_str(&crate::skills::planner_text(b));
+    // the place as the scout read it: the camera works in it, and the camera effects follow
+    // from it (a failing lamp flickers, D-57)
+    out.push_str(&crate::ai::stage_section(defn));
     if reach == Reach::Picture {
-        out.push_str(&crate::ai::stage_section(defn));
         out.push_str(&format!("\n## Framing\n{}\n", framing_table(defn)));
     }
     out

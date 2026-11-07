@@ -36,6 +36,18 @@ pub fn ws() -> Fixture {
     Fixture { dir, ws }
 }
 
+/// The same demo project one folder down (`<temp>/game/shots.yaml`), for tests that make
+/// projects next to it: the siblings stay inside the temp dir, apart from other tests.
+pub fn ws_nested() -> Fixture {
+    let dir = tempfile::tempdir().unwrap();
+    let game = dir.path().join("game");
+    std::fs::create_dir_all(&game).unwrap();
+    let p = game.join("shots.yaml");
+    std::fs::write(&p, templates::render(DEMO, "t", "mock", "null", "/Game/Maps/Courtyard")).unwrap();
+    let ws = Workspace::open(&p).unwrap();
+    Fixture { dir, ws }
+}
+
 /// Mock engine launch records (`.shotpilot/mock_engine/launches.jsonl`).
 pub fn launches(ws: &Workspace) -> Vec<Value> {
     let f = ws.root.join(".shotpilot").join("mock_engine").join("launches.jsonl");
@@ -72,7 +84,7 @@ pub fn discovery_reply() -> Value {
     })
 }
 
-/// A measured reference teaser (D-59) as `shotpilot reference` leaves it, without ffmpeg:
+/// A measured reference teaser (D-71) as `shotpilot reference` leaves it, without ffmpeg:
 /// 40 s, two blacks (one reached by a fade), two white flashes, a whiteout, two lines on black.
 pub fn measured_reference(ws: &Workspace, id: &str) {
     let dir = ws.root.join("reference").join(id);

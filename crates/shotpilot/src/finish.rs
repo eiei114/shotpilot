@@ -10,7 +10,7 @@
 //! No crossfades: an overlap would shorten the cut and pull the sound effects off their cuts.
 //! Dips (through black), flashes and whiteouts (from white) and glitches keep every shot's
 //! length. How the text moves and how long a dip takes come from `finish.motion` (motion.rs);
-//! how each hand-over is drawn is its recipe (handover.rs, D-58).
+//! how each hand-over is drawn is its recipe (handover.rs, D-70).
 
 use std::path::{Path, PathBuf};
 
@@ -46,22 +46,35 @@ pub struct Text {
 }
 
 /// The faces a look sets (`finish.fonts`, D-52): `display` for the title, cards and rules,
-/// `body` for captions, counts, messages and the end card, `latin` for the English lines.
-/// Each is a family of `references/fonts/catalog.json` at one weight; unset roles use the
-/// system mincho / gothic.
+/// `body` for captions, counts, messages and the end card, `latin` for the English lines,
+/// and `title` (D-59) for the title alone when it should not be the display face (a worn or
+/// broken face; the display face stands in where it has no glyph). Each is a family of
+/// `references/fonts/catalog.json` at one weight; unset roles use the system mincho / gothic.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FaceCfg {
     pub display: Option<crate::fonts::Spec>,
     pub body: Option<crate::fonts::Spec>,
     pub latin: Option<crate::fonts::Spec>,
+    pub title: Option<crate::fonts::Spec>,
 }
 
-pub const FACE_ROLES: &[&str] = &["display", "body", "latin"];
+pub const FACE_ROLES: &[&str] = &["display", "body", "latin", "title"];
 
 impl FaceCfg {
     /// The faces that are set, in role order.
     pub fn specs(&self) -> Vec<crate::fonts::Spec> {
-        [&self.display, &self.body, &self.latin].into_iter().flatten().cloned().collect()
+        [&self.display, &self.body, &self.latin, &self.title].into_iter().flatten().cloned().collect()
+    }
+
+    /// As `finish.fonts` is written: the roles that are set.
+    pub fn to_value(&self) -> Value {
+        let mut m = Map::new();
+        for (role, spec) in FACE_ROLES.iter().zip([&self.display, &self.body, &self.latin, &self.title]) {
+            if let Some(s) = spec {
+                m.insert(role.to_string(), Value::String(s.label()));
+            }
+        }
+        Value::Object(m)
     }
 }
 
@@ -177,6 +190,7 @@ pub fn parse(v: Option<&Value>, errs: &mut Vec<String>) -> FinishCfg {
                     "display" => &mut fonts.display,
                     "body" => &mut fonts.body,
                     "latin" => &mut fonts.latin,
+                    "title" => &mut fonts.title,
                     _ => {
                         errs.push(format!("finish.fonts.{role}: one of {}", FACE_ROLES.join(", ")));
                         continue;
@@ -193,7 +207,7 @@ pub fn parse(v: Option<&Value>, errs: &mut Vec<String>) -> FinishCfg {
                 }
             }
         }
-        Some(_) => errs.push("finish.fonts: {display, body, latin} (\"Family:weight\" each)".into()),
+        Some(_) => errs.push("finish.fonts: {display, body, latin, title} (\"Family:weight\" each)".into()),
     }
     let title_size = match m.get("title_size") {
         None | Some(Value::Null) => None,
@@ -282,6 +296,7 @@ pub struct Fonts {
     pub display: Option<Face>,
     pub body: Option<Face>,
     pub latin: Option<Face>,
+    pub title: Option<Face>,
 }
 
 fn first(cands: &[PathBuf]) -> Option<PathBuf> {
@@ -337,7 +352,8 @@ pub fn faces(cfg: &FinishCfg, notes: &mut Vec<String>) -> Option<Fonts> {
             }
         }
     };
-    let (display, body, latin) = (get(&cfg.fonts.display), get(&cfg.fonts.body), get(&cfg.fonts.latin));
+    let (display, body, latin, title) =
+        (get(&cfg.fonts.display), get(&cfg.fonts.body), get(&cfg.fonts.latin), get(&cfg.fonts.title));
     let mut f = match fonts(cfg) {
         Some(f) => f,
         None => {
@@ -348,6 +364,7 @@ pub fn faces(cfg: &FinishCfg, notes: &mut Vec<String>) -> Option<Fonts> {
     f.display = display;
     f.body = body;
     f.latin = latin;
+    f.title = title;
     Some(f)
 }
 
@@ -372,6 +389,8 @@ pub struct ShotPiece {
     pub caption: Option<Text>,
     pub transition: String,
     pub exposure: f64,
+    /// Camera effects on the picture (fx.rs, D-57).
+    pub fx: Vec<crate::fx::Fx>,
     /// Script lines shown over this shot (caption, count).
     pub overlays: Vec<Line>,
 }
@@ -406,9 +425,12 @@ pub fn describe(cfg: &FinishCfg, pieces: &[CutPiece]) -> Map<String, Value> {
         })
         .sum();
     m.insert("overlays".into(), serde_json::json!(overlays));
+    let fx: usize = pieces.iter().map(|p| if let CutPiece::Shot(s) = p { s.fx.len() } else { 0 }).sum();
+    m.insert("fx".into(), serde_json::json!(fx));
     let label = |s: &Option<crate::fonts::Spec>| s.as_ref().map(crate::fonts::Spec::label);
     m.insert("fonts".into(), serde_json::json!({
         "display": label(&cfg.fonts.display), "body": label(&cfg.fonts.body), "latin": label(&cfg.fonts.latin),
+        "title": label(&cfg.fonts.title),
     }));
     m.insert("logo".into(), serde_json::json!(cfg.logo));
     m
@@ -419,7 +441,9 @@ pub fn needed(cfg: &FinishCfg, pieces: &[CutPiece]) -> bool {
     !cfg.is_empty()
         || pieces.iter().any(|p| match p {
             CutPiece::Slot(..) => true,
-            CutPiece::Shot(s) => s.caption.is_some() || s.transition != "cut" || !s.overlays.is_empty() || s.exposure != 0.0,
+            CutPiece::Shot(s) => {
+                s.caption.is_some() || s.transition != "cut" || !s.overlays.is_empty() || s.exposure != 0.0 || !s.fx.is_empty()
+            }
         })
 }
 
@@ -435,6 +459,8 @@ use crate::motion::{fade, Motion, RoleMotion};
 /// the quiet lines of a message (fallback: the gothic); its Latin face for English lines.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Role {
+    /// The title: its own face when set, else the display face.
+    Title,
     Display,
     Body,
     Quiet,
@@ -509,8 +535,18 @@ impl Ink<'_> {
     /// for one of the line's characters (then the system face, and a note).
     fn font_for(&mut self, role: Role, body: &str) -> PathBuf {
         let fonts = self.fonts;
+        if let (Role::Title, Some(t)) = (role, &fonts.title) {
+            if crate::fonts::covers(&t.path, body) != Some(false) {
+                return t.path.clone();
+            }
+            let note = format!("{} has no glyph for 「{}」; the title used the display face",
+                               t.label, crate::fonts::missing(&t.path, body));
+            if !self.notes.contains(&note) {
+                self.notes.push(note);
+            }
+        }
         let (face, system) = match role {
-            Role::Display => (&fonts.display, &fonts.main),
+            Role::Title | Role::Display => (&fonts.display, &fonts.main),
             Role::Body => (&fonts.body, &fonts.main),
             Role::Quiet => (&fonts.body, &fonts.sans),
             Role::Latin => (&fonts.latin, &fonts.sans),
@@ -698,7 +734,7 @@ fn slot(ink: &mut Ink, l: &Line, d: f64, w: i64, h: i64, fps: i64) -> crate::Res
         }
         "title" => {
             let size = ink.title_px(&l.ja);
-            let (lines, wp) = ink.line(&l.ja, Role::Display, &rm, 0.0, d, size, INK, Across::Centre, 530.0 * s, 0.0, true)?;
+            let (lines, wp) = ink.line(&l.ja, Role::Title, &rm, 0.0, d, size, INK, Across::Centre, 530.0 * s, 0.0, true)?;
             f.extend(lines);
             wipe = wp;
             if !l.en.is_empty() {
@@ -813,6 +849,7 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
         .or_else(|| pieces.iter().rposition(|p| matches!(p, CutPiece::Shot(_))));
     let mut labels = Vec::new();
     let mut k = 0;
+    let mut clock = 0.0;
     for (i, p) in pieces.iter().enumerate() {
         match p {
             CutPiece::Shot(x) => {
@@ -825,7 +862,7 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                     None if x.exposure != 0.0 => f.push(format!("eq=brightness={:.3}", x.exposure)),
                     None => {}
                 }
-                // the hand-overs either side of the shot: their recipes (D-58), timed by the
+                // the hand-overs either side of the shot: their recipes (D-70), timed by the
                 // motion profile (D-53)
                 if let Some(CutPiece::Shot(prev)) = i.checked_sub(1).map(|j| &pieces[j]) {
                     f.extend(hand_over(&ink.motion, &prev.transition, Side::In, x.duration, h, fps));
@@ -833,6 +870,19 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                 if matches!(pieces.get(i + 1), Some(CutPiece::Shot(_))) {
                     f.extend(hand_over(&ink.motion, &x.transition, Side::Out, x.duration, h, fps));
                 }
+                // camera effects on the picture, under the text (D-57); the moves the cut avoids take theirs out
+                let mut fx: Vec<crate::fx::Fx> = Vec::new();
+                for e in &x.fx {
+                    match crate::fx::avoided_by(&e.kind, &ink.motion.avoid) {
+                        Some(by) => ink.notes.push(format!(
+                            "the `{}` effect at {}s was left out: the cut's motion avoids `{by}`",
+                            e.kind,
+                            fmt_g(crate::geometry::round_to(clock + e.at, 2))
+                        )),
+                        None => fx.push(e.clone()),
+                    }
+                }
+                f.extend(crate::fx::filters(&fx, x.duration, w, h));
                 if has_text {
                     for l in &x.overlays {
                         f.extend(overlay(&mut ink, l, x.duration)?);
@@ -845,7 +895,7 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
                             let (a, b) = (t.at.min(x.duration - 0.5).max(0.0), (t.at + t.duration).min(x.duration));
                             let y = ink.cy(500.0);
                             let size = if cfg.title_size.is_some() { ink.title_px(&t.text) } else { ink.fit(&t.text, 120.0, 0.86) };
-                            f.push(ink.text(&t.text, Role::Display, size, INK, CX, &y, &fade(a, b, 0.4, 0.5), 1.0)?);
+                            f.push(ink.text(&t.text, Role::Title, size, INK, CX, &y, &fade(a, b, 0.4, 0.5), 1.0)?);
                         }
                     }
                 }
@@ -863,6 +913,7 @@ pub fn filter_graph(cfg: &FinishCfg, pieces: &[CutPiece], w: i64, h: i64, fps: i
             }
         }
         labels.push(format!("[p{i}]"));
+        clock += p.duration();
     }
     let mut total: f64 = pieces.iter().map(CutPiece::duration).sum();
     if let Some((lines, d)) = cfg.end_card.as_ref().filter(|_| has_text) {

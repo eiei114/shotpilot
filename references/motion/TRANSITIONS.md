@@ -1,6 +1,6 @@
 # Teaser transitions — カットのつなぎの作り方
 
-> 出典: open-design（nexu-io/open-design、Apache-2.0）の Motion Design の作り方（`skills/motion-design/SKILL.md` と `references/replicate.md`、OD Next の `task-profiles/motion-design.md` と `hyperframes.md`）と、そのとき読まれるつなぎの参照（`design-templates/hyperframes/references/transitions.md`、`transitions/catalog.md` と `css-dissolve.md`・`css-light.md`・`css-distortion.md`、`motion-principles.md`）を、ゲームのティザーと shotpilot の決まり（尺を変えない、2 つの画を重ねない、秒数はコードが決める）に合わせて言い換えた（D-58）。長さの数値は `MOTION.md` と同じ実測（`research_notes/モーションデザイン/`）から取った。
+> 出典: open-design（nexu-io/open-design、Apache-2.0）の Motion Design の作り方（`skills/motion-design/SKILL.md` と `references/replicate.md`、OD Next の `task-profiles/motion-design.md` と `hyperframes.md`）と、そのとき読まれるつなぎの参照（`design-templates/hyperframes/references/transitions.md`、`transitions/catalog.md` と `css-dissolve.md`・`css-light.md`・`css-distortion.md`、`motion-principles.md`）を、ゲームのティザーと shotpilot の決まり（尺を変えない、2 つの画を重ねない、秒数はコードが決める）に合わせて言い換えた（D-70）。長さの数値は `MOTION.md` と同じ実測（`research_notes/モーションデザイン/`）から取った。
 > 8 節だけが plan と、画・文字を変える修正に渡る（`refs::motion_text`）。1〜7 節は、コード（`handover.rs`）がつなぎを描くときの形と、その根拠。形の数値は `transitions.json`、ジャンルごとの長さは `profiles.json`。
 
 ## 1. 作り方の流れ
@@ -13,7 +13,7 @@ open-design の Motion Design は、つなぎを次の順で決める。shotpilo
 | 2 | 勢い（energy）で主なつなぎと長さの帯を、気分（mood）で差し色を決める | ルックの profile（`profiles.json` の `energy`・`accent`・`dip`） |
 | 3 | 置き場所（冒頭、同じ話の続き、話題の変わり目、山場、終わり）で、どこに差し色を使うかを決める | 8 節を plan に渡す。差し色の種類はコードが 2 つまでに整える |
 | 4 | つなぎごとのレシピ（どの値を、何秒で、どの緩急で動かし、どこで入れ替えるか）をそのまま使う | `transitions.json` のレシピを `handover.rs` が ffmpeg のフィルタにする |
-| 5 | 参照の映像は、目で見積もらずに測ってから組む（"Measure the timeline; never estimate it."） | 長さの数値は実測（D-29、D-53）を正本にする。好きなティザーは `shotpilot reference` で同じ物差しで測り、その長さを写す（D-59） |
+| 5 | 参照の映像は、目で見積もらずに測ってから組む（"Measure the timeline; never estimate it."） | 長さの数値は実測（D-29、D-53）を正本にする。好きなティザーは `shotpilot reference` で同じ物差しで測り、その長さを写す（D-71） |
 
 モデルに選ばせるのは 1 と 3 の語だけで、2 と 4 の数値はデータとコードが持つ。同じ定義からは、いつも同じコマが出る。
 

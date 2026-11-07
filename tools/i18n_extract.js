@@ -2,10 +2,10 @@
 // dictionary (web/i18n-en.json) does not know yet, and refresh web/i18n-free.json (which holes of a
 // key hold the user's or Claude's own words, so they are left as written).
 // Keys keep their interpolations as {0}, {1}, ...; the runtime turns them into patterns.
-// usage: node tools/i18n_extract.js [repo]   (prints the missing keys as JSON)
+// usage: node tools/i18n_extract.js [repo] [--check]   (prints the missing keys as JSON; --check writes nothing)
 const fs = require("fs");
 const path = require("path");
-const repo = process.argv[2] || path.join(__dirname, "..");
+const repo = process.argv.slice(2).find((a) => !a.startsWith("--")) || path.join(__dirname, "..");
 const KANA = /[\u3040-\u30ff\u4e00-\u9fff]/;
 const OPEN = "\u0001", CLOSE = "\u0004";
 const HOLE = new RegExp(`${OPEN}(\\d*)${CLOSE}`, "g");
@@ -155,5 +155,6 @@ console.log(JSON.stringify(Object.fromEntries(missing.map((k) => [k, ""])), null
 const freeFile = path.join(web, "i18n-free.json");
 const old = fs.existsSync(freeFile) ? JSON.parse(fs.readFileSync(freeFile, "utf8")) : {};
 const merged = Object.fromEntries(Object.entries({ ...old, ...free }).filter(([k]) => k in dict).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
-fs.writeFileSync(freeFile, JSON.stringify(merged, null, 1) + "\n");
+// --check only lists (the dev hook runs it after every edit and must not write)
+if (!process.argv.includes("--check")) fs.writeFileSync(freeFile, JSON.stringify(merged, null, 1) + "\n");
 console.error(`${keys.size} keys in the sources, ${missing.length} not in i18n-en.json; add them (Japanese -> English) and rerun`);

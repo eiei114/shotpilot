@@ -13,6 +13,7 @@ between engine versions go through small fallbacks (_call_first).
 """
 
 import json
+import math
 import os
 import time
 import traceback
@@ -221,9 +222,70 @@ def readback(seq):
     return out
 
 
+def _trace_fraction(start, end, near=60.0):
+    """How far along start->end (0..1) the first wall on the visibility channel is, or None.
+    Skips what the trace starts inside (the anchor itself) and small things right next to the
+    start (a chair's backrest), so the camera stops at walls, not at the anchor's own clutter.
+    Needs the full editor: a commandlet has no static mesh collision to trace against."""
+    q = unreal.TraceTypeQuery
+    channel = getattr(q, "ECC_VISIBILITY", None) or q.TRACE_TYPE_QUERY1
+    total = (end - start).length()
+    ignore = []
+    for _ in range(6):
+        hit = unreal.SystemLibrary.line_trace_single(editor_world(), start, end, channel, False, ignore,
+                                                     unreal.DrawDebugTrace.NONE, True)
+        if isinstance(hit, tuple):  # (ok, hit) on versions that return the bool too
+            hit = hit[1] if hit and hit[0] else None
+        if hit is None:
+            return None
+        h = hit.to_dict()  # 5.8: the fields themselves are protected from Python
+        t, actor = float(h.get("time", 1.0)), h.get("hit_actor")
+        small = False
+        if actor is not None and not h.get("initial_overlap") and t * total < near:
+            _, ext = actor.get_actor_bounds(False)
+            small = 2 * max(ext.x, ext.y, ext.z) < 200.0
+        if actor is not None and (h.get("initial_overlap") or small):
+            ignore.append(actor)
+            continue
+        return t if 0.0 <= t < 1.0 else None
+    return None
+
+
+def clear_view(payload, target, margin=30.0, min_lens=12.0):
+    """Scout cameras only (they are not shots): when something solid stands between the anchor and
+    the camera, move the camera along the same line to just in front of it, and widen the lens by
+    the same ratio so the anchor keeps its size in frame. Returns (payload, what changed or None)."""
+    loc = payload["start"]["location"]
+    s, e = unreal.Vector(*target), unreal.Vector(*loc)
+    t = _trace_fraction(s, e)
+    if t is None:
+        return payload, None
+    total = (e - s).length()
+    if total < 1e-3:
+        return payload, None
+    free = t * total  # open line from the anchor to the wall
+    ratio = max(free - margin, min(free * 0.5, 40.0)) / total
+    new = [round(target[i] + (loc[i] - target[i]) * ratio, 1) for i in range(3)]
+    payload = json.loads(json.dumps(payload))
+    for k in ("start", "end"):
+        payload[k]["location"] = new
+    lens = payload.setdefault("lens", {})
+    focal = round(max(min_lens, float(lens.get("focal_length", 35.0)) * max(ratio, 1e-3)), 1)
+    lens["focal_length"] = focal
+    log("scout camera pulled in front of a wall: %s -> %s, %smm" % (loc, new, focal))
+    return payload, {"location": new, "focal_length": focal}
+
+
 def build_shot(item, project, force):
     path = item["asset"]
     payload = item["payload"]
+    moved, moved_error = None, None
+    if item.get("clear_view"):
+        try:
+            payload, moved = clear_view(payload, item["clear_view"]["target"])
+        except Exception:  # a scout photo from the planned spot beats no photo: report, keep going
+            moved_error = traceback.format_exc()
+            warn("scout camera not checked for walls: " + moved_error.strip().splitlines()[-1])
     if EAL.does_asset_exist(path):
         if item.get("base") is not None and not force:
             seq = unreal.load_asset(path)
@@ -313,7 +375,12 @@ def build_shot(item, project, force):
             warn("marker skipped: %s" % e)
 
     EAL.save_loaded_asset(seq)
-    return {"status": "built", "engine": readback(seq)}
+    out = {"status": "built", "engine": readback(seq)}
+    if moved:
+        out["clear_view"] = moved
+    if moved_error:
+        out["clear_view_error"] = moved_error
+    return out
 
 
 def add_prop(seq, ap, frames):
@@ -666,14 +733,22 @@ def configure_job(job, item, map_path, game_mode=None):
 
 # ------------------------------------------------------------------ what a shot showed (game content)
 #
-# While MRQ renders a shot in PIE, a tick callback samples the actors the renderer drew
-# (Actor.was_recently_rendered) and collects the content packages behind them: the actor's
-# Blueprint class, meshes, materials, Niagara systems, then their hard dependencies
-# (materials -> textures). When the job finishes, the packages that are files under the
-# project are reported as the shot's `deps`; shotpilot hashes them, so a later change to
-# one of them (a texture, a material) re-renders only the shots that showed it.
+# While MRQ renders a shot in PIE, a tick callback samples the actors on screen and collects
+# the content packages behind them: the actor's Blueprint class, meshes, materials, Niagara
+# systems, then their hard dependencies (materials -> textures). When the job finishes, the
+# packages that are files under the project are reported as the shot's `deps`; shotpilot
+# hashes them, so a later change to one of them (a texture, a material) re-renders only the
+# shots that showed it.
+# "On screen" is three tests, cheapest first: the renderer drew the actor lately
+# (was_recently_rendered, which is also true for shadow passes, so a directional light's
+# shadow alone marks the whole level), its bounds reach into the camera's view (with a
+# margin), and a visibility trace from the camera reaches some point of its bounds without
+# hitting something else first. Samples are taken only while the sequence's camera is the
+# view target. When no sample saw that camera, the shot reports everything the renderer
+# drew (re-rendering too much beats missing a change) and says so in `deps_error`.
 # Not covered: where actors are placed in an editor level (World Partition keeps them in
-# __ExternalActors__ packages we cannot map back from PIE), and game code.
+# __ExternalActors__ packages we cannot map back from PIE), game code, and actors that only
+# cast a shadow into the frame from outside it.
 
 SKIP_ROOTS = ("/Script/", "/Engine/", "/Temp/", "/Memory/", "/Transient", "/Niagara/")
 DEPS_LIMIT = 800
@@ -798,17 +873,116 @@ def _game_world():
     return None
 
 
-class ShotContent(object):
-    """Samples what the renderer draws while each MRQ job runs (see the comment above)."""
+VIEW_MARGIN = 1.1   # widen the view a little: edges, motion blur and bokeh still show things
+GRID = (-0.9, 0.0, 0.9)  # where in an actor's bounds the traces aim (27 points)
 
-    EVERY = 10  # ticks between samples
+
+def _view(world, aspect):
+    """The camera the PIE world looks through, as (origin, forward, right, up, tan_h, tan_v), or
+    None while it is not a camera actor (warm-up frames before the sequence's camera cut)."""
+    pcm = unreal.GameplayStatics.get_player_camera_manager(world, 0)
+    if pcm is None:
+        return None
+    target = None
+    for get in (lambda: pcm.get_view_target(),
+                lambda: unreal.GameplayStatics.get_player_controller(world, 0).get_view_target()):
+        try:
+            target = get()
+            break
+        except Exception:
+            continue
+    if target is not None and not isinstance(target, unreal.CameraActor):
+        return None
+    rot = pcm.get_camera_rotation()
+    tan_h = math.tan(math.radians(float(pcm.get_fov_angle())) / 2.0) * VIEW_MARGIN
+    return (pcm.get_camera_location(), rot.get_forward_vector(), rot.get_right_vector(), rot.get_up_vector(),
+            tan_h, tan_h / max(aspect, 0.1))
+
+
+def _in_view(view, p):
+    """(depth, in view?) of a world point."""
+    o, f, r, u, th, tv = view
+    d = p - o
+    x, y, z = d.dot(f), d.dot(r), d.dot(u)
+    return x, (x > 1.0 and abs(y) <= x * th and abs(z) <= x * tv)
+
+
+def _box_culled(view, origin, ext):
+    """True when the box lies wholly outside one side of the view (a conservative test)."""
+    o, f, r, u, th, tv = view
+    corners = []
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            for sz in (-1, 1):
+                d = unreal.Vector(origin.x + sx * ext.x, origin.y + sy * ext.y, origin.z + sz * ext.z) - o
+                corners.append((d.dot(f), d.dot(r), d.dot(u)))
+    planes = (lambda x, y, z: x < 1.0, lambda x, y, z: y > x * th, lambda x, y, z: -y > x * th,
+              lambda x, y, z: z > x * tv, lambda x, y, z: -z > x * tv)
+    return any(all(out(*c) for c in corners) for out in planes)
+
+
+def _reaches(world, start, end, actor):
+    """Whether a visibility trace from the camera gets to `end` without hitting something
+    other than `actor` first. What the trace starts inside (a camera in a trigger) is skipped."""
+    q = unreal.TraceTypeQuery
+    channel = getattr(q, "ECC_VISIBILITY", None) or q.TRACE_TYPE_QUERY1
+    ignore = []
+    for _ in range(4):
+        hit = unreal.SystemLibrary.line_trace_single(world, start, end, channel, False, ignore,
+                                                     unreal.DrawDebugTrace.NONE, True)
+        if isinstance(hit, tuple):  # (ok, hit) on versions that return the bool too
+            hit = hit[1] if hit and hit[0] else None
+        if hit is None:
+            return True
+        h = hit.to_dict()
+        other = h.get("hit_actor")
+        if other is None or other.get_path_name() == actor.get_path_name():
+            return True
+        if h.get("initial_overlap"):
+            ignore.append(other)
+            continue
+        return False
+    return True
+
+
+def _on_screen(world, view, actor):
+    origin, ext = actor.get_actor_bounds(False)
+    o = view[0]
+    if all(abs(c) <= e + 10.0 for c, e in ((o.x - origin.x, ext.x), (o.y - origin.y, ext.y), (o.z - origin.z, ext.z))):
+        return True  # the camera is inside it
+    if _box_culled(view, origin, ext):
+        return False
+    aims = []
+    for fx in GRID:
+        for fy in GRID:
+            for fz in GRID:
+                p = unreal.Vector(origin.x + fx * ext.x, origin.y + fy * ext.y, origin.z + fz * ext.z)
+                depth, inside = _in_view(view, p)
+                if inside:
+                    aims.append((depth, p))
+    if not aims:
+        return True  # it spans the view without a sample point inside: count it
+    for _, p in sorted(aims, key=lambda a: a[0]):  # nearest first: the likeliest to be seen
+        if _reaches(world, o, p, actor):
+            return True
+    return False
+
+
+class ShotContent(object):
+    """Samples what is on screen while each MRQ job runs (see the comment above)."""
+
+    EVERY = 5  # ticks between samples
 
     def __init__(self):
         self.key = None
         self.ticks = 0
         self.packages = {}   # render key -> set of packages seen on screen
+        self.drawn = {}      # render key -> set of packages the renderer drew (shadows too)
+        self.views = {}      # render key -> samples taken through the sequence's camera
+        self.aspect = {}     # render key -> output width / height
         self.errors = {}     # render key -> first traceback
         self.by_actor = {}   # actor path -> packages (an actor's assets do not change mid-shot)
+        self.shown = set()   # actor paths already on screen in this job
         self.handle = None
 
     def start(self):
@@ -823,8 +997,10 @@ class ShotContent(object):
             self.handle = None
 
     def job_started(self, key):
-        self.key, self.ticks, self.by_actor = key, 0, {}
+        self.key, self.ticks, self.by_actor, self.shown = key, 0, {}, set()
         self.packages.setdefault(key, set())
+        self.drawn.setdefault(key, set())
+        self.views.setdefault(key, 0)
 
     def tick(self, delta):
         if self.key is None:
@@ -836,30 +1012,57 @@ class ShotContent(object):
             world = _game_world()
             if world is None:
                 return
-            seen = self.packages[self.key]
+            key = self.key
+            try:
+                view = _view(world, self.aspect.get(key, 16.0 / 9.0))
+            except Exception:
+                view = None
+                self.errors.setdefault(key, traceback.format_exc())
+            if view is not None:
+                self.views[key] += 1
             for a in unreal.GameplayStatics.get_all_actors_of_class(world, unreal.Actor):
                 if not a.was_recently_rendered(0.5):
                     continue
                 path = a.get_path_name()
                 if path not in self.by_actor:
                     self.by_actor[path] = _actor_packages(a)
-                seen.update(self.by_actor[path])
+                self.drawn[key].update(self.by_actor[path])
+                if view is None or path in self.shown:
+                    continue
+                try:
+                    shown = _on_screen(world, view, a)
+                except Exception:
+                    shown = True  # cannot tell: count it rather than miss it
+                    self.errors.setdefault(key, traceback.format_exc())
+                if shown:
+                    self.shown.add(path)
+                    self.packages[key].update(self.by_actor[path])
         except Exception:
             self.errors.setdefault(self.key, traceback.format_exc())
 
     def report(self, key):
-        """[{package, file}] for one render key, or (None, error)."""
-        if key in self.errors and not self.packages.get(key):
-            return None, self.errors[key]
+        """([{package, file}], note or error) for one render key, or (None, error)."""
+        note = self.errors.get(key)
+        if self.views.get(key):
+            packages = self.packages.get(key, set())
+        else:
+            packages = self.drawn.get(key, set())
+            if packages:
+                note = note or ("the sequence's camera was never the view target while sampling; "
+                                "reporting everything the renderer drew (shadow passes included)")
+        log("deps %s: %d packages on screen over %d camera samples (%d drawn)"
+            % (key, len(self.packages.get(key, ())), self.views.get(key, 0), len(self.drawn.get(key, ()))))
+        if note and not packages:
+            return None, note
         out = []
         try:
-            for pkg in sorted(_expand(self.packages.get(key, set()))):
+            for pkg in sorted(_expand(packages)):
                 f = _package_file(pkg)
                 if f:
                     out.append({"package": pkg, "file": f})
         except Exception:
             return None, traceback.format_exc()
-        return out, self.errors.get(key)
+        return out, note
 
 
 def keep_alive(flag):
@@ -903,6 +1106,9 @@ def run_render(job):
         return
 
     content = ShotContent()
+    for item in job["render"]:
+        res = item.get("resolution") or [16, 9]
+        content.aspect[item["key"]] = float(res[0]) / max(float(res[1]), 1.0)
     content_error = None
     try:
         content.start()

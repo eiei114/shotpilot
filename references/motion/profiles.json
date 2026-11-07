@@ -3,7 +3,7 @@
   "sources": {
     "frames": "research_notes/モーションデザイン/corpus_*.md (33 teasers read frame by frame)",
     "auto": "research_notes/モーションデザイン/auto_measure.md (736 teasers measured from luma: text on black, black gaps, white flashes)",
-    "handovers": "references/motion/transitions.json (how each hand-over is drawn; `whiteout` and `glitch` default there; a cut with no finish.motion draws them as before D-58)"
+    "handovers": "references/motion/transitions.json (how each hand-over is drawn; `whiteout` and `glitch` default there; a cut with no finish.motion draws them as before D-70)"
   },
   "energies": {
     "calm": 1.4,

@@ -168,6 +168,9 @@ pub fn produce(ws: &mut Workspace, claude: &dyn Claude, images: Option<&dyn Imag
     entry.insert("rationale".into(), json!(p.rationale));
     entry.insert("adjustments".into(), json!(p.adjustments));
     entry.insert("references".into(), json!(p.references));
+    if !p.candidates.is_empty() {
+        entry.insert("candidates".into(), json!(p.candidates));
+    }
     entry.insert("checks".into(), checks);
     entry.insert("shots".into(), json!(p.shots.iter().map(|s| &s["id"]).collect::<Vec<_>>()));
 

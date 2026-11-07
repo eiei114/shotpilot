@@ -144,6 +144,25 @@ pub fn planner_text(defn: &Definition) -> String {
     out
 }
 
+/// The look's sound (DESIGN.md section 7, Sound Character), for whoever picks the music and
+/// the effects: the game's own DESIGN.md first, else the active look's. Empty without one.
+pub fn sound_text(defn: &Definition) -> String {
+    let own = project_doc(&defn.root());
+    let doc = match (&own, get(&defn.brief.design)) {
+        (Some(d), _) => d.as_str(),
+        (None, Some(p)) => p.doc,
+        (None, None) => return String::new(),
+    };
+    let Some(i) = doc.find("\n## 7.") else { return String::new() };
+    let body = &doc[i + 1..];
+    let body = body.split_once('\n').map_or("", |(_, b)| b);
+    let body = body.split("\n## ").next().unwrap_or("").trim();
+    if body.is_empty() {
+        return String::new();
+    }
+    format!("\n## The look's sound (DESIGN.md, Sound Character)\n{body}\n")
+}
+
 /// One line per bundled design system, for the planning turn to choose from.
 pub fn catalogue_text() -> String {
     all()
@@ -171,7 +190,11 @@ pub fn finish_entries(d: &DesignSystem) -> Vec<(String, Value)> {
 pub fn look_entries(d: &DesignSystem) -> Vec<(String, Value)> {
     let t = &d.tokens["type"];
     let face = |k: &str| t[k].as_str().filter(|s| crate::fonts::Spec::parse(s).is_ok()).map(str::to_string);
-    let fonts = json!({"display": face("display"), "body": face("body"), "latin": face("latin")});
+    let mut fonts = json!({"display": face("display"), "body": face("body"), "latin": face("latin")});
+    // a look may name its own title face (D-59); most leave the title to the display face
+    if let Some(t) = face("title") {
+        fonts["title"] = json!(t);
+    }
     let motion = match &d.tokens["motion"] {
         Value::Object(m) if !m.is_empty() => Value::Object(m.clone()),
         _ => Value::Null,

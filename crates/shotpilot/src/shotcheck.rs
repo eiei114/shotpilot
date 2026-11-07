@@ -62,7 +62,7 @@ pub const RULES: &[Rule] = &[
     Rule { id: "runtime.target", severity: Severity::P1, basis: "inferred",
            summary: "Runtime within 10% of the target" },
     Rule { id: "hook.long", severity: Severity::P1, basis: "inferred",
-           summary: "The hook is short (teaser <= 6 s, gameplay trailer <= 3 s)" },
+           summary: "The hook is short (teaser <= 10 s, as long as 3 in 4 analysed teasers hold it; gameplay trailer <= 3 s)" },
     Rule { id: "camera.inside", severity: Severity::P1, basis: "inferred",
            summary: "The camera is never inside its subject (outside its box, or >= 40 cm away when its size is unknown)" },
     Rule { id: "frame.lost", severity: Severity::P2, basis: "inferred",
@@ -84,6 +84,12 @@ pub const RULES: &[Rule] = &[
     Rule { id: "transition.mix", severity: Severity::P2, basis: "inferred",
            summary: "One main hand-over (cut) and at most two others (open-design: one primary transition and one or two accents)" },
 ];
+
+/// The longest hook a teaser holds before `hook.long`: the upper quartile (10.4 s) of the hooks
+/// of the analysed styles (refs::beats), rounded down. It was 6 s before it was measured (D-68).
+pub const HOOK_LONG_TEASER: f64 = 10.0;
+/// The same for a gameplay trailer, which shows play from the first seconds (not measured).
+pub const HOOK_LONG_GAMEPLAY: f64 = 3.0;
 
 pub fn rule(id: &str) -> Option<&'static Rule> {
     RULES.iter().find(|r| r.id == id)
@@ -276,10 +282,10 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
                  format!("Bring the shot and card durations to about {}s in total.", fmt_g(target)));
     }
     let hook: f64 = shots.iter().filter(|s| s.beat.as_deref() == Some("hook")).map(|s| s.duration).sum();
-    let hook_max = if gameplay { 3.0 } else { 6.0 };
+    let hook_max = if gameplay { HOOK_LONG_GAMEPLAY } else { HOOK_LONG_TEASER };
     if hook > hook_max {
         out.push("hook.long", None,
-                 format!("hook runs {}s; keep it under ~{}s", fmt_g(round_to(hook, 2)), fmt_g(hook_max - 1.0)),
+                 format!("hook runs {}s; keep it within {}s", fmt_g(round_to(hook, 2)), fmt_g(hook_max)),
                  "Shorten the hook to one striking image.");
     }
     for s in shots {
@@ -300,7 +306,10 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
         let d: Vec<f64> = shots.iter().filter(|s| s.beat.as_deref() == Some(beat)).map(|s| s.duration).collect();
         (!d.is_empty()).then(|| d.iter().sum::<f64>() / d.len() as f64)
     };
-    if let (Some(est), Some(esc)) = (mean("establish"), mean("escalate")) {
+    // a third of the analysed styles escalate slower than they establish: following one of
+    // those is the director's choice, not a slip (D-68)
+    let style_slows = crate::refs::style(&defn.brief.style).and_then(|s| s.beats()).is_some_and(|b| b.rate[2] < b.rate[1]);
+    if let (Some(est), Some(esc), false) = (mean("establish"), mean("escalate"), style_slows) {
         if esc > est {
             out.push("tempo.escalate", None,
                      format!("escalate shots average {}s, longer than establish ({}s)", fmt_g(round_to(esc, 1)), fmt_g(round_to(est, 1))),
@@ -359,6 +368,15 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
                         events.push((start + l.at, Some(s.id.clone())));
                     }
                 }
+                // camera effects that flash (D-57), unless the cut avoids them
+                for f in defn.shots.get(s.index).map(crate::fx::of).unwrap_or_default() {
+                    if crate::fx::avoided(&f.kind, &motion.avoid) {
+                        continue;
+                    }
+                    for t in crate::fx::flash_times(&f) {
+                        events.push((start + t, Some(s.id.clone())));
+                    }
+                }
             }
             crate::script::Piece::Slot(j) => {
                 let l = &defn.script[*j];
@@ -376,12 +394,12 @@ pub fn check(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Finding> {
         if n > 3 && !flagged {
             flagged = true;
             out.push("flash.rate", shot.as_deref(),
-                     format!("{n} flashes within one second from {}s (flash and whiteout hand-overs, flickering text)", fmt_g(round_to(*t0, 1))),
+                     format!("{n} flashes within one second from {}s (flash and whiteout hand-overs, flickering text, flashing effects)", fmt_g(round_to(*t0, 1))),
                      "Turn some of these flashes into cuts or dips, or space the short shots out.");
         }
     }
 
-    // ---- hand-overs (D-58): a main one and one or two accents, as drawn (after `avoid`)
+    // ---- hand-overs (D-70): a main one and one or two accents, as drawn (after `avoid`)
     let mut kinds: Vec<String> = Vec::new();
     for w in items.windows(2) {
         if let (crate::script::Piece::Shot(i), crate::script::Piece::Shot(_)) = (&w[0].piece, &w[1].piece) {
@@ -480,4 +498,41 @@ pub fn for_planner(findings: &[Finding]) -> String {
         lines.push(format!("- {}  Fix: {}", f.line(), f.fix));
     }
     lines.join("\n")
+}
+
+#[cfg(test)]
+mod rule_table_tests {
+    use super::*;
+
+    /// Guards the severity invariant (D-21): only a rule with an outside source may be P0.
+    #[test]
+    fn only_sourced_rules_are_p0() {
+        assert!(RULES.iter().any(|r| r.severity == Severity::P0), "expected P0 rules to exist");
+        for r in RULES.iter().filter(|r| r.severity == Severity::P0) {
+            assert_eq!(r.basis, "sourced", "{} is P0 without an outside source", r.id);
+        }
+    }
+
+    /// Guards the severity invariant (D-21, D-65): an inferred threshold is advice (P2). The
+    /// three below have been P1 since the shot check began (the runtime against the brief's
+    /// target, a long hook, a camera inside its subject); a new inferred rule at P1 has to be
+    /// added here on purpose. None of them can block an approval (only P0 does).
+    #[test]
+    fn inferred_rules_are_p2_except_the_three_named_at_p1() {
+        const AT_P1: &[&str] = &["runtime.target", "hook.long", "camera.inside"];
+        for r in RULES.iter().filter(|r| r.basis == "inferred") {
+            let want = if AT_P1.contains(&r.id) { Severity::P1 } else { Severity::P2 };
+            assert_eq!(r.severity, want, "{} is inferred but {}", r.id, r.severity.as_str());
+        }
+    }
+
+    /// Every rule names a known basis and ids are unique, so the two checks above cannot be
+    /// dodged with a new spelling.
+    #[test]
+    fn every_rule_has_a_known_basis_and_a_unique_id() {
+        for (i, r) in RULES.iter().enumerate() {
+            assert!(["sourced", "observed", "inferred"].contains(&r.basis), "{}: basis '{}'", r.id, r.basis);
+            assert!(RULES[i + 1..].iter().all(|o| o.id != r.id), "duplicate rule {}", r.id);
+        }
+    }
 }

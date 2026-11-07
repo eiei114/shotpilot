@@ -537,7 +537,7 @@ fn the_finish_is_definition_and_never_rerenders() {
     let pieces: Vec<CutPiece> = shots.iter().map(|s| {
         let raw = &f.ws.defn.shots[s.index];
         let p = CutPiece::Shot(ShotPiece { concat_start: t, duration: s.duration, beat: s.beat.clone(), caption: finish::caption(raw),
-                                           transition: finish::transition(raw), exposure: 0.0, overlays: Vec::new() });
+                                           transition: finish::transition(raw), exposure: 0.0, fx: Vec::new(), overlays: Vec::new() });
         t += s.duration;
         p
     }).collect();
@@ -582,6 +582,52 @@ fn font_file(dir: &std::path::Path, name: &str, ranges: &[(u16, u16)]) -> std::p
 }
 
 #[test]
+fn the_title_takes_its_own_face_and_falls_back_to_the_display_face() {
+    // D-59: `finish.fonts.title` sets the title alone; a title its face has no glyph for goes
+    // back to the display face (not the system font), with a note
+    use shotpilot::finish::{self, CutPiece, Face, Fonts};
+    use shotpilot::script::Line;
+    let f = ws();
+    let dir = tempfile::tempdir().unwrap();
+    let kana = font_file(dir.path(), "kana.ttf", &[(0x20, 0x7E), (0x3001, 0x3002), (0x3041, 0x30FF)]);
+    let worn = font_file(dir.path(), "worn.ttf", &[(0x20, 0x7E)]);
+    let fonts = Fonts {
+        main: "C:/sys/main.ttc".into(),
+        sans: "C:/sys/sans.ttc".into(),
+        display: Some(Face { label: "Kana Display:400".into(), path: kana.clone() }),
+        body: None,
+        latin: None,
+        title: Some(Face { label: "Worn:400".into(), path: worn.clone() }),
+    };
+    let line = |id: &str, kind: &str, ja: &str| Line {
+        id: id.into(), kind: kind.into(), ja: ja.into(), en: String::new(), head: String::new(), from: String::new(), dur: 3.0,
+        after: Some("start".into()), on: None, at: 0.0, sfx: Vec::new(), motion: None,
+    };
+    let pieces = vec![
+        CutPiece::Slot(line("a", "card", "ようこそ"), 3.0),
+        CutPiece::Slot(line("t", "title", "Lanternless"), 3.0),
+        CutPiece::Slot(line("u", "title", "ななごうしつ"), 3.0),
+    ];
+    let out = tempfile::tempdir().unwrap();
+    let mut notes = Vec::new();
+    let (g, _) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, Some(&fonts), out.path(), &mut notes).unwrap();
+    let uses = |text: &str| -> String {
+        let i = (1..=10).find(|i| std::fs::read_to_string(out.path().join(format!("text{i}.txt"))).ok().as_deref() == Some(text)).unwrap();
+        g.split(',').find(|part| part.contains(&format!("text{i}.txt"))).unwrap().to_string()
+    };
+    assert!(uses("ようこそ").contains(&finish::filter_path(&kana)), "cards keep the display face: {g}");
+    assert!(uses("Lanternless").contains(&finish::filter_path(&worn)), "{g}");
+    assert!(uses("ななごうしつ").contains(&finish::filter_path(&kana)), "back to the display face: {g}");
+    assert!(notes.iter().any(|n| n.contains("Worn:400") && n.contains("display face")), "{notes:?}");
+
+    // the finish takes a title face from the catalogue, and the look's faces stay
+    let mut f = ws();
+    f.ws.set_finish(&set(&[("fonts", json!({"display": "Shippori Mincho:500", "title": "Fredericka the Great"}))])).unwrap();
+    assert_eq!(f.ws.defn.finish.fonts.title.as_ref().unwrap().label(), "Fredericka the Great:400");
+    assert!(f.ws.set_finish(&set(&[("fonts", json!({"title": "Creepy Sans"}))])).unwrap_err().msg.contains("catalog"));
+}
+
+#[test]
 fn the_look_sets_the_faces_and_a_line_with_a_missing_glyph_falls_back() {
     // D-52: display face for cards and the title, Latin face for the English line, and the
     // system font for a line whose face has no glyph for one of its characters
@@ -597,6 +643,7 @@ fn the_look_sets_the_faces_and_a_line_with_a_missing_glyph_falls_back() {
         display: Some(Face { label: "Kana Display:400".into(), path: kana.clone() }),
         body: None,
         latin: Some(Face { label: "Latin:400".into(), path: latin.clone() }),
+        title: None,
     };
     let line = |id: &str, kind: &str, ja: &str, en: &str| Line {
         id: id.into(), kind: kind.into(), ja: ja.into(), en: en.into(), head: String::new(), from: String::new(), dur: 3.0,
@@ -670,7 +717,7 @@ script:
                     let s = &shots[i];
                     let raw = &f.ws.defn.shots[s.index];
                     out.push(CutPiece::Shot(finish::ShotPiece { concat_start: t, duration: s.duration, beat: s.beat.clone(),
-                        caption: None, transition: finish::transition(raw), exposure: 0.0, overlays: Vec::new() }));
+                        caption: None, transition: finish::transition(raw), exposure: 0.0, fx: Vec::new(), overlays: Vec::new() }));
                     t += s.duration;
                 }
                 shotpilot::script::Piece::Slot(j) => {
@@ -693,7 +740,7 @@ script:
     assert_eq!(typed, 3, "{g}");
     // the wipe: a black plate slides off the rule
     assert!(g.contains("[mk") && g.contains("overlay=x='"), "{g}");
-    // whiteout and glitch hand-overs, drawn by their recipes (D-58: eased covers, jittering
+    // whiteout and glitch hand-overs, drawn by their recipes (D-70: eased covers, jittering
     // colour layers); the flash is avoided, so that cut stays a cut
     assert!(g.contains(":eval=frame:enable=") && g.contains("0.9216*"), "{g}");
     assert!(g.contains("rgbashift=") && g.contains("noise=alls=40") && g.contains("*not(mod(n,2))"), "{g}");
@@ -731,8 +778,57 @@ fn too_many_flashes_in_a_second_stop_approval() {
 }
 
 #[test]
+fn camera_effects_are_burned_in_at_the_cut_and_never_rerender() {
+    // D-57: effects are part of the finish; adding them changes the cut, not the takes
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let rep = f.ws.set_fields("s03_window", &set(&[("fx", json!(["shake", {"type": "flicker", "at": 0.5}]))])).unwrap();
+    assert!(rep.stale.is_empty(), "{:?}", rep.stale);
+    assert!(f.ws.render(&[], "previz", false, None).unwrap().iter().all(|o| o.action == "reused"));
+    assert!(f.ws.set_fields("s03_window", &set(&[("fx", json!(["bloom"]))])).unwrap_err().msg.contains("fx"));
+
+    // the burn-in: a shaking crop and two dark dips on that shot only
+    use shotpilot::finish::{self, CutPiece, ShotPiece};
+    let shots = f.ws.resolved().unwrap();
+    let mut t = 0.0;
+    let pieces: Vec<CutPiece> = shots.iter().map(|s| {
+        let raw = &f.ws.defn.shots[s.index];
+        let p = CutPiece::Shot(ShotPiece { concat_start: t, duration: s.duration, beat: s.beat.clone(), caption: None,
+                                           transition: "cut".into(), exposure: 0.0, fx: shotpilot::fx::of(raw),
+                                           overlays: Vec::new() });
+        t += s.duration;
+        p
+    }).collect();
+    let dir = tempfile::tempdir().unwrap();
+    let (g, total) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, None, dir.path(), &mut Vec::new()).unwrap();
+    assert_eq!(g.matches("crop=w=iw*0.94").count(), 1, "{g}");
+    assert!(g.contains("eq=brightness=-0.32:contrast=0.85:enable='between(t,0.500,0.570)+between(t,0.650,0.720)'"), "{g}");
+    let shots_len: f64 = shots.iter().map(|s| s.duration).sum();
+    assert!((total - shots_len).abs() < 1e-6, "effects keep every shot's length");
+
+    // flashing effects count toward three a second; avoiding flashes takes them out
+    f.ws.set_fields("s02_well", &set(&[("fx", json!([{"type": "flicker", "at": 1.0}, {"type": "redflash", "at": 1.3},
+                                                     {"type": "static", "at": 1.4}]))])).unwrap();
+    let flash: Vec<_> = f.ws.check().unwrap().into_iter().filter(|x| x.rule == "flash.rate").collect();
+    assert_eq!(flash.len(), 1);
+    assert_eq!(flash[0].shot.as_deref(), Some("s02_well"));
+    f.ws.set_finish(&set(&[("motion", json!({"profile": "base", "avoid": ["flash"]}))])).unwrap();
+    assert!(!f.ws.check().unwrap().iter().any(|x| x.rule == "flash.rate"));
+    let pieces: Vec<CutPiece> = f.ws.resolved().unwrap().iter().map(|s| CutPiece::Shot(ShotPiece {
+        concat_start: 0.0, duration: s.duration, beat: None, caption: None, transition: "cut".into(), exposure: 0.0,
+        fx: shotpilot::fx::of(&f.ws.defn.shots[s.index]), overlays: Vec::new() })).collect();
+    let mut notes = Vec::new();
+    let (g, _) = finish::filter_graph(&f.ws.defn.finish, &pieces, 1280, 720, 30, None, dir.path(), &mut notes).unwrap();
+    assert!(!g.contains("colorchannelmixer") && !g.contains("random(1)"), "{g}");
+    assert!(g.contains("crop=w=iw*0.94") && g.contains("brightness=-0.32"), "a shake and a flicker are not flashes: {g}");
+    assert_eq!(notes.iter().filter(|n| n.contains("left out") && n.contains("`flash`")).count(), 2, "{notes:?}");
+    // the flicker alone (two dips) is under the limit once the flashes are gone
+    assert!(!f.ws.check().unwrap().iter().any(|x| x.rule == "flash.rate"));
+}
+
+#[test]
 fn more_than_two_kinds_of_hand_over_are_pointed_out() {
-    // D-58 (open-design: one primary transition and one or two accents): a P2, counted as drawn
+    // D-70 (open-design: one primary transition and one or two accents): a P2, counted as drawn
     let mut f = ws();
     f.ws.render(&[], "previz", false, None).unwrap();
     let mix = |f: &common::Fixture| f.ws.check().unwrap().into_iter().filter(|x| x.rule == "transition.mix").collect::<Vec<_>>();
@@ -913,21 +1009,27 @@ fn sound_design_picks_from_the_library_and_lands_on_the_pieces() {
     text.push_str("\nscript:\n  - {id: seven, kind: card, ja: 自分を入れて、七人。, dur: 2, after: s02_well}\n");
     f.write(&text);
     f.ws.reload().unwrap();
+    f.ws.set_brief(&[("design".into(), json!("quiet-dread"))]).unwrap();
     struct Designer;
     impl Claude for Designer {
         fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
             let user = request["messages"][0]["content"].as_str().unwrap();
             assert!(user.contains("card `seven`") && user.contains("splice:drone") && user.contains("Each text card lands"), "{user}");
+            // the look's sound and the brief reach the designer, and it is asked to sound like itself
+            assert!(user.contains("## The look's sound") && user.contains("## Brief") && user.contains("sound like itself"), "{user}");
             Ok(json!({"rationale": "低いドローンで始め、カードで落とす",
                       "music": [{"lib": "splice:drone", "from": "start", "until": "seven", "at": 0, "gain": -11, "fade_in": 1.5, "fade_out": 0.5, "label": "drone"}],
                       "hits": [{"lib": "splice:boom", "on": "seven", "at": 0, "gain": -4, "label": "boom"},
-                               {"lib": "splice:boom", "on": "s05_door", "at": 1.5, "gain": -6, "label": "door"},
+                               {"lib": "splice:boom", "on": "s05", "at": 1.5, "gain": -6, "label": "door"},
                                {"lib": "splice:nope", "on": "s05_door", "at": 0, "gain": 0, "label": "x"},
-                               {"lib": "splice:boom", "on": "ghost", "at": 0, "gain": 0, "label": "y"}]}).to_string())
+                               {"lib": "splice:boom", "on": "ghost", "at": 0, "gain": 0, "label": "y"}],
+                      "missing": ["low strings", "distant bell"]}).to_string())
         }
     }
     let d = shotpilot::sounddesign::design(&f.ws, &lib, &Designer).unwrap();
-    assert_eq!(d.notes.len(), 2, "{:?}", d.notes); // an unknown sound and an unknown piece were left out
+    assert_eq!(d.notes.len(), 3, "{:?}", d.notes); // an unknown sound, an unknown piece, and what the library lacks
+    assert_eq!(d.missing, ["low strings", "distant bell"]);
+    assert!(d.notes.iter().any(|n| n.contains("low strings / distant bell")), "{:?}", d.notes);
     shotpilot::sounddesign::apply(&mut f.ws, &d).unwrap();
     assert!(f.ws.root.join("audio/lib").read_dir().unwrap().count() == 2); // both files copied in
     let music = f.ws.defn.audio["music"].as_array().unwrap();
@@ -942,6 +1044,59 @@ fn sound_design_picks_from_the_library_and_lands_on_the_pieces() {
     let plan = shotpilot::sound::plan(&f.ws.defn, &f.ws.resolved().unwrap());
     let boom = plan.iter().find(|p| p.label == "boom").unwrap();
     assert!((boom.start - 8.5).abs() < 1e-6, "{}", boom.start); // the card starts after s01 (5 s) and s02 (3.5 s)
+}
+
+#[test]
+fn the_next_teaser_is_told_which_sounds_another_game_took() {
+    // D-64: four sample games once shared most of their sounds. The library remembers what each
+    // teaser took; the next game's designer sees those marked and listed after the rest, and
+    // the human sees what was shared anyway.
+    use shotpilot::ai::Claude;
+    use std::cell::RefCell;
+    let libdir = tempfile::tempdir().unwrap();
+    let sounds = libdir.path().join("sounds");
+    std::fs::create_dir_all(sounds.join("p")).unwrap();
+    for f in ["drone", "boom", "bell"] {
+        std::fs::write(sounds.join(format!("p/{f}.wav")), format!("RIFF-{f}")).unwrap();
+    }
+    std::fs::write(sounds.join("library.json"), json!({"sounds": [
+        {"id": "x:drone", "path": "p/drone.wav", "kind": "loop", "duration_s": 64.0, "status": "ok"},
+        {"id": "x:boom", "path": "p/boom.wav", "kind": "oneshot", "duration_s": 2.0, "status": "ok"},
+        {"id": "x:bell", "path": "p/bell.wav", "kind": "oneshot", "duration_s": 3.0, "status": "ok"},
+    ]}).to_string()).unwrap();
+    let lib = shotpilot::library::Library::open(Some(libdir.path())).unwrap();
+    struct Designer(RefCell<Vec<String>>);
+    impl Claude for Designer {
+        fn ask(&self, request: &serde_json::Value) -> shotpilot::Result<String> {
+            self.0.borrow_mut().push(request["messages"][0]["content"].as_str().unwrap().to_string());
+            Ok(json!({"rationale": "r",
+                      "music": [{"lib": "x:drone", "from": "start", "until": "end", "at": 0, "gain": -11, "fade_in": 1, "fade_out": 1, "label": "bed"}],
+                      "hits": [{"lib": "x:boom", "on": "s01_gate", "at": 0, "gain": -4, "label": "hit"}],
+                      "missing": []}).to_string())
+        }
+    }
+    let line = |prompt: &str, id: &str| prompt.lines().find(|l| l.starts_with(&format!("- {id} "))).unwrap_or("").to_string();
+
+    let mut first = ws();
+    let d = shotpilot::sounddesign::design(&first.ws, &lib, &Designer(RefCell::new(vec![]))).unwrap();
+    assert!(!d.notes.iter().any(|n| n.contains("ほかのティザーと同じ音")), "{:?}", d.notes);
+    shotpilot::sounddesign::apply(&mut first.ws, &d).unwrap();
+
+    let second = ws();
+    let ear = Designer(RefCell::new(vec![]));
+    let d = shotpilot::sounddesign::design(&second.ws, &lib, &ear).unwrap();
+    let prompt = ear.0.borrow()[0].clone();
+    assert!(line(&prompt, "x:drone").ends_with("[used in 1 other teaser]"), "{prompt}");
+    assert!(line(&prompt, "x:boom").ends_with("[used in 1 other teaser]"), "{prompt}");
+    assert!(!line(&prompt, "x:bell").contains("[used in"), "{prompt}");
+    assert!(prompt.find("- x:bell ").unwrap() < prompt.find("- x:boom ").unwrap(), "the free effect comes first: {prompt}");
+    let shared = d.notes.iter().find(|n| n.starts_with("ほかのティザーと同じ音")).expect("the shared sounds are told");
+    assert!(shared.contains("drone") && shared.contains("boom") && !shared.contains("bell"), "{shared}");
+
+    // a teaser never counts itself
+    let again = Designer(RefCell::new(vec![]));
+    shotpilot::sounddesign::design(&first.ws, &lib, &again).unwrap();
+    assert!(!again.0.borrow()[0].contains("[used in"), "{}", again.0.borrow()[0]);
 }
 
 #[test]
@@ -1080,4 +1235,231 @@ fn previz_and_clear_frames_need_no_repair() {
     shotpilot::produce::resume(&mut f.ws, &crew, &shotpilot::produce::ProduceOpts { quality: "still".into(), mood: false, ..Default::default() }, &mut on).unwrap();
     assert_eq!(*crew.calls.borrow(), ids(&["see"]));
     assert_eq!(rendered(&f.ws, "still").len(), f.ws.defn.shot_ids().len());
+}
+
+// --------------------------------------------------------------------------- invariant guards
+
+/// The demo with hand-written comments in several sections, a `finish:` and a script.
+fn commented_demo() -> common::Fixture {
+    let mut f = ws();
+    let mut t = f.text();
+    t = t.replace("brief:\n", "# HAND brief heading\nbrief:\n");
+    t = t.replace("  audience: 静かに怖い", "  # HAND inside brief\n  audience: 静かに怖い");
+    t = t.replace("audio:\n  gain: 0\n", "# HAND audio heading\naudio:\n  gain: 0\n");
+    t = t.replace("    purpose: 扉がゆっくり開く\n", "    # HAND inside s05\n    purpose: 扉がゆっくり開く\n");
+    t = t.replace("shots:\n  - id: s01_gate", "# HAND shots heading\nshots:\n  - id: s01_gate");
+    t = t.replace("version: 1\n", "version: 1\n# HAND top\n");
+    t.push_str("\n# HAND finish heading\nfinish:\n  letterbox: 2.0   # HAND trailing finish\n\n# HAND script heading\nscript:\n  - {id: intro, kind: card, ja: 今日から、ここに住む。, dur: 3, after: start}\n\n# HAND the very end\n");
+    f.write(&t);
+    f.ws.reload().unwrap();
+    f
+}
+
+/// A Claude revision that replaces s04_lantern.
+fn revision(shot: serde_json::Value) -> shotpilot::ai::Revision {
+    shotpilot::ai::Revision {
+        edits: vec![("s04_lantern".into(), shot)], order: None, audio: None, lines: Vec::new(),
+        texts: Vec::new(), finish: Vec::new(), summary: "s".into(),
+    }
+}
+
+const HAND: &[&str] = &[
+    "# HAND top", "# HAND brief heading", "# HAND inside brief", "# HAND audio heading", "# HAND shots heading",
+    "# HAND inside s05", "# HAND finish heading", "# HAND trailing finish", "# HAND script heading", "# HAND the very end",
+];
+
+fn assert_hand_comments(f: &common::Fixture, after: &str) {
+    let t = f.text();
+    for c in HAND {
+        assert!(t.contains(c), "'{c}' was lost after {after}\n{t}");
+    }
+}
+
+/// Invariant [6] (yamlio::Doc): every machine write keeps the comments a human wrote.
+#[test]
+fn every_machine_write_path_keeps_hand_written_comments() {
+    let mut f = commented_demo();
+    assert_hand_comments(&f, "setup");
+    f.ws.set_brief(&set(&[("core", json!("別の核"))])).unwrap();
+    assert_hand_comments(&f, "set_brief");
+    f.ws.set_finish(&set(&[("title", json!({"text": "夜の中庭"}))])).unwrap();
+    assert_hand_comments(&f, "set_finish");
+    f.ws.set_line("intro", &set(&[("ja", json!("今日から、ここで暮らす。"))])).unwrap();
+    assert_hand_comments(&f, "set_line");
+    f.ws.edit_sound(&[("s02_well".into(), Some(json!([{"file": "audio/hit.wav", "at": 0.5, "gain": -2}])))], None, "").unwrap();
+    assert_hand_comments(&f, "edit_sound (sfx)");
+    let mut audio = serde_json::to_value(&f.ws.defn.audio).unwrap();
+    audio["gain"] = json!(-1);
+    f.ws.edit_sound(&[], audio.as_object(), "").unwrap();
+    assert_hand_comments(&f, "edit_sound (audio)");
+    f.ws.set_fields("s01_gate", &set(&[("duration", json!(6))])).unwrap();
+    assert_hand_comments(&f, "set_fields");
+
+    // a revision as Claude returns it
+    let mut shot = f.ws.defn.find("s04_lantern").unwrap().clone();
+    shot["purpose"] = json!("提灯が揺れる。誰も触れていない");
+    let rev = revision(shot);
+    f.ws.apply_revision(&rev, "revise", "").unwrap();
+    assert!(f.text().contains("誰も触れていない"));
+    assert_hand_comments(&f, "apply_revision");
+}
+
+/// Invariant [6]: a write that fails validation leaves shots.yaml byte-for-byte as it was.
+#[test]
+fn a_rejected_machine_write_leaves_the_file_untouched() {
+    let mut f = commented_demo();
+    let before = std::fs::read(f.path()).unwrap();
+    let same = |f: &common::Fixture, what: &str| assert_eq!(std::fs::read(f.path()).unwrap(), before, "{what} changed the file");
+
+    assert!(f.ws.set_finish(&set(&[("no_such_field", json!(1))])).is_err());
+    same(&f, "set_finish with an unknown field");
+    assert!(f.ws.set_brief(&set(&[("no_such_field", json!(1))])).is_err());
+    same(&f, "set_brief with an unknown field");
+    // a known field with a value only the parse refuses: the write must come after the parse
+    assert!(f.ws.set_finish(&set(&[("grade", json!("no_such_grade"))])).is_err());
+    same(&f, "set_finish with an unknown grade");
+    assert!(f.ws.set_brief(&set(&[("kind", json!("no_such_kind"))])).is_err());
+    same(&f, "set_brief with an unknown kind");
+    assert!(f.ws.set_fields("s02_well", &set(&[("camera.anchor", json!("nowhere"))])).is_err());
+    same(&f, "set_fields with a missing anchor");
+    assert!(f.ws.set_fields("no_such_shot", &set(&[("duration", json!(2))])).is_err());
+    same(&f, "set_fields on a missing shot");
+    assert!(f.ws.set_line("no_such_line", &set(&[("ja", json!("x"))])).is_err());
+    same(&f, "set_line on a missing line");
+    let mut shot = f.ws.defn.find("s04_lantern").unwrap().clone();
+    shot["camera"]["anchor"] = json!("nowhere");
+    let rev = revision(shot);
+    assert!(f.ws.apply_revision(&rev, "revise", "").is_err());
+    same(&f, "apply_revision with a missing anchor");
+    assert_hand_comments(&f, "the rejected writes");
+}
+
+/// Invariant [10] (D-13): a composition approval follows the picture. Editorial edits keep
+/// it, a picture edit drops it, putting the picture back restores it, and it persists.
+#[test]
+fn composition_approval_survives_every_editorial_edit_and_follows_the_picture() {
+    let mut f = ws();
+    f.ws.approve("s03_window", true).unwrap();
+    let approval = |f: &common::Fixture| f.ws.status().unwrap().into_iter().find(|r| r.id == "s03_window").unwrap().approval;
+    assert_eq!(approval(&f), "approved");
+
+    f.ws.edit_sound(&[("s03_window".into(), Some(json!([{"file": "audio/hit.wav", "at": 1.0, "gain": -3}])))], None, "").unwrap();
+    assert_eq!(approval(&f), "approved", "sound edit");
+    f.ws.set_finish(&set(&[("letterbox", json!(2.39))])).unwrap();
+    assert_eq!(approval(&f), "approved", "finish edit");
+    f.ws.set_fields("s03_window", &set(&[("notes", json!("メモ"))])).unwrap();
+    assert_eq!(approval(&f), "approved", "notes");
+    f.ws.set_fields("s03_window", &set(&[("caption", json!("字幕"))])).unwrap();
+    assert_eq!(approval(&f), "approved", "caption");
+    f.ws.set_fields("s03_window", &set(&[("transition", json!("glitch"))])).unwrap();
+    assert_eq!(approval(&f), "approved", "transition");
+    f.ws.set_fields("s03_window", &set(&[("fx", json!(["chroma"]))])).unwrap();
+    assert_eq!(approval(&f), "approved", "fx");
+    let order = ids(&["s02_well", "s03_window", "s01_gate", "s04_lantern", "s05_door", "s06_title"]);
+    f.ws.edit_definition(&[], Some(&order), "order", "").unwrap();
+    assert_eq!(approval(&f), "approved", "order change");
+    f.ws.set_brief(&set(&[("core", json!("別の核"))])).unwrap();
+    assert_eq!(approval(&f), "approved", "brief change");
+
+    // a picture edit other than the camera drops it, and reverting brings it back
+    f.ws.set_fields("s03_window", &set(&[("environment.time_of_day", json!("dawn"))])).unwrap();
+    assert_eq!(approval(&f), "outdated");
+    f.ws.set_fields("s03_window", &set(&[("environment.time_of_day", json!("night"))])).unwrap();
+    assert_eq!(approval(&f), "approved");
+
+    // it lives in state.json, not in memory
+    let reopened = shotpilot::Workspace::open(f.path()).unwrap();
+    let st = reopened.status().unwrap().into_iter().find(|r| r.id == "s03_window").unwrap();
+    assert_eq!(st.approval, "approved");
+    let mut reopened = reopened;
+    reopened.set_fields("s03_window", &set(&[("environment.time_of_day", json!("dawn"))])).unwrap();
+    let again = shotpilot::Workspace::open(f.path()).unwrap();
+    assert_eq!(again.status().unwrap().into_iter().find(|r| r.id == "s03_window").unwrap().approval, "outdated");
+}
+
+fn files_named(root: &std::path::Path, name: &str, out: &mut Vec<String>) {
+    let Ok(rd) = std::fs::read_dir(root) else { return };
+    for e in rd.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            files_named(&p, name, out);
+        } else if p.file_name().is_some_and(|n| n == name) {
+            out.push(p.to_string_lossy().replace('\\', "/"));
+        }
+    }
+}
+
+/// Invariants [11][12][16] (D-23, D-33, D-46): pictures made by an image model (mood board,
+/// storyboard, concept frames) never become takes, never enter the Cut, and never move a
+/// fingerprint or a status.
+#[test]
+fn generated_pictures_never_become_takes_or_part_of_the_cut() {
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let fps = |f: &common::Fixture| -> Vec<(String, String, String)> {
+        f.ws.resolved().unwrap().iter().map(|s| (
+            s.id.clone(),
+            fp::render_fingerprint(&f.ws.defn, s, "previz").unwrap(),
+            fp::look_fingerprint(&f.ws.defn, s),
+        )).collect()
+    };
+    let statuses = |f: &common::Fixture| -> Vec<String> {
+        f.ws.status().unwrap().into_iter().map(|r| format!("{} {:?} {}", r.id, r.qualities, r.approval)).collect()
+    };
+    let (fp_before, st_before) = (fps(&f), statuses(&f));
+    let mut takes_before = Vec::new();
+    files_named(&f.ws.root.join("render"), "take.json", &mut takes_before);
+    assert!(!takes_before.is_empty());
+    let launches_before = launches(&f.ws).len();
+
+    let board = BoardImages(Default::default());
+    let mood = f.ws.generate_moodboard(&board, "冷たい青", 2).unwrap();
+    assert_eq!(mood.len(), 2);
+    let sb = f.ws.generate_storyboard(&board, &[], "", false).unwrap();
+    assert!(!sb.is_empty() && sb.iter().all(|o| o.action == "made"));
+    shotpilot::concept::replace(&f.ws.root, &[("hook".into(), "暗い祭壇".into()), ("title".into(), "夜明けの庭".into())]).unwrap();
+    let concept = f.ws.generate_concept(&board).unwrap();
+    assert_eq!(concept.len(), 2);
+    for dir in ["moodboard", "storyboard", "concept"] {
+        assert!(f.ws.root.join(dir).is_dir(), "{dir}/ was not made");
+    }
+
+    // nothing about the shots moved, and a render finds nothing to do
+    assert_eq!(fps(&f), fp_before);
+    assert_eq!(statuses(&f), st_before);
+    assert_eq!(launches(&f.ws).len(), launches_before);
+    let rep = f.ws.render(&[], "previz", false, None).unwrap();
+    assert!(rep.iter().all(|o| o.action == "reused"), "{:?}", common::actions(&rep));
+
+    // no take anywhere points at, or lives in, a generated-picture folder
+    let mut takes = Vec::new();
+    files_named(&f.ws.root.join("render"), "take.json", &mut takes);
+    assert_eq!(takes, takes_before);
+    for t in &takes {
+        let body = std::fs::read_to_string(t).unwrap();
+        for dir in ["moodboard/", "storyboard/", "concept/"] {
+            assert!(!body.contains(dir), "{t} refers to {dir}");
+        }
+    }
+    let mut stray = Vec::new();
+    for dir in ["moodboard", "storyboard", "concept"] {
+        files_named(&f.ws.root.join(dir), "take.json", &mut stray);
+    }
+    assert!(stray.is_empty(), "{stray:?}");
+
+    // the Cut is made of takes only
+    f.ws.cut("previz", false).unwrap();
+    let manifest = std::fs::read_to_string(f.ws.root.join("cut/previz/manifest.json")).unwrap();
+    let m: serde_json::Value = serde_json::from_str(&manifest).unwrap();
+    for row in m["shots"].as_array().unwrap() {
+        let mut paths = vec![row["take_dir"].to_string()];
+        paths.extend(row["files"].as_array().unwrap().iter().map(|x| x.to_string()));
+        for p in paths {
+            for dir in ["moodboard", "storyboard", "concept"] {
+                assert!(!p.contains(dir), "cut entry points into {dir}/: {p}");
+            }
+        }
+    }
+    assert!(!manifest.contains("moodboard/") && !manifest.contains("storyboard/") && !manifest.contains("concept/"));
+    assert_eq!(fps(&f), fp_before);
 }

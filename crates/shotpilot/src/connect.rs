@@ -27,6 +27,9 @@ pub enum Provider {
     Auto,
     ClaudeCode,
     ApiKey,
+    /// Any OpenAI-compatible `/v1/chat/completions` server (Ollama, vLLM, LM Studio, OpenRouter).
+    /// Configured by `SHOTPILOT_OPENAI_BASE_URL` and optionally `SHOTPILOT_OPENAI_KEY`.
+    OpenAi,
 }
 
 impl Provider {
@@ -35,6 +38,7 @@ impl Provider {
             Provider::Auto => "auto",
             Provider::ClaudeCode => "claude-code",
             Provider::ApiKey => "api-key",
+            Provider::OpenAi => "openai",
         }
     }
 
@@ -43,7 +47,8 @@ impl Provider {
             "auto" | "" => Provider::Auto,
             "claude-code" => Provider::ClaudeCode,
             "api-key" => Provider::ApiKey,
-            _ => bail!("unknown provider '{s}' (auto, claude-code, api-key)"),
+            "openai" => Provider::OpenAi,
+            _ => bail!("unknown provider '{s}' (auto, claude-code, api-key, openai)"),
         })
     }
 }
@@ -167,7 +172,9 @@ pub fn claude_cli() -> Option<PathBuf> {
     })
 }
 
-/// Sends every request at one effort level, whichever way Claude is reached.
+/// Sends every request at one effort level, whichever way Claude is reached. A quick call
+/// (chip suggestions, D-62) asks for `suggest::EFFORT` itself and keeps it: its chips have to
+/// arrive in seconds whatever effort planning runs at.
 pub struct WithEffort {
     pub inner: Box<dyn Claude>,
     pub effort: String,
@@ -176,7 +183,9 @@ pub struct WithEffort {
 impl Claude for WithEffort {
     fn ask(&self, request: &Value) -> Result<String> {
         let mut r = request.clone();
-        r["output_config"]["effort"] = json!(self.effort);
+        if r["output_config"]["effort"] != crate::suggest::EFFORT {
+            r["output_config"]["effort"] = json!(self.effort);
+        }
         self.inner.ask(&r)
     }
 }
@@ -189,7 +198,14 @@ pub fn make_claude(settings: &Settings) -> Result<Box<dyn Claude>> {
 
 fn make_client(settings: &Settings) -> Result<Box<dyn Claude>> {
     let key = settings.api_key.clone().or_else(env_key);
-    match settings.provider {
+    // SHOTPILOT_PROVIDER overrides the saved choice (handy for CLI runs against a local server)
+    let provider = std::env::var("SHOTPILOT_PROVIDER")
+        .ok()
+        .and_then(|p| Provider::parse(p.trim()).ok())
+        .filter(|p| *p != Provider::Auto)
+        .unwrap_or(settings.provider);
+    match provider {
+        Provider::OpenAi => Ok(Box::new(OpenAiClaude::from_env()?)),
         Provider::ApiKey => match key {
             Some(k) => Ok(Box::new(HttpClaude::with_key(k))),
             None => bail!("no API key yet: enter one in the settings, or set ANTHROPIC_API_KEY"),
@@ -215,6 +231,7 @@ pub fn describe(settings: &Settings) -> Value {
     let cli = claude_cli();
     let key = settings.api_key.as_deref();
     let active = match settings.provider {
+        Provider::OpenAi => OpenAiConfig::env_base().map(|_| "openai"),
         Provider::ApiKey => (key.is_some() || env_key().is_some()).then_some("api-key"),
         Provider::ClaudeCode => cli.is_some().then_some("claude-code"),
         Provider::Auto => {
@@ -338,9 +355,339 @@ impl Claude for CliClaude {
     }
 }
 
+// --------------------------------------------------------------------------- OpenAI-compatible
+
+/// Which `response_format` a request goes out with; a server that rejects one gets the next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Format {
+    Schema,
+    Object,
+    Plain,
+}
+
+/// Explicit configuration for [`OpenAiClaude`]; the environment is read only in [`OpenAiClaude::from_env`].
+#[derive(Debug, Clone)]
+pub struct OpenAiConfig {
+    /// Up to and including `/v1`, e.g. `http://localhost:11434/v1`.
+    pub base: String,
+    pub key: Option<String>,
+    /// Send images; when false each image becomes an "[image omitted]" text part.
+    pub vision: bool,
+    pub temperature: f64,
+    pub max_tokens: u64,
+    /// Seconds to wait before the first retry (doubles each time).
+    pub backoff_secs: u64,
+}
+
+impl OpenAiConfig {
+    fn env_base() -> Option<String> {
+        std::env::var("SHOTPILOT_OPENAI_BASE_URL").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+    }
+}
+
+/// Runs the Messages-shaped requests of `ai.rs` against `POST {base}/chat/completions`.
+pub struct OpenAiClaude {
+    cfg: OpenAiConfig,
+}
+
+struct SendFail {
+    retry: bool,
+    format_rejected: bool,
+    err: Error,
+}
+
+impl OpenAiClaude {
+    pub fn new(cfg: OpenAiConfig) -> OpenAiClaude {
+        OpenAiClaude { cfg }
+    }
+
+    pub fn from_env() -> Result<OpenAiClaude> {
+        let Some(base) = OpenAiConfig::env_base() else {
+            bail!("set SHOTPILOT_OPENAI_BASE_URL (e.g. http://localhost:11434/v1) to use an OpenAI-compatible server");
+        };
+        let env = |k: &str| std::env::var(k).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+        let vision_off = env("SHOTPILOT_VISION").is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "0" | "false" | "off" | "no"));
+        Ok(OpenAiClaude::new(OpenAiConfig {
+            base,
+            key: env("SHOTPILOT_OPENAI_KEY"),
+            vision: !vision_off,
+            temperature: env("SHOTPILOT_TEMPERATURE").and_then(|t| t.parse().ok()).unwrap_or(0.2),
+            max_tokens: env("SHOTPILOT_MAX_TOKENS").and_then(|t| t.parse().ok()).unwrap_or(16000),
+            backoff_secs: 2,
+        }))
+    }
+
+    /// The chat-completions body for a Messages API request. Anthropic-only fields are dropped.
+    fn translate(&self, request: &Value, format: Format) -> Value {
+        let mut system = request["system"].as_str().unwrap_or("").to_string();
+        let schema = &request["output_config"]["format"]["schema"];
+        if !schema.is_null() && format != Format::Schema {
+            system = schema_in_system(&system, schema);
+        }
+        let user = match &request["messages"][0]["content"] {
+            Value::Array(blocks) => Value::Array(
+                blocks
+                    .iter()
+                    .filter_map(|b| match b["type"].as_str() {
+                        Some("text") => Some(json!({"type": "text", "text": b["text"]})),
+                        Some("image") if self.cfg.vision => {
+                            let src = &b["source"];
+                            let url = format!("data:{};base64,{}", src["media_type"].as_str().unwrap_or("image/png"), src["data"].as_str().unwrap_or(""));
+                            Some(json!({"type": "image_url", "image_url": {"url": url}}))
+                        }
+                        Some("image") => Some(json!({"type": "text", "text": "[image omitted]"})),
+                        _ => None,
+                    })
+                    .collect(),
+            ),
+            other => other.clone(),
+        };
+        let mut body = json!({
+            "model": request["model"],
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "temperature": self.cfg.temperature,
+            "max_tokens": self.cfg.max_tokens,
+            "stream": false,
+        });
+        match format {
+            Format::Schema if !schema.is_null() => {
+                body["response_format"] = json!({"type": "json_schema", "json_schema": {"name": "reply", "schema": schema, "strict": false}});
+            }
+            Format::Object => body["response_format"] = json!({"type": "json_object"}),
+            _ => {}
+        }
+        body
+    }
+
+    fn send_once(&self, body: &str) -> std::result::Result<String, SendFail> {
+        let agent = ureq::AgentBuilder::new()
+            .timeout_connect(std::time::Duration::from_secs(30))
+            .timeout_read(std::time::Duration::from_secs(600))
+            .build();
+        let mut req = agent.post(&format!("{}/chat/completions", self.cfg.base.trim_end_matches('/'))).set("content-type", "application/json");
+        if let Some(k) = &self.cfg.key {
+            req = req.set("authorization", &format!("Bearer {k}"));
+        }
+        match req.send_string(body) {
+            Ok(r) => r.into_string().map_err(|e| SendFail {
+                retry: true,
+                format_rejected: false,
+                err: Error::user(format!("OpenAI-compatible server: reply broke: {e}")),
+            }),
+            Err(ureq::Error::Status(code, r)) => {
+                let text = r.into_string().unwrap_or_default();
+                let excerpt: String = text.chars().take(300).collect();
+                let lower = text.to_lowercase();
+                let rejected = (code == 400 || code == 422) && (lower.contains("response_format") || lower.contains("json_schema"));
+                Err(SendFail {
+                    retry: code == 429 || code >= 500,
+                    format_rejected: rejected,
+                    err: Error::user(format!("OpenAI-compatible server error {code}: {}", excerpt.trim())),
+                })
+            }
+            Err(e) => Err(SendFail {
+                retry: true,
+                format_rejected: false,
+                err: Error::user(format!("could not reach the OpenAI-compatible server: {e}")),
+            }),
+        }
+    }
+
+    fn send(&self, body: &str) -> std::result::Result<String, SendFail> {
+        let mut wait = self.cfg.backoff_secs;
+        let mut attempt = 0;
+        loop {
+            match self.send_once(body) {
+                Err(f) if f.retry && attempt < 3 => {
+                    eprintln!("shotpilot: {}; retrying in {wait}s", f.err.msg);
+                    std::thread::sleep(std::time::Duration::from_secs(wait));
+                    wait *= 2;
+                    attempt += 1;
+                }
+                other => return other,
+            }
+        }
+    }
+}
+
+/// The system prompt for a model that cannot be held to a schema: the schema goes in as text.
+/// Shared by the OpenAI-compatible fallbacks and the eval's `+noschema` models.
+pub fn schema_in_system(system: &str, schema: &Value) -> String {
+    format!("{system}\n\nReply with a single JSON object (no other text) that matches this JSON schema:\n{schema}")
+}
+
+/// Drops `<think>...</think>` reasoning (also a lone closing tag) and surrounding blanks.
+pub fn strip_reasoning(text: &str) -> String {
+    let mut out = text.to_string();
+    while let (Some(a), Some(b)) = (out.find("<think>"), out.find("</think>")) {
+        if b < a {
+            break;
+        }
+        out.replace_range(a..b + "</think>".len(), "");
+    }
+    if let Some(b) = out.rfind("</think>") {
+        out = out[b + "</think>".len()..].to_string();
+    }
+    out.trim().to_string()
+}
+
+fn message_text(reply: &str) -> Result<String> {
+    let v: Value = serde_json::from_str(reply).map_err(|e| Error::user(format!("OpenAI-compatible server returned malformed JSON: {e}")))?;
+    let text = match &v["choices"][0]["message"]["content"] {
+        Value::String(s) => s.clone(),
+        Value::Array(parts) => parts.iter().filter_map(|p| p["text"].as_str()).collect::<Vec<_>>().join(""),
+        _ => String::new(),
+    };
+    let text = strip_reasoning(&text);
+    if text.is_empty() {
+        let why = v["choices"][0]["finish_reason"].as_str().unwrap_or("no text");
+        bail!("OpenAI-compatible server returned no text ({why})");
+    }
+    Ok(text)
+}
+
+impl Claude for OpenAiClaude {
+    fn ask(&self, request: &Value) -> Result<String> {
+        let has_schema = !request["output_config"]["format"]["schema"].is_null();
+        let formats: &[Format] = if has_schema { &[Format::Schema, Format::Object, Format::Plain] } else { &[Format::Plain] };
+        for (i, f) in formats.iter().enumerate() {
+            let body = self.translate(request, *f).to_string();
+            match self.send(&body) {
+                Ok(reply) => return message_text(&reply),
+                Err(fail) if fail.format_rejected && i + 1 < formats.len() => continue,
+                Err(fail) => return Err(fail.err),
+            }
+        }
+        bail!("OpenAI-compatible server rejected every request format")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{BufRead, BufReader, Read};
+    use std::net::TcpListener;
+    use std::sync::{Arc, Mutex};
+
+    type Seen = Arc<Mutex<Vec<(String, Value)>>>;
+
+    /// Serves the scripted (status, body) replies in order; records (headers, body) of each request.
+    fn fake_server(replies: Vec<(u16, String)>) -> (String, Seen) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let log = seen.clone();
+        std::thread::spawn(move || {
+            for (status, body) in replies {
+                let Ok((mut sock, _)) = listener.accept() else { return };
+                let mut reader = BufReader::new(sock.try_clone().unwrap());
+                let (mut head, mut len) = (String::new(), 0usize);
+                loop {
+                    let mut line = String::new();
+                    if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                        break;
+                    }
+                    if let Some(v) = line.to_lowercase().strip_prefix("content-length:") {
+                        len = v.trim().parse().unwrap_or(0);
+                    }
+                    head.push_str(&line);
+                }
+                let mut buf = vec![0u8; len];
+                reader.read_exact(&mut buf).unwrap();
+                log.lock().unwrap().push((head, serde_json::from_slice(&buf).unwrap_or(Value::Null)));
+                let resp = format!("HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}", body.len());
+                let _ = sock.write_all(resp.as_bytes());
+            }
+        });
+        (base, seen)
+    }
+
+    fn reply(content: &str) -> (u16, String) {
+        (200, json!({"choices": [{"message": {"role": "assistant", "content": content}, "finish_reason": "stop"}]}).to_string())
+    }
+
+    fn client(base: String, vision: bool) -> OpenAiClaude {
+        OpenAiClaude::new(OpenAiConfig { base, key: Some("k-secret".into()), vision, temperature: 0.2, max_tokens: 1234, backoff_secs: 0 })
+    }
+
+    fn image_request() -> Value {
+        let mut req = crate::ai::request("SYS", "hi", json!({"type": "object"}));
+        req["messages"][0]["content"] = json!([
+            {"type": "text", "text": "look"},
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "QUJD"}},
+        ]);
+        req
+    }
+
+    #[test]
+    fn openai_request_is_translated() {
+        let (base, seen) = fake_server(vec![reply("{\"a\":1}")]);
+        let out = client(base, true).ask(&image_request()).unwrap();
+        assert_eq!(out, "{\"a\":1}");
+        let seen = seen.lock().unwrap();
+        let (head, body) = &seen[0];
+        assert!(head.starts_with("POST /v1/chat/completions"), "{head}");
+        assert!(head.to_lowercase().contains("authorization: bearer k-secret"));
+        assert_eq!(body["model"], crate::ai::model_name());
+        assert_eq!(body["messages"][0], json!({"role": "system", "content": "SYS"}));
+        assert_eq!(body["messages"][1]["content"][0], json!({"type": "text", "text": "look"}));
+        assert_eq!(body["messages"][1]["content"][1]["image_url"]["url"], "data:image/jpeg;base64,QUJD");
+        assert_eq!(body["response_format"]["type"], "json_schema");
+        assert_eq!(body["response_format"]["json_schema"]["schema"], json!({"type": "object"}));
+        assert_eq!(body["temperature"], 0.2);
+        assert_eq!(body["max_tokens"], 1234);
+        assert_eq!(body["stream"], false);
+        for gone in ["thinking", "output_config", "fallbacks"] {
+            assert!(body.get(gone).is_none(), "{gone} must not be sent");
+        }
+    }
+
+    #[test]
+    fn rejected_response_format_falls_back_to_json_object_then_plain() {
+        let bad = (400, json!({"error": {"message": "response_format.json_schema is not supported"}}).to_string());
+        let (base, seen) = fake_server(vec![bad.clone(), reply("{\"ok\":true}")]);
+        assert_eq!(client(base, true).ask(&image_request()).unwrap(), "{\"ok\":true}");
+        {
+            let seen = seen.lock().unwrap();
+            assert_eq!(seen.len(), 2);
+            assert_eq!(seen[1].1["response_format"], json!({"type": "json_object"}));
+            assert!(seen[1].1["messages"][0]["content"].as_str().unwrap().contains("\"type\":\"object\""));
+        }
+        let (base, seen) = fake_server(vec![bad.clone(), bad, reply("{}")]);
+        assert_eq!(client(base, true).ask(&image_request()).unwrap(), "{}");
+        assert!(seen.lock().unwrap()[2].1.get("response_format").is_none());
+        // an unrelated 400 is an error, not a fallback
+        let (base, seen) = fake_server(vec![(400, "context length exceeded".into())]);
+        let e = client(base, true).ask(&image_request()).unwrap_err();
+        assert!(e.msg.contains("400") && e.msg.contains("context length"), "{}", e.msg);
+        assert_eq!(seen.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn reasoning_preamble_is_stripped() {
+        assert_eq!(strip_reasoning("<think>hmm {\"x\":0}</think>\n{\"a\":1}"), "{\"a\":1}");
+        assert_eq!(strip_reasoning("thinking...</think>{\"a\":1}"), "{\"a\":1}");
+        assert_eq!(strip_reasoning("Here you go: {\"a\":1}"), "Here you go: {\"a\":1}");
+        let (base, _) = fake_server(vec![reply("<think>plan</think>{\"a\":1}")]);
+        assert_eq!(client(base, true).ask(&image_request()).unwrap(), "{\"a\":1}");
+        let (base, _) = fake_server(vec![reply("Sure! {\"a\":1}")]);
+        assert_eq!(client(base, true).ask(&image_request()).unwrap(), "Sure! {\"a\":1}");
+    }
+
+    #[test]
+    fn vision_off_drops_images() {
+        let (base, seen) = fake_server(vec![reply("{}")]);
+        client(base, false).ask(&image_request()).unwrap();
+        let body = seen.lock().unwrap()[0].1.clone();
+        assert_eq!(body["messages"][1]["content"][1], json!({"type": "text", "text": "[image omitted]"}));
+        assert!(!body.to_string().contains("image_url"));
+    }
+
+    #[test]
+    fn openai_is_a_provider() {
+        assert_eq!(Provider::parse("openai").unwrap(), Provider::OpenAi);
+        assert_eq!(Provider::OpenAi.name(), "openai");
+    }
 
     #[test]
     fn request_maps_to_cli_flags() {
@@ -414,6 +761,10 @@ mod tests {
         let req = crate::ai::request("s", "u", json!({"type": "object"}));
         assert_eq!(req["output_config"]["effort"], crate::ai::DEFAULT_EFFORT);
         assert_eq!(c.ask(&req).unwrap(), "high");
+        // a quick call (chip suggestions) keeps its own low effort whatever planning runs at
+        let mut quick = req.clone();
+        quick["output_config"]["effort"] = json!(crate::suggest::EFFORT);
+        assert_eq!(c.ask(&quick).unwrap(), crate::suggest::EFFORT);
         // and Claude Code gets it as --effort
         let mut r = req.clone();
         r["output_config"]["effort"] = json!("high");

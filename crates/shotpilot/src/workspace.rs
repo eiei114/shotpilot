@@ -28,9 +28,14 @@ pub const QUALITY_RANK: &[&str] = &["final", "preview", "still", "previz"];
 /// Script line fields the app edits in place (the text and its timing; never where it sits).
 pub const LINE_FIELDS: &[&str] = &["ja", "en", "head", "from", "dur", "at"];
 /// One-tap shot changes worked out in code ([`Workspace::nudge`]).
-pub const NUDGES: &[&str] = &["closer", "farther", "wider", "tighter", "shorter", "longer"];
+pub const NUDGES: &[&str] = &[
+    "closer", "farther", "wider", "tighter", "shorter", "longer", "lower", "higher", "orbit_left", "orbit_right",
+    "aim_up", "aim_down", "move_longer", "move_shorter", "tod_earlier", "tod_later", "brighter", "darker",
+];
+/// How big a nudge is: small / medium (the default) / large, as a multiplier on the step.
+pub const NUDGE_AMOUNTS: &[&str] = &["s", "m", "l"];
 /// Lens steps for `wider` / `tighter` (mm).
-const LENS_STEPS: &[f64] = &[12.0, 14.0, 18.0, 24.0, 28.0, 35.0, 50.0, 65.0, 85.0, 105.0, 135.0, 200.0];
+pub const LENS_STEPS: &[f64] = &[12.0, 14.0, 18.0, 24.0, 28.0, 35.0, 50.0, 65.0, 85.0, 105.0, 135.0, 200.0];
 
 /// (shot, its take if any, the quality that take is in).
 pub type TakePick = (ResolvedShot, Option<Take>, Option<String>);
@@ -1141,18 +1146,58 @@ impl Workspace {
         Ok(rep)
     }
 
-    /// A one-tap change to a shot, worked out in code (no Claude): `closer` / `farther`
-    /// move the camera (and its whole path) toward or away from what it looks at, `wider` /
-    /// `tighter` step the lens, `shorter` / `longer` change the length by half a second.
+    /// A one-tap change to a shot, worked out in code (no Claude), at the medium amount.
     pub fn nudge(&mut self, shot_id: &str, kind: &str) -> Result<EditReport> {
+        self.nudge_by(shot_id, kind, "m")
+    }
+
+    /// A one-tap change to a shot, worked out in code (no Claude). `amount` is `s` / `m` / `l`
+    /// (x0.5 / x1 / x2 of the step). `closer` / `farther` move the camera (and its whole path)
+    /// toward or away from what it looks at, `lower` / `higher` change its height, `orbit_left` /
+    /// `orbit_right` swing it around what it looks at, `wider` / `tighter` step the lens,
+    /// `aim_up` / `aim_down` step where on the subject it looks, `move_longer` / `move_shorter`
+    /// scale the camera move, `tod_earlier` / `tod_later` step the time of day, `shorter` /
+    /// `longer` change the length by half a second, and `brighter` / `darker` shift the
+    /// brightness at the cut (editorial: nothing re-renders).
+    pub fn nudge_by(&mut self, shot_id: &str, kind: &str, amount: &str) -> Result<EditReport> {
         use crate::geometry as g;
+        if !NUDGES.contains(&kind) {
+            bail!("nudge: one of {}", NUDGES.join(", "));
+        }
+        let mult = match amount {
+            "s" => 0.5,
+            "m" => 1.0,
+            "l" => 2.0,
+            _ => bail!("nudge amount: one of {}", NUDGE_AMOUNTS.join(", ")),
+        };
+        // discrete axes (lens, aim, time of day) move one step, or two for a large nudge
+        let steps: i64 = if mult > 1.0 { 2 } else { 1 };
         let s = self.select_one(shot_id)?;
         let old = self.defn.find(&s.id)?.clone();
         let mut node = old.clone();
         let round = |v: g::Vec3| json!(v.map(f64::round));
+        // Move the camera (its start, and the end of its path if it has one). `f` gets the
+        // stored position and whether it is an offset from an anchor.
+        let shift = |node: &mut Value, id: &str, f: &dyn Fn(g::Vec3, bool) -> g::Vec3| -> Result<()> {
+            let Some(cam) = node.get_mut("camera").and_then(Value::as_object_mut) else {
+                bail!("{id} has no camera mapping");
+            };
+            if cam.contains_key("anchor") {
+                let off = cam.get("offset").and_then(model::vec3).unwrap_or([-600.0, 0.0, 150.0]);
+                cam.insert("offset".into(), round(f(off, true)));
+            } else if let Some(loc) = cam.get("location").and_then(model::vec3) {
+                cam.insert("location".into(), round(f(loc, false)));
+            }
+            if let Some(end) = cam.get_mut("end").and_then(Value::as_object_mut) {
+                if let Some(l) = end.get("location").and_then(model::vec3) {
+                    end.insert("location".into(), round(f(l, false)));
+                }
+            }
+            Ok(())
+        };
         match kind {
             "closer" | "farther" => {
-                let k = if kind == "closer" { 0.8 } else { 1.25 };
+                let k = if kind == "closer" { 1.0 - 0.2 * mult } else { 1.0 + 0.25 * mult };
                 let Some(target) = s.target else {
                     bail!("{} is aimed by rotation, not at a point; ask Claude to move it instead", s.id);
                 };
@@ -1162,58 +1207,135 @@ impl Workspace {
                     bail!("{} is already {:.0} cm from what it looks at", s.id, dist);
                 }
                 let delta = g::scale(d, k - 1.0);
-                let Some(cam) = node.get_mut("camera").and_then(Value::as_object_mut) else {
-                    bail!("{} has no camera mapping", s.id);
-                };
-                if cam.contains_key("anchor") {
-                    let off = cam.get("offset").and_then(model::vec3).unwrap_or([-600.0, 0.0, 150.0]);
-                    cam.insert("offset".into(), round(g::add(off, delta)));
-                } else if let Some(loc) = cam.get("location").and_then(model::vec3) {
-                    cam.insert("location".into(), round(g::add(loc, delta)));
-                }
-                if let Some(end) = cam.get_mut("end").and_then(Value::as_object_mut) {
-                    if let Some(l) = end.get("location").and_then(model::vec3) {
-                        end.insert("location".into(), round(g::add(l, delta)));
-                    }
-                }
+                shift(&mut node, &s.id, &|v, _| g::add(v, delta))?;
                 // a dolly keeps its share of the distance, so it does not run through the subject
-                if let Some(mv) = cam.get_mut("move").and_then(Value::as_object_mut) {
+                if let Some(mv) = node.pointer_mut("/camera/move").and_then(Value::as_object_mut) {
                     let dolly = mv.get("type").and_then(Value::as_str).is_some_and(|t| t.starts_with("dolly"));
                     if let (true, Some(dd)) = (dolly, mv.get("distance").and_then(num)) {
                         mv.insert("distance".into(), json!((dd * k).round()));
                     }
                 }
             }
+            "lower" | "higher" => {
+                let dz = (if kind == "higher" { 25.0 } else { -25.0 }) * mult;
+                shift(&mut node, &s.id, &|v, _| g::add(v, [0.0, 0.0, dz]))?;
+            }
+            "orbit_left" | "orbit_right" => {
+                let Some(target) = s.target else {
+                    bail!("{} is aimed by rotation, not at a point; ask Claude to move it instead", s.id);
+                };
+                let deg = 15.0 * mult * if kind == "orbit_left" { 1.0 } else { -1.0 };
+                let eye = s.start.location;
+                // an anchored camera stores an offset: move it by the swing of the world position
+                let delta = g::sub(g::orbit(eye, target, deg), eye);
+                shift(&mut node, &s.id, &|v, rel| if rel { g::add(v, delta) } else { g::orbit(v, target, deg) })?;
+            }
             "wider" | "tighter" => {
                 let f = s.focal_length();
-                let next = if kind == "wider" {
-                    LENS_STEPS.iter().rev().find(|x| **x < f - 0.5)
-                } else {
-                    LENS_STEPS.iter().find(|x| **x > f + 0.5)
-                };
-                let Some(n) = next else { bail!("{} is already at {}mm", s.id, model::fmt_g(f)) };
+                let mut cur = f;
+                for _ in 0..steps {
+                    let next = if kind == "wider" {
+                        LENS_STEPS.iter().rev().find(|x| **x < cur - 0.5)
+                    } else {
+                        LENS_STEPS.iter().find(|x| **x > cur + 0.5)
+                    };
+                    match next {
+                        Some(n) => cur = *n,
+                        None => break,
+                    }
+                }
+                if cur == f {
+                    bail!("{} is already at {}mm", s.id, model::fmt_g(f));
+                }
                 let Some(cam) = node.get_mut("camera").and_then(Value::as_object_mut) else {
                     bail!("{} has no camera mapping", s.id);
                 };
                 if !cam.get("lens").is_some_and(Value::is_object) {
                     cam.insert("lens".into(), json!({}));
                 }
-                cam["lens"]["focal_length"] = json!(n);
+                cam["lens"]["focal_length"] = json!(cur);
+            }
+            "aim_up" | "aim_down" => {
+                if s.target.is_none() {
+                    bail!("{} is aimed by rotation, not at a point; ask Claude to move it instead", s.id);
+                }
+                let cur = node.pointer("/camera/aim").and_then(Value::as_str).unwrap_or("base").to_string();
+                let at = model::AIMS.iter().position(|a| *a == cur).unwrap_or(0) as i64;
+                let to = (at + if kind == "aim_up" { steps } else { -steps }).clamp(0, model::AIMS.len() as i64 - 1);
+                if to == at {
+                    bail!("{} already looks at its {} point", s.id, cur);
+                }
+                let Some(cam) = node.get_mut("camera").and_then(Value::as_object_mut) else {
+                    bail!("{} has no camera mapping", s.id);
+                };
+                cam.insert("aim".into(), json!(model::AIMS[to as usize]));
+            }
+            "move_longer" | "move_shorter" => {
+                let Some(mv) = node.pointer_mut("/camera/move").and_then(Value::as_object_mut) else {
+                    bail!("{} has no camera move", s.id);
+                };
+                let ty = mv.get("type").and_then(Value::as_str).unwrap_or("static").to_string();
+                if ty == "static" {
+                    bail!("{} has no camera move", s.id);
+                }
+                // an orbit is sized in degrees, the other moves in cm
+                let (key, dflt, lo, hi) =
+                    if ty.starts_with("orbit") { ("degrees", 30.0, 5.0, 360.0) } else { ("distance", 150.0, 10.0, 3000.0) };
+                let k = if kind == "move_longer" { 1.0 + 0.25 * mult } else { 1.0 - 0.2 * mult };
+                let n = (mv.get(key).and_then(num).unwrap_or(dflt) * k).round();
+                if !(lo..=hi).contains(&n) {
+                    bail!("{} would move {} {}; a move stays within {}-{}", s.id, n, key, lo, hi);
+                }
+                mv.insert(key.into(), json!(n));
+            }
+            "tod_earlier" | "tod_later" => {
+                let Some(cur) = s.environment.get("time_of_day").and_then(Value::as_str).map(str::to_string) else {
+                    bail!("{} has no time of day; set one first", s.id);
+                };
+                let at = model::TIME_OF_DAY.iter().position(|(n, _)| *n == cur).unwrap_or(0) as i64;
+                let to = (at + if kind == "tod_later" { steps } else { -steps }).clamp(0, model::TIME_OF_DAY.len() as i64 - 1);
+                if to == at {
+                    bail!("{} is already at {}", s.id, cur);
+                }
+                if !node.get("environment").is_some_and(Value::is_object) {
+                    node["environment"] = json!({});
+                }
+                let Some(env) = node["environment"].as_object_mut() else { bail!("{} has no environment mapping", s.id) };
+                env.insert("time_of_day".into(), json!(model::TIME_OF_DAY[to as usize].0));
+                // an explicit sun height would hide the change
+                env.remove("sun_elevation");
             }
             "shorter" | "longer" => {
-                let d = round_to(((s.duration + if kind == "longer" { 0.5 } else { -0.5 }) * 2.0).round() / 2.0, 2);
+                let grid = if mult < 1.0 { 4.0 } else { 2.0 };
+                let step = 0.5 * mult;
+                let d = round_to(((s.duration + if kind == "longer" { step } else { -step }) * grid).round() / grid, 2);
                 if !(1.0..=8.0).contains(&d) {
                     bail!("{} would be {}s; a shot stays within 1-8 s", s.id, model::fmt_g(d));
                 }
                 node["duration"] = json!(d);
             }
-            _ => bail!("nudge: one of {}", NUDGES.join(", ")),
+            _ => {
+                // brighter / darker: the shot's brightness shift at the cut (-0.5..0.5)
+                let cur = node.get("exposure").and_then(num).unwrap_or(0.0);
+                let step = 0.25 * mult * if kind == "brighter" { 1.0 } else { -1.0 };
+                let to = ((cur + step).clamp(-0.5, 0.5) * 1000.0).round() / 1000.0;
+                if to == cur {
+                    bail!("{} is already at the {} limit", s.id, if kind == "brighter" { "brightest" } else { "darkest" });
+                }
+                let Some(m) = node.as_object_mut() else { bail!("{} is not a mapping", s.id) };
+                if to == 0.0 {
+                    m.remove("exposure");
+                } else {
+                    m.insert("exposure".into(), json!(to));
+                }
+            }
         }
         let changes = field_changes(&old, &node);
         let rep = self.edit_definition(&[(s.id.clone(), node)], None, "nudge", kind)?;
         let mut extra = Map::new();
         extra.insert("shot".into(), json!(s.id));
         extra.insert("kind".into(), json!(kind));
+        extra.insert("amount".into(), json!(amount));
         extra.insert("changes".into(), json!({ s.id.clone(): changes }));
         self.state.annotate_last(extra);
         self.state.save()?;
@@ -1702,15 +1824,19 @@ impl Workspace {
             shots.push(model::resolve_shot(&self.defn, &c.shot(fps), i)?);
         }
         let mut files: Vec<Option<String>> = vec![None; cams.len()];
+        // where each camera really stood: the engine pulls a camera in front of a wall it would
+        // otherwise see through (`clear_view`), and says so
+        let mut stood: Vec<(crate::geometry::Vec3, f64)> = cams.iter().map(|c| (c.location, c.focal_length)).collect();
         if self.defn.project.engine == "ue5" {
             let raw = dir.join(".raw");
             let q = fp::quality(&self.defn, "still")?;
             let mut build = Vec::new();
             let mut items = Vec::new();
-            for s in &shots {
+            for (s, c) in shots.iter().zip(&cams) {
                 let asset = format!("{}/Scout/SEQ_{}", self.defn.project.content_root, s.id);
                 build.push(json!({"id": s.id, "asset": asset, "fingerprint": fp::build_fingerprint(&self.defn, s),
-                                  "payload": s.engine_payload(), "base": Value::Null}));
+                                  "payload": s.engine_payload(), "base": Value::Null,
+                                  "clear_view": {"target": c.look_at}}));
                 let d = raw.join(&s.id);
                 if d.exists() {
                     std::fs::remove_dir_all(&d)?;
@@ -1721,6 +1847,11 @@ impl Workspace {
             }
             let engine = make_engine(&self.defn)?;
             let result = engine.render(&build, None, &items, true)?;
+            for (i, s) in shots.iter().enumerate() {
+                if let Some(m) = crate::scout::moved_camera(&result["build"]["shots"][&s.id]) {
+                    stood[i] = m;
+                }
+            }
             for (i, it) in items.iter().enumerate() {
                 let key = it["key"].as_str().unwrap_or_default();
                 if result["renders"][key]["status"].as_str() != Some("ok") {
@@ -1749,12 +1880,13 @@ impl Workspace {
             idx["anchors"] = json!({});
         }
         let mut taken = 0;
-        for (c, f) in cams.iter().zip(&files) {
+        for ((c, f), (loc, focal)) in cams.iter().zip(&files).zip(&stood) {
             let list = idx["anchors"].as_object_mut().expect("object").entry(c.anchor.clone()).or_insert_with(|| json!([]));
             let arr = list.as_array_mut().expect("array");
             arr.retain(|v| v["side"] != c.side.as_str());
             if let Some(f) = f {
-                arr.push(json!({"side": c.side, "file": format!("{}/{f}", crate::scout::SCOUT_DIR), "location": c.location}));
+                arr.push(json!({"side": c.side, "file": format!("{}/{f}", crate::scout::SCOUT_DIR), "location": loc,
+                                "focal_length": focal}));
                 taken += 1;
             }
         }
@@ -1782,6 +1914,7 @@ impl Workspace {
                 bail!("unknown finish field '{k}'. known: {}", KEYS.join(", "));
             }
         }
+        self.check_faces(entries)?;
         let mut doc = Doc::load(&self.path)?;
         doc.upsert_entries("finish", entries)?;
         model::parse(&doc.value()?, &self.path)?;
@@ -1792,12 +1925,52 @@ impl Workspace {
         self.state.save()
     }
 
+    /// The faces a `fonts` write changes must be fit for their role (D-52, D-59): not
+    /// overused, kanji for the cards and lines, and for the title a title face that has the
+    /// glyphs of the title it will set. Faces left as they are are not looked at again.
+    fn check_faces(&self, entries: &[(String, Value)]) -> Result<()> {
+        let Some((_, Value::Object(fonts))) = entries.iter().find(|(k, _)| k == "fonts") else { return Ok(()) };
+        let cur = &self.defn.finish.fonts;
+        let slots = [("display", &cur.display), ("body", &cur.body), ("latin", &cur.latin), ("title", &cur.title)];
+        for (role, now) in slots {
+            let Some(Value::String(s)) = fonts.get(role) else { continue };
+            let s = s.trim();
+            if s.is_empty() {
+                continue;
+            }
+            let Ok(spec) = crate::fonts::Spec::parse(s) else { continue }; // the parse below says why
+            if now.as_ref() == Some(&spec) {
+                continue;
+            }
+            if let Some(o) = crate::fonts::overused(&spec.family) {
+                bail!("finish.fonts.{role}: {} is overused (instead: {})", o.family, o.instead.join(", "));
+            }
+            if role == "title" {
+                let tt = entries.iter().find(|(k, _)| k == "title").map(|(_, v)| v.clone());
+                let typed = match &tt {
+                    Some(Value::Object(m)) => m.get("text").map(model::str_of),
+                    Some(Value::Null) => None,
+                    _ => self.defn.finish.title.as_ref().map(|t| t.text.clone()),
+                };
+                let titles: Vec<&str> = self.defn.script.iter().filter(|l| l.kind == "title").map(|l| l.ja.as_str()).chain(typed.as_deref()).collect();
+                crate::fonts::title_spec(&spec.family, &titles).map_err(|e| Error::user(format!("finish.fonts.title: {e}")))?;
+            } else if role != "latin" {
+                if let Some(f) = crate::fonts::family(&spec.family) {
+                    if f.kanji == "none" {
+                        bail!("finish.fonts.{role}: {} has no kanji for the cards and lines", f.family);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Write the active look's typefaces, title size and motion into `finish:` (D-52), and
     /// start fetching the faces. Nothing when `brief.design` names no bundled look.
     /// Editorial: nothing re-renders.
     pub fn apply_look(&mut self) -> Result<bool> {
         let Some(d) = crate::designsys::get(&self.defn.brief.design) else { return Ok(false) };
-        // a measured reference's lengths stay on top of the look's motion (D-59)
+        // a measured reference's lengths stay on top of the look's motion (D-71)
         let entries: Vec<(String, Value)> = crate::designsys::look_entries(d)
             .into_iter()
             .map(|(k, v)| if k == "motion" { (k, crate::reference::motion_for(&self.defn, v)) } else { (k, v) })
@@ -1807,7 +1980,7 @@ impl Workspace {
         Ok(true)
     }
 
-    // ------------------------------------------------------------------ a reference teaser (D-59)
+    // ------------------------------------------------------------------ a reference teaser (D-71)
 
     /// Measure a reference teaser into `reference/<id>/`; with `borrow`, the brief names it and
     /// `finish.motion` takes its lengths. Editorial: nothing re-renders.

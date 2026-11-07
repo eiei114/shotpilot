@@ -2,7 +2,7 @@
 
 > 出典: open-design（nexu-io/open-design、Apache-2.0）の `design-templates/hyperframes/references/typography.md`（定番すぎる書体の禁止リスト、選び方の手順）を、日本語のティザー向けに言い換えた。候補は Google Fonts の書体（OFL）に限り、太さ・人気順位・収録文字は 2026-11-05 に Google Fonts のメタデータと実ファイルから測った（`catalog.json`）。組み方の規則は `references/craft/TEASER-TYPE.md`。
 
-ルックが書体を決め、`TEASER-TYPE.md` が組み方を決める。このフォルダは、その間で「どの書体を選べるか」を持つ。`catalog.json` には日本語 68 書体（Google Fonts にある日本語の全ファミリー）、欧文の候補 61 書体、定番すぎる書体 34 を入れた。各書体は、分類（明朝・ゴシック・丸ゴシック・筆・手書き・ポップ・表示用・ドット・等幅）、合う雰囲気（`registers`）、向く役割（`roles`）、漢字の収録（`coverage`）、作者の説明（`about`）を持つ。
+ルックが書体を決め、`TEASER-TYPE.md` が組み方を決める。このフォルダは、その間で「どの書体を選べるか」を持つ。`catalog.json` には日本語 68 書体（Google Fonts にある日本語の全ファミリー）、欧文の候補 75 書体、定番すぎる書体 34 を入れた。各書体は、分類（明朝・ゴシック・丸ゴシック・筆・手書き・ポップ・表示用・ドット・等幅）、合う雰囲気（`registers`）、向く役割（`roles`）、漢字の収録（`coverage`）、作者の説明（`about`）を持つ。
 
 ## 1. 選び方
 
@@ -48,6 +48,9 @@
 | 戦略・司令室（`command`） | Zen Kaku Gothic New, M PLUS 1, M PLUS 2, M PLUS U, Murecho, IBM Plex Sans JP, BIZ UDGothic, BIZ UDPGothic, Kosugi, Dela Gothic One, M PLUS 1 Code | — | Barlow Condensed, IBM Plex Sans Condensed, Chivo, Chivo Mono, Familjen Grotesk, Quantico, Share Tech Mono, Zilla Slab, Archivo, Big Shoulders, Big Shoulders Stencil, Geist Mono, Martian Mono |
 | 静か・アート（`minimal`） | Zen Kaku Gothic New, Zen Kaku Gothic Antique, M PLUS 2, M PLUS U, LINE Seed JP, Murecho, BIZ UDGothic, BIZ UDPGothic, Kaisei Opti, Sawarabi Mincho, Sawarabi Gothic | Aoboshi One | Instrument Serif, Newsreader, Hanken Grotesk, Schibsted Grotesk, Familjen Grotesk, Geist, Jost, Tenor Sans |
 | 語り・日記（`narrative`） | Shippori Mincho, Shippori Mincho B1, Zen Old Mincho, Zen Kaku Gothic Antique, Kaisei HarunoUmi, Hina Mincho, New Tegomin, Klee One, Zen Kurenaido, Yomogi, Kiwi Maru, BIZ UDPMincho, BIZ UDMincho, Sawarabi Mincho | Slackside One | Newsreader, Literata, Spectral, Shantell Sans |
+| 崩れ・かすれ（`worn`） | Yuji Mai, Potta One | Shizuru, Darumadrop One | IM Fell English, Fredericka the Great, Protest Revolution, Rock Salt, Rubik Glitch, Rubik Burned, Rubik Distressed, Rubik Dirt, Rubik Scribble, Cabin Sketch, Road Rage, Frijole, Caesar Dressing, Metal Mania, Mystery Quest |
+
+崩れ・かすれ（`worn`）は 2026-11-06 に足した。Google Fonts 公式のタグ（google/fonts の `tags/all/families.csv`）の `/Theme/Distressed` と `/Seasonal/Halloween` から、定番すぎる書体（Creepster などの血の滴る書体、Special Elite）を除いて選んだ。どれもタイトル（と一部はカード）向けで、ルックの雰囲気に関わらずタイトルの候補になる（5 節）。Rubik の崩れ版は土台が丸いゴシックなので、静かなホラーには軽く見える。
 
 ## 4. ルックごとの組み合わせの例
 
@@ -97,3 +100,13 @@ Windows に入っている書体（游ゴシック、游明朝、メイリオ、
 ## 8. 目録の更新
 
 `catalog.json` は `research_data/tools/build_fonts.py`（git 管理外）が書く。測った値（太さ・人気順位・追加日・収録文字・作者の説明）は `research_data/fonts/` の元データから、分類・雰囲気・役割・注記はスクリプトの中の表から取る。分類や雰囲気を直すときはスクリプトの表を直して作り直す。
+
+## 5. タイトルだけの書体（`finish.fonts.title`）
+
+ルックは `display`（タイトル・カード）・`body`（情報）・`latin`（英語の添え書き）を決める。タイトルだけを別の書体にしたいときは `title` を書く（D-59）。ロゴ画像（`finish.logo`）があればそれが優先し、無いときに書体で組む。
+
+- 選ぶのは Claude。plan と全体への仕上げの指示で、目録のうちタイトル向き（役割 `title`）で定番すぎない書体の一覧から、企画・最初のプロンプト・ロケハンで見えた場所に合うものを `title_face` に書く。一覧はルックの雰囲気の書体と、崩れ・かすれ（`worn`）の書体を並べる。合うものが無ければ空にして、ルックの `display` のまま。
+- コードが確かめる。目録にあること、定番すぎないこと、タイトルの字を持つこと（欧文の書体は欧文のタイトルだけ、かなだけの書体は漢字の無いタイトルだけ）。太さは 700 に近いもの。
+- 焼き込みでは、タイトルの書体に無い字を含むタイトルは、表現用の書体（`display`）で組み、注記に出す（システムの書体には落とさない）。
+- 編集的で、撮り直しは起きない。
+

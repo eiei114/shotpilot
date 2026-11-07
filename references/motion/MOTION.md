@@ -1,7 +1,7 @@
 # Teaser motion — 文字とつなぎの動き
 
 > 出典: open-design（nexu-io/open-design、Apache-2.0）の `motion-design` と `hyperframes` のタスクプロファイル（動きの帯、入りと抜け、動きの強さ、つなぎの選び方）を、ゲームのティザー向けに言い換えた（D-53）。数値は、33 本を 1 コマずつ見た記録（`research_notes/モーションデザイン/corpus_*.md`）と、736 本を明るさから自動で測った値（`research_notes/モーションデザイン/auto_measure.md`）から取った。
-> 6 節だけが plan と、画・文字を変える修正に渡る（`refs::motion_text`）。それより前の節は、コード（`motion.rs`、`finish.rs`）が描くときの値と、その根拠。ジャンルごとの値は `profiles.json`。カットのつなぎの作り方と書き方は `TRANSITIONS.md`（D-58）。
+> 6 節だけが plan と、画・文字を変える修正に渡る（`refs::motion_text`）。それより前の節は、コード（`motion.rs`、`finish.rs`）が描くときの値と、その根拠。ジャンルごとの値は `profiles.json`。カットのつなぎの作り方と書き方は `TRANSITIONS.md`（D-70）。
 
 ## 1. 語彙
 

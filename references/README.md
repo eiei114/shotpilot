@@ -41,7 +41,7 @@ faces in the rest of the file are applied by code (`finish.rs`).
 - Both avoid self-review wording (D-22); section 10 reaches the planner, so
   `every_path_that_writes_shots_gets_the_frozen_spec` checks it with the rest of the spec.
 
-## Motion (D-53, D-58)
+## Motion (D-53, D-70)
 
 | Axis | open-design | here | holds |
 |---|---|---|---|

@@ -3,6 +3,7 @@
 //! Define shots in `shots.yaml`; only the shots whose pixels changed are re-rendered.
 
 pub mod ai;
+pub mod claudecode;
 pub mod concept;
 pub mod connect;
 pub mod craft;
@@ -11,8 +12,10 @@ pub mod cut;
 pub mod designsys;
 pub mod engines;
 pub mod error;
+pub mod eval;
 pub mod finish;
 pub mod fonts;
+pub mod fx;
 pub mod fingerprint;
 pub mod geometry;
 pub mod handover;
@@ -36,6 +39,7 @@ pub mod soundcheck;
 pub mod sounddesign;
 pub mod state;
 pub mod storyboard;
+pub mod suggest;
 pub mod sync;
 pub mod templates;
 pub mod workspace;

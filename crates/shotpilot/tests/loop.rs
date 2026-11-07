@@ -314,3 +314,118 @@ fn fingerprints_match_the_python_version() {
 const PY_BUILD_S02: &str = "2541818c6abdd7ebe482d6484d5205cd4c2c7f88518f5fc0e65d51f83241cb07";
 const PY_STILL_S02: &str = "88b637b4e357e81d799e9d4dbe97b035ed6220325f031f576264aca235cc4075";
 const PY_FINAL_FP12: [&str; 6] = ["2dfed89ebbad", "c2c9a5ab699e", "28f84730860f", "687ec2bf2a35", "3b90dabba4c7", "76bcf5e812e6"];
+
+#[test]
+fn aiming_at_the_upper_part_rerenders_that_shot_only_and_base_is_as_before() {
+    // `camera.aim` (D-60): a shot that leaves it out resolves as it always did; aiming at the
+    // upper part of the anchor's box tilts that one camera up and re-renders that shot only
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let pitch = |f: &common::Fixture, id: &str| -> f64 {
+        let s = f.ws.resolved().unwrap().into_iter().find(|s| s.id == id).unwrap();
+        s.engine_payload()["start"]["rotation"][0].as_f64().unwrap()
+    };
+    let before = pitch(&f, "s05_door");
+    let mut cam = f.ws.defn.find("s05_door").unwrap()["camera"].clone();
+    cam["aim"] = json!("base");
+    let rep = f.ws.set_fields("s05_door", &set(&[("camera", cam.clone())])).unwrap();
+    assert!(rep.stale.is_empty(), "base is the default: same picture");
+    assert_eq!(pitch(&f, "s05_door"), before);
+    cam["aim"] = json!("upper");
+    let rep = f.ws.set_fields("s05_door", &set(&[("camera", cam.clone())])).unwrap();
+    assert_eq!(rep.stale, ids(&["s05_door"]));
+    assert!(pitch(&f, "s05_door") > before + 1.0, "looks up toward the top of the door");
+    let done = actions(&f.ws.render(&[], "previz", false, None).unwrap());
+    assert_eq!(done.iter().filter(|(_, a)| *a == "rendered").map(|(id, _)| id.as_str()).collect::<Vec<_>>(), ["s05_door"]);
+    // back to the base: the earlier take again, nothing rendered
+    cam["aim"] = json!("base");
+    f.ws.set_fields("s05_door", &set(&[("camera", cam.clone())])).unwrap();
+    assert!(f.ws.render(&[], "previz", false, None).unwrap().iter().all(|o| o.action == "reused"));
+    cam["aim"] = json!("face");
+    assert!(f.ws.set_fields("s05_door", &set(&[("camera", cam)])).unwrap_err().msg.contains("aim"));
+}
+
+/// Hash of every PNG in a take dir (names and bytes, in name order).
+fn png_digest(dir: &std::path::Path) -> (usize, String) {
+    use sha2::{Digest, Sha256};
+    let mut names: Vec<_> = std::fs::read_dir(dir)
+        .unwrap()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "png"))
+        .collect();
+    names.sort();
+    let mut h = Sha256::new();
+    for p in &names {
+        h.update(p.file_name().unwrap().to_string_lossy().as_bytes());
+        h.update(std::fs::read(p).unwrap());
+    }
+    (names.len(), h.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// Every demo shot's previz (dusk and night skies, close-ups and wide shots, so every part of
+/// the drawing shows up somewhere), as one frame count and one hash.
+fn previz_digest() -> (usize, String) {
+    use sha2::{Digest, Sha256};
+    let mut f = ws();
+    let out = f.ws.render(&[], "previz", false, None).unwrap();
+    let (mut frames, mut h) = (0, Sha256::new());
+    for o in &out {
+        assert_eq!(o.action, "rendered");
+        let (n, digest) = png_digest(&f.ws.state.take_dir(&o.shot_id, "previz", &o.fingerprint));
+        frames += n;
+        h.update(o.shot_id.as_bytes());
+        h.update(digest.as_bytes());
+    }
+    (frames, h.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// Guards D-RENDERER_VERSION / PREVIZ_VERSION: the previz drawing is pinned together with
+/// its version, so changing the drawing without bumping PREVIZ_VERSION fails here.
+#[test]
+fn previz_drawing_is_pinned_to_its_version() {
+    const PINNED_PREVIZ_VERSION: i64 = 2;
+    const PINNED_RENDERER_VERSION: i64 = 1;
+    const PINNED_FRAMES: usize = 281;
+    const PINNED_DIGEST: &str = "1928f4d1d135336f4ba5dd622100a22167e19693f0c2b0814adb8e5f99cb0438";
+
+    let a = previz_digest();
+    assert_eq!(a, previz_digest(), "previz output must be deterministic across runs");
+    assert!(a.0 > 0, "previz wrote no PNG frames");
+    let msg = format!(
+        "the previz drawing changed (frames={}, sha256={}); if that was intended, bump \
+         fingerprint::PREVIZ_VERSION and update both constants in this test",
+        a.0, a.1
+    );
+    assert_eq!(fp::PREVIZ_VERSION, PINNED_PREVIZ_VERSION, "{msg}");
+    assert_eq!(fp::RENDERER_VERSION, PINNED_RENDERER_VERSION, "RENDERER_VERSION changed; update the pin if intended");
+    assert_eq!((a.0, a.1.as_str()), (PINNED_FRAMES, PINNED_DIGEST), "{msg}");
+}
+
+/// Guards "build never silently overwrites editor edits": a plain build reports the shot as
+/// diverged and leaves the editor change; only force overwrites it.
+#[test]
+fn build_overwrites_editor_edits_only_with_force() {
+    let mut f = ws();
+    f.ws.build(&[], false).unwrap();
+    human_edit(&f.ws, "s03_window", 60.0, 40.0);
+    f.ws.set_fields("s03_window", &set(&[("duration", json!(5))])).unwrap();
+
+    let rep = f.ws.build(&ids(&["s03_window"]), false).unwrap();
+    assert_eq!(rep.diverged, ids(&["s03_window"]));
+    assert!(rep.built.is_empty());
+    let kind = |ws: &mut shotpilot::Workspace, id: &str| {
+        ws.pull(None, false).unwrap().into_iter().find(|d| d.shot_id == id).unwrap().kind
+    };
+    assert_eq!(kind(&mut f.ws, "s03_window"), PullKind::Conflict); // the edit survived
+    assert_eq!(kind(&mut f.ws, "s01_gate"), PullKind::Clean);
+
+    let rep = f.ws.build(&ids(&["s03_window"]), true).unwrap();
+    assert_eq!(rep.built, ids(&["s03_window"]));
+    assert!(rep.diverged.is_empty());
+    assert_eq!(kind(&mut f.ws, "s03_window"), PullKind::Clean); // editor change is gone
+    assert_eq!(f.ws.select_one("s03_window").unwrap().lens["focal_length"], json!(50.0));
+
+    // Shots nobody touched are never reported as diverged.
+    assert!(f.ws.build(&[], false).unwrap().diverged.is_empty());
+}

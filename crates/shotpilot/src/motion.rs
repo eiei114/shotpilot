@@ -4,7 +4,7 @@
 //! open-design's motion-design profile ("the model picks from enums, code sets the numbers"):
 //! entrances (`cut fade flicker focus slam pop type wipe glitch`), holds (`still drift glow`),
 //! exits (`cut fade glitch`) and the hand-overs between shots (`cut dip flash whiteout glitch`).
-//! How a hand-over is drawn is its recipe (`handover.rs`, D-58); this holds its lengths.
+//! How a hand-over is drawn is its recipe (`handover.rs`, D-70); this holds its lengths.
 //!
 //! The numbers come from `references/motion/profiles.json`: one profile per genre, measured
 //! frame by frame on 33 teasers and from luma on 736 (research_notes/モーションデザイン/).
@@ -31,7 +31,8 @@ pub const ROLES: &[&str] = &["card", "caption", "count", "title", "end"];
 pub const ENERGIES: &[&str] = &["calm", "measured", "driving"];
 /// Moves a look or a note may rule out.
 pub const AVOIDABLE: &[&str] =
-    &["fade", "flicker", "focus", "slam", "pop", "type", "wipe", "glitch", "drift", "glow", "dip", "flash", "whiteout"];
+    &["fade", "flicker", "focus", "slam", "pop", "type", "wipe", "glitch", "drift", "glow", "dip", "flash", "whiteout",
+      "chroma", "static", "vhs", "shake", "redflash"];
 
 /// Seconds an entrance takes when a line asks for one its profile has no time for
 /// (measured: slams 0.10-0.17 s, glitches 0.3-0.75 s, focus pulls 0.9-1.8 s).
@@ -72,7 +73,7 @@ pub struct Motion {
     pub dip: f64,
     /// Seconds of a flash from white.
     pub flash: f64,
-    /// How a whiteout runs (D-58).
+    /// How a whiteout runs (D-70).
     pub whiteout: Whiteout,
     /// Seconds a glitch hand-over breaks on each side of the cut.
     pub glitch: f64,
@@ -160,9 +161,9 @@ pub struct MotionCfg {
     /// Role overrides (`card: {in: fade, in_s: 0.8}`), as written.
     pub roles: Vec<(String, Map<String, Value>)>,
     pub dip: Option<f64>,
-    /// Seconds of a flash from white, as measured (D-59; not scaled by the energy).
+    /// Seconds of a flash from white, as measured (D-71; not scaled by the energy).
     pub flash: Option<f64>,
-    /// A whiteout's `rise`, `peak`, `decay` (seconds) and `burn`, as written (D-59).
+    /// A whiteout's `rise`, `peak`, `decay` (seconds) and `burn`, as written (D-71).
     pub whiteout: Map<String, Value>,
     pub accent: Option<String>,
 }
@@ -373,9 +374,9 @@ pub fn resolve(cfg: &MotionCfg) -> Motion {
             avoid.push(a.clone());
         }
     }
-    // hand-overs (D-58) follow the energy like the text. With no finish.motion at all the cut
+    // hand-overs (D-70) follow the energy like the text. With no finish.motion at all the cut
     // draws them as before the recipes (plain), with their old seconds; what a reference
-    // measured (D-59) is written in seconds and kept as it is
+    // measured (D-71) is written in seconds and kept as it is
     let plain = !cfg.is_set();
     let k = if plain { 1.0 } else { scale };
     let w = p.map_or(
@@ -712,5 +713,63 @@ mod tests {
         assert!((timing(&slow, 0.0, 2.0).fin - 0.7).abs() < 1e-9);
         assert_eq!(type_steps(10, &timing(&rm, 1.0, 4.0)).len(), 10);
         assert_eq!(type_steps(60, &timing(&rm, 1.0, 9.0)).len(), 20); // in chunks
+    }
+
+    /// Guards D-53: whatever the vocabulary word, profile, energy or (huge) override, the
+    /// entrance takes at most 35% of the line's time and the exit at most 25%.
+    #[test]
+    fn no_entrance_or_exit_outruns_its_share_of_the_line() {
+        assert!(!profiles().is_empty());
+        let spans = [0.8, 1.5, 4.0];
+        let check = |m: &Motion, what: &str| {
+            for (role, rm) in [("card", &m.card), ("caption", &m.caption), ("count", &m.count), ("title", &m.title), ("end", &m.end)] {
+                for span in spans {
+                    let tm = timing(rm, 2.0, 2.0 + span);
+                    assert!(tm.fin <= 0.35 * span + 1e-9, "{what} {role} in {} span {span}: {}", rm.enter, tm.fin);
+                    assert!(tm.fout <= 0.25 * span + 1e-9, "{what} {role} out {} span {span}: {}", rm.exit, tm.fout);
+                }
+            }
+        };
+        for p in profiles() {
+            for &e in ENERGIES {
+                let m = resolve(&cfg(json!({"profile": p.id, "energy": e})));
+                check(&m, &format!("{}/{e}", p.id));
+                for &role in ROLES {
+                    for &ent in ENTRANCES {
+                        for (&hold, &ex) in HOLDS.iter().zip(EXITS.iter().cycle()) {
+                            let c = cfg(json!({"profile": p.id, role: {"in": ent, "in_s": 3.0, "hold": hold, "out": ex, "out_s": 3.0}}));
+                            check(&resolve(&c), &format!("{}/{role}/{ent}/{hold}/{ex}", p.id));
+                        }
+                    }
+                    for &ex in EXITS {
+                        let c = cfg(json!({"profile": p.id, role: {"out": ex, "out_s": 3.0}}));
+                        check(&resolve(&c), &format!("{}/{role}/out {ex}", p.id));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Guards D-53: profiles only use words of the closed vocabulary.
+    #[test]
+    fn every_profile_speaks_the_closed_vocabulary() {
+        for p in profiles() {
+            let m = resolve(&cfg(json!({"profile": p.id})));
+            for rm in [&m.card, &m.caption, &m.count, &m.title, &m.end] {
+                assert!(ENTRANCES.contains(&rm.enter.as_str()), "{}: entrance {}", p.id, rm.enter);
+                assert!(HOLDS.contains(&rm.hold.as_str()), "{}: hold {}", p.id, rm.hold);
+                assert!(EXITS.contains(&rm.exit.as_str()), "{}: exit {}", p.id, rm.exit);
+            }
+        }
+    }
+
+    /// Guards D-25 / D-53: no transition may overlap two cuts (that would shorten the cut).
+    #[test]
+    fn the_transition_vocabulary_has_no_crossfade() {
+        for t in crate::finish::TRANSITIONS {
+            for bad in ["dissolve", "crossfade", "cross", "mix", "xfade", "blend"] {
+                assert!(!t.contains(bad), "transition '{t}' looks like a crossfade");
+            }
+        }
     }
 }

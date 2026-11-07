@@ -152,3 +152,58 @@ fn the_cameras_can_be_rebuilt_for_every_shot_without_touching_the_script() {
     // still never without naming the shots
     assert!(ai::revise_at(&f.ws.defn, "x", None, &pointer, &fake).is_err());
 }
+
+/// D-38 / invariant 9: the script approval follows the script's text and position, each cut's
+/// id / beat / purpose / duration and the order. Camera, light and sound never drop it.
+#[test]
+fn script_approval_follows_the_script_and_never_the_camera_light_or_sound() {
+    let mut f = ws();
+    shotpilot::sound::write_demo_audio(&f.ws.root).unwrap();
+    let mut text = f.text();
+    text.push_str("\nscript:\n  - {id: intro, kind: card, ja: 今日から、ここに住む。, dur: 3, after: s01_gate}\n");
+    f.write(&text);
+    f.ws.reload().unwrap();
+    assert_eq!(f.ws.script_approval(), "none");
+    f.ws.approve_script(true).unwrap();
+    assert_eq!(f.ws.script_approval(), "approved");
+
+    // sound, light and camera edits keep it
+    f.ws.edit_sound(&[("s04_lantern".into(), Some(json!([{"file": "audio/hit.wav", "at": 0, "gain": -2}])))], None, "").unwrap();
+    assert_eq!(f.ws.script_approval(), "approved", "an sfx edit dropped the script approval");
+    f.ws.set_audio(&[("bgm.gain".into(), json!(-10)), ("gain".into(), json!(2))]).unwrap();
+    assert_eq!(f.ws.script_approval(), "approved", "an audio gain edit dropped the script approval");
+    f.ws.set_fields("s02_well", &set(&[("environment.time_of_day", json!("dawn")), ("exposure", json!(0.5))])).unwrap();
+    assert_eq!(f.ws.script_approval(), "approved", "light dropped the script approval");
+    f.ws.set_fields("s02_well", &set(&[("camera.lens.focal_length", json!(50))])).unwrap();
+    assert_eq!(f.ws.script_approval(), "approved", "a focal change dropped the script approval");
+
+    // a beat change drops it
+    f.ws.set_fields("s03_window", &set(&[("beat", json!("hook"))])).unwrap();
+    assert_eq!(f.ws.script_approval(), "outdated", "a beat change kept the approval");
+    f.ws.approve_script(true).unwrap();
+
+    // a reorder drops it
+    let mut order = f.ws.defn.shot_ids();
+    order.swap(1, 2);
+    f.ws.edit_definition(&[], Some(&order), "reorder", "").unwrap();
+    assert_eq!(f.ws.script_approval(), "outdated", "a reorder kept the approval");
+    f.ws.approve_script(true).unwrap();
+
+    // a line's timing drops it
+    f.ws.set_line("intro", &set(&[("at", json!(1.5))])).unwrap();
+    assert_eq!(f.ws.script_approval(), "outdated", "a line's `at` change kept the approval");
+    f.ws.approve_script(true).unwrap();
+
+    // moving the line to follow another shot drops it
+    let moved = f.text().replace("after: s01_gate", "after: s02_well");
+    assert_ne!(moved, f.text());
+    f.write(&moved);
+    f.ws.reload().unwrap();
+    assert_eq!(f.ws.script_approval(), "outdated", "moving a line's `after` kept the approval");
+    f.ws.approve_script(true).unwrap();
+    assert_eq!(f.ws.script_approval(), "approved");
+
+    // the approval lives in state.json: a fresh Workspace sees it
+    let reopened = shotpilot::Workspace::open(f.path()).unwrap();
+    assert_eq!(reopened.script_approval(), "approved");
+}

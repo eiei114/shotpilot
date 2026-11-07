@@ -158,7 +158,7 @@ pub struct BriefCfg {
     pub plan: String,
     /// The direction in one sentence, so the human can redirect cheaply.
     pub direction: String,
-    /// A measured reference teaser (reference/<id>/, D-59) whose rhythm and hand-overs the cut
+    /// A measured reference teaser (reference/<id>/, D-71) whose rhythm and hand-overs the cut
     /// borrows; never its pictures, words or sound.
     pub reference_teaser: String,
     /// The raw mapping, for the app's form.
@@ -194,6 +194,12 @@ pub struct AnchorBox {
 }
 
 pub const DEFAULT_BOX: Vec3 = [120.0, 120.0, 180.0];
+
+/// Where on an anchor the camera looks (`camera.aim`): `base` is the anchor's own point (a
+/// mannequin's feet, a building's footing; what a camera always aimed at), `center` the middle of
+/// its box, `upper` its upper part (a person's head and shoulders, the top of a tower). Shots
+/// that leave it out resolve as before, so their takes stay valid.
+pub const AIMS: &[&str] = &["base", "center", "upper"];
 
 /// What a prop is in the engine: a static mesh, or a skeletal mesh (a character, shown in
 /// its reference pose: no animation).
@@ -611,6 +617,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
             errs.push(format!("{at}.duration: positive seconds required"));
         }
         crate::finish::validate_shot(&at, s, &mut errs);
+        crate::fx::validate(&at, s, &mut errs);
         match s.get("beat") {
             None | Some(Value::Null) => {}
             Some(Value::String(b)) if BEATS.contains(&b.as_str()) => {}
@@ -750,7 +757,22 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
     };
     let frames = g::round_half_even(duration * fps as f64).max(1);
 
-    let mut target = point(defn, cam.get("look_at"), &format!("{at}.camera.look_at"))?;
+    // where on the subject the camera looks (`aim`): its base point (the default, as always), the
+    // centre of its box, or its upper part (a person's head and shoulders)
+    let aim = cam.get("aim").map(str_of).filter(|a| !a.is_empty()).unwrap_or_else(|| "base".into());
+    if !AIMS.contains(&aim.as_str()) {
+        bail!("{at}.camera.aim: one of {} (got '{aim}')", AIMS.join(", "));
+    }
+    let aimed = |name: Option<&Value>, p: Option<Vec3>| -> Option<Vec3> {
+        let p = p?;
+        let Some(Value::String(n)) = name else { return Some(p) };
+        match (aim.as_str(), defn.known_box(n)) {
+            ("center", Some(b)) => Some(b.center),
+            ("upper", Some(b)) => Some([b.center[0], b.center[1], b.center[2] + b.size[2] * 0.3]),
+            _ => Some(p),
+        }
+    };
+    let mut target = aimed(cam.get("look_at"), point(defn, cam.get("look_at"), &format!("{at}.camera.look_at"))?);
     let roll = cam.get("roll").and_then(num).unwrap_or(0.0);
 
     let eye: Vec3 = if cam.contains_key("anchor") {
@@ -764,7 +786,7 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
             Some(v) => vec3(v).ok_or_else(|| Error::user(format!("{at}.camera.offset: must be [x, y, z]")))?,
         };
         if target.is_none() {
-            target = Some(anchor);
+            target = aimed(cam.get("anchor"), Some(anchor));
         }
         g::add(anchor, off)
     } else if let Some(loc) = cam.get("location") {
@@ -789,7 +811,8 @@ pub fn resolve_shot(defn: &Definition, shot: &Value, index: usize) -> Result<Res
             None => eye,
             Some(v) => vec3(v).ok_or_else(|| Error::user(format!("{at}.camera.end.location: must be [x, y, z]")))?,
         };
-        let e_target = point(defn, end_cfg.get("look_at"), &format!("{at}.camera.end.look_at"))?.or(target);
+        let e_target = aimed(end_cfg.get("look_at"), point(defn, end_cfg.get("look_at"), &format!("{at}.camera.end.look_at"))?)
+            .or(target);
         let e_rot = match (e_target, end_cfg.get("rotation")) {
             (Some(t), None) => g::look_at(e_loc, t, end_cfg.get("roll").and_then(num).unwrap_or(roll)),
             (_, Some(r)) => Rot::from_array(
