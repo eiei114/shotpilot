@@ -1602,6 +1602,9 @@ impl Workspace {
             let want_assets = crate::scout::load_assets(&self.root).is_empty();
             let engine = make_engine(&self.defn)?;
             let mut found = engine.survey("shotpilot", "SP_", want_assets, false)?;
+            if found["outline"].is_object() {
+                crate::scout::save_level(&self.root, &found["outline"])?;
+            }
             if let Some(list) = found["assets"].as_array() {
                 let mut list: Vec<crate::scout::AssetInfo> = list.iter().filter_map(crate::scout::AssetInfo::from_json).collect();
                 list.sort_by(|a, b| a.asset.cmp(&b.asset));
@@ -1707,6 +1710,22 @@ impl Workspace {
         self.state.log("concept", json!({"made": made, "frames": frames.iter().map(crate::concept::Frame::to_json).collect::<Vec<_>>()}));
         self.state.save()?;
         Ok(made)
+    }
+
+    /// Read the level's plan from the engine for the blocking map (D-86): its walls, things,
+    /// lamps and storeys. Reads only; the level is not changed. Returns how many shapes.
+    pub fn read_level(&mut self) -> Result<usize> {
+        let engine = make_engine(&self.defn)?;
+        let out = engine.outline()?;
+        let outline = &out["outline"];
+        if !outline.is_object() {
+            bail!("this engine has no level to read (the blocking map draws the anchors and cameras)");
+        }
+        crate::scout::save_level(&self.root, outline)?;
+        let n = outline["shapes"].as_array().map_or(0, Vec::len);
+        self.state.log("level", json!({"shapes": n, "floors": outline["floors"]}));
+        self.state.save()?;
+        Ok(n)
     }
 
     /// Find the concept frames' places (D-46): compare the frames still open with the scout

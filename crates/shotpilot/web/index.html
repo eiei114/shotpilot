@@ -1160,8 +1160,17 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 #bk-svg .shape { fill: color-mix(in srgb, var(--ink) 7%, transparent); stroke: color-mix(in srgb, var(--ink) 32%, transparent); vector-effect: non-scaling-stroke; }
 #bk-svg .shape.wall { fill: color-mix(in srgb, var(--ink) 20%, var(--soft)); stroke: color-mix(in srgb, var(--ink) 45%, transparent); }
 #bk-svg .shape.soft { fill: none; stroke-dasharray: 3 3; }
+#bk-svg .shape.door { fill: color-mix(in srgb, var(--stale) 22%, transparent); stroke: var(--stale); }
+#bk-svg .shape.lamp { fill: color-mix(in srgb, #f5c542 35%, transparent); stroke: #c9a227; }
+#bk-svg .shape.char { fill: color-mix(in srgb, var(--hook) 25%, transparent); stroke: var(--hook); }
+#bk-svg .lightpt { fill: #f5c542; stroke: color-mix(in srgb, #f5c542 50%, transparent); stroke-width: 6; vector-effect: non-scaling-stroke; }
+#bk-svg .startpt { fill: var(--establish); stroke: var(--card); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bk-tools .seg button { font-size: 11px; padding: 2px 8px; }
+.bk-note { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 12px; font-size: 12px; color: var(--muted); box-shadow: 0 4px 16px rgb(0 0 0 / .15); }
 #bk-svg .lbl { fill: var(--muted); font-family: var(--mono); pointer-events: none; }
 #bk-svg .anc { fill: var(--card); stroke: var(--title); stroke-width: 2; vector-effect: non-scaling-stroke; }
+#bk-svg .anc.off, #bk-svg .anc-box.off, #bk-svg .lbl.off { opacity: .3; }
 #bk-svg .anc-box { fill: color-mix(in srgb, var(--title) 10%, transparent); stroke: color-mix(in srgb, var(--title) 55%, transparent); stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 #bk-svg .cone { fill: color-mix(in srgb, var(--establish) 10%, transparent); stroke: color-mix(in srgb, var(--establish) 45%, transparent); vector-effect: non-scaling-stroke; }
 #bk-svg .cam .body { fill: var(--muted); }
@@ -1697,7 +1706,7 @@ const ROAD_TAB = { plan: "brief", scout: "scout", script: "structure", blocking:
 const ROAD_OF = { brief: "plan", scout: "scout", structure: "script", shot: "blocking", blocking: "blocking", review: "review",
   sound: "sound", capture: "capture", teaser: "cut", design: "cut", publish: "publish" };
 // what Claude is busy with -> the step it works on (a first pass reports its own steps)
-const BUSY_ROAD = { discover: "plan", mood: "plan", concept: "plan", scout: "scout", stage: "scout", assets: "scout", match: "scout",
+const BUSY_ROAD = { discover: "plan", mood: "plan", concept: "plan", scout: "scout", stage: "scout", assets: "scout", match: "scout", level: "blocking",
   plan: "script", sound: "sound", cut: "cut" };
 const STEP_ROAD = { discover: "plan", mood: "plan", scout: "scout", stage: "scout", plan: "script", review: "review",
   sound: "sound", render: "capture", see: "capture", repair: "capture", cut: "cut" };
@@ -1997,6 +2006,7 @@ async function fetchBlocking() {
   finally { ui.blkLoading = false; }
   if (!ui.blkView) blkFit();
   if (ui.tab === "blocking") drawBlocking();
+  drawDock(); // its asks follow what the map knows (the level read or not)
 }
 
 /** A camera as it stands now: its resolved place, with what the hand is dragging laid over it. */
@@ -2018,6 +2028,7 @@ function blkFit() {
   const d = ui.blk; if (!d) return;
   const xs = [], ys = [];
   for (const a of d.anchors) { xs.push(a.at[0]); ys.push(a.at[1]); }
+  for (const sh of d.shapes || []) if (sh.half[0] < 4000 && sh.half[1] < 4000) { xs.push(sh.center[0] - sh.half[0], sh.center[0] + sh.half[0]); ys.push(sh.center[1] - sh.half[1], sh.center[1] + sh.half[1]); }
   for (const s of d.shots) for (const p of [s.start.location, s.finish.location, s.target].filter(Boolean)) { xs.push(p[0]); ys.push(p[1]); }
   if (!xs.length) { xs.push(-500, 500); ys.push(-500, 500); }
   const svg = $("bk-svg"), W = svg?.clientWidth || 800, H = svg?.clientHeight || 520;
@@ -2033,7 +2044,8 @@ function drawBlocking() {
   const box = $("blockpanel");
   if (!box.querySelector("#bk-svg")) {
     box.innerHTML = `<div class="bk-map"><svg id="bk-svg" aria-label="配置図"></svg>
-        <div class="bk-tools"><button class="btn" data-bk-all title="ほかのカットのカメラも薄く描く"></button><button class="btn" data-bk-fit title="全体を入れる (F)">全体</button></div>
+        <div class="bk-tools"><span class="seg" id="bk-floors"></span><button class="btn" data-bk-all title="ほかのカットのカメラも薄く描く"></button><button class="btn" data-bk-fit title="全体を入れる (F)">全体</button></div>
+        <div class="bk-note" id="bk-note" hidden></div>
         <div class="bk-hint">カメラをドラッグで動かす · 橙の丸: 動きの終わり · 青の丸: 向き · 背景をドラッグで視点を動かす · ホイールで拡大 · ←→ でカット</div></div>
       <aside class="bk-side" id="bk-side"></aside>`;
   }
@@ -2043,6 +2055,15 @@ function drawBlocking() {
   if (!ui.blkView) blkFit();
   blkFollow();
   box.querySelector("[data-bk-all]").textContent = ui.blkAll === false ? "このカットだけ" : "全カット";
+  // storeys (D-86): the map shows one floor, the selected cut's unless one is picked
+  const floors = blkFloors(), cur = blkFloorZ();
+  $("bk-floors").innerHTML = floors.length > 1 ? [["", "自動"], ...floors.map((f, i) => [String(i), `${i + 1}F`])]
+    .map(([k, t]) => `<button type="button" data-bk-floor="${k}" class="${(k === "" ? ui.blkFloor == null : ui.blkFloor === Number(k)) ? "on" : ""}" title="${k === "" ? "選んでいるカットの階を出す" : `床の高さ ${Math.round(floors[Number(k)])} cm`}">${t}</button>`).join("") : "";
+  $("bk-floors").hidden = floors.length < 2;
+  $("bk-floors").dataset.cur = String(cur);
+  const note = ui.status.engine === "ue5" && !ui.blk.level;
+  $("bk-note").hidden = !note;
+  if (note) $("bk-note").textContent = "レベルの壁や物はまだ読んでいません。左の頼みごと「🗺 レベルの形を読む」で描けます";
   box.querySelector("[data-bk-all]").classList.toggle("on", ui.blkAll !== false);
   drawBlkSvg();
   drawBlkSide();
@@ -2057,6 +2078,17 @@ function blkFollow() {
   if (x < v.x + v.w * m || x > v.x + v.w * (1 - m) || y < v.y + v.h * m || y > v.y + v.h * (1 - m)) ui.blkView = { ...v, x: x - v.w / 2, y: y - v.h / 2 };
 }
 
+/** The storeys' floor heights the level was read with (D-86), low to high. */
+const blkFloors = () => (ui.blk?.floors || []).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+/** The floor the map shows: the picked storey, else the one under the selected cut's camera. */
+function blkFloorZ() {
+  const fl = blkFloors();
+  if (!fl.length) return 0;
+  if (ui.blkFloor != null && fl[ui.blkFloor] != null) return fl[ui.blkFloor];
+  const s = blkShot(ui.sel), z = s ? s.start.location[2] : fl[0] + 150;
+  return [...fl].reverse().find((f) => f <= z - 30) ?? fl[0];
+}
+
 function drawBlkSvg() {
   const svg = $("bk-svg"), d = ui.blk, v = ui.blkView;
   if (!svg || !d || !v) return;
@@ -2068,23 +2100,33 @@ function drawBlkSvg() {
   let grid = "";
   for (let x = Math.floor(v.x / step) * step; x <= v.x + v.w; x += step) grid += `<line class="grid${x % (step * 5) === 0 ? " major" : ""}" x1="${x}" y1="${v.y}" x2="${x}" y2="${v.y + v.h}"/>`;
   for (let y = Math.floor(v.y / step) * step; y <= v.y + v.h; y += step) grid += `<line class="grid${y % (step * 5) === 0 ? " major" : ""}" x1="${v.x}" y1="${y}" x2="${v.x + v.w}" y2="${y}"/>`;
-  // the game's shapes (three): walls darker, things that do not block sight dashed
-  const band = (s) => s.center[2] - s.half[2] < 220 && s.center[2] + s.half[2] > 25 && s.half[0] < 4000 && s.half[1] < 4000;
+  // the level's shapes (three's game, or a UE level read with D-86) cut at the camera's band on
+  // the floor shown: walls darker, doors and lamps marked, things that do not block sight dashed
+  const fz = blkFloorZ();
+  const band = (s) => s.center[2] - s.half[2] < fz + 220 && s.center[2] + s.half[2] > fz + 25 && s.half[0] < 4000 && s.half[1] < 4000;
   const shown = d.shapes.filter(band);
+  const KIND_CLS = { door: "door", light: "lamp", character: "char" };
   const shapes = shown.map((s) => {
-    const cls = ["shape", s.structure ? "wall" : "", s.solid ? "" : "soft"].join(" ");
+    const cls = ["shape", s.structure ? "wall" : "", s.solid ? "" : "soft", KIND_CLS[s.kind] || ""].join(" ");
     return `<g transform="translate(${s.center[0]} ${s.center[1]}) rotate(${s.yaw})"><rect class="${cls}" x="${-s.half[0]}" y="${-s.half[1]}" width="${2 * s.half[0]}" height="${2 * s.half[1]}"/></g>`;
   }).join("");
   // the things' names only when close enough to read them
-  const labels = px > 1.6 ? "" : [...new Map(shown.filter((s) => !s.structure && s.solid).map((s) => [s.name, s])).values()]
+  const labels = px > 1.6 ? "" : [...new Map(shown.filter((s) => !s.structure && s.solid && s.kind !== "light").map((s) => [s.name, s])).values()]
     .map((s) => `<text class="lbl" x="${s.center[0]}" y="${s.center[1]}" font-size="${fs * 0.85}" text-anchor="middle">${esc(s.label || s.name)}</text>`).join("");
+  // places on another floor stay faint (a storey has its own map)
+  const here = (a) => !blkFloors().length || (a.at[2] >= fz - 60 && a.at[2] < fz + 400);
   const anchors = d.anchors.map((a) => {
-    const boxHtml = a.size ? `<rect class="anc-box" x="${a.center[0] - a.size[0] / 2}" y="${a.center[1] - a.size[1] / 2}" width="${a.size[0]}" height="${a.size[1]}"/>` : "";
-    return `${boxHtml}<circle class="anc" cx="${a.at[0]}" cy="${a.at[1]}" r="${5 * px}"/><text class="lbl" x="${a.at[0] + 8 * px}" y="${a.at[1] - 8 * px}" font-size="${fs}">${esc(a.name)}</text>`;
+    const off = here(a) ? "" : " off";
+    const boxHtml = a.size ? `<rect class="anc-box${off}" x="${a.center[0] - a.size[0] / 2}" y="${a.center[1] - a.size[1] / 2}" width="${a.size[0]}" height="${a.size[1]}"/>` : "";
+    return `${boxHtml}<circle class="anc${off}" cx="${a.at[0]}" cy="${a.at[1]}" r="${5 * px}"/><text class="lbl${off}" x="${a.at[0] + 8 * px}" y="${a.at[1] - 8 * px}" font-size="${fs}">${esc(a.name)}</text>`;
   }).join("");
   const sel = ui.sel;
   const cams = d.shots.filter((s) => s.id === sel || ui.blkAll !== false).sort((a) => (a.id === sel ? 1 : -1)).map((s) => blkCamSvg(s, s.id === sel, px, fs)).join("");
-  svg.innerHTML = `<g>${grid}</g><g>${shapes}${labels}</g><g>${anchors}</g><g>${cams}</g>`;
+  // lamps (where the light falls) and the player starts on this floor
+  const pts = (d.points || []).filter((p) => p.at[2] >= fz - 50 && p.at[2] <= fz + 650).map((p) => p.kind === "start"
+    ? `<path class="startpt" d="M${p.at[0]} ${p.at[1] - 9 * px}L${p.at[0] + 8 * px} ${p.at[1] + 6 * px}L${p.at[0] - 8 * px} ${p.at[1] + 6 * px}Z"><title>${esc(p.label)}</title></path>`
+    : `<circle class="lightpt" cx="${p.at[0]}" cy="${p.at[1]}" r="${5 * px}"><title>${esc(p.label)}</title></circle>`).join("");
+  svg.innerHTML = `<g>${grid}</g><g>${shapes}${labels}${pts}</g><g>${anchors}</g><g>${cams}</g>`;
 }
 
 function blkCamSvg(s, selected, px, fs) {
@@ -2688,6 +2730,9 @@ function dockActions() {
       add("assets", "📦 アセットを棚卸し", st.engine === "ue5" ? "UE を起動して、mesh を寸法付きで集めます" : "ゲームの物を寸法付きで集めます");
     }
   }
+  if (ui.tab === "blocking" && st.engine === "ue5") {
+    add("level", ui.blk?.level ? "🗺 レベルの形を読み直す" : "🗺 レベルの形を読む", "UE を起動して、壁・床・物・扉・灯り・階を読み、配置図に描きます（1〜2分。レベルは書き換えません）");
+  }
   // filming and cutting are the machine's work too: once there are cuts they are always here
   if ((st.shots || []).length) {
     add("render", `● 撮り直す（${ui.quality || st.qualities[0]}）`, "古くなったカットだけを撮ります。ほかは前の take を使います");
@@ -2745,6 +2790,11 @@ function runDockAct(k) {
   else if (k === "scout-one" && place) scoutAction("scout", { anchors: [place] }, "/api/scout", "scout", () => toast(`${place} を撮り直しました`));
   else if (k === "stage") scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
   else if (k === "assets") scoutAction("assets", {}, "/api/assets/scan", "assets", (o) => { toast(`${o.count} 件のアセット`); ui.assetsCount = -1; });
+  else if (k === "level") scoutAction("level", {}, "/api/level", "level", (o) => {
+    toast(`レベルを読みました（${o.shapes} 個の形）`);
+    ui.blk = o.blocking; ui.blkKey = ""; ui.blkView = null; ui.blkFloor = null;
+    if (ui.tab === "blocking") drawBlocking();
+  });
   else if (k === "render") render();
   else if (k === "cut") cut();
 }
@@ -6962,6 +7012,8 @@ $("blockpanel").addEventListener("click", (e) => {
   const s = shot(), b = s && blkShot(s.id);
   if (e.target.closest("[data-bk-all]")) { ui.blkAll = ui.blkAll === false; drawBlocking(); return; }
   if (e.target.closest("[data-bk-fit]")) { blkFit(); drawBlkSvg(); return; }
+  const fl = e.target.closest("[data-bk-floor]");
+  if (fl) { ui.blkFloor = fl.dataset.bkFloor === "" ? null : Number(fl.dataset.bkFloor); drawBlocking(); return; }
   if (e.target.closest("[data-bk-frame]")) { goStage("framing"); return; }
   const nav = e.target.closest("[data-bk-nav]");
   if (nav && s) { const t = ui.status.shots[s.index + Number(nav.dataset.bkNav)]; if (t) { ui.sel = t.id; ui.scopeAll = false; ui.blkT = 0; draw(); } return; }

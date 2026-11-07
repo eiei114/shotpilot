@@ -62,6 +62,12 @@ pub trait Engine {
     fn survey(&self, tag: &str, prefix: &str, assets: bool, candidates: bool) -> Result<Value>;
     /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
     fn assets(&self) -> Result<Value>;
+    /// The level's plan for the blocking map (D-86): {"outline": {shapes: [{label, kind, center,
+    /// half, yaw}], points: [{kind, label, at}], floors: [z]}}. Null where the map has its own
+    /// source (three draws its game) or none (mock).
+    fn outline(&self) -> Result<Value> {
+        Ok(Value::Null)
+    }
 }
 
 pub fn make_engine(defn: &Definition) -> Result<Box<dyn Engine>> {
@@ -583,6 +589,10 @@ impl Engine for Ue5Engine {
 
     fn survey(&self, tag: &str, prefix: &str, assets: bool, candidates: bool) -> Result<Value> {
         self.run("survey", json!({"tag": tag, "prefix": prefix, "assets": assets, "candidates": candidates}))
+    }
+
+    fn outline(&self) -> Result<Value> {
+        self.run("outline", json!({}))
     }
 }
 

@@ -159,6 +159,18 @@ pub fn save_index(root: &Path, idx: &Value) -> crate::Result<()> {
     Ok(())
 }
 
+/// `scout/level.json`: the level's plan read from the engine (D-86), for the blocking map.
+pub fn load_level(root: &Path) -> Option<Value> {
+    std::fs::read_to_string(root.join(SCOUT_DIR).join("level.json")).ok().and_then(|t| serde_json::from_str(&t).ok())
+}
+
+pub fn save_level(root: &Path, outline: &Value) -> crate::Result<()> {
+    let d = root.join(SCOUT_DIR);
+    std::fs::create_dir_all(&d)?;
+    std::fs::write(d.join("level.json"), serde_json::to_string(outline)?)?;
+    Ok(())
+}
+
 /// The scout photos the planner gets: per anchor, the view from the middle of the set,
 /// each preceded by a line naming it.
 pub fn planner_blocks(defn: &Definition, limit: usize) -> Vec<Value> {

@@ -128,6 +128,35 @@ fn index_and_status() {
 /// The blocking map (D-77) reads every camera from above without writing anything, and a camera
 /// it moves is written in the form the shot already uses, so only that shot is drawn again.
 #[test]
+fn a_level_read_from_the_engine_is_drawn_on_the_map_and_writes_nothing_else() {
+    // D-86: a UE level's plan (scout/level.json, read by the engine) is what the map draws
+    let s = srv();
+    let before = std::fs::read_to_string(s.f.path()).unwrap();
+    let (_, map) = jcall(&s, "GET", "/api/blocking", None);
+    assert_eq!(map["level"], json!(false));
+    assert!(map["shapes"].as_array().unwrap().is_empty());
+    let root = s.f.path().parent().unwrap().to_path_buf();
+    let level = json!({"shapes": [
+            {"label": "SM_Cube2", "kind": "structure", "center": [0, 0, 450], "half": [1250, 400, 50], "yaw": 0},
+            {"label": "BP_DoorFrame", "kind": "door", "center": [-1700, -1250, 200], "half": [250, 25, 200], "yaw": 90}],
+        "points": [{"kind": "light", "label": "SpotLight7", "at": [-1700, 10, 480]}], "floors": [0.0, 500.0]});
+    shotpilot::scout::save_level(&root, &level).unwrap();
+    let (code, map) = jcall(&s, "GET", "/api/blocking", None);
+    assert_eq!(code, 200, "{map}");
+    assert_eq!(map["level"], json!(true));
+    let shapes = map["shapes"].as_array().unwrap();
+    assert_eq!(shapes.len(), 2);
+    assert!(shapes.iter().any(|x| x["kind"] == "door" && x["structure"] == false && x["yaw"] == 90));
+    assert!(shapes.iter().any(|x| x["structure"] == true));
+    assert_eq!(map["points"][0]["kind"], "light");
+    assert_eq!(map["floors"], json!([0.0, 500.0]));
+    // a project with no engine level to read says so, and nothing was written
+    let (code, err) = jcall(&s, "POST", "/api/level", Some(json!({})));
+    assert_eq!(code, 400, "{err}");
+    assert_eq!(std::fs::read_to_string(s.f.path()).unwrap(), before);
+}
+
+#[test]
 fn the_blocking_map_reads_cameras_and_a_moved_camera_rerenders_only_its_shot() {
     let s = srv();
     let before = std::fs::read_to_string(s.f.path()).unwrap();

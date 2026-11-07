@@ -107,6 +107,8 @@ enum Cmd {
         #[arg(long)]
         script: bool,
     },
+    /// read the level's plan (walls, things, lamps, storeys) for the blocking map. UE only; reads, never saves the level
+    Level,
     /// photograph every anchor from four sides into scout/ (stage 0, location scouting).
     /// With no anchors yet, brings them in from the level first (and the mesh inventory)
     Scout {
@@ -772,6 +774,12 @@ fn run(cli: Cli) -> Result<u8> {
                 ws.approve(&s.id, !undo)?;
                 println!("{} {}", if undo { "withdrawn:" } else { "approved:" }, s.id);
             }
+        }
+        Cmd::Level => {
+            let mut ws = ws(file)?;
+            let n = ws.read_level()?;
+            let floors = shotpilot::scout::load_level(&ws.root).map(|l| l["floors"].to_string()).unwrap_or_default();
+            println!("level plan: {n} shapes, floors at {floors} -> scout/level.json");
         }
         Cmd::Scout { anchors } => {
             let mut ws = ws(file)?;

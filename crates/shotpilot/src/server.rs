@@ -563,6 +563,19 @@ pub fn blocking_payload(ws: &Workspace) -> Result<Value> {
         })
         .collect();
     let mut shapes = Vec::new();
+    let (mut points, mut floors) = (Vec::new(), Vec::new());
+    if defn.project.engine != "three" {
+        // a level read from the engine (D-86): the building, its things, lamps and storeys
+        if let Some(level) = crate::scout::load_level(&ws.root) {
+            for s in level["shapes"].as_array().into_iter().flatten() {
+                let kind = s["kind"].as_str().unwrap_or("prop");
+                shapes.push(json!({"name": s["label"], "label": s["label"], "kind": kind, "center": s["center"], "half": s["half"],
+                                   "yaw": s["yaw"], "solid": true, "structure": kind == "structure"}));
+            }
+            points = level["points"].as_array().cloned().unwrap_or_default();
+            floors = level["floors"].as_array().cloned().unwrap_or_default();
+        }
+    }
     if defn.project.engine == "three" {
         // a missing or broken game leaves the map with the anchors only (the render says why)
         if let Ok(scene) = crate::three::Scene::load(&crate::three::game_dir(defn)) {
@@ -594,7 +607,8 @@ pub fn blocking_payload(ws: &Workspace) -> Result<Value> {
             }))
         })
         .collect();
-    Ok(json!({"engine": defn.project.engine, "anchors": anchors, "shapes": shapes, "shots": shots}))
+    Ok(json!({"engine": defn.project.engine, "anchors": anchors, "shapes": shapes, "points": points, "floors": floors, "shots": shots,
+              "level": defn.project.engine == "three" || crate::scout::load_level(&ws.root).is_some()}))
 }
 
 pub fn status_payload(ws: &Workspace) -> Result<Value> {
@@ -1353,6 +1367,12 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let st = ai::understand_stage(&ws.defn, claude.as_ref())?;
             ws.set_stage(&st)?;
             send_json(stream, false, 200, &json!({"summary": st.summary, "anchors": st.anchors.len()})).map_err(io)
+        }
+        ("POST", "/api/level") => {
+            let _guard = app.mutate()?;
+            let mut ws = app.ws()?;
+            let n = ws.read_level()?;
+            send_json(stream, false, 200, &json!({"shapes": n, "blocking": blocking_payload(&ws)?})).map_err(io)
         }
         ("POST", "/api/scout") => {
             let body = req.json()?;

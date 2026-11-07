@@ -668,7 +668,7 @@ def _candidates(limit):
             continue
         if kind == "structure":
             size = [box[1][i] - box[0][i] for i in range(3)]
-            if size[2] <= min(150.0, max(60.0, 0.12 * min(size[0], size[1]))) and size[0] >= 200 and size[1] >= 200:
+            if size[2] <= min(150.0, max(60.0, 0.2 * min(size[0], size[1]))) and size[0] >= 200 and size[1] >= 200:
                 slabs.append(box)
             shapes.append((a, cls, label, box))
             continue
@@ -733,6 +733,104 @@ def _candidates(limit):
     return out[:limit]
 
 
+# ------------------------------------------------------------------ the level's plan (D-86)
+#
+# What the blocking map draws for a UE level: every visible mesh as an oriented box (from the
+# mesh's own bounds and its component's world transform, so a rotated wall stays a thin wall),
+# what it is to a scout (the building, a door, a prop, a character), lamps and player starts
+# as points, and the storeys' floor heights. Read only; nothing in the level changes.
+
+_NOT_DRAWN = ("Sky", "Atmosphere", "Cloud", "Fog", "PostProcess", "Volume", "Landscape", "Brush", "Info",
+              "Camera", "LevelSequence", "Reflection", "Decal", "Note", "Navigation", "HLOD")
+
+
+def _comp_box(comp):
+    """(center, half, yaw) of a static mesh component in the world, or None. A piece tipped
+    over (a ramp, a fallen plank) keeps the world-aligned box of its bounds instead."""
+    try:
+        sm = comp.get_editor_property("static_mesh")
+    except Exception:
+        return None
+    if sm is None:
+        return None
+    b = sm.get_bounding_box()
+    lo, hi = b.min, b.max
+    t = comp.get_world_transform()
+    r = t.rotation.rotator()
+    if abs(r.pitch) > 10 or abs(r.roll) > 10:
+        pts = [t.transform_location(unreal.Vector(x, y, z)) for x in (lo.x, hi.x) for y in (lo.y, hi.y) for z in (lo.z, hi.z)]
+        mn = [min(getattr(p, k) for p in pts) for k in "xyz"]
+        mx = [max(getattr(p, k) for p in pts) for k in "xyz"]
+        return [(mn[i] + mx[i]) / 2 for i in range(3)], [(mx[i] - mn[i]) / 2 for i in range(3)], 0.0
+    c = t.transform_location(unreal.Vector((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, (lo.z + hi.z) / 2))
+    s = t.scale3d
+    half = [abs((hi.x - lo.x) / 2 * s.x), abs((hi.y - lo.y) / 2 * s.y), abs((hi.z - lo.z) / 2 * s.z)]
+    return [c.x, c.y, c.z], half, r.yaw
+
+
+def _outline(limit=6000):
+    shapes, points, slabs = [], [], []
+    r1 = lambda v: [round(x, 1) for x in v]
+    for a in all_actors():
+        cls = a.get_class().get_name()
+        try:
+            if a.is_hidden_ed() or a.is_editor_only():
+                continue
+        except Exception:
+            pass
+        if any(k in cls for k in _NOT_DRAWN) or cls in ("DirectionalLight", "SkyLight"):
+            continue
+        label = a.get_actor_label()
+        box = _box(a)
+        kind = _kind(a, cls, label, box)
+        if kind in ("light", "start") or (kind == "effect" and not _has(a, "StaticMeshComponent")):
+            loc = a.get_actor_location()
+            points.append({"kind": kind, "label": label, "at": r1([loc.x, loc.y, loc.z])})
+            if kind == "light" and not _has(a, "StaticMeshComponent"):
+                continue
+        kind = kind if kind in ("structure", "door", "item", "prop", "character", "light") else "prop"
+        drawn = False
+        try:
+            comps = a.get_components_by_class(unreal.StaticMeshComponent) or []
+        except Exception:
+            comps = []
+        for comp in comps:
+            try:
+                if not comp.is_visible():
+                    continue
+            except Exception:
+                pass
+            b = _comp_box(comp)
+            if b is None:
+                continue
+            c, half, yaw = b
+            if max(half) > 25000 or max(half) < 1:
+                continue
+            shapes.append({"label": label, "kind": kind, "center": r1(c), "half": r1(half), "yaw": round(yaw, 1)})
+            if kind == "structure" and half[2] * 2 <= min(150.0, max(60.0, 0.4 * min(half[0], half[1]))) and min(half[0], half[1]) >= 100 \
+                    and abs(yaw % 90) < 1:
+                slabs.append(([c[0] - half[0], c[1] - half[1], c[2] - half[2]], [c[0] + half[0], c[1] + half[1], c[2] + half[2]]))
+            drawn = True
+        if not drawn and box is not None and kind != "structure":  # a character or a Blueprint drawn by other meshes
+            c = [(box[0][i] + box[1][i]) / 2 for i in range(3)]
+            half = [(box[1][i] - box[0][i]) / 2 for i in range(3)]
+            shapes.append({"label": label, "kind": kind, "center": r1(c), "half": r1(half), "yaw": 0.0})
+        if len(shapes) >= limit:
+            warn("level plan: stopped at %d shapes" % limit)
+            break
+    floors = []
+    for f in sorted(r["floor"] for r in _rooms(slabs, None)):
+        if not floors or f - floors[-1] > 60:
+            floors.append(round(f, 1))
+    log("level plan: %d shapes, %d points, floors at %s" % (len(shapes), len(points), floors))
+    return {"shapes": shapes, "points": points, "floors": floors}
+
+
+def run_outline(job):
+    ensure_map(job["project"].get("map"))
+    return {"outline": _outline()}
+
+
 def run_scan(job):
     ensure_map(job["project"].get("map"))
     tag, prefix = job.get("tag", "shotpilot"), job.get("prefix", "SP_")
@@ -753,6 +851,7 @@ def run_survey(job):
     """Stage 0 in one launch: the tagged anchors (else landmark candidates to pick from) and, when
     asked, the mesh inventory."""
     out = run_scan(dict(job, auto=True))
+    out["outline"] = _outline()  # the same launch draws the level's plan for the blocking map
     if job.get("assets"):
         out["assets"] = run_assets(job)["assets"]
     return out
@@ -1359,7 +1458,7 @@ def main():
             run_render(job)  # writes its own result asynchronously
             return
         res = {"build": run_build, "pull": run_pull, "scan": run_scan, "assets": run_assets,
-               "survey": run_survey}[kind](job)
+               "survey": run_survey, "outline": run_outline}[kind](job)
         write_result(res)
     except SetupError as e:
         write_result({"fatal": str(e)})

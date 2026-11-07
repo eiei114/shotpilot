@@ -1966,5 +1966,12 @@
  "↗ 企画を見る（方向・ルック・構成画）": "↗ See the plan (direction, look, concept frames)",
  "▶ 📍 まで進める": "▶ Go on to the 📍",
  "📍 {0}で止まりました。右で確かめて、左の ▶ で続けます": "📍 Stopped at {0}. Check it on the right, then go on with ▶ on the left",
- "📍 企画で止まりました。右で確かめて、左の ▶ で続けます": "📍 Stopped at the plan. Check it on the right, then go on with ▶ on the left"
+ "📍 企画で止まりました。右で確かめて、左の ▶ で続けます": "📍 Stopped at the plan. Check it on the right, then go on with ▶ on the left",
+ "選んでいるカットの階を出す": "Show the floor of the selected cut",
+ "床の高さ {0} cm": "Floor height {0} cm",
+ "レベルの壁や物はまだ読んでいません。左の頼みごと「🗺 レベルの形を読む」で描けます": "The level's walls and things are not read yet. Draw them with \"🗺 Read the level's shape\" on the left",
+ "🗺 レベルの形を読み直す": "🗺 Read the level's shape again",
+ "🗺 レベルの形を読む": "🗺 Read the level's shape",
+ "UE を起動して、壁・床・物・扉・灯り・階を読み、配置図に描きます（1〜2分。レベルは書き換えません）": "Starts UE to read the walls, floors, things, doors, lamps and storeys and draws them on the map (1–2 minutes; the level is never changed)",
+ "レベルを読みました（{0} 個の形）": "Read the level ({0} shapes)"
 }
