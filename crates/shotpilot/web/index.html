@@ -215,6 +215,25 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 .rv-pop button:hover, .rv-pop button.on { background: var(--soft); }
 .rv-pop button.on::after { content: " ✓"; color: var(--accent); }
 .rv-pop .hd { font-size: 10.5px; color: var(--muted); padding: 2px 8px 4px; }
+/* the air of a place (D-76): a lane under the places, and its picker */
+.rv-cell.air { cursor: pointer; color: var(--muted); font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; justify-content: flex-start; padding: 0 6px; border: 1px dashed var(--line); }
+.rv-cell.air.set { color: var(--ink); border-style: solid; background: color-mix(in srgb, var(--establish) 12%, var(--soft)); }
+.rv-cell.air.missing { border-color: var(--err); color: var(--err); }
+.rv-cell.air.off { justify-content: center; }
+.rv-cell.air:hover { box-shadow: inset 0 0 0 1px var(--muted); }
+.rv-pop.air { width: 250px; }
+.rv-pop-row { display: flex; align-items: center; gap: 4px; padding: 2px 8px 6px; }
+.rv-pop-row .cur { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-pop-row .db { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
+.rv-pop button.mini { width: 24px; height: 22px; padding: 0; text-align: center; border: 1px solid var(--line); }
+.rv-pop-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 6px; }
+.rv-pop button.airc { width: auto; min-width: 26px; text-align: center; padding: 2px 7px; border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.rv-pop button.airc.off { color: var(--muted); text-decoration: line-through; border-style: dashed; }
+.rv-pop-list { display: flex; flex-direction: column; gap: 1px; max-height: 240px; overflow: hidden auto; }
+.rv-pop-list > *, .rv-pop-list button { flex: none; }
+.rv-pop-list button { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-pop button.danger { color: var(--err); margin-top: 4px; }
+.lane.air-lane .sblock.ambience span { color: var(--ink); }
 .bk-places { display: flex; flex-wrap: wrap; gap: 5px; }
 .bk-places .btn { font-size: 11px; padding: 2px 8px; }
 
@@ -871,6 +890,7 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
   background: color-mix(in srgb, var(--c) 18%, var(--card)); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
 .sblock.bgm { --c: var(--establish); top: 1px; cursor: pointer; }
 .sblock.sfx { --c: var(--hook); }
+.sblock.ambience { --c: var(--muted); top: 1px; cursor: pointer; }
 .sblock svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .sblock svg path { fill: currentColor; opacity: .55; }
 .sblock span { position: absolute; left: 5px; top: 3px; font-size: 10px; font-weight: 600; color: var(--ink); white-space: nowrap;
@@ -1352,7 +1372,7 @@ async function refresh(poll = false) {
     if (!ui.opened) { ui.opened = true; if (!location.hash && st.shots.length) ui.tab = "review"; }
     if (logKey !== ui.logKey) { ui.log = log; ui.logKey = logKey; drawChat(); }
     // sound follows the definition (timing, sfx, audio); the mix itself is cached server-side
-    const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
+    const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx, s.node.ambience, placeOf(s)]), st.audio]);
     if (skey !== ui.soundKey) { ui.soundKey = skey; fetchSound(); }
     draw();
     startFromHome();
@@ -1390,6 +1410,8 @@ async function fetchSound() {
   finally { ui.mixing = false; }
   if (ui.snd && !soundItem(ui.snd)) ui.snd = null;
   drawSoundBits();
+  // the air lane on your turn follows the sound
+  if (ui.tab === "review") drawReview();
 }
 
 /** Redraw what depends on the sound only (cheap; leaves the stage alone). */
@@ -1755,6 +1777,30 @@ function reviewLanesHtml() {
     const tr = s.node.transition || "cut";
     return `<div class="rv-cell tr${tr !== "cut" ? " set" : ""}" data-rv-tr="${esc(s.id)}" role="button" tabindex="0" title="${esc(`${s.id} から次へのつなぎ（押して変える。撮り直しなし）`)}">${esc(TRANSITION_SHORT[tr] || tr)}</div>`;
   }).join("");
+  // the air of each place (D-76): one block per run of cuts hearing the same place; press to pick its sound
+  const heardBy = new Map((ui.sound?.places || []).flatMap((p) => p.shots.map((id) => [id, p.place])));
+  const heardAt = items.map((it) => it.kind === "shot" ? heardBy.get(it.id) || "" : null);
+  heardAt.forEach((p, i) => {
+    // a card inside one place keeps its air; between two places it is quiet
+    if (p !== null) return;
+    const prev = heardAt.slice(0, i).reverse().find((x) => x !== null), next = heardAt.slice(i + 1).find((x) => x !== null);
+    heardAt[i] = prev && prev === next ? prev : "";
+  });
+  const airCells = [];
+  heardAt.forEach((p, i) => {
+    const last = airCells[airCells.length - 1];
+    if (p && last?.p === p && last.end === i) { last.end = i + 1; return; }
+    // a cut left without air still opens its own place, so it can be given its air back
+    const s = items[i].kind === "shot" && shotById(items[i].id);
+    airCells.push({ p, own: !p && s ? placeOf(s) : "", start: i, end: i + 1 });
+  });
+  const airHtml = airCells.map((c) => {
+    const col = `grid-column:${c.start + 1}/${c.end + 1}`;
+    if (!c.p) return c.own ? `<div class="rv-cell air off" style="${col}" data-rv-air="${esc(c.own)}" role="button" tabindex="0" title="${esc(`このカットは環境音なし（押して ${c.own} の環境音を戻す）`)}">—</div>` : `<div class="rv-cell empty" style="${col}"></div>`;
+    const a = airOf(c.p), label = a?.file ? airLabel(a) : "";
+    const tip = label ? `${c.p} の環境音: ${label}${a.missing ? "（ファイルがありません）" : ""}（押して替える。撮り直しなし）` : `${c.p} の環境音を選ぶ（撮り直しなし）`;
+    return `<div class="rv-cell air${label ? " set" : ""}${a?.missing ? " missing" : ""}" style="${col}" data-rv-air="${esc(c.p)}" role="button" tabindex="0" title="${esc(tip)}">${label ? `♪ ${esc(label)}` : "＋"}</div>`;
+  }).join("");
   // sound: BGM blocks and SE marks, read-only here (the sound tab edits them)
   const snd = ui.sound, mixLanes = new Map((snd?.mix?.lanes || []).map((l) => [laneKey(l), l]));
   const pct = (t) => `${Math.min(Math.max(t / total, 0), 1) * 100}%`;
@@ -1771,6 +1817,7 @@ function reviewLanesHtml() {
       <span class="legend"><span><i class="rv-sw"></i>推定のはみ出し</span><span><i class="rv-sw red"></i>事実（P0・P1）</span></span></div>
     <div class="rv-row"><span class="rv-lbl">カット</span><div class="rv-track" style="--rv-cols:${cols}">${tiles}</div></div>
     <div class="rv-row"><span class="rv-lbl">場所</span><div class="rv-track" style="--rv-cols:${cols}">${placeHtml}</div></div>
+    ${ui.sound?.places?.length ? `<div class="rv-row"><span class="rv-lbl">環境音</span><div class="rv-track" style="--rv-cols:${cols}">${airHtml}</div></div>` : ""}
     <div class="rv-row"><span class="rv-lbl">カメラ</span><div class="rv-track" style="--rv-cols:${cols}">${camHtml}</div></div>
     <div class="rv-row"><span class="rv-lbl">つなぎ</span><div class="rv-track" style="--rv-cols:${cols}">${trHtml}</div></div>
     <button class="rv-fold" data-rv-sound><span aria-hidden="true">${ui.rvSound ? "▾" : "▸"}</span> <span>音（BGM・SE）</span></button>${soundRows}
@@ -2121,6 +2168,87 @@ async function setTransition(id, tr) {
   try {
     await api("POST", `/api/shots/${encodeURIComponent(id)}`, { set: { transition: tr === "cut" ? null : tr } });
     toast(`${id} の次のつなぎを「${TRANSITION_JA[tr] || tr}」にしました（撮り直しなし）`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+}
+
+// ------------------------------------------------------------------ the air of each place (D-76)
+
+/** What the cut hears of a place: {place, shots, air, file, missing}, or undefined. */
+const airOf = (place) => (ui.sound?.places || []).find((p) => p.place === place);
+const airLabel = (a) => (a?.air && typeof a.air === "object" && a.air.label) || (a?.file || "").split("/").pop().replace(/\.[^.]+$/, "");
+const airGain = (a) => (a?.air && typeof a.air === "object" && typeof a.air.gain === "number") ? a.air.gain : -10;
+const AIRISH = /amb|room|air|wind|hum|tone|drone|rain|crowd|night|forest|環境|風|雨/i;
+
+/** Pick the air of a place: the project's sounds, the library's ambience, its level, and the cuts that hear it. */
+async function openAirPop(place, el) {
+  closeTrPop();
+  const a = airOf(place), r = el.getBoundingClientRect();
+  const pop = document.createElement("div");
+  pop.className = "rv-pop air"; pop.id = "rv-pop"; pop.dataset.place = place;
+  const cur = a?.file || "";
+  // the cuts that film this place, each can be left without air
+  const cuts = (ui.status?.shots || []).filter((s) => placeOf(s) === place || s.node.ambience === place);
+  const chips = cuts.map((s) => `<button type="button" class="airc${s.node.ambience === "none" ? " off" : ""}" data-airoff="${esc(s.id)}" title="${esc(s.node.ambience === "none" ? `${s.id}: 環境音なし（押して戻す）` : `${s.id}: 押すとこのカットだけ環境音なし`)}">${s.index + 1}</button>`).join("");
+  const files = (ui.sound?.files || []).map((f) => f.file).sort((x, y) => Number(AIRISH.test(y)) - Number(AIRISH.test(x)) || x.localeCompare(y));
+  const fileBtns = files.map((f) => `<button type="button" data-airset="${esc(f)}" class="${f === cur ? "on" : ""}">${esc(f.split("/").pop())}</button>`).join("");
+  const level = cur ? `<div class="rv-pop-row"><span class="cur" title="${esc(cur)}">♪ ${esc(airLabel(a))}</span>
+      <button type="button" class="mini" data-airgain="-3" title="3 dB 下げる">−</button><span class="db">${airGain(a)} dB</span><button type="button" class="mini" data-airgain="3" title="3 dB 上げる">＋</button></div>` : "";
+  pop.innerHTML = `<div class="hd">${esc(place)} の環境音 · 撮り直しなし</div>${level}
+    ${chips ? `<div class="hd">この場所のカット（押すとそのカットだけ無音）</div><div class="rv-pop-chips">${chips}</div>` : ""}
+    <div class="hd">音を選ぶ</div><div class="rv-pop-list">${fileBtns || `<div class="hd">audio/ に音がありません</div>`}<div id="air-lib"></div></div>
+    ${cur ? `<button type="button" data-airset="" class="danger">この場所の環境音を外す</button>` : ""}`;
+  document.body.appendChild(pop);
+  const w = pop.offsetWidth;
+  pop.style.left = `${Math.min(r.left, window.innerWidth - w - 8)}px`;
+  pop.style.top = `${Math.min(r.bottom + 4, window.innerHeight - pop.offsetHeight - 8)}px`;
+  // the library's ambience, when there is a library
+  try {
+    const lib = await api("GET", `/api/library?${new URLSearchParams({ q: "ambience", limit: "12" })}`);
+    const box = document.getElementById("air-lib");
+    if (!box || !lib.available || !lib.items?.length) return;
+    box.innerHTML = `<div class="hd">ライブラリ</div>${lib.items.map((it) => `<button type="button" data-airlib="${esc(it.id)}" title="${esc(`${it.name}${it.duration_s ? ` · ${Math.round(it.duration_s)}s` : ""}${it.others ? ` · ほかのティザー ${it.others} 本で使用中` : ""}`)}">${esc(it.name)}${it.others ? ` <small class="mu">使用中</small>` : ""}</button>`).join("")}`;
+  } catch { /* no library: the project's sounds are enough */ }
+}
+
+/** Write the air of a place (`audio.ambience.<place>`): a file, a level step, or none. */
+function setAir(place, change) {
+  closeTrPop();
+  const a = JSON.parse(JSON.stringify(ui.status.audio || {}));
+  const all = a.ambience && typeof a.ambience === "object" ? a.ambience : {};
+  const now = all[place], m = typeof now === "string" ? { file: now } : { ...(now || {}) };
+  let note;
+  if (change.file === "") { delete all[place]; note = `${place} の環境音を外す`; }
+  else if (change.file) {
+    if (m.file !== change.file) delete m.label;
+    m.file = change.file; all[place] = m; note = `${place} の環境音: ${change.file.split("/").pop()}`;
+  } else if (change.step) {
+    if (!m.file) return;
+    m.gain = Math.min(Math.max(airGain(airOf(place)) + change.step, -40), 6); all[place] = m;
+    note = `${place} の環境音 ${m.gain} dB`;
+  }
+  a.ambience = Object.keys(all).length ? all : null;
+  postSound({ audio: a, note });
+}
+
+async function setAirFromLibrary(place, id) {
+  closeTrPop();
+  if (ui.busy) return;
+  try {
+    const out = await api("POST", "/api/library/import", { id });
+    setAir(place, { file: out.file });
+  } catch (e) { toast(e.message, true); }
+}
+
+/** One cut without the air of its place, or with it again (the shot's own `ambience`). */
+async function toggleAirOff(id) {
+  closeTrPop();
+  const s = shotById(id); if (!s || ui.busy) return;
+  const off = s.node.ambience !== "none";
+  ui.busy = "save"; draw();
+  try {
+    await api("POST", `/api/shots/${encodeURIComponent(id)}`, { set: { ambience: off ? "none" : null } });
+    toast(off ? `${id} は環境音なし（撮り直しなし）` : `${id} に環境音を戻しました（撮り直しなし）`);
   } catch (e) { toast(e.message, true); }
   finally { ui.busy = null; await refresh(); }
 }
@@ -5141,14 +5269,18 @@ function drawLanes() {
     const s = span(p);
     const left = xOf(s.from), w = Math.max(xOf(s.to) - left, 8);
     // music cues and effects on script lines follow their piece of the cut: tuned in the inspector, not dragged
-    const ro = (p.role === "bgm" && p.index > 0) || (p.role === "sfx" && !isShotId(p.shot));
+    const ro = (p.role === "bgm" && p.index > 0) || (p.role === "sfx" && !isShotId(p.shot)) || p.role === "ambience";
     const cls = ["sblock", p.role, isSel(p) ? "sel" : "", p.missing ? "missing" : "", ro ? "ro" : ""].join(" ");
     const title = `${p.label} · ${p.file}${p.missing ? "（ファイルがありません）" : ""} · ${p.gain} dB${cutText(p)}${p.shot ? ` · ${p.shot}` : ""}`;
-    return `<div class="${cls}" data-k="${esc(laneKey(p))}" style="left:${left}px;width:${w}px;${top != null ? `top:${top}px` : ""}" title="${esc(title)}">${wave(s.peaks)}<span>${esc(p.label)}</span></div>`;
+    return `<div class="${cls}" data-k="${esc(laneKey(p))}"${p.role === "ambience" ? ` data-sp-air="${esc(p.place || "")}"` : ""} style="left:${left}px;width:${w}px;${top != null ? `top:${top}px` : ""}" title="${esc(title)}">${wave(s.peaks)}<span>${esc(p.label)}</span></div>`;
   };
   // BGM lane
   const bgms = snd.placements.filter((p) => p.role === "bgm");
   const bgmHtml = bgms.length ? bgms.map((p) => block(p)).join("") : `<button class="add" data-add="bgm">＋ BGM</button>`;
+  // the air of each place (D-76): laid by the code under the cuts of its place; press a block to pick its sound
+  const airs = snd.placements.filter((p) => p.role === "ambience");
+  const bare = (snd.places || []).find((x) => !x.file);
+  const airHtml = airs.map((p) => block(p)).join("") + (bare ? `<button class="add" data-sp-air="${esc(bare.place)}" title="${esc(`${bare.place} の環境音を選ぶ（撮り直しなし）`)}">＋ 環境音</button>` : "");
   // SE lane: overlapping effects stack into rows
   const fx = snd.placements.filter((p) => p.role === "sfx").map((p) => ({ p, s: span(p) })).sort((a, b) => a.s.from - b.s.from);
   const ends = [];
@@ -5168,6 +5300,7 @@ function drawLanes() {
   const fxHtml = fx.map(({ p }, i) => block(p, 2 + rows[i] * SND_ROW)).join("");
   const note = snd.error ? `<div class="lane-note" style="color:var(--err)">${esc(snd.error)}</div>` : "";
   el.innerHTML = `<div class="lane bgm-lane" data-lane="bgm"><span class="lbl">BGM</span>${bgmHtml}</div>
+    ${(snd.places || []).length ? `<div class="lane air-lane" data-lane="ambience"><span class="lbl">環境</span>${airHtml}</div>` : ""}
     <div class="lane sfx" data-lane="sfx" style="--rows:${nrows}"><span class="lbl">SE</span>${marks}${fxHtml}
       <button class="add" data-add="sfx" title="選んだカットに SE を足す（レーンをダブルクリックでもその位置に足せます）">＋ SE</button></div>${note}`;
 }
@@ -6356,6 +6489,7 @@ $("lanes").addEventListener("pointerup", () => {
   if (!d) return;
   $("lanes").querySelector(".drag-t")?.remove();
   if (!d.moved) {
+    if (d.p.role === "ambience") { openAirPop(d.p.place || "", d.b); return; }
     ui.snd = selOf(d.p);
     if (d.p.shot && isShotId(d.p.shot)) ui.sel = d.p.shot;
     ui.tab = ui.fin = "sound"; draw(); return;
@@ -6373,6 +6507,8 @@ $("lanes").addEventListener("pointerup", () => {
   postSound({ sfx, note: `${d.p.label} を ${owner.id} +${at}s へ` }, () => { ui.snd = { kind: "sfx", shot: owner.id, index }; ui.sel = owner.id; ui.tab = ui.fin = "sound"; });
 });
 $("lanes").addEventListener("click", (e) => {
+  const air = e.target.closest("button[data-sp-air]");
+  if (air) { openAirPop(air.dataset.spAir, air); return; }
   const add = e.target.closest("[data-add]");
   if (add) {
     if (add.dataset.add === "bgm") { ui.snd = { kind: "bgm" }; ui.tab = ui.fin = "sound"; draw(); return; }
@@ -6579,12 +6715,22 @@ document.addEventListener("click", (e) => {
   if (m) { setUiMode(m.dataset.uimode); return; }
   const set = e.target.closest("[data-trset]");
   if (set) { setTransition(set.dataset.trshot, set.dataset.trset); return; }
-  if (!e.target.closest("#rv-pop, [data-rv-tr]")) closeTrPop();
+  const place = e.target.closest("#rv-pop.air")?.dataset.place;
+  if (place) {
+    const b = e.target.closest("[data-airset], [data-airgain], [data-airlib], [data-airoff]");
+    if (b?.dataset.airset !== undefined) { setAir(place, { file: b.dataset.airset }); return; }
+    if (b?.dataset.airgain) { setAir(place, { step: Number(b.dataset.airgain) }); return; }
+    if (b?.dataset.airlib) { setAirFromLibrary(place, b.dataset.airlib); return; }
+    if (b?.dataset.airoff) { toggleAirOff(b.dataset.airoff); return; }
+  }
+  if (!e.target.closest("#rv-pop, [data-rv-tr], [data-rv-air], [data-sp-air]")) closeTrPop();
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTrPop(); });
 $("reviewpanel").addEventListener("click", (e) => {
   const trc = e.target.closest("[data-rv-tr]");
   if (trc) { openTrPop(trc.dataset.rvTr, trc); return; }
+  const air = e.target.closest("[data-rv-air]");
+  if (air) { openAirPop(air.dataset.rvAir, air); return; }
   const cut = e.target.closest("[data-rv-cut]");
   if (cut) { ui.sel = cut.dataset.rvCut; ui.scopeAll = false; draw(); return; }
   const act = e.target.closest("[data-rv-act]");

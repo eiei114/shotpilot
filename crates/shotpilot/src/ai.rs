@@ -216,7 +216,7 @@ pub fn revise_schema() -> Value {
             "order": {"type": "array", "items": {"type": "string"},
                       "description": "full list of shot ids in the new order, or empty to keep the order"},
             "audio": {"type": "string",
-                      "description": "the complete replacement YAML mapping for the top-level `audio` (music, bgm, gain, loudness), or empty to keep it"},
+                      "description": "the complete replacement YAML mapping for the top-level `audio` (music, bgm, ambience, gain, loudness), or empty to keep it"},
             "lines": {"type": "array", "description": "script lines whose `sfx` changes (sound notes only), or empty",
                       "items": {
                 "type": "object",
@@ -1396,6 +1396,14 @@ fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)
                 fix(f)?;
             }
         }
+        // a place's air is its file, or a mapping with one
+        for v in a.get_mut("ambience").and_then(Value::as_object_mut).into_iter().flat_map(|m| m.values_mut()) {
+            if v.is_string() {
+                fix(v)?;
+            } else if let Some(f) = v.get_mut("file") {
+                fix(f)?;
+            }
+        }
     }
     Ok(())
 }
@@ -1444,6 +1452,11 @@ Sound never re-renders a shot: it is mixed when the cut is assembled.
   A music cue is {file, from: the shot or script line id it starts on (or start), until: the id it
   stops after (or end), at: seconds after that start, offset: seconds into the file, gain dB,
   fade_in, fade_out, high_cut, low_cut, label}. `from` and `until` must name pieces that are in the cut now.
+- `audio.ambience` is the air of each place (room tone, hum, wind): {<anchor>: {file, gain, high_cut,
+  low_cut, label}}. It is laid under every shot that films that anchor (its camera anchor or look_at)
+  and switches where the place changes, so it follows the shots when the cut is reordered; it loops to
+  fill its stretch. A shot's own `ambience` key overrides it: `none` leaves that shot without air, and
+  another anchor's name borrows that place's air. Keep room tone and wind out of `music`. Typical gain -12..-6 dB.
 - A sound effect is {file, at, gain dB, high_cut, low_cut, label} in the `sfx` list of a shot (at:
   seconds from the shot's start, negative up to -3 leads into the cut, e.g. a whoosh) or of a script
   line (at: seconds from when the card or text appears). It moves with its shot or line when the cut is reordered.
@@ -1466,7 +1479,13 @@ fn audio_files<'a>(audio: &'a Map<String, Value>, sfx_lists: impl Iterator<Item 
         .into_iter()
         .chain(audio.get("music").and_then(Value::as_array).into_iter().flatten())
         .chain(sfx_lists.filter_map(Value::as_array).flatten());
-    files.filter_map(|it| it.get("file")).filter_map(Value::as_str).map(|f| f.replace('\\', "/")).collect()
+    let air = audio.get("ambience").and_then(Value::as_object).into_iter().flat_map(|m| m.values());
+    files
+        .filter_map(|it| it.get("file"))
+        .chain(air.map(|v| v.get("file").unwrap_or(v)))
+        .filter_map(Value::as_str)
+        .map(|f| f.replace('\\', "/"))
+        .collect()
 }
 
 /// What a note can change (D-48): the sound alone, text and finishing alone, or the picture
@@ -1761,13 +1780,19 @@ Where the director is pointing: {c}")).unwrap_or_default();
                 continue; // the part came back as it was
             }
         } else if pointer.sound {
-            // a sound note keeps the shot as it is and takes only Claude's `sfx`
+            // a sound note keeps the shot as it is and takes only Claude's `sfx` and the shot's own air
             let mut kept = defn.find(&sid)?.clone();
             if let Some(k) = kept.as_object_mut() {
-                match m.get("sfx").filter(|v| !v.is_null()) {
-                    Some(v) => k.insert("sfx".into(), v.clone()),
-                    None => k.remove("sfx"),
-                };
+                for key in ["sfx", "ambience"] {
+                    match m.get(key).filter(|v| !v.is_null()) {
+                        Some(v) => k.insert(key.into(), v.clone()),
+                        None => k.remove(key),
+                    };
+                }
+                let air = k.get("ambience").map(model::str_of).unwrap_or_default();
+                if !air.is_empty() && air != "none" && defn.anchor(&air).is_none() {
+                    bail!("Claude gave shot '{sid}' the air of '{air}', which is not an anchor; nothing applied");
+                }
             }
             new = kept;
             if &new == defn.find(&sid)? {

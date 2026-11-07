@@ -68,6 +68,8 @@ struct Shot {
     caption: Option<String>,
     transition: Option<String>,
     fx: bool,
+    /// the shot hears no air of its place (`ambience: none`, D-76)
+    quiet: bool,
     sfx: Option<(Value, f64)>,
 }
 
@@ -165,6 +167,7 @@ fn read_model(f: &Fixture) -> Model {
             caption: None,
             transition: None,
             fx: false,
+            quiet: false,
             sfx,
         });
     }
@@ -250,10 +253,15 @@ fn run(seed: u64, steps: usize, seen: &mut BTreeMap<&'static str, usize>) {
                 s.transition = Some(other(&mut rng, &TRANSITIONS.iter().map(|p| p.to_string()).collect::<Vec<_>>(), &before.transition.clone().unwrap_or_default()));
                 Some((vec![("transition".into(), json!(s.transition))], s))
             }
-            37..=39 => {
+            37..=38 => {
                 let mut s = before.clone();
                 s.fx = !before.fx;
                 Some((vec![("fx".into(), if s.fx { json!(["chroma"]) } else { Value::Null })], s))
+            }
+            39 => {
+                let mut s = before.clone();
+                s.quiet = !before.quiet;
+                Some((vec![("ambience".into(), if s.quiet { json!("none") } else { Value::Null })], s))
             }
             100..=105 => {
                 let mut s = before.clone();

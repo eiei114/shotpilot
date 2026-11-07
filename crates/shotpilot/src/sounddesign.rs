@@ -47,10 +47,21 @@ pub fn schema() -> Value {
                 "required": ["lib", "on", "at", "gain", "label"],
                 "additionalProperties": false,
             }},
+            "ambience": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "place": {"type": "string", "description": "one of the places listed with the cut"},
+                    "lib": {"type": "string", "description": "library sound id (a loop or a long bed)"},
+                    "gain": {"type": "number"},
+                    "label": {"type": "string"},
+                },
+                "required": ["place", "lib", "gain", "label"],
+                "additionalProperties": false,
+            }},
             "missing": {"type": "array", "items": {"type": "string"},
                         "description": "sounds the look calls for that the list lacks, as short search words for a sample store (empty when the list has them)"},
         },
-        "required": ["rationale", "music", "hits", "missing"],
+        "required": ["rationale", "music", "hits", "ambience", "missing"],
         "additionalProperties": false,
     })
 }
@@ -63,8 +74,9 @@ Each game should sound like itself: prefer sounds no other teaser uses. A sound 
 only when nothing else in the list fits the moment. When the look calls for sounds the list lacks, use the nearest \
 ones you have and name the missing ones in `missing`.
 How a cinematic teaser's sound is usually built (half of what the cut makes you feel):
-- A quiet ambience bed under most of the cut; music that changes by section (a low drone to open, tension through \
-the escalation, a cut to silence before the title), not one track wall to wall.
+- The air of each place goes in `ambience`, one sound per place: the code lays it under the shots that film that \
+place and switches where the place changes, so keep room tone, hum and wind out of `music`. Music changes by section \
+(a low drone to open, tension through the escalation, a cut to silence before the title), not one track wall to wall.
 - Each text card lands on an impact (a boom or braam) or on silence; a count of short evidence shots gets the same \
 small sound on every cut (a shutter, a click).
 - A riser builds into the reveal; a stinger stops it dead before a black gap; the title arrives on a deep boom; the \
@@ -82,11 +94,31 @@ const LIST_MAX: usize = 600;
 pub struct Design {
     pub rationale: String,
     pub music: Vec<Value>,
+    /// The air of each place: place -> {file, gain, label} (D-76).
+    pub ambience: Map<String, Value>,
     pub shot_sfx: Vec<(String, Vec<Value>)>,
     pub line_sfx: Vec<(String, Vec<Value>)>,
     pub notes: Vec<String>,
     /// What the look asked for that the library lacks (search words), for the human to fetch.
     pub missing: Vec<String>,
+}
+
+/// The places the cut films, each with the shots that film it (where its air will be laid).
+fn places_text(ws: &Workspace) -> String {
+    let mut order: Vec<(String, Vec<String>)> = Vec::new();
+    for s in &ws.defn.shots {
+        let Some(p) = crate::sound::place_of(s) else { continue };
+        let id = str_of(&s["id"]);
+        match order.iter_mut().find(|(q, _)| *q == p) {
+            Some((_, ids)) => ids.push(id),
+            None => order.push((p, vec![id])),
+        }
+    }
+    if order.is_empty() {
+        return "Places: none named (leave `ambience` empty).".into();
+    }
+    let rows: Vec<String> = order.iter().map(|(p, ids)| format!("- `{p}`: {}", ids.join(", "))).collect();
+    format!("Places (one air each in `ambience`):\n{}", rows.join("\n"))
 }
 
 /// The cut in order for the prompt: id, kind, seconds, text or purpose.
@@ -117,10 +149,11 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
     // the same brief, direction and look the cut was written from (D-48), with the look's sound
     let (list, hidden) = lib.prompt_list_for(LIST_MAX, Some(&ws.root));
     let user = format!(
-        "{}\n\n{}\n\n{CRAFT}\n\nLibrary sounds (id, kind, length, tags; bgm = a loop long enough for music):\n{}\n\n\
+        "{}\n\n{}\n\n{}\n\n{CRAFT}\n\nLibrary sounds (id, kind, length, tags; bgm = a loop long enough for music):\n{}\n\n\
          Write `rationale` in the pitch's language: {}",
         crate::craft::edit_spec(&ws.defn, crate::craft::Reach::Sound),
         cut_text(ws)?,
+        places_text(ws),
         list,
         ws.defn.teaser.pitch
     );
@@ -211,6 +244,26 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
         let list = if is_shot { shot_sfx.entry(on).or_default() } else { line_sfx.entry(on).or_default() };
         list.push(Value::Object(m));
     }
+    // the air of each place the cut films (a place no shot films is dropped)
+    let places: Vec<String> = ws.defn.shots.iter().filter_map(crate::sound::place_of).collect();
+    let mut ambience = Map::new();
+    for a in out["ambience"].as_array().into_iter().flatten() {
+        let place = str_of(&a["place"]);
+        if !places.contains(&place) {
+            notes.push(format!("left out the air of `{place}`: no shot films that place"));
+            continue;
+        }
+        let Some(file) = take(&str_of(&a["lib"]), &mut notes) else { continue };
+        let mut m = Map::new();
+        m.insert("file".into(), json!(file));
+        if let Some(g) = num(&a["gain"]).filter(|g| *g != 0.0) {
+            m.insert("gain".into(), json!(crate::geometry::round_to(g, 1)));
+        }
+        if let Some(l) = a["label"].as_str().filter(|l| !l.is_empty()) {
+            m.insert("label".into(), json!(l));
+        }
+        ambience.insert(place, Value::Object(m));
+    }
     // what this teaser shares with teasers of other games, for the human to hear
     let worn = lib.worn(&ws.root);
     let mut shared: Vec<String> = files
@@ -230,6 +283,7 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
     Ok(Design {
         rationale: out["rationale"].as_str().unwrap_or("").to_string(),
         music,
+        ambience,
         shot_sfx: shot_sfx.into_iter().collect(),
         line_sfx: line_sfx.into_iter().collect(),
         notes,
@@ -242,6 +296,7 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
 pub fn apply(ws: &mut Workspace, d: &Design) -> Result<()> {
     let mut audio = ws.defn.audio.clone();
     audio.insert("music".into(), if d.music.is_empty() { Value::Null } else { Value::Array(d.music.clone()) });
+    audio.insert("ambience".into(), if d.ambience.is_empty() { Value::Null } else { Value::Object(d.ambience.clone()) });
     if !audio.contains_key("loudness") {
         audio.insert("loudness".into(), json!(crate::sound::DEFAULT_LOUDNESS));
     }

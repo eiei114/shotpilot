@@ -1017,17 +1017,21 @@ fn sound_design_picks_from_the_library_and_lands_on_the_pieces() {
             assert!(user.contains("card `seven`") && user.contains("splice:drone") && user.contains("Each text card lands"), "{user}");
             // the look's sound and the brief reach the designer, and it is asked to sound like itself
             assert!(user.contains("## The look's sound") && user.contains("## Brief") && user.contains("sound like itself"), "{user}");
+            // the places the cut films, each with its shots, for one air each (D-76)
+            assert!(user.contains("- `well`: s02_well, s06_title"), "{user}");
             Ok(json!({"rationale": "低いドローンで始め、カードで落とす",
                       "music": [{"lib": "splice:drone", "from": "start", "until": "seven", "at": 0, "gain": -11, "fade_in": 1.5, "fade_out": 0.5, "label": "drone"}],
                       "hits": [{"lib": "splice:boom", "on": "seven", "at": 0, "gain": -4, "label": "boom"},
                                {"lib": "splice:boom", "on": "s05", "at": 1.5, "gain": -6, "label": "door"},
                                {"lib": "splice:nope", "on": "s05_door", "at": 0, "gain": 0, "label": "x"},
                                {"lib": "splice:boom", "on": "ghost", "at": 0, "gain": 0, "label": "y"}],
+                      "ambience": [{"place": "well", "lib": "splice:drone", "gain": -9, "label": "風"},
+                                   {"place": "cellar", "lib": "splice:drone", "gain": -9, "label": "x"}],
                       "missing": ["low strings", "distant bell"]}).to_string())
         }
     }
     let d = shotpilot::sounddesign::design(&f.ws, &lib, &Designer).unwrap();
-    assert_eq!(d.notes.len(), 3, "{:?}", d.notes); // an unknown sound, an unknown piece, and what the library lacks
+    assert_eq!(d.notes.len(), 4, "{:?}", d.notes); // an unknown sound, an unknown piece, a place no shot films, and what the library lacks
     assert_eq!(d.missing, ["low strings", "distant bell"]);
     assert!(d.notes.iter().any(|n| n.contains("low strings / distant bell")), "{:?}", d.notes);
     shotpilot::sounddesign::apply(&mut f.ws, &d).unwrap();
@@ -1039,6 +1043,8 @@ fn sound_design_picks_from_the_library_and_lands_on_the_pieces() {
     assert_eq!(f.ws.defn.find("s05_door").unwrap()["sfx"][0]["label"], json!("door"));
     assert!(f.ws.defn.find("s01_gate").unwrap().get("sfx").is_none()); // a fresh design clears the rest
     assert_eq!(f.ws.defn.audio["loudness"], json!(-16.0));
+    // the air of the well, on its own layer and never in the music
+    assert_eq!(f.ws.defn.audio["ambience"], json!({"well": {"file": "audio/lib/drone.wav", "gain": -9.0, "label": "風"}}));
     // nothing re-renders for sound
     assert!(f.ws.state.history().iter().all(|h| h["action"] != "render" || h["stale"].is_null()));
     let plan = shotpilot::sound::plan(&f.ws.defn, &f.ws.resolved().unwrap());

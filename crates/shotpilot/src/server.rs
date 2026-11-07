@@ -775,6 +775,31 @@ fn brief_json(b: &crate::model::BriefCfg) -> Value {
 
 /// What the app's sound lanes and sound tab draw: every placement on the teaser's
 /// timeline, the files that can be placed, and the cached mix with its sound check.
+/// The places the cut hears, in the order it first hears them (D-76): each with the shots under
+/// its air and the air written for it (`audio.ambience.<place>`, or null when it has none yet).
+fn ambience_places(ws: &Workspace, shots: &[crate::model::ResolvedShot]) -> Vec<Value> {
+    let air = ws.defn.audio.get("ambience").and_then(Value::as_object);
+    let mut out: Vec<(String, Vec<String>)> = Vec::new();
+    for (s, place) in shots.iter().zip(sound::heard(&ws.defn, shots)) {
+        let Some(place) = place else { continue };
+        match out.iter_mut().find(|(p, _)| *p == place) {
+            Some((_, ids)) => ids.push(s.id.clone()),
+            None => out.push((place, vec![s.id.clone()])),
+        }
+    }
+    out.into_iter()
+        .map(|(place, ids)| {
+            let v = air.and_then(|a| a.get(&place)).cloned().unwrap_or(Value::Null);
+            let file = v.get("file").unwrap_or(&v).as_str().unwrap_or("").replace('\\', "/");
+            json!({
+                "place": place, "shots": ids, "air": v,
+                "file": file, "missing": !file.is_empty() && !ws.root.join(&file).is_file(),
+                "known": ws.defn.anchor(&place).is_some(),
+            })
+        })
+        .collect()
+}
+
 pub fn sound_payload(ws: &Workspace) -> Result<Value> {
     let shots = ws.resolved()?;
     let (starts, total) = sound::timing(&ws.defn, &shots);
@@ -803,6 +828,7 @@ pub fn sound_payload(ws: &Workspace) -> Result<Value> {
         "cuts": sound::cuts(&shots, &starts).iter().map(|c| json!({"t": crate::geometry::round_to(c.t, 3), "from": c.from, "to": c.to}))
             .collect::<Vec<_>>(),
         "placements": placements,
+        "places": ambience_places(ws, &shots),
         "orphans": sound::orphans(&ws.defn, &shots).iter().map(sound::Orphan::to_json).collect::<Vec<_>>(),
         "lead_max": sound::LEAD_MAX,
         "ffmpeg": crate::cut::ffmpeg().is_some(),

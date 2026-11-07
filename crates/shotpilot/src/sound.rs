@@ -40,7 +40,15 @@ pub const LEAD_MAX: f64 = 3.0;
 /// Peaks per second in the lanes the app draws.
 pub const PEAKS_PER_S: f64 = 50.0;
 
-const AUDIO_KEYS: &[&str] = &["gain", "bgm", "music", "loudness"];
+const AUDIO_KEYS: &[&str] = &["gain", "bgm", "music", "loudness", "ambience"];
+/// Keys of one place's air under `audio.ambience` (or just its file as a string).
+const AMBIENCE_KEYS: &[&str] = &["file", "gain", "high_cut", "low_cut", "label"];
+/// How early the next place's air comes in across a card between two places (a J-cut, D-79).
+pub const AMBIENCE_LEAD: f64 = 0.3;
+/// Fades at both ends of a place's air (shorter on a short stretch).
+const AMBIENCE_FADE: f64 = 0.4;
+/// Level of a place's air when it does not say (the designer's range is -6 to -12 dB).
+pub const AMBIENCE_GAIN: f64 = -10.0;
 const MUSIC_KEYS: &[&str] =
     &["file", "from", "until", "at", "offset", "gain", "fade_in", "fade_out", "high_cut", "low_cut", "label"];
 /// Integrated loudness the cut is brought to when it carries sound (LUFS).
@@ -145,6 +153,29 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
                 }
                 Some(_) => errs.push("audio.music: a list of cues {file, from, until, at, gain, fade_in, fade_out}".into()),
             }
+            match a.get("ambience") {
+                None | Some(Value::Null) => {}
+                Some(Value::Object(places)) => {
+                    for (place, v) in places {
+                        let at = format!("audio.ambience.{place}");
+                        match v {
+                            Value::String(f) => {
+                                if let Err(e) = valid_file(f) {
+                                    errs.push(format!("{at}: {e}"));
+                                }
+                            }
+                            Value::Object(m) => {
+                                check_keys(m, AMBIENCE_KEYS, &at, errs);
+                                check_file(m, &at, errs);
+                                check_num(m, "gain", -60.0, 12.0, &at, errs);
+                                check_cuts(m, &at, errs);
+                            }
+                            _ => errs.push(format!("{at}: a file (audio/room.wav) or {{file, gain}}")),
+                        }
+                    }
+                }
+                Some(_) => errs.push("audio.ambience: a mapping of place -> its air, like {corridor: {file: audio/hum.wav, gain: -10}}".into()),
+            }
             match a.get("bgm") {
                 None | Some(Value::Null) => {}
                 Some(Value::Object(b)) => {
@@ -163,6 +194,10 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
         Some(_) => errs.push("audio: a mapping (bgm, music, gain, loudness)".into()),
     }
     for (i, s) in shots.iter().enumerate() {
+        // a shot's own air: another place's, or none (silent under this shot)
+        if s.get("ambience").is_some_and(|v| !v.is_null() && !v.is_string()) {
+            errs.push(format!("shots[{i}]({}).ambience: a place name, or none", str_of(&s["id"])));
+        }
         let at = format!("shots[{i}]({}).sfx", str_of(&s["id"]));
         let dur = s.get("duration").and_then(num).unwrap_or(0.0);
         match s.get("sfx") {
@@ -239,6 +274,8 @@ pub fn spans(defn: &Definition, shots: &[ResolvedShot]) -> (HashMap<String, (f64
 pub enum Role {
     Bgm,
     Sfx,
+    /// The air of a place (D-76): laid by the code under the shots that film that place.
+    Ambience,
 }
 
 /// One sound placed on the teaser's timeline.
@@ -264,12 +301,16 @@ pub struct Placement {
     pub high_cut: Option<f64>,
     /// High-pass corner (Hz): what is below it is removed. None = no filter.
     pub low_cut: Option<f64>,
+    /// Repeats from its offset until `until` when the file is shorter (a place's air).
+    pub looped: bool,
+    /// The place whose air this is (ambience only).
+    pub place: Option<String>,
 }
 
 impl Placement {
     pub fn to_json(&self) -> Value {
         let mut v = json!({
-            "role": if self.role == Role::Bgm { "bgm" } else { "sfx" },
+            "role": match self.role { Role::Bgm => "bgm", Role::Sfx => "sfx", Role::Ambience => "ambience" },
             "shot": self.shot, "index": self.index, "label": self.label, "file": self.file,
             "start": r3(self.start), "offset": r3(self.offset), "until": self.until.map(r3), "gain": self.gain_db,
             "fade_in": self.fade_in, "fade_out": self.fade_out,
@@ -279,6 +320,12 @@ impl Placement {
             if let Some(f) = f {
                 v[k] = json!(f);
             }
+        }
+        if self.looped {
+            v["looped"] = json!(true);
+        }
+        if let Some(p) = &self.place {
+            v["place"] = json!(p);
         }
         v
     }
@@ -385,6 +432,7 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
             fade_out: g("fade_out", 0.0),
             high_cut: cut_of(b, "high_cut"),
             low_cut: cut_of(b, "low_cut"),
+            looped: false, place: None,
         });
     }
     // music cues: each from a piece of the cut until another (or the end)
@@ -415,9 +463,11 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
                 fade_out: g("fade_out", 0.0),
                 high_cut: c.as_object().and_then(|m| cut_of(m, "high_cut")),
                 low_cut: c.as_object().and_then(|m| cut_of(m, "low_cut")),
+                looped: false, place: None,
             });
         }
     }
+    ambience(defn, shots, &mut out);
     // effects on script lines (a hit on a card, a stinger before the black)
     for l in &defn.script {
         let Some(&(s0, _)) = spans.get(&l.id) else { continue };
@@ -440,6 +490,7 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
                 fade_out: 0.0,
                 high_cut: it.as_object().and_then(|m| cut_of(m, "high_cut")),
                 low_cut: it.as_object().and_then(|m| cut_of(m, "low_cut")),
+                looped: false, place: None,
             });
         }
     }
@@ -464,10 +515,104 @@ pub fn plan(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Placement> {
                 fade_out: 0.0,
                 high_cut: it.as_object().and_then(|m| cut_of(m, "high_cut")),
                 low_cut: it.as_object().and_then(|m| cut_of(m, "low_cut")),
+                looped: false, place: None,
             });
         }
     }
     out
+}
+
+/// The place a shot films, for its air: the anchor it stands by or the one it aims at.
+pub fn place_of(shot: &Value) -> Option<String> {
+    let cam = shot.get("camera")?;
+    [cam.get("anchor"), cam.get("look_at")].into_iter().flatten().find_map(|v| v.as_str().map(str::to_string)).filter(|p| !p.is_empty())
+}
+
+/// The place whose air each shot hears (by position in `shots`, the cut's order): its own
+/// `ambience` (`none` for silence, or another place), else the place it films, else the place
+/// heard before it.
+pub fn heard(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Option<String>> {
+    let mut before: Option<String> = None;
+    shots
+        .iter()
+        .map(|s| {
+            let node = &defn.shots[s.index];
+            let own = node.get("ambience").map(str_of).unwrap_or_default();
+            let place = match own.as_str() {
+                "none" => None,
+                "" => place_of(node).or_else(|| before.clone()),
+                p => Some(p.to_string()),
+            };
+            if place.is_some() {
+                before = place.clone();
+            }
+            place
+        })
+        .collect()
+}
+
+/// The air of each place (D-76): `audio.ambience.<place>` is laid under the shots that film that
+/// place, one stretch per run of them, switching where the place changes. A shot of no known
+/// place keeps the air before it; `ambience: none` on a shot leaves it silent, and a place name
+/// there borrows that place's air. Across a card between two places the next air comes in
+/// [`AMBIENCE_LEAD`] early (a J-cut); across a card inside one place the air carries on. It
+/// stops with the last shot (the title and the end card are left to the music). A file shorter
+/// than its stretch repeats. Editorial: nothing is shot again (D-13).
+fn ambience(defn: &Definition, shots: &[ResolvedShot], out: &mut Vec<Placement>) {
+    let Some(Value::Object(places)) = defn.audio.get("ambience") else { return };
+    let fps = defn.teaser.fps.max(1);
+    let items = crate::script::layout(&defn.script, shots, fps);
+    // (place, start, end, first shot, still open)
+    let mut runs: Vec<(String, f64, f64, String, bool)> = Vec::new();
+    let heard = heard(defn, shots);
+    let mut card_before = false;
+    for it in &items {
+        let (a, b) = (it.start as f64 / fps as f64, (it.start + it.frames) as f64 / fps as f64);
+        let crate::script::Piece::Shot(k) = it.piece else {
+            card_before = true;
+            continue;
+        };
+        match heard[k].clone() {
+            None => {
+                if let Some(r) = runs.last_mut() {
+                    r.4 = false;
+                }
+            }
+            Some(p) => {
+                match runs.last_mut() {
+                    Some(r) if r.4 && r.0 == p => r.2 = b,
+                    _ => runs.push((p, if card_before { (a - AMBIENCE_LEAD).max(0.0) } else { a }, b, shots[k].id.clone(), true)),
+                }
+            }
+        }
+        card_before = false;
+    }
+    for (i, (place, start, end, first, _)) in runs.into_iter().enumerate() {
+        let Some(v) = places.get(&place) else { continue };
+        let m = v.as_object();
+        let file = m.and_then(|m| m.get("file")).or(Some(v)).map(str_of).unwrap_or_default().replace('\\', "/");
+        if file.is_empty() || end <= start {
+            continue;
+        }
+        let fade = AMBIENCE_FADE.min((end - start) / 3.0);
+        out.push(Placement {
+            role: Role::Ambience,
+            shot: Some(first),
+            index: i,
+            label: m.and_then(|m| m.get("label")).map(str_of).filter(|l| !l.is_empty()).unwrap_or_else(|| place.clone()),
+            file,
+            start,
+            offset: 0.0,
+            until: Some(end),
+            gain_db: m.and_then(|m| m.get("gain")).and_then(num).unwrap_or(AMBIENCE_GAIN),
+            fade_in: fade,
+            fade_out: fade,
+            high_cut: m.and_then(|m| cut_of(m, "high_cut")),
+            low_cut: m.and_then(|m| cut_of(m, "low_cut")),
+            looped: true,
+            place: Some(place),
+        });
+    }
 }
 
 /// Audio files under the project's audio/ folder (relative paths, forward slashes).
@@ -802,9 +947,13 @@ pub fn mix<P: AsRef<Pcm>>(placements: &[Placement], sources: &HashMap<String, P>
         let sr = SR as f64;
         let start = (p.start * sr).round() as i64;
         let off = (p.offset * sr).round().max(0.0) as i64;
+        if src.is_empty() {
+            continue;
+        }
         let mut len = src.len() as i64 - off;
         if let Some(u) = p.until {
-            len = len.min((u * sr).round() as i64 - start);
+            let to_until = (u * sr).round() as i64 - start;
+            len = if p.looped { to_until } else { len.min(to_until) };
         }
         let first = (-start).max(0); // samples before the teaser starts are not heard
         let last = len.min(n as i64 - start);
@@ -827,7 +976,7 @@ pub fn mix<P: AsRef<Pcm>>(placements: &[Placement], sources: &HashMap<String, P>
             if fo > 0 && k >= len - fo {
                 a *= ((len - k) as f32 / fo as f32).clamp(0.0, 1.0);
             }
-            let si = (off + k) as usize;
+            let si = if p.looped { ((off + k) % src.len() as i64) as usize } else { (off + k) as usize };
             let oi = (start + k) as usize;
             let (l, r) = (fl.run(src.l[si]) * a, fr.run(src.r[si]) * a);
             out.l[oi] += l;
@@ -910,7 +1059,7 @@ fn needed_secs(placements: &[Placement]) -> HashMap<&str, Option<f64>> {
     let mut need: HashMap<&str, Option<f64>> = HashMap::new();
     for p in placements {
         // a little past the end, so resampling never rounds a needed sample away
-        let reach = p.until.map(|u| (p.offset.max(0.0) + (u - p.start)).max(0.0) + 0.5);
+        let reach = if p.looped { None } else { p.until.map(|u| (p.offset.max(0.0) + (u - p.start)).max(0.0) + 0.5) };
         let e = need.entry(p.file.as_str()).or_insert(Some(0.0));
         *e = match (*e, reach) {
             (Some(a), Some(b)) => Some(a.max(b)),
@@ -1169,7 +1318,7 @@ mod tests {
         src.insert("c.wav".to_string(), click);
         let p = Placement {
             role: Role::Sfx, shot: Some("a".into()), index: 0, label: "c".into(), file: "c.wav".into(),
-            start: 0.5, offset: 0.0, until: None, gain_db: -6.0206, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
+            start: 0.5, offset: 0.0, until: None, gain_db: -6.0206, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None, looped: false, place: None,
         };
         let (out, lanes) = mix(std::slice::from_ref(&p), &src, 1.0, 0.0);
         assert_eq!(out.len(), 48_000);
@@ -1188,7 +1337,7 @@ mod tests {
         let long = sine(220.0, 20.0, 0.5);
         let music = |start: f64, offset: f64, until: Option<f64>| Placement {
             role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
-            start, offset, until, gain_db: 0.0, fade_in: 0.3, fade_out: 1.0, high_cut: None, low_cut: None,
+            start, offset, until, gain_db: 0.0, fade_in: 0.3, fade_out: 1.0, high_cut: None, low_cut: None, looped: false, place: None,
         };
         let ps = [music(1.0, 2.5, Some(4.0)), music(5.0, 0.0, Some(6.0))];
         let need = needed_secs(&ps)["m.wav"].expect("every placement stops: a known reach");
@@ -1205,10 +1354,29 @@ mod tests {
     }
 
     #[test]
+    fn a_short_air_loops_to_fill_its_stretch() {
+        // a quarter second of room tone under two seconds of a place
+        let src: HashMap<String, Pcm> = [("r.wav".to_string(), sine(220.0, 0.25, 0.5))].into();
+        let air = Placement {
+            role: Role::Ambience, shot: Some("a".into()), index: 0, label: "room".into(), file: "r.wav".into(),
+            start: 0.0, offset: 0.0, until: Some(2.0), gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
+            looped: true, place: Some("room".into()),
+        };
+        assert_eq!(needed_secs(std::slice::from_ref(&air))["r.wav"], None, "a loop reads the whole file");
+        let (out, _) = mix(std::slice::from_ref(&air), &src, 3.0, 0.0);
+        let sec = SR as usize;
+        assert!(rms(&out.l[sec..sec + sec / 2]) > 0.2, "still heard a second in");
+        assert!(rms(&out.l[sec * 2 + sec / 10..]) < 1e-6, "and stops at its stretch's end");
+        let once = Placement { looped: false, ..air };
+        let (out, _) = mix(&[once], &src, 3.0, 0.0);
+        assert!(rms(&out.l[sec..sec + sec / 2]) < 1e-6, "without the loop it ends with the file");
+    }
+
+    #[test]
     fn mix_key_follows_until() {
         let p = |until: Option<f64>| Placement {
             role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
-            start: 0.0, offset: 0.0, until, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
+            start: 0.0, offset: 0.0, until, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None, looped: false, place: None,
         };
         assert_ne!(p(Some(3.0)).to_json(), p(Some(4.0)).to_json());
     }
@@ -1222,7 +1390,7 @@ mod tests {
         let src: HashMap<String, Pcm> = [("s.wav".to_string(), sine(hz, 1.0, 0.5))].into();
         let p = Placement {
             role: Role::Sfx, shot: Some("a".into()), index: 0, label: "s".into(), file: "s.wav".into(),
-            start: 0.0, offset: 0.0, until: None, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut, low_cut,
+            start: 0.0, offset: 0.0, until: None, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut, low_cut, looped: false, place: None,
         };
         let (out, _) = mix(&[p], &src, 1.0, 0.0);
         rms(&out.l[SR as usize / 4..])
@@ -1253,7 +1421,7 @@ mod tests {
         // a placement without filters keeps the json (and so the cache key) it had before
         let p = Placement {
             role: Role::Bgm, shot: None, index: 0, label: "m".into(), file: "m.wav".into(),
-            start: 0.0, offset: 0.0, until: None, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None,
+            start: 0.0, offset: 0.0, until: None, gain_db: 0.0, fade_in: 0.0, fade_out: 0.0, high_cut: None, low_cut: None, looped: false, place: None,
         };
         assert!(p.to_json().get("high_cut").is_none());
         assert_eq!(Placement { high_cut: Some(3000.0), ..p }.to_json()["high_cut"], 3000.0);
