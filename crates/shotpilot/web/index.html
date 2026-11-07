@@ -205,7 +205,7 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 #summary b { color: var(--ink); }
 
 /* ------------------------------------------------------------------ the road (D-74, D-79): who has the ball, step by step */
-.road { display: flex; align-items: center; gap: 1px; min-width: 0; overflow-x: auto; padding: 4px 0 6px; }
+.road { flex: 1 1 0; display: flex; align-items: center; gap: 1px; min-width: 0; overflow-x: auto; padding: 4px 0 6px; }
 .road-sep { color: var(--faint); font-size: 12px; flex: none; }
 .road-btn { flex: none; border: 1px solid transparent; background: none; padding: 4px 9px; border-radius: 999px; color: var(--muted);
   display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
@@ -948,6 +948,97 @@ table.metrics td.r { color: var(--muted); white-space: nowrap; font-size: 11.5px
 details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .err-box { border: 1px solid var(--err); color: var(--err); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
 
+/* ------------------------------------------------------------------ your turn (D-74, D-79): lanes, the decisions, the selected cut */
+#reviewpanel { display: grid; grid-template-columns: minmax(0, 1fr) 284px; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; background: var(--card); }
+.rv-over { grid-column: 1; grid-row: 1; padding: 12px 16px 8px; min-width: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.rv-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.rv-head h3 { margin: 0; font-size: 15px; }
+.rv-head .lead { color: var(--muted); font-size: 11.5px; }
+.rv-head .legend { margin-left: auto; display: flex; gap: 10px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.rv-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid var(--stale);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--stale) 30%, transparent) 0 2px, transparent 2px 4px); }
+.rv-sw.red { background: none; border-color: var(--err); }
+.rv-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 6px; align-items: stretch; min-width: 0; }
+.rv-row + .rv-row { margin-top: 3px; }
+.rv-lbl { font-size: 11px; color: var(--muted); display: flex; align-items: center; white-space: nowrap; }
+.rv-track { display: grid; grid-template-columns: var(--rv-cols); gap: 3px; min-width: 0; }
+.rv-tile { position: relative; display: grid; grid-template-rows: 15px 1fr 15px; height: 76px; min-width: 0; padding: 0; text-align: left; overflow: hidden;
+  border: 1px solid #344044; border-top: 3px solid var(--beat, var(--line)); border-radius: 4px; background: var(--stage) center / cover no-repeat; color: #d7dfe0; }
+.rv-tile.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rv-tile.flag { border-bottom: 2px solid var(--stale); }
+.rv-tile.p0 { border-bottom: 2px solid var(--err); }
+.rv-tile .t { display: flex; justify-content: space-between; gap: 3px; padding: 0 4px; font: 10px var(--mono); background: rgb(5 7 8 / .55); white-space: nowrap; overflow: hidden; }
+.rv-tile .b { grid-row: 3; display: flex; justify-content: space-between; gap: 3px; padding: 0 4px; font: 10px var(--mono); color: #93a4a7; background: rgb(5 7 8 / .55); white-space: nowrap; overflow: hidden; }
+.rv-tile .ok { color: var(--accent); }
+.rv-tile.card { border-top-color: #3a3d3f; background: #070809; display: grid; place-items: center; grid-template-rows: 1fr; padding: 2px 3px; }
+.rv-tile.card span { font-size: 10.5px; line-height: 1.35; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.rv-cell { min-width: 0; min-height: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 4px; font-size: 10.5px;
+  background: var(--soft); border: 1px solid transparent; border-radius: 3px; white-space: nowrap; overflow: hidden; }
+.rv-cell.empty { background: none; }
+.rv-cell.sel { box-shadow: inset 0 0 0 1px var(--ink); }
+.rv-cell.place { justify-content: flex-start; color: var(--ink); background: color-mix(in srgb, var(--place) 20%, var(--card)); border-color: color-mix(in srgb, var(--place) 38%, var(--line)); }
+.rv-cell.p2 { border-color: var(--stale); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--stale) 16%, var(--soft)) 0 4px, var(--soft) 4px 8px); }
+.rv-cell.p1, .rv-cell.p0 { border: 1.5px solid var(--err); background: color-mix(in srgb, var(--err) 6%, var(--soft)); }
+.rv-cell .mm { color: var(--muted); font-family: var(--mono); font-size: 9.5px; }
+.rv-sound { position: relative; min-height: 18px; }
+.rv-sound .blk { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: color-mix(in srgb, var(--establish) 35%, var(--card)); font-size: 10px; padding: 0 5px; overflow: hidden; white-space: nowrap; }
+.rv-sound .dot { position: absolute; top: 5px; width: 7px; height: 7px; margin-left: -3px; border-radius: 50%; background: var(--escalate); }
+.rv-fold { border: 0; background: none; padding: 6px 0 0; font-size: 11px; color: var(--muted); }
+.rv-q { grid-column: 2; grid-row: 1 / 3; border-left: 1px solid var(--line); padding: 12px 12px 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0; }
+.rv-qh { display: flex; align-items: center; gap: 8px; }
+.rv-qh h3 { margin: 0; font-size: 13px; }
+.rv-n { min-width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 4px; font: 11px var(--mono); background: var(--soft); }
+.rv-keys { margin-left: auto; font-size: 10px; color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
+.rv-keys span { margin-right: 4px; }
+.rv-q kbd, .rv-det kbd { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 3px; border: 1px solid var(--line); border-radius: 3px; font: 10px var(--mono); color: var(--muted); background: var(--card); }
+.rv-dq { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; text-align: left; background: var(--card); display: grid; gap: 3px; width: 100%; }
+.rv-dq.on { border-color: var(--muted); padding: 10px; }
+.rv-dq .ttl { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; min-width: 0; }
+.rv-dq .ttl span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-dq .why { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.rv-dq:not(.on) .why { display: none; }
+.rv-tag { flex: none; font-size: 9.5px; font-weight: 700; border: 1px solid var(--line); background: var(--soft); border-radius: 3px; padding: 0 5px; }
+.rv-tag.P0 { background: var(--err); border-color: var(--err); color: #fff; }
+.rv-tag.P1 { border-color: var(--err); color: var(--err); }
+.rv-tag.P2, .rv-tag.game, .rv-tag.old { border-color: var(--stale); color: color-mix(in srgb, var(--stale) 80%, var(--ink)); }
+.rv-tag.ask { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.rv-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.rv-acts .btn { font-size: 11.5px; padding: 3px 8px; gap: 5px; }
+.rv-empty { display: grid; gap: 4px; padding: 16px 2px; font-size: 12px; color: var(--muted); }
+.rv-empty b { color: var(--ink); }
+.rv-foot { position: sticky; bottom: 0; margin-top: auto; padding: 8px 0 10px; background: var(--card); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.rv-foot i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.rv-feed { display: grid; gap: 6px; font-size: 12px; }
+.rv-feed div { display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
+.rv-feed .cur { background: var(--soft); border-radius: 6px; padding: 6px 4px; }
+.rv-det { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; padding: 12px 16px; min-height: 0; overflow: auto; }
+.rv-frame { position: relative; background: var(--stage); border: 1px solid #30393c; border-radius: 4px; overflow: hidden; aspect-ratio: 16 / 9; max-height: 100%; display: grid; }
+.rv-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.rv-frame .ph { place-self: center; color: #93a4a7; font-size: 12px; text-align: center; }
+.rv-frame .tg { position: absolute; top: 8px; left: 8px; font: 10px var(--mono); color: #c4d0d1; background: rgb(13 19 21 / .85); border: 1px solid #354247; padding: 1px 6px; border-radius: 3px; }
+.rv-frame .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 12px; text-align: center; font-size: 12px; color: #e3e9e9; background: linear-gradient(transparent, rgb(5 7 8 / .8)); }
+.rv-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10.5px; color: var(--muted); }
+.rv-ladder { display: flex; gap: 8px; font-family: var(--mono); }
+.rv-nav { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); white-space: nowrap; }
+.rv-nav .icon { width: 24px; height: 24px; font-size: 15px; }
+.rv-ladder .fresh::before { content: "● "; color: var(--accent); }
+.rv-ladder .stale::before { content: "● "; color: var(--stale); }
+.rv-ladder .none::before { content: "○ "; }
+.rv-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rv-side h4 { margin: 0; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
+.rv-side h4 small { font: 11px var(--mono); color: var(--muted); font-weight: 400; }
+.rv-side .pur { font-size: 12.5px; }
+.rv-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 11.5px; }
+.rv-facts dt { color: var(--muted); }
+.rv-facts dd { margin: 0; font-family: var(--mono); }
+.rv-nudges { display: flex; flex-wrap: wrap; gap: 5px; }
+.rv-nudges .btn { font-size: 11.5px; padding: 3px 9px; }
+.rv-cost { padding: 8px 10px; background: var(--soft); border: 1px solid var(--line); border-radius: 4px; font-size: 11px; line-height: 1.7; color: var(--muted); }
+.rv-cost b { color: var(--ink); font-weight: 600; }
+.rv-approve { display: flex; gap: 8px; align-items: center; margin-top: auto; }
+.rv-approve .btn { flex: 1; justify-content: center; min-height: 32px; }
+@media (max-width: 1360px) { #reviewpanel { grid-template-columns: minmax(0, 1fr) 248px; } .rv-head .legend { display: none; } .rv-det { grid-template-columns: 1fr; } }
+
 #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 8px 14px;
   border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
 #toast.err { background: var(--err); color: #fff; }
@@ -1043,6 +1134,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div id="structpanel" class="panel main" hidden></div>
     <div id="capturepanel" class="panel main" hidden></div>
     <div id="publishpanel" class="panel main" hidden></div>
+    <div id="reviewpanel" class="main" hidden aria-label="あなたの番"></div>
     <div id="stage" class="main">
       <div id="view"></div>
       <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
@@ -1086,7 +1178,7 @@ const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 // The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
-const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish", publish: "publish" };
+const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish", publish: "publish", review: "structure" };
 const BEAT_JA = {
   hook: "最初の 2〜5 秒。スクロールを止める1枚か、問い",
   establish: "どこで、どんなゲームかを見せる",
@@ -1199,6 +1291,7 @@ async function refresh(poll = false) {
     document.title = `Shotpilot — ${st.title || st.project}`;
     if (!ui.quality || !st.qualities.includes(ui.quality)) ui.quality = defaultQuality(st);
     if (!ui.sel || !st.shots.some((s) => s.id === ui.sel)) ui.sel = st.shots[0]?.id ?? null;
+    if (!ui.opened) { ui.opened = true; if (!location.hash && st.shots.length) ui.tab = "review"; }
     if (logKey !== ui.logKey) { ui.log = log; ui.logKey = logKey; drawChat(); }
     // sound follows the definition (timing, sfx, audio); the mix itself is cached server-side
     const skey = JSON.stringify([st.shots.map((s) => [s.id, s.duration, s.node.sfx]), st.audio]);
@@ -1286,11 +1379,11 @@ function draw() {
   for (const b of document.querySelectorAll("#finish-seg button")) b.classList.toggle("on", b.dataset.fin === ui.tab);
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
   const snd = ui.tab === "sound";
-  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel", publish: "publishpanel" }[ui.tab];
+  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel", publish: "publishpanel", review: "reviewpanel" }[ui.tab];
   $("scoutpanel").hidden = ui.tab !== "scout";
   $("designpanel").hidden = ui.tab !== "design";
   const finishing = ui.tab === "teaser" || snd || ui.tab === "design";
-  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("capturepanel").hidden = ui.tab !== "capture"; $("publishpanel").hidden = ui.tab !== "publish";
+  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("reviewpanel").hidden = ui.tab !== "review"; $("capturepanel").hidden = ui.tab !== "capture"; $("publishpanel").hidden = ui.tab !== "publish";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
   $("toolbar").hidden = !!panel && ui.tab !== "design";
   for (const el of [$("quality"), $("mark"), $("mode-seg")]) el.hidden = finishing;
@@ -1306,6 +1399,8 @@ function draw() {
     $("cut-prev").disabled = !s || s.index === 0;
     $("cut-next").disabled = !s || s.index >= n - 1;
   }
+  // your turn draws its own lanes on the same time axis as the cuts
+  $("timeline").hidden = ui.tab === "review";
   $("timeline").classList.toggle("folded", !!ui.tlFold);
   $("tl-fold").textContent = ui.tlFold ? "▸ タイムライン" : "▾ タイムライン";
   $("board").classList.toggle("on", ui.board);
@@ -1317,7 +1412,7 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""} · ${st.ai?.effort || ""}`;
-  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture(); else if (ui.tab === "publish") drawPublish();
+  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture(); else if (ui.tab === "publish") drawPublish(); else if (ui.tab === "review") drawReview();
   else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
@@ -1436,7 +1531,7 @@ const moveOf = (s) => s.node?.camera?.end ? "keyframed" : s.node?.camera?.move?.
 
 // The road (D-74, D-79): each step is done, yours (the human has the ball), running (Claude is on it)
 // or still ahead. It only says whose turn it is; the counts live on each step's own screen.
-const ROAD_TAB = { plan: "brief", scout: "scout", script: "structure", blocking: "shot", review: "structure",
+const ROAD_TAB = { plan: "brief", scout: "scout", script: "structure", blocking: "shot", review: "review",
   sound: "sound", capture: "capture", cut: "teaser", publish: "publish" };
 const ROAD_OF = { brief: "plan", scout: "scout", structure: "script", shot: "blocking", review: "review",
   sound: "sound", capture: "capture", teaser: "cut", design: "cut", publish: "publish" };
@@ -1497,6 +1592,209 @@ function goRoad(k) {
   if (tab === "shot") goStage("framing");
   else if (tab === "sound" || tab === "teaser") { ui.tab = ui.fin = tab; ui.region = null; draw(); }
   else goStage(tab);
+}
+
+// ------------------------------------------------------------------ your turn (D-74, D-79)
+// One screen while the human has the ball: the cuts and their lanes on one time axis, what is
+// left to decide (in the order to decide it), and the selected cut. Everything comes from
+// /api/status; every action goes through the same calls as the other screens.
+
+const CAMERA_RULES = new Set(["camera.inside", "frame.lost", "frame.cropped", "cut.jump", "repeat.move", "repeat.lens", "frame.blocked"]);
+const MOVE_GLYPH = { static: "■", dolly_in: "→", dolly_out: "←", truck_left: "⇠", truck_right: "⇢", crane_up: "↑", crane_down: "↓",
+  orbit_left: "↺", orbit_right: "↻", keyframed: "⤳" };
+const SEV_RANK = { P0: 0, P1: 1, P2: 2 };
+const PLACE_COLORS = ["#ae8f62", "#688ca1", "#9c818e", "#7f9a6e", "#a8775e", "#6f8f8a"];
+const RV_NUDGES = ["closer", "farther", "higher", "lower", "orbit_left", "orbit_right", "wider", "tighter"];
+
+/** What a shot looks at: its anchor, what it aims at, else the subject the shot check found. */
+const placeOf = (s) => { const c = s.node?.camera || {}; return c.anchor || (typeof c.look_at === "string" ? c.look_at : "") || s.framing?.subject || ""; };
+const worstSev = (fs) => fs.map((f) => f.severity).sort((a, b) => SEV_RANK[a] - SEV_RANK[b])[0] || "";
+
+/** What is left for the human to decide, in the order to decide it. Each has its actions: [key, label]. */
+function reviewDecisions() {
+  const st = ui.status, shots = st.shots, out = [];
+  const lines = st.script || [];
+  if (lines.length && st.script_approval !== "approved") {
+    const cards = lines.filter((l) => !l.on).length;
+    out.push({ id: "script", tag: "ask", tagText: "承認", title: st.script_approval === "outdated" ? "変わった台本を承認し直す" : "台本を承認する",
+      why: `カード ${cards} · 重ね文字 ${lines.length - cards}。承認はカメラ・光・音では外れません`, acts: [["approve-script", "台本を承認"], ["open-script", "台本を開く"]] });
+  }
+  for (const f of [...findings()].sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity])) {
+    out.push({ id: `f:${f.rule}:${f.shot || ""}`, tag: f.severity, tagText: f.severity, shot: f.shot, f,
+      title: `${f.shot ? `${f.shot} · ` : ""}${RULE_JA[f.rule] || f.rule}`, why: `${f.message} — ${f.fix}`,
+      acts: [["fix", "Claude に直させる"], ...(f.shot ? [["see", "このカットを見る"]] : [])] });
+  }
+  for (const s of shots) {
+    const g = gameChanged(s);
+    if (g) out.push({ id: `g:${s.id}`, tag: "game", tagText: "ゲーム", shot: s.id, q: [...st.qualities].reverse().find((q) => g.qualities.includes(q)), title: `${s.id} · ゲームが変わった`, why: `${gameText(g)} が変わりました。写っていたこのカットだけが古くなっています`,
+      acts: [["rerender", "このカットだけ撮り直す"], ["see", "このカットを見る"]] });
+  }
+  const old = shots.filter((s) => s.qualities.previz !== "fresh");
+  if (old.length && st.qualities.includes("previz")) {
+    const list = old.slice(0, 4).map((s) => s.id).join(", "), ids = old.length > 4 ? `${list} ほか ${old.length - 4} 件` : list;
+    out.push({ id: "previz", tag: "old", tagText: "古い", title: `previz が古いカット ${old.length} 本`, why: `${ids}。エンジンを使わず数秒で描き直します`,
+      acts: [["previz", "previz を撮る"]] });
+  }
+  if (st.review?.stopped && st.script_approval === "approved") {
+    out.push({ id: "resume", tag: "ask", tagText: "次へ", title: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", acts: [["resume", "続ける"]] });
+  }
+  return out;
+}
+
+function drawReview() {
+  const box = $("reviewpanel"), st = ui.status;
+  if (!st.shots.length) {
+    box.innerHTML = `<div class="rv-over"><div class="rv-empty"><b>まだカットがありません</b>左の欄で企画すると、Claude が台本とカットを組んで previz まで撮り、ここで止まります。</div></div>${reviewQueueHtml([])}`;
+    return;
+  }
+  const ds = reviewDecisions();
+  ui.rvq = Math.min(Math.max(ui.rvq || 0, 0), Math.max(ds.length - 1, 0));
+  box.innerHTML = `${reviewLanesHtml()}${reviewQueueHtml(ds)}${reviewCutHtml()}`;
+}
+
+function reviewLanesHtml() {
+  const st = ui.status, shots = st.shots;
+  const items = st.timeline?.length ? st.timeline : shots.map((s) => ({ kind: "shot", id: s.id, duration: s.duration }));
+  const cols = items.map((it) => `minmax(0, ${Math.max(it.duration, 0.3)}fr)`).join(" ");
+  const total = items.reduce((a, it) => a + it.duration, 0) || 1;
+  const places = [...new Set(shots.map(placeOf).filter(Boolean))];
+  const placeColor = (p) => PLACE_COLORS[places.indexOf(p) % PLACE_COLORS.length];
+  const tiles = items.map((it) => {
+    if (it.kind !== "shot") return `<div class="rv-tile card" title="${esc(it.text || "")}"><span>${esc(it.text || KIND_JA[it.kind] || it.kind)}</span></div>`;
+    const s = shotById(it.id); if (!s) return "<div></div>";
+    const tk = bestTake(s), fs = findingsFor(s.id), sev = worstSev(fs.filter((f) => !CAMERA_RULES.has(f.rule)));
+    const cls = ["rv-tile", s.id === ui.sel ? "sel" : "", sev === "P0" ? "p0" : sev ? "flag" : ""].join(" ");
+    const tip = `${s.id} — ${s.purpose || ""}${fs.length ? `\n${fs.map((f) => `${f.severity} ${RULE_JA[f.rule] || f.rule}`).join("\n")}` : ""}`;
+    return `<button class="${cls}" data-rv-cut="${esc(s.id)}" style="--beat:var(--${esc(s.beat || "muted")});${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(tip)}">
+      <span class="t"><span>${s.index + 1} ${esc(s.id)}</span>${s.approval === "approved" ? `<span class="ok" title="構図を承認済み">✓</span>` : ""}</span>
+      <span class="b"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span></span></button>`;
+  }).join("");
+  // places: neighbouring shots on the same place share one block
+  const placeCells = [];
+  items.forEach((it, i) => {
+    const s = it.kind === "shot" && shotById(it.id), p = s ? placeOf(s) : "";
+    const last = placeCells[placeCells.length - 1];
+    if (p && last?.p === p && last.end === i) { last.end = i + 1; return; }
+    placeCells.push({ p, start: i, end: i + 1 });
+  });
+  const placeHtml = placeCells.map((c) => c.p
+    ? `<div class="rv-cell place" style="grid-column:${c.start + 1}/${c.end + 1};--place:${placeColor(c.p)}" title="${esc(c.p)}">${esc(c.p)}</div>`
+    : `<div class="rv-cell empty" style="grid-column:${c.start + 1}/${c.end + 1}"></div>`).join("");
+  const camHtml = items.map((it) => {
+    const s = it.kind === "shot" && shotById(it.id);
+    if (!s) return `<div class="rv-cell empty"></div>`;
+    const mv = moveOf(s), fs = findingsFor(s.id).filter((f) => CAMERA_RULES.has(f.rule)), sev = worstSev(fs);
+    const tip = `${MOVE_JA[mv] || mv} · ${s.lens ?? ""}mm${fs.length ? `\n${fs.map((f) => `${f.severity} ${RULE_JA[f.rule] || f.rule}: ${f.message}`).join("\n")}` : ""}`;
+    return `<div class="rv-cell ${sev.toLowerCase()}${s.id === ui.sel ? " sel" : ""}" title="${esc(tip)}">${MOVE_GLYPH[mv] || "·"}<span class="mm">${s.lens ?? ""}</span></div>`;
+  }).join("");
+  // sound: BGM blocks and SE marks, read-only here (the sound tab edits them)
+  const snd = ui.sound, mixLanes = new Map((snd?.mix?.lanes || []).map((l) => [laneKey(l), l]));
+  const pct = (t) => `${Math.min(Math.max(t / total, 0), 1) * 100}%`;
+  const bgm = (snd?.placements || []).filter((p) => p.role === "bgm").map((p) => {
+    const l = mixLanes.get(laneKey(p)), from = l ? l.from : Math.max(p.start, 0), to = l && l.to > l.from ? l.to : p.until ?? total;
+    return `<span class="blk" style="left:${pct(from)};width:calc(${pct(to)} - ${pct(from)})" title="${esc(p.label)}">${esc(p.label)}</span>`;
+  }).join("");
+  const sfx = (snd?.placements || []).filter((p) => p.role === "sfx").map((p) => `<span class="dot" style="left:${pct(Math.max(p.start, 0))}" title="${esc(p.label)}"></span>`).join("");
+  const soundRows = ui.rvSound ? `<div class="rv-row"><span class="rv-lbl">BGM</span><div class="rv-sound">${bgm}</div></div>
+    <div class="rv-row"><span class="rv-lbl">SE</span><div class="rv-sound">${sfx}</div></div>` : "";
+  const approved = shots.filter((s) => s.approval === "approved").length;
+  return `<div class="rv-over">
+    <div class="rv-head"><h3>あなたの番</h3><span class="lead">承認 ${approved}/${shots.length} · ${Math.round((st.total_duration || total) * 10) / 10} 秒</span>
+      <span class="legend"><span><i class="rv-sw"></i>推定のはみ出し</span><span><i class="rv-sw red"></i>事実（P0・P1）</span></span></div>
+    <div class="rv-row"><span class="rv-lbl">カット</span><div class="rv-track" style="--rv-cols:${cols}">${tiles}</div></div>
+    <div class="rv-row"><span class="rv-lbl">場所</span><div class="rv-track" style="--rv-cols:${cols}">${placeHtml}</div></div>
+    <div class="rv-row"><span class="rv-lbl">カメラ</span><div class="rv-track" style="--rv-cols:${cols}">${camHtml}</div></div>
+    <button class="rv-fold" data-rv-sound><span aria-hidden="true">${ui.rvSound ? "▾" : "▸"}</span> <span>音（BGM・SE）</span></button>${soundRows}
+  </div>`;
+}
+
+function reviewQueueHtml(ds) {
+  if (ui.busy === "produce" && ui.produce) {
+    const rows = produceOrder().map((k) => {
+      const d = ui.produce.steps[k];
+      return `<div class="${d?.status === "start" ? "cur" : ""}"><span>${d ? STEP_ICON[d.status] : "·"}</span><span>${esc(PRODUCE_STEP_JA[k])}${d?.detail ? `<br><small class="mu">${esc(d.detail)}</small>` : ""}</span></div>`;
+    }).join("");
+    return `<aside class="rv-q"><div class="rv-qh"><h3>Claude の番</h3></div><div class="rv-feed">${rows}</div>
+      <div class="rv-foot">止まったら、ここに決めることが並びます</div></aside>`;
+  }
+  const st = ui.status, n = st.shots.length, approved = st.shots.filter((s) => s.approval === "approved").length;
+  const items = ds.map((d, i) => {
+    const on = i === ui.rvq;
+    const acts = on ? `<div class="rv-acts">${d.acts.map(([k, label], j) => `<button class="btn${j === 0 ? " dark" : ""}" data-rv-act="${esc(k)}"${ui.busy ? " disabled" : ""}><kbd>${j + 1}</kbd>${esc(label)}</button>`).join("")}</div>` : "";
+    return `<div class="rv-dq${on ? " on" : ""}" data-rv-dq="${i}" role="button" tabindex="0">
+      <div class="ttl"><span class="rv-tag ${esc(d.tag)}">${esc(d.tagText)}</span><span>${esc(d.title)}</span></div>
+      <div class="why">${esc(d.why)}</div>${acts}</div>`;
+  }).join("");
+  const empty = n ? `<div class="rv-empty"><b>決めることはありません</b>カット検査の指摘も、古いカットもありません。カットを選んで承認していきます。</div>` : "";
+  return `<aside class="rv-q"><div class="rv-qh"><h3>決めること</h3><span class="rv-n">${ds.length}</span>
+      <span class="rv-keys"><kbd>J</kbd><kbd>K</kbd><span>移動</span><kbd>1</kbd><span>決める</span></span></div>
+    ${items || empty}
+    <div class="rv-foot"><i></i>承認 ${approved}/${n} · ${st.script_approval === "approved" ? "台本は承認済み" : "台本は未承認"}</div></aside>`;
+}
+
+function reviewCutHtml() {
+  const st = ui.status, s = shot(); if (!s) return "";
+  const tk = bestTake(s), n = st.shots.length;
+  const cap = (st.script || []).filter((l) => l.on === s.id).map((l) => l.ja).filter(Boolean).join(" / ");
+  const frame = tk ? `<img src="${esc(tk.t.url)}" alt="">` : `<div class="ph">まだ撮っていません<br>「previz を撮る」で、エンジンなしで描きます</div>`;
+  const ladder = st.qualities.map((q) => `<span class="${s.qualities[q] === "fresh" ? "fresh" : s.qualities[q] === "stale" ? "stale" : "none"}" title="${esc(`${q}: ${s.qualities[q]}`)}">${esc(q)}</span>`).join("");
+  const p0 = findingsFor(s.id).find((f) => f.severity === "P0");
+  const a = s.approval;
+  const fl = ui.flash?.id === s.id ? ui.flash : null;
+  const cost = fl
+    ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "previz を描いています…" : "previz を描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
+    : `直すと、撮り直しになるカットだけがここに出ます。直し方は左の欄でチップを積んで送ります（このカットに効きます）。`;
+  const mv = moveOf(s);
+  return `<div class="rv-det">
+    <div><div class="rv-frame">${frame}<span class="tg">${esc(s.id)} · ${esc(tk ? tk.q : "—")}</span>${cap ? `<div class="cap">${esc(cap)}</div>` : ""}</div>
+      <div class="rv-meta"><span class="rv-ladder">${ladder}</span>
+        <span class="rv-nav"><button class="icon" data-rv-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button> ${s.index + 1} / ${n} <button class="icon" data-rv-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></span></div></div>
+    <div class="rv-side">
+      <h4>${esc(s.id)}<small>${esc(s.beat || "")} · ${s.duration}s</small></h4>
+      <div class="pur">${esc(s.purpose || "（見せるもの未記入）")}</div>
+      <dl class="rv-facts"><dt>場所</dt><dd>${esc(placeOf(s) || "—")}</dd><dt>カメラ</dt><dd>${esc(MOVE_JA[mv] || mv)} · ${s.lens ?? "—"}mm</dd></dl>
+      <div class="rv-nudges">${RV_NUDGES.map((k) => `<button class="btn" data-rv-nudge="${k}"${ui.busy || !nudgeCan(s, k) ? " disabled" : ""}>${esc(nudgeJa(k))}</button>`).join("")}
+        <button class="btn" data-rv-open title="画とカメラを1カットずつ細かく直す画面へ">細かく直す →</button></div>
+      <div class="rv-cost">${cost}</div>
+      <div class="rv-approve"><button class="btn ${a === "approved" ? "ok" : "dark"}" data-rv-approve${ui.busy || (p0 && a !== "approved") ? " disabled" : ""}
+        title="${esc(p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画で撮影に進めます。画が変わる修正をすると自動で外れます")}">${a === "approved" ? "✓ 承認済み" : a === "outdated" ? "画が変わった · 再承認" : "このカットを承認"} <kbd>A</kbd></button></div>
+    </div></div>`;
+}
+
+/** Run one action of a decision (from a click or a number key). */
+function runReviewAct(d, k) {
+  if (!d || ui.busy) return;
+  if (k === "approve-script") approveScript(true);
+  else if (k === "open-script") goStage("structure");
+  else if (k === "resume") resumeAll();
+  else if (k === "previz") render("previz", [], { keep: true });
+  else if (k === "rerender") render(d.q || ui.status.qualities[0], [d.shot]);
+  else if (k === "see") { ui.sel = d.shot; ui.scopeAll = false; draw(); }
+  else if (k === "fix") {
+    // the finding goes into the composer's stack, scoped to its cut (or the whole); the human sends it
+    if (d.shot) { ui.sel = d.shot; ui.scopeAll = false; } else ui.scopeAll = true;
+    draw(); addChip(cmpTarget().key, fixChip(d.f));
+    toast("左の欄に積みました。送ると Claude が直します");
+  }
+}
+
+/** Keys on your turn: J/K walk the decisions, 1-3 run an action, ←/→ pick a cut, A approves it. */
+function reviewKey(e) {
+  const st = ui.status, ds = reviewDecisions(), key = e.key.toLowerCase();
+  if (key === "j" || key === "k") { ui.rvq = (ui.rvq || 0) + (key === "j" ? 1 : -1); draw(); return true; }
+  if (/^[1-3]$/.test(e.key) && ds[ui.rvq || 0]) { const d = ds[ui.rvq || 0], a = d.acts[Number(e.key) - 1]; if (a) runReviewAct(d, a[0]); return !!a; }
+  if (e.key === "Enter" && !e.target.closest("button") && ds[ui.rvq || 0]) { const d = ds[ui.rvq || 0]; runReviewAct(d, d.acts[0][0]); return true; }
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    const i = st.shots.findIndex((s) => s.id === ui.sel), t = st.shots[i + (e.key === "ArrowRight" ? 1 : -1)];
+    if (t) { ui.sel = t.id; ui.scopeAll = false; draw(); }
+    return true;
+  }
+  if (key === "a") {
+    const s = shot(), p0 = s && findingsFor(s.id).some((f) => f.severity === "P0");
+    if (s && s.approval !== "approved" && !p0) approve(s.id, true);
+    return true;
+  }
+  return false;
 }
 
 function findingHtml(f, { open = false } = {}) {
@@ -1771,13 +2069,13 @@ function drawNext() {
   el.hidden = !n || !!ui.busy;
   if (el.hidden) return;
   const stageName = { scout: "ロケハン", brief: "企画", structure: "台本", framing: "配置とカメラ", capture: "撮影", finish: "Cut" }[n.stage];
-  const onSheet = n.stage === "framing" && n.act === "goto" && ui.tab === "structure";
+  const onSheet = n.stage === "framing" && n.act === "goto" && (ui.tab === "structure" || ui.tab === "review");
   const here = STAGE_OF[ui.tab] === n.stage || onSheet;
   // at the review the cut sheet's green bar holds the one button; do not repeat it here
-  const viaBar = ui.tab === "structure" && (n.act === "approve-script" || n.act === "resume");
+  const viaBar = (ui.tab === "structure" || ui.tab === "review") && (n.act === "approve-script" || n.act === "resume");
   const label = viaBar ? "" : n.act === "goto" ? (here ? "" : `${stageName}へ →`) : n.act === "approve-script" ? "台本を承認" : n.act === "resume" ? "続ける" : "実行";
   // the why lives in the title; only a blocker is said out loud
-  const tip = viaBar ? `${n.why}（カット表の上の緑の帯から）` : onSheet ? `${n.why}（行の ○ か Enter で承認、Space で大きく見る）` : n.why;
+  const tip = viaBar ? (ui.tab === "review" ? `${n.why}（右の「決めること」から）` : `${n.why}（カット表の上の緑の帯から）`) : onSheet ? `${n.why}（行の ○ か Enter で承認、Space で大きく見る）` : n.why;
   el.innerHTML = `<span class="lbl">次: ${esc(stageName)}</span><span class="what" title="${esc(tip)}">${esc(n.what)}</span>${n.need ? `<span class="why" title="${esc(tip)}">${esc(n.need)}</span>` : ""}
     ${label ? `<button class="btn dark" data-next${n.need ? " disabled" : ""}>${esc(label)}</button>` : ""}
     ${n.act === "produce" ? `<button class="btn" data-next-full title="確認で止めずに、音・撮影・Cut まで通します"${n.need ? " disabled" : ""}>最後まで自動</button>` : ""}
@@ -4228,6 +4526,7 @@ async function approve(id, on) {
   const onSheet = ui.tab === "structure";
   if (next) {
     if (onSheet) { if (ui.row === id && !selHidden()) pickRow(next.id); }
+    else if (ui.tab === "review") { if (ui.sel === id) { ui.sel = next.id; draw(); } }
     else if (ui.sel === id) { selectShot(next.id); flashStage(); }
     toast(`${id} を承認 → ${next.id} へ`);
   } else {
@@ -5271,11 +5570,7 @@ function drawChat() {
   const showSuggest = lastEdit >= 0 && !items.slice(lastEdit + 1).some((e) => e.action === "render");
   let html = items.map((e, i) => entryHtml(e, showSuggest && i === lastEdit)).join("");
   if (ui.produce) {
-    const order = ({ review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "see", "repair", "cut"] }[ui.produce.mode]
-      || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "see", "repair", "cut"])
-      // the look after the shoot only runs on engine takes (D-50): show it once it starts
-      .filter((k) => !["see", "repair"].includes(k) || ui.produce.steps[k]);
-    const names = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）", sound: "音の設計", render: "撮影", see: "撮れた画の確認", repair: "写っていないカットの撮り直し", cut: "Cut（仕上げを焼き込む）" };
+    const order = produceOrder(), names = PRODUCE_STEP_JA;
     const rows = order.map((k) => {
       const d = ui.produce.steps[k];
       const icon = d ? STEP_ICON[d.status] : "　";
@@ -5335,6 +5630,14 @@ async function planShots() {
 }
 
 const STEP_ICON = { start: "…", done: "✓", skipped: "–", failed: "✕" };
+const PRODUCE_STEP_JA = { discover: "企画", scout: "ロケハン写真", stage: "ステージの理解", mood: "ムードボード", plan: "台本と構成", review: "確認（台本とカット）",
+  sound: "音の設計", render: "撮影", see: "撮れた画の確認", repair: "写っていないカットの撮り直し", cut: "Cut（仕上げを焼き込む）" };
+/** The steps a first pass runs, in order (the look after the shoot only once it starts: it runs on engine takes, D-50). */
+function produceOrder() {
+  return ({ review: ["discover", "scout", "stage", "mood", "plan", "review"], resume: ["sound", "render", "see", "repair", "cut"] }[ui.produce.mode]
+    || ["discover", "scout", "stage", "mood", "plan", "sound", "render", "see", "repair", "cut"])
+    .filter((k) => !["see", "repair"].includes(k) || ui.produce.steps[k]);
+}
 
 // The first pass walks the stage bar in order, from the scouting on: each step of the run
 // opens its stage, one stage at a time and never backwards, until the human picks a stage.
@@ -5419,7 +5722,7 @@ async function produceAll({ review = true, resume = false } = {}) {
           if (d.status !== "start") refresh(true);
         } else if (ev === "done" && d.stopped === "review") {
           toast("台本とカットができました。カット表で確かめて直し、よければ「続ける」で音・撮影・Cut に進みます");
-          stopFollowing(); ui.tab = "structure"; ui.row = null; ui.filter = "all";
+          stopFollowing(); ui.tab = "review"; ui.row = null; ui.filter = "all";
         } else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); stopFollowing(); ui.tab = ui.fin = "teaser"; }
         else if (ev === "error") toast(d.error, true);
         drawChat();
@@ -5884,6 +6187,22 @@ for (const b of document.querySelectorAll(".road-btn")) b.addEventListener("clic
 for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventListener("click", () => { stopFollowing(); ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { stopFollowing(); ui.tab = ui.fin = b.dataset.fin; ui.region = null; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
+$("reviewpanel").addEventListener("click", (e) => {
+  const cut = e.target.closest("[data-rv-cut]");
+  if (cut) { ui.sel = cut.dataset.rvCut; ui.scopeAll = false; draw(); return; }
+  const act = e.target.closest("[data-rv-act]");
+  if (act) { runReviewAct(reviewDecisions()[ui.rvq || 0], act.dataset.rvAct); return; }
+  const dq = e.target.closest("[data-rv-dq]");
+  if (dq) { ui.rvq = Number(dq.dataset.rvDq); draw(); return; }
+  const s = shot();
+  const nd = e.target.closest("[data-rv-nudge]");
+  if (nd && s) { nudge(s.id, nd.dataset.rvNudge); return; }
+  const nav = e.target.closest("[data-rv-nav]");
+  if (nav && s) { const t = ui.status.shots[s.index + Number(nav.dataset.rvNav)]; if (t) { ui.sel = t.id; ui.scopeAll = false; draw(); } return; }
+  if (e.target.closest("[data-rv-approve]") && s) { approve(s.id, s.approval !== "approved"); return; }
+  if (e.target.closest("[data-rv-open]")) { goStage("framing"); return; }
+  if (e.target.closest("[data-rv-sound]")) { ui.rvSound = !ui.rvSound; draw(); }
+});
 // panels and the findings bar: one delegated handler
 $("designpanel").addEventListener("click", (e) => {
   if (e.target.closest("#d-save")) saveDesign(false);
@@ -6026,6 +6345,9 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "/") { openTyping(cmpTarget().key); e.preventDefault(); }
     return;
   }
+  if (ui.tab === "review" && st.shots.length && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (reviewKey(e)) { e.preventDefault(); return; }
+  }
   const i = st.shots.findIndex((s) => s.id === ui.sel);
   if (ui.tab === "sound") {
     if ((e.key === "Delete" || e.key === "Backspace") && ui.snd?.kind === "sfx") { deleteSfx(); e.preventDefault(); return; }
@@ -6058,7 +6380,7 @@ setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refr
 function applyHash() {
   for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
     if (part === "canvas") { ui.tab = "structure"; ui.cvView = "canvas"; }
-    else if (["teaser", "sound", "design", "scout", "brief", "structure", "capture"].includes(part)) { ui.tab = part; if (["teaser", "sound", "design"].includes(part)) ui.fin = part; }
+    else if (["teaser", "sound", "design", "scout", "brief", "structure", "capture", "review"].includes(part)) { ui.tab = part; if (["teaser", "sound", "design"].includes(part)) ui.fin = part; }
     else if (part === "tweak") { ui.mode = "tweak"; ui.tab = "shot"; } else { ui.sel = decodeURIComponent(part); ui.tab = "shot"; }
   }
 }
