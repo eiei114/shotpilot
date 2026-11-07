@@ -285,6 +285,7 @@ impl Engine for MockEngine {
         };
         let blocked = SeqStore::blocked(&build);
         let resolved = resolve_all(&self.defn)?;
+        let world = previz::World::load(&self.defn);
         let t0 = Instant::now();
         let mut renders = Map::new();
         for it in render_items {

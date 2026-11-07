@@ -2017,5 +2017,10 @@
  "左の欄に書くかチップを積んで送ると、この音だけに効きます（映像は変わりません）": "Write in the left box or stack chips and send: it changes only this sound (the picture does not change)",
  "🎨 ムードボード": "🎨 Mood board",
  "🎨 ムードボードの方向（送ると 4 枚作ります）": "🎨 The mood board's direction (sending makes 4 pictures)",
- "どんな雰囲気？ 例: 霧の夜、冷たい青に赤を一点（書かなければブリーフとロケハンから作ります）": "What mood? e.g. A foggy night, cold blue with one touch of red (left empty, it is made from the brief and the scouting)"
+ "どんな雰囲気？ 例: 霧の夜、冷たい青に赤を一点（書かなければブリーフとロケハンから作ります）": "What mood? e.g. A foggy night, cold blue with one touch of red (left empty, it is made from the brief and the scouting)",
+ "🧹 指摘をまとめて直す（{0} カット）": "🧹 Fix all findings ({0} cuts)",
+ "カット検査の P0・P1 を、指摘のあるカット（{0}）だけに絞って Claude に1回で直させます。ほかのカットは変わりません。画が変わったカットだけが撮り直しになり、↶ でまとめて戻せます。P2 と全体の指摘（尺など）は入りません": "Claude fixes the cut check's P0 and P1 findings in one pass, only on the cuts that have them ({0}). The other cuts do not change. Only cuts whose picture changes are re-rendered, and ↶ takes it all back at once. P2 and findings on the whole teaser (such as its length) are not included",
+ "カット検査の指摘を、カットごとに直して。": "Fix the cut check findings, cut by cut.",
+ "🧹 指摘を直す → {0}": "🧹 Fix findings → {0}",
+ "{0} カットの指摘を直しました": "Fixed the findings on {0} cuts"
 }

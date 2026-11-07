@@ -1973,6 +1973,11 @@ const CAMERA_RULES = new Set(["camera.inside", "frame.lost", "frame.cropped", "c
 const MOVE_GLYPH = { static: "■", dolly_in: "→", dolly_out: "←", truck_left: "⇠", truck_right: "⇢", crane_up: "↑", crane_down: "↓",
   orbit_left: "↺", orbit_right: "↻", keyframed: "⤳" };
 const SEV_RANK = { P0: 0, P1: 1, P2: 2 };
+// the severities in words; P0/P1/P2 stay the codes and the CSS classes
+const SEV_JA = { P0: "要修正", P1: "注意", P2: "参考" };
+const SEV_TIP = { P0: "要修正: 出典のある規則に反しています。直すまで承認できません",
+  P1: "注意: 直した方がよい指摘です。承認は止めません", P2: "参考: 目安の数値から外れています。直すかどうかはお好みで" };
+const sevJa = (v) => SEV_JA[v] || v;
 const PLACE_COLORS = ["#ae8f62", "#688ca1", "#9c818e", "#7f9a6e", "#a8775e", "#6f8f8a"];
 const RV_NUDGES = ["closer", "farther", "higher", "lower", "orbit_left", "orbit_right", "wider", "tighter"];
 
@@ -1991,7 +1996,7 @@ function reviewDecisions() {
   }
   // simple shows what must be fixed (P0, P1); pro adds the inferred drift (P2)
   for (const f of [...findings()].filter((f) => uiPro() || f.severity !== "P2").sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity])) {
-    out.push({ id: `f:${f.rule}:${f.shot || ""}`, tag: f.severity, tagText: f.severity, shot: f.shot, f,
+    out.push({ id: `f:${f.rule}:${f.shot || ""}`, tag: f.severity, tagText: sevJa(f.severity), shot: f.shot, f,
       title: `${f.shot ? `${f.shot} · ` : ""}${RULE_JA[f.rule] || f.rule}`, why: `${f.message} — ${f.fix}`,
       acts: [["fix", "← 左に積む"],...(f.shot ? [["see", "このカットを見る"]] : [])] });
   }
@@ -2035,7 +2040,7 @@ function reviewLanesHtml() {
     const s = shotById(it.id); if (!s) return "<div></div>";
     const tk = bestTake(s), fs = findingsFor(s.id), sev = worstSev(fs.filter((f) => !CAMERA_RULES.has(f.rule)));
     const cls = ["rv-tile", s.id === ui.sel ? "sel" : "", sev === "P0" ? "p0" : sev ? "flag" : ""].join(" ");
-    const tip = `${s.id} — ${s.purpose || ""}${fs.length ? `\n${fs.map((f) => `${f.severity} ${RULE_JA[f.rule] || f.rule}`).join("\n")}` : ""}`;
+    const tip = `${s.id} — ${s.purpose || ""}${fs.length ? `\n${fs.map((f) => `${sevJa(f.severity)} ${RULE_JA[f.rule] || f.rule}`).join("\n")}` : ""}`;
     return `<button class="${cls}" data-rv-cut="${esc(s.id)}" style="--beat:var(--${esc(s.beat || "muted")});${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(tip)}">
       <span class="t"><span>${s.index + 1} ${esc(s.id)}</span>${s.approval === "approved" ? `<span class="ok" title="構図を承認済み">✓</span>` : ""}</span>
       <span class="b"><span>${s.duration}s</span><span>${s.lens ?? ""}mm</span></span></button>`;
@@ -2055,7 +2060,7 @@ function reviewLanesHtml() {
     const s = it.kind === "shot" && shotById(it.id);
     if (!s) return `<div class="rv-cell empty"></div>`;
     const mv = moveOf(s), fs = findingsFor(s.id).filter((f) => CAMERA_RULES.has(f.rule)), sev = worstSev(fs);
-    const tip = `${MOVE_JA[mv] || mv} · ${s.lens ?? ""}mm${fs.length ? `\n${fs.map((f) => `${f.severity} ${RULE_JA[f.rule] || f.rule}: ${f.message}`).join("\n")}` : ""}`;
+    const tip = `${MOVE_JA[mv] || mv} · ${s.lens ?? ""}mm${fs.length ? `\n${fs.map((f) => `${sevJa(f.severity)} ${RULE_JA[f.rule] || f.rule}: ${f.message}`).join("\n")}` : ""}`;
     return `<div class="rv-cell ${sev.toLowerCase()}${s.id === ui.sel ? " sel" : ""}" title="${esc(tip)}">${MOVE_GLYPH[mv] || "·"}<span class="mm">${s.lens ?? ""}</span></div>`;
   }).join("");
   // hand-overs: the one after each cut, picked from the closed list (editorial: nothing is shot again)
@@ -2102,7 +2107,7 @@ function reviewLanesHtml() {
   const approved = shots.filter((s) => s.approval === "approved").length;
   return `<div class="rv-over">
     <div class="rv-head"><h3>あなたの番</h3><span class="lead">承認 ${approved}/${shots.length} · ${Math.round((st.total_duration || total) * 10) / 10} 秒</span>
-      <span class="legend"><span><i class="rv-sw"></i>推定のはみ出し</span><span><i class="rv-sw red"></i>事実（P0・P1）</span></span></div>
+      <span class="legend"><span><i class="rv-sw"></i>推定のはみ出し</span><span><i class="rv-sw red"></i>事実（要修正・注意）</span></span></div>
     <div class="rv-row"><span class="rv-lbl">カット</span><div class="rv-track" style="--rv-cols:${cols}">${tiles}</div></div>
     <div class="rv-row"><span class="rv-lbl">場所</span><div class="rv-track" style="--rv-cols:${cols}">${placeHtml}</div></div>
     ${ui.sound?.places?.length ? `<div class="rv-row"><span class="rv-lbl">環境音</span><div class="rv-track" style="--rv-cols:${cols}">${airHtml}</div></div>` : ""}
@@ -2164,7 +2169,7 @@ function reviewCutHtml() {
         <button class="btn pro-only" data-rv-open title="画とカメラを1カットずつ細かく直す画面へ">細かく直す →</button></div>
       <div class="rv-cost">${cost}</div>
       <div class="rv-approve"><button class="btn ${a === "approved" ? "ok" : "dark"}" data-rv-approve${ui.busy || (p0 && a !== "approved") ? " disabled" : ""}
-        title="${esc(p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画で撮影に進めます。画が変わる修正をすると自動で外れます")}">${a === "approved" ? "✓ 承認済み" : a === "outdated" ? "画が変わった · 再承認" : "このカットを承認"} <kbd>A</kbd></button></div>
+        title="${esc(p0 ? `要修正の指摘があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画で撮影に進めます。画が変わる修正をすると自動で外れます")}">${a === "approved" ? "✓ 承認済み" : a === "outdated" ? "画が変わった · 再承認" : "このカットを承認"} <kbd>A</kbd></button></div>
     </div></div>`;
 }
 
@@ -2772,7 +2777,7 @@ function reviewKey(e) {
 function findingHtml(f, { open = false } = {}) {
   const fix = `<button class="mini" data-fix="${esc(JSON.stringify([f.rule, f.shot]))}" title="この指摘を左の欄に積みます（送ると Claude が直します）">← 左に積む</button>`;
   const go = open && f.shot ? `<button class="mini" data-open="${esc(f.shot)}">${esc(f.shot)} を開く</button>` : "";
-  return `<div class="find"><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span>
+  return `<div class="find"><span class="sev ${esc(f.severity)}" title="${esc(SEV_TIP[f.severity] || "")}">${esc(sevJa(f.severity))}</span>
     <span><b>${esc(RULE_JA[f.rule] || f.rule)}</b>${f.shot && open ? ` · <span class="mono">${esc(f.shot)}</span>` : ""}<span class="basis">${esc(BASIS_JA[f.basis] || "")}</span></span>
     <span class="ops">${go}${fix}</span>
     <span class="why">${esc(f.message)} — ${esc(f.fix)}</span></div>`;
@@ -2796,7 +2801,7 @@ function drawApprove() {
   b.textContent = a === "approved" ? "✓ 構図を承認済み" : a === "outdated" ? "画が変わった · 再承認" : "構図を承認";
   // the storyboard is a generated picture, not the shot: approve only while looking at the take
   b.title = ui.board ? "絵コンテは生成画像です。「絵コンテ」を押して撮った画に戻ってから承認します"
-    : p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認カットへ移ります。画が変わる修正をすると自動で外れます";
+    : p0 ? `要修正の指摘があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画角で撮影に進めます（Enter）。承認すると次の未承認カットへ移ります。画が変わる修正をすると自動で外れます";
   b.disabled = !!ui.busy || ui.board || (!!p0 && a !== "approved");
 }
 
@@ -3015,7 +3020,7 @@ function nextStep() {
   if (!shots.length) return { stage: "structure", what: "Claude に構成を組ませる", why: "ステージ・ブリーフ・ムードボード・ロケハン写真を渡して組ませます", act: "plan", need: needAi };
   const planned = (ui.log || []).some((e) => e.action === "plan");
   if (!planned && !approved.length && !skipped("plan")) return { stage: "structure", what: "Claude に構成を組み直させる", why: "いまのカットは手書きです。ステージとブリーフから組み直せます（置き換え。任意）", act: "plan", skip: "plan", need: needAi };
-  if (p0.length) return { stage: "structure", what: `カット検査の P0 を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
+  if (p0.length) return { stage: "structure", what: `カット検査の要修正を直す（${p0.length}）`, why: RULE_JA[p0[0].rule] || p0[0].rule, act: "goto" };
   if (st.review?.stopped && shots.length) {
     if (st.script_approval !== "approved") {
       return { stage: "structure", what: st.script_approval === "outdated" ? "変わった台本を確かめて承認し直す" : "台本を確かめて承認する",
@@ -3106,6 +3111,12 @@ function dockActions() {
   if (ui.tab === "blocking" && st.engine === "ue5") {
     add("level", ui.blk?.level ? "🗺 レベルの形を読み直す" : "🗺 レベルの形を読む", "UE を起動して、壁・床・物・扉・灯り・階を読み、配置図に描きます（1〜2分。レベルは書き換えません）");
   }
+  // the cut sheet and your turn show the findings: all of them can go to Claude in one press (scoped to those cuts)
+  const fixes = ui.tab === "structure" || ui.tab === "review" ? shotFixes() : [];
+  if (fixes.length) {
+    add("fix-all", `🧹 指摘をまとめて直す（${fixes.length} カット）`,
+      `カット検査の要修正と注意を、指摘のあるカット（${fixes.map(([id]) => id).join(", ")}）だけに絞って Claude に1回で直させます。ほかのカットは変わりません。画が変わったカットだけが撮り直しになり、↶ でまとめて戻せます。参考の指摘と全体の指摘（尺など）は入りません`, !ai.ready);
+  }
   if (ui.tab === "structure") {
     if ((st.shots || []).length) {
       add("cams", "📷 カメラだけ組み直す", "台本・目的・秒数はそのまま（コードで守ります）、カメラだけを全カット組み直します。左の欄に書いた方向があれば、それに沿って組みます", !ai.ready);
@@ -3186,6 +3197,7 @@ function runDockAct(k) {
   else if (k === "render") render();
   else if (k === "cut") cut();
   else if (k === "cams") rebuildCameras();
+  else if (k === "fix-all") fixAllFindings();
   else if (k === "plan") planShots();
   else if (k === "cap-preview" || k === "cap-final") {
     const ids = ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id);
@@ -4079,7 +4091,7 @@ function drawStructure() {
   box.classList.toggle("cvmode", board);
   if (board) { drawStructure.key = ""; return drawCanvas(); }
   const key = JSON.stringify([st.timeline, st.shots.map((s) => [s.id, s.beat, s.duration, s.purpose, s.node, s.approval, s.framing, s.lens, s.thumbs]),
-    st.script, st.checks, st.undo, st.ai?.ready, st.script_approval, st.review, ui.busy, ui.row, ui.aspect, ui.edit, ui.flash, ui.filter, ui.rowBusy, ui.outcome, ui.popped, ui.stackRev, ui.typing, predOn()]);
+    st.script, st.checks, st.undo, st.ai?.ready, st.script_approval, st.review, ui.busy, ui.row, ui.aspect, ui.edit, ui.flash, ui.filter, ui.rowBusy, ui.cvBusy, ui.outcome, ui.popped, ui.stackRev, ui.typing, predOn()]);
   if (drawStructure.key === key && box.childElementCount) return;
   drawStructure.key = key;
   const ai = st.ai?.ready;
@@ -4100,13 +4112,13 @@ function drawStructure() {
   const rows = sheetItems().map((it) => (it.kind === "shot" ? shotRow(shotById(it.id), it) : slotRow(it))).join("");
   box.innerHTML = `<div class="sheet-head"><h3 title="Cut に出る順に 1 行 1 カット。○ で承認、文字と秒数は押せばその場で直せます。行を選ぶと、カメラ・光・音・文字とつなぎのどれかだけを、チップを積んで Claude に頼めます（✦ は Claude の予測。文字・つなぎ・音は撮り直しなし）。">カット表</h3>${viewSeg()}
       <span class="stats"><span title="承認">✓ <b>${approved}</b>/${n}</span><span title="尺 / 目標 ${st.target_duration}s">⏱ <b>${Math.round(total * 10) / 10}</b>s / ${st.target_duration}s</span>
-        ${sev.map(([v, c]) => `<span class="sev ${v}">${v} ${c}</span>`).join("")}</span>
+        ${sev.map(([v, c]) => `<span class="sev ${v}" title="${SEV_TIP[v]}">${sevJa(v)} ${c}</span>`).join("")}</span>
       <div class="seg">${[["all", "すべて", ""], ["todo", "未承認", todo], ["flag", "指摘あり", flagged]].map(([k, l, c]) =>
         `<button data-filter="${k}" class="${ui.filter === k ? "on" : ""}">${l}${c !== "" ? `<small>${c}</small>` : ""}</button>`).join("")}</div>
       <span class="sp"></span>
       ${st.undo ? `<button class="btn" data-undo title="元に戻す: ${esc(undoLabel(st.undo))}（Ctrl+Z）${ui.busy ? "" : "。撮った take は消えないので、戻した画はすぐ表示されます"}"${ui.busy ? " disabled" : ""}>↶ <span class="ulabel">${esc(undoLabel(st.undo))}</span></button>` : ""}</div>
     ${scriptBar(st)}
-    ${whole.length ? `<div class="sheet-lead">${whole.map((x) => `<button class="fchip ${x.severity}" data-fix-all="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("")}</div>` : ""}
+    ${whole.length ? `<div class="sheet-lead">${whole.map((x) => `<button class="fchip ${x.severity}" data-fix-all="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}">${sevJa(x.severity)} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("")}</div>` : ""}
     <div class="sheet" role="list">${rows || `<div class="sheet-empty">この絞り込みに当てはまるカットはありません</div>`}</div>
     <div class="sheet-keys" title="キー操作">⌨ <span title="選ぶ"><kbd>↑</kbd><kbd>↓</kbd></span><span title="承認して次へ"><kbd>Enter</kbd></span><span title="大きく見る・範囲を囲む"><kbd>Space</kbd></span><span title="予測を積む"><kbd>Tab</kbd></span><span title="送る"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span><span title="書き足す"><kbd>/</kbd></span><span title="直す範囲"><kbd>1</kbd>〜<kbd>${ASPECTS.length}</kbd></span><span title="元に戻す"><kbd>Ctrl</kbd>+<kbd>Z</kbd></span></div>`;
   // what an edit just did shows under its row: bring it into view (it can fall below the fold)
@@ -4136,11 +4148,11 @@ function shotRow(s, it) {
   const p0 = fs.find((x) => x.severity === "P0");
   const a = s.approval;
   const tk = bestTake(s);
-  const cls = ["item", sel ? "sel" : "", ui.rowBusy === s.id ? "busy" : "", ui.outcome[s.id]?.action === "rendering" ? "rendering" : "",
+  const cls = ["item", sel ? "sel" : "", ui.rowBusy === s.id || ui.cvBusy?.includes(s.id) ? "busy" : "", ui.outcome[s.id]?.action === "rendering" ? "rendering" : "",
     ui.flash?.id === s.id && ui.flash.fresh ? "flash" : ""].join(" ");
   const ok = a === "approved" ? "on" : a === "outdated" ? "outdated" : p0 ? "blocked" : "";
   const okTitle = a === "approved" ? "承認済み（押すと取り消し）" : a === "outdated" ? "承認したあとで画が変わりました。押すと承認し直します"
-    : p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : "この画でよければ押す（Enter）";
+    : p0 ? `要修正の指摘があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : "この画でよければ押す（Enter）";
   const editing = (kind, id) => ui.edit?.kind === kind && ui.edit.id === id;
   const purpose = editing("purpose", s.id)
     ? `<input class="inl" data-k="purpose" value="${esc(s.purpose)}" placeholder="このカットで見せるもの">`
@@ -4156,7 +4168,7 @@ function shotRow(s, it) {
   const dur = editing("dur", s.id)
     ? `<div class="dur">${bumpHtml(`<input class="inl" data-k="dur" type="number" step="0.5" min="0.5" data-step="0.5" data-fine="0.1" value="${esc(s.duration)}">`)}</div>`
     : `<div class="dur cell" data-edit="dur" title="秒数（押して直す）"><span><b>${esc(s.duration)}</b>s</span></div>`;
-  const chips = fs.map((x) => `<button class="fchip ${x.severity}" data-fix-row="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}（押すと直す指示に入ります）">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("");
+  const chips = fs.map((x) => `<button class="fchip ${x.severity}" data-fix-row="${esc(x.rule)}" title="${esc(x.message)} — ${esc(x.fix)}（押すと直す指示に入ります）">${sevJa(x.severity)} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("");
   const thumb = tk
     ? `<img alt="" draggable="false" src="${esc(tk.t.url)}"><span class="q${tk.fresh ? "" : " stale"}">${esc(tk.q)}${tk.fresh ? "" : " · 古い"}</span><span class="bar"></span>`
     : `<span class="none">まだ撮っていません</span>`;
@@ -4719,6 +4731,28 @@ async function sendRowNote() {
   if (out) refreshPreviz(out.stale);
 }
 
+/** Every P0/P1 finding on a cut, in one note scoped to exactly the cuts that have one (the server
+ *  holds the scope, as for a mood wired to several cuts). The human presses it; nothing runs by itself (D-22). */
+async function fixAllFindings() {
+  const fixes = shotFixes(), shots = fixes.map(([id]) => id);
+  if (!shots.length || ui.busy || !ui.status?.ai?.ready) return;
+  const note = ["カット検査の指摘を、カットごとに直して。", ...fixes.map(([id, fs]) =>
+    `${id}: ${fs.map((x) => `${RULE_JA[x.rule] || x.rule}。${x.message}（${x.fix}）`).join(" / ")}`)].join("\n");
+  await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
+  ui.busy = "revise"; ui.cvBusy = shots;
+  ui.pending = { note, ctx: `🧹 指摘を直す → ${shots.join(", ")}` }; ui.started = Date.now();
+  draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
+  let out = null;
+  try {
+    out = await api("POST", "/api/revise", { note, shots, label: ui.pending.ctx });
+    if (!out.edited?.length && !Object.keys(out.changes || {}).length) { ui.flash = null; toast("Claude は何も変えませんでした（理由は左の会話に）"); }
+    else afterEdit(out.edited?.[0] || shots[0], out, out.summary || `${shots.length} カットの指摘を直しました`);
+  } catch (e) { toast(e.message, true); }
+  finally { clearInterval(tick); ui.busy = null; ui.cvBusy = null; ui.pending = null; ui.logKey = ""; ui.cvRev++; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+}
+
 function startEdit(kind, id) {
   if (ui.busy) return;
   ui.edit = { kind, id };
@@ -4867,7 +4901,7 @@ function cvNodeHtml(n) {
       <div class="l1"><span class="n">${s.index + 1}</span>${s.beat ? `<span class="bchip">${esc(s.beat)}</span>` : ""}<span class="sid">${esc(s.id)}</span><span class="d">${esc(s.duration)}s</span></div>
       <div class="pur">${esc(s.purpose || "（見せるもの未記入）")}</div>
       <div class="ft"><span>${esc(s.lens ?? "?")}mm · ${esc(MOVE_JA[mv] || mv)}${env ? ` · ${esc(TOD_JA[env] || env)}` : ""}</span>
-        <button class="okb ${ok}" data-cv-ok="${esc(s.id)}" title="${a === "approved" ? "承認済み（押すと取り消し）" : p0 ? "P0 があるので承認できません" : "この画でよければ承認"}"${(p0 && a !== "approved") || ui.busy ? " disabled" : ""}>✓</button></div>
+        <button class="okb ${ok}" data-cv-ok="${esc(s.id)}" title="${a === "approved" ? "承認済み（押すと取り消し）" : p0 ? "要修正の指摘があるので承認できません" : "この画でよければ承認"}"${(p0 && a !== "approved") || ui.busy ? " disabled" : ""}>✓</button></div>
       ${stacked ? `<span class="stacked" title="このカットに積んだチップ（送るまで撮り直しは起きません）">${stacked} 積んだ</span>` : ""}</div>`;
   }
   if (n.kind === "slot") {
@@ -5039,7 +5073,7 @@ function cvInspHtml() {
     const dur = editing("dur") ? bumpHtml(`<input class="inl" data-k="dur" type="number" step="0.5" min="0.5" data-step="0.5" data-fine="0.1" value="${esc(s.duration)}">`)
       : `<span class="cell" data-edit="dur" title="秒数（押して直す）">${esc(s.duration)}s</span>`;
     const fr = s.framing, ov = overlaysHtml(s);
-    const chips = findingsFor(s.id).map((x) => `<button class="fchip ${x.severity}" data-fix-row="${esc(x.rule)}" title="${esc(`${x.message} — ${x.fix}（押すと積みます）`)}">${x.severity} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("");
+    const chips = findingsFor(s.id).map((x) => `<button class="fchip ${x.severity}" data-fix-row="${esc(x.rule)}" title="${esc(`${x.message} — ${x.fix}（押すと積みます）`)}">${sevJa(x.severity)} ${esc(RULE_JA[x.rule] || x.rule)}</button>`).join("");
     return `<div class="cv-insp cv-glass${slide}" data-row="${esc(s.id)}">
       <div class="hd"><span class="n">${s.index + 1}</span><span class="sid">${esc(s.id)}${s.beat ? ` · ${esc(s.beat)}` : ""}</span><button class="x" data-cv-close title="閉じる (Esc)">✕</button>
         ${purpose}<div class="meta">${dur}<span>${esc(fr ? SIZE_JA[fr.size] || fr.size : "")} ${esc(s.lens ?? "?")}mm</span>${chips}</div>
@@ -5889,7 +5923,7 @@ function drawTimeline() {
     }
     const fs = findingsFor(s.id).filter((f) => f.severity !== "P2");
     const sevs = [...new Set(fs.map((f) => f.severity))];
-    const flags = sevs.length ? `<span class="fl">${sevs.map((v) => `<i class="${v}">${v}</i>`).join("")}</span>` : "";
+    const flags = sevs.length ? `<span class="fl">${sevs.map((v) => `<i class="${v}" title="${SEV_TIP[v]}">${sevJa(v)}</i>`).join("")}</span>` : "";
     const okm = s.approval === "approved" ? `<span class="ok-mark" title="構図を承認済み">✓</span>`
       : s.approval === "outdated" ? `<span class="ok-mark outdated" title="承認の後で画が変わりました">✓?</span>` : "";
     return `<div class="${cls}" data-id="${esc(s.id)}" style="flex:${s.duration} 1 0;--c:var(--${esc(s.beat || "muted")});${bg}" title="${esc(s.purpose + (s.framing ? `
@@ -6768,7 +6802,7 @@ function entryHtml(e, isLast) {
   }
   if (e.action === "produce") {
     const c = e.checks || {};
-    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
+    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}" title="${SEV_TIP[v]}">${sevJa(v)} ${c[v]}</span>`).join(" ");
     const steps = (e.steps || []).map((s) => `<div><span class="k">${esc(STEP_ICON[s.status] || "")} ${esc(s.label)}</span> ${esc(s.detail || "")}</div>`).join("");
     // what code shaped in the plan (beat order, lengths, a card held long enough to read) belongs here too
     const notes = [...(e.adjustments || []).map((a) => `<div class="event"><span class="dot"></span><span><span class="k">コードが整えた:</span> ${esc(a)}</span></div>`),
@@ -6801,7 +6835,7 @@ function entryHtml(e, isLast) {
   }
   if (e.action === "plan") {
     const c = e.checks || {};
-    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}">${v} ${c[v]}</span>`).join(" ");
+    const sev = ["P0", "P1", "P2"].filter((v) => c[v]).map((v) => `<span class="sev ${v}" title="${SEV_TIP[v]}">${sevJa(v)} ${c[v]}</span>`).join(" ");
     const refs = (e.references || []).length ? `<div><span class="k">参照した実測:</span> ${esc(e.references.join(" / "))}</div>` : "";
     const adj = (e.adjustments || []).length || refs ? `<div class="changes">${refs}${(e.adjustments || []).map((a) => `<div><span class="k">コードが整えた:</span> ${esc(a)}</div>`).join("")}</div>` : "";
     return `<div class="msg-user"><div class="bubble">${esc(e.note || "ブリーフから組む")}</div><div class="ctx">📐 構成を組む</div></div>
