@@ -110,8 +110,8 @@ impl Canvas {
         for y in y0..y1 {
             for x in x0..x1 {
                 let i = ((y as u32 * self.w + x as u32) * 3) as usize;
-                for k in 0..3 {
-                    self.px[i + k] = (self.px[i + k] as f64 * (1.0 - a) + c[k] as f64 * a) as u8;
+                for (p, &k) in self.px[i..i + 3].iter_mut().zip(&c) {
+                    *p = (*p as f64 * (1.0 - a) + k as f64 * a) as u8;
                 }
             }
         }
@@ -355,17 +355,21 @@ fn level_kind(kind: &str) -> Kind {
 }
 
 fn parse_level(v: &Value) -> Set {
+    let points = v["points"].as_array().cloned().unwrap_or_default();
+    // where the player starts is an editor marker, not something in the game's picture
+    let starts: BTreeSet<&str> = points.iter().filter(|p| p["kind"] == "start").filter_map(|p| p["label"].as_str()).collect();
     let mut solids = Vec::new();
     for s in v["shapes"].as_array().into_iter().flatten() {
+        if s["label"].as_str().is_some_and(|l| starts.contains(l)) {
+            continue;
+        }
         let (Some(center), Some(half)) = (s.get("center").and_then(vec3), s.get("half").and_then(vec3)) else { continue };
         let kind = level_kind(s["kind"].as_str().unwrap_or("prop"));
         let form = if kind == Kind::Figure { Form::Figure } else { Form::Block };
         solids.push(Solid { center, half: half.map(f64::abs), yaw: s["yaw"].as_f64().unwrap_or(0.0), kind, form, source: 0 });
     }
-    let lamps = v["points"]
-        .as_array()
-        .into_iter()
-        .flatten()
+    let lamps = points
+        .iter()
         .filter(|p| p["kind"] == "light")
         .filter_map(|p| p.get("at").and_then(vec3))
         .collect();
@@ -766,7 +770,7 @@ impl Frame {
             if !shown && (k / dash) % 2 == 1 {
                 continue;
             }
-            let a = if shown { 1.0 } else { 0.45 };
+            let a = if shown { 1.0 } else { 0.3 };
             for dy in 0..ss {
                 for dx in 0..ss {
                     let (px, py) = (xi + dx, yi + dy);
@@ -796,8 +800,8 @@ impl Frame {
                     }
                 }
                 let i = (y * w + x) * 3;
-                for c in 0..3 {
-                    cv.px[i + c] = ((s[c] * k).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                for (p, v) in cv.px[i..i + 3].iter_mut().zip(s) {
+                    *p = ((v * k).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                 }
             }
         }
