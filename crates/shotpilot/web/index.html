@@ -1110,6 +1110,7 @@ const ui = {
   frame: 0,             // frame index within the shown take
   tab: "shot",          // brief | structure | shot | capture | teaser | sound
   fin: "teaser",        // which finishing view the stage bar reopens
+  follow: null,         // while a pass runs: the furthest stage (index in FLOW) the bar walks up to
   mode: "preview",      // preview | tweak
   quality: null,
   region: null,         // [x0, y0, x1, y1] normalized to the image
@@ -1685,7 +1686,7 @@ function nextStep() {
   // the first pass is for an empty project; once shots are taken or cut, go on from what is there
   const produced = (ui.log || []).some((e) => e.action === "produce")
     || !!st.cut || shots.some((x) => st.qualities.some((q) => x.qualities[q] === "fresh"));
-  if (!produced && !skipped("produce")) return { stage: "structure", what: "一気に作る", why: "ロケハン → ステージ → ムードボード → 構成と仕上げ → 撮影 → Cut まで、制約を全部渡して1本出します。そのあと1カットずつ確かめて直します", act: "produce", skip: "produce", need: ai.ready ? null : "Claude が未接続です" };
+  if (!produced && !skipped("produce")) return { stage: "scout", what: "一気に作る", why: "ロケハン → ステージ → ムードボード → 構成と仕上げ → 撮影 → Cut まで、制約を全部渡して1本出します。そのあと1カットずつ確かめて直します", act: "produce", skip: "produce", need: ai.ready ? null : "Claude が未接続です" };
   if (!photos) return { stage: "scout", what: "ロケハン写真を撮る", why: "各アンカーを4方向から撮り、実際のステージを人間と Claude が見られるようにします", act: "scout" };
   if (!st.stage?.summary) return { stage: "scout", what: "Claude にステージを読ませる", why: "写真から、空間・各アンカー・光・カメラを置ける向きを書かせます（ムードボードと構成が読みます）", act: "stage", need: ai.ready ? null : "Claude が未接続です" };
   if (!b.written || (b.missing || []).length) return { stage: "brief", what: "ブリーフを書く", why: "種類・ジャンル・コア体験など。何のための映像かを先に決めます", act: "goto" };
@@ -1739,7 +1740,8 @@ function drawNext() {
 
 async function runNext() {
   const n = drawNext.step; if (!n || ui.busy) return;
-  goStage(n.stage === "framing" ? "framing" : n.stage);
+  // the first pass opens its own stages as it goes (and must be busy before the scouting stage opens)
+  if (n.act !== "produce") goStage(n.stage === "framing" ? "framing" : n.stage);
   if (n.shot) selectShot(n.shot);
   if (n.act === "scout") scoutAction("scout", {}, "/api/scout", "scout");
   else if (n.act === "stage") scoutAction("stage", {}, "/api/stage", "stage", () => toast("ステージを書きました（shots.yaml の stage:）"));
@@ -5286,10 +5288,41 @@ async function planShots() {
 
 const STEP_ICON = { start: "…", done: "✓", skipped: "–", failed: "✕" };
 
+// The first pass walks the stage bar in order, from the scouting on: each step of the run
+// opens its stage, one stage at a time and never backwards, until the human picks a stage.
+const FLOW = ["scout", "brief", "structure", "framing", "capture", "finish"];
+// the review's previz belongs to the cut sheet; the sound design waits on the stage it starts from
+const STEP_STAGE = { discover: "scout", scout: "scout", stage: "scout", mood: "brief", plan: "structure",
+  render: "capture", see: "capture", repair: "capture", cut: "finish" };
+
+function followStep(key) {
+  const to = FLOW.indexOf(STEP_STAGE[key]);
+  if (to < 0 || ui.follow == null) return;
+  ui.follow = Math.max(ui.follow, to);
+  walkStages();
+}
+
+function walkStages() {
+  if (walkStages.timer || ui.follow == null) return;
+  const at = FLOW.indexOf(STAGE_OF[ui.tab]);
+  if (at >= ui.follow) return;
+  goStage(FLOW[at < 0 ? 0 : at + 1]);
+  // a stage stays on screen a moment, so a skipped one is still seen passing
+  walkStages.timer = setTimeout(() => { walkStages.timer = null; walkStages(); }, 900);
+}
+
+function stopFollowing() {
+  ui.follow = null;
+  clearTimeout(walkStages.timer); walkStages.timer = null;
+}
+
 /** The planning turn (D-45): a plan, or a question form; with `thenProduce` a plan goes straight on to the first pass. */
 async function runDiscover(request, answers = null, { thenProduce = false } = {}) {
   if (ui.busy || !ui.status?.ai?.ready) { if (!ui.status?.ai?.ready) toast("Claude に接続すると企画できます（接続設定）", true); return; }
   ui.busy = "discover"; ui.pending = { note: answers ? "質問に答えた" : request || "企画する", ctx: "🧭 企画" }; ui.started = Date.now();
+  // the planning turn decides what the scouting looks for: a first pass starts on stage 0
+  // (the pass scouts by itself: the stage must not start its own scouting in between)
+  if (thenProduce) { stopFollowing(); ui.tab = "scout"; ui.region = null; autoScouted.add(ui.status.path); }
   draw(); drawChat();
   const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `企画しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
   let out = null;
@@ -5309,6 +5342,10 @@ async function produceAll({ review = true, resume = false } = {}) {
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
   ui.busy = "produce"; ui.produce = { steps: {}, note, mode: resume ? "resume" : review ? "review" : "full" }; ui.pending = null;
   c?.clear();
+  // a first pass starts at the scouting; a resume goes on from the cut sheet
+  stopFollowing();
+  if (!resume) { ui.tab = "scout"; ui.region = null; autoScouted.add(st.path); }
+  ui.follow = Math.max(0, FLOW.indexOf(STAGE_OF[ui.tab]));
   ui.started = Date.now(); draw(); drawChat();
   // a long step (a mood board, a shoot) sends nothing for a while: keep the clock moving
   const tick = setInterval(() => { const el = $("produce-state"); if (el) el.textContent = `作っています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
@@ -5327,17 +5364,21 @@ async function produceAll({ review = true, resume = false } = {}) {
         const block = buf.slice(0, i); buf = buf.slice(i + 2);
         const ev = /^event: (.*)$/m.exec(block)?.[1];
         const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
-        if (ev === "step") ui.produce.steps[d.key] = d;
-        else if (ev === "done" && d.stopped === "review") {
+        if (ev === "step") {
+          ui.produce.steps[d.key] = d;
+          followStep(d.key);
+          // what a finished step made (photos, the brief, the cuts) shows on its stage right away
+          if (d.status !== "start") refresh(true);
+        } else if (ev === "done" && d.stopped === "review") {
           toast("台本とカットができました。カット表で確かめて直し、よければ「続ける」で音・撮影・Cut に進みます");
-          ui.tab = "structure"; ui.row = null; ui.filter = "all";
-        } else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); ui.tab = ui.fin = "teaser"; }
+          stopFollowing(); ui.tab = "structure"; ui.row = null; ui.filter = "all";
+        } else if (ev === "done") { toast("1本できました。仕上げの映像を確かめて、気になるカットだけ直してください"); stopFollowing(); ui.tab = ui.fin = "teaser"; }
         else if (ev === "error") toast(d.error, true);
         drawChat();
       }
     }
   } catch (e) { c?.restore(); toast(e.message, true); }
-  finally { clearInterval(tick); ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
+  finally { clearInterval(tick); stopFollowing(); ui.busy = null; ui.produce = null; ui.logKey = ""; ui.outcome = {}; await refresh(); }
 }
 
 async function approveScript(on = true) {
@@ -5790,9 +5831,10 @@ $("open-ext").addEventListener("click", async () => {
   if (!cut?.storyboard) { toast("まだ cut がありません"); return; }
   try { await api("POST", "/api/open", { url: cut.storyboard }); } catch (err) { toast(err.message, true); }
 });
-for (const b of document.querySelectorAll(".stage-btn")) b.addEventListener("click", () => goStage(b.dataset.stage));
-for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventListener("click", () => { ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
-for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { ui.tab = ui.fin = b.dataset.fin; ui.region = null; draw(); });
+// a stage the human picks wins over the run's walk along the bar
+for (const b of document.querySelectorAll(".stage-btn")) b.addEventListener("click", () => { stopFollowing(); goStage(b.dataset.stage); });
+for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventListener("click", () => { stopFollowing(); ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
+for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { stopFollowing(); ui.tab = ui.fin = b.dataset.fin; ui.region = null; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
 // panels and the findings bar: one delegated handler
 $("designpanel").addEventListener("click", (e) => {
