@@ -204,6 +204,20 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 #cut-label span { color: var(--muted); }
 #summary b { color: var(--ink); }
 
+/* ------------------------------------------------------------------ simple / pro (D-82): simple shows what must be fixed, pro adds the fine fields and the predictions */
+body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, body:not(.pro) #chips { display: none !important; }
+#ui-mode button { font-size: 11.5px; padding: 3px 9px; }
+.rv-cell.tr { cursor: pointer; color: var(--muted); }
+.rv-cell.tr.set { color: var(--ink); background: color-mix(in srgb, var(--escalate) 14%, var(--soft)); }
+.rv-cell.tr:hover { box-shadow: inset 0 0 0 1px var(--muted); }
+.rv-pop { position: fixed; z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px rgb(0 0 0 / .25); padding: 6px; display: grid; gap: 2px; min-width: 150px; }
+.rv-pop button { text-align: left; border: 0; background: none; padding: 5px 8px; border-radius: 5px; font-size: 12px; }
+.rv-pop button:hover, .rv-pop button.on { background: var(--soft); }
+.rv-pop button.on::after { content: " ✓"; color: var(--accent); }
+.rv-pop .hd { font-size: 10.5px; color: var(--muted); padding: 2px 8px 4px; }
+.bk-places { display: flex; flex-wrap: wrap; gap: 5px; }
+.bk-places .btn { font-size: 11px; padding: 2px 8px; }
+
 /* ------------------------------------------------------------------ the road (D-74, D-79): who has the ball, step by step */
 .road { flex: 1 1 0; display: flex; align-items: center; gap: 1px; min-width: 0; overflow-x: auto; padding: 4px 0 6px; }
 .road-sep { color: var(--faint); font-size: 12px; flex: none; }
@@ -1142,6 +1156,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <button class="road-btn" data-road="publish" title="公開後の動画と定期発信のチェックシート"><span class="ic"></span><span class="lb">公開</span><span class="who"></span></button>
       </nav>
       <div class="right">
+        <span class="seg" id="ui-mode" title="シンプル: 場所とカメラ・音・つなぎを直す。プロ: 細かい欄と予測のチップも出す"><button type="button" data-uimode="simple">シンプル</button><button type="button" data-uimode="pro">プロ</button></span>
         <span id="summary"></span>
         <button class="btn" id="cut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Cut</button>
         <button class="btn dark" id="render"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>撮り直す</button>
@@ -1151,7 +1166,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       <button class="btn" id="to-sheet" title="カット表に戻る (Esc)" hidden>☰ カット表</button>
       <span id="cut-nav" hidden><button class="icon" id="cut-prev" title="前のカット (↑)">‹</button><span id="cut-label"></span><button class="icon" id="cut-next" title="次のカット (↓)">›</button></span>
       <button class="icon" id="reload" title="再読み込み"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
-      <div class="seg" id="mode-seg">
+      <div class="seg pro-only" id="mode-seg">
         <button class="on" data-mode="preview"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>プレビュー</button>
         <button data-mode="tweak"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>調整</button>
       </div>
@@ -1163,7 +1178,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
       <div class="right">
         <button class="btn" id="approve" hidden></button>
-        <button class="btn" id="board" title="previz の線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
+        <button class="btn pro-only" id="board" title="previz の線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
@@ -1411,6 +1426,8 @@ function shownTake(s) {
 
 function draw() {
   const st = ui.status; if (!st) return;
+  document.body.classList.toggle("pro", uiPro());
+  for (const b of document.querySelectorAll("[data-uimode]")) b.classList.toggle("on", b.dataset.uimode === ui.uiMode);
   $("title").textContent = st.title || st.project;
   $("title").title = st.path || "";
   $("subtitle").textContent = `${st.project} · ${st.engine} · ${st.shots.length} カット`;
@@ -1662,7 +1679,8 @@ function reviewDecisions() {
     out.push({ id: "script", tag: "ask", tagText: "承認", title: st.script_approval === "outdated" ? "変わった台本を承認し直す" : "台本を承認する",
       why: `カード ${cards} · 重ね文字 ${lines.length - cards}。承認はカメラ・光・音では外れません`, acts: [["approve-script", "台本を承認"], ["open-script", "台本を開く"]] });
   }
-  for (const f of [...findings()].sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity])) {
+  // simple shows what must be fixed (P0, P1); pro adds the inferred drift (P2)
+  for (const f of [...findings()].filter((f) => uiPro() || f.severity !== "P2").sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity])) {
     out.push({ id: `f:${f.rule}:${f.shot || ""}`, tag: f.severity, tagText: f.severity, shot: f.shot, f,
       title: `${f.shot ? `${f.shot} · ` : ""}${RULE_JA[f.rule] || f.rule}`, why: `${f.message} — ${f.fix}`,
       acts: [["fix", "Claude に直させる"], ...(f.shot ? [["see", "このカットを見る"]] : [])] });
@@ -1730,6 +1748,13 @@ function reviewLanesHtml() {
     const tip = `${MOVE_JA[mv] || mv} · ${s.lens ?? ""}mm${fs.length ? `\n${fs.map((f) => `${f.severity} ${RULE_JA[f.rule] || f.rule}: ${f.message}`).join("\n")}` : ""}`;
     return `<div class="rv-cell ${sev.toLowerCase()}${s.id === ui.sel ? " sel" : ""}" title="${esc(tip)}">${MOVE_GLYPH[mv] || "·"}<span class="mm">${s.lens ?? ""}</span></div>`;
   }).join("");
+  // hand-overs: the one after each cut, picked from the closed list (editorial: nothing is shot again)
+  const trHtml = items.map((it) => {
+    const s = it.kind === "shot" && shotById(it.id);
+    if (!s || s.index === shots.length - 1) return `<div class="rv-cell empty"></div>`;
+    const tr = s.node.transition || "cut";
+    return `<div class="rv-cell tr${tr !== "cut" ? " set" : ""}" data-rv-tr="${esc(s.id)}" role="button" tabindex="0" title="${esc(`${s.id} から次へのつなぎ（押して変える。撮り直しなし）`)}">${esc(TRANSITION_SHORT[tr] || tr)}</div>`;
+  }).join("");
   // sound: BGM blocks and SE marks, read-only here (the sound tab edits them)
   const snd = ui.sound, mixLanes = new Map((snd?.mix?.lanes || []).map((l) => [laneKey(l), l]));
   const pct = (t) => `${Math.min(Math.max(t / total, 0), 1) * 100}%`;
@@ -1747,6 +1772,7 @@ function reviewLanesHtml() {
     <div class="rv-row"><span class="rv-lbl">カット</span><div class="rv-track" style="--rv-cols:${cols}">${tiles}</div></div>
     <div class="rv-row"><span class="rv-lbl">場所</span><div class="rv-track" style="--rv-cols:${cols}">${placeHtml}</div></div>
     <div class="rv-row"><span class="rv-lbl">カメラ</span><div class="rv-track" style="--rv-cols:${cols}">${camHtml}</div></div>
+    <div class="rv-row"><span class="rv-lbl">つなぎ</span><div class="rv-track" style="--rv-cols:${cols}">${trHtml}</div></div>
     <button class="rv-fold" data-rv-sound><span aria-hidden="true">${ui.rvSound ? "▾" : "▸"}</span> <span>音（BGM・SE）</span></button>${soundRows}
   </div>`;
 }
@@ -1796,9 +1822,9 @@ function reviewCutHtml() {
       <h4>${esc(s.id)}<small>${esc(s.beat || "")} · ${s.duration}s</small></h4>
       <div class="pur">${esc(s.purpose || "（見せるもの未記入）")}</div>
       <dl class="rv-facts"><dt>場所</dt><dd>${esc(placeOf(s) || "—")}</dd><dt>カメラ</dt><dd>${esc(MOVE_JA[mv] || mv)} · ${s.lens ?? "—"}mm</dd></dl>
-      <div class="rv-nudges">${RV_NUDGES.map((k) => `<button class="btn" data-rv-nudge="${k}"${ui.busy || !nudgeCan(s, k) ? " disabled" : ""}>${esc(nudgeJa(k))}</button>`).join("")}
+      <div class="rv-nudges">${RV_NUDGES.map((k) => `<button class="btn pro-only" data-rv-nudge="${k}"${ui.busy || !nudgeCan(s, k) ? " disabled" : ""}>${esc(nudgeJa(k))}</button>`).join("")}
         <button class="btn" data-rv-blk title="上から見た配置図で、カメラをドラッグして動かす">配置図 →</button>
-        <button class="btn" data-rv-open title="画とカメラを1カットずつ細かく直す画面へ">細かく直す →</button></div>
+        <button class="btn pro-only" data-rv-open title="画とカメラを1カットずつ細かく直す画面へ">細かく直す →</button></div>
       <div class="rv-cost">${cost}</div>
       <div class="rv-approve"><button class="btn ${a === "approved" ? "ok" : "dark"}" data-rv-approve${ui.busy || (p0 && a !== "approved") ? " disabled" : ""}
         title="${esc(p0 ? `P0 があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画で撮影に進めます。画が変わる修正をすると自動で外れます")}">${a === "approved" ? "✓ 承認済み" : a === "outdated" ? "画が変わった · 再承認" : "このカットを承認"} <kbd>A</kbd></button></div>
@@ -1965,10 +1991,11 @@ function drawBlkSide() {
   el.innerHTML = `<h3><button class="icon" data-bk-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button><span class="id">${esc(s.id)}</span><button class="icon" data-bk-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></h3>
     <div class="pur">${esc(s.purpose || "")}</div>
     <div class="bk-thumb" style="${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(tk ? tk.q : "まだ撮っていません")}"></div>
-    <dl class="bk-facts"><dt>置き方</dt><dd>${esc(how)}</dd><dt>向き</dt><dd>${esc(aim)}</dd>
+    <dl class="bk-facts pro-only"><dt>置き方</dt><dd>${esc(how)}</dd><dt>向き</dt><dd>${esc(aim)}</dd>
       <dt>位置</dt><dd>${r0(c.start[0])}, ${r0(c.start[1])}, ${r0(b.start.location[2])} cm</dd><dt>レンズ</dt><dd>${b.lens}mm · 画角 ${Math.round(b.hfov)}°</dd>
       <dt>動き</dt><dd>${esc(MOVE_JA[mv] || mv)}</dd></dl>
     ${c.travels ? `<div class="bk-scrub"><span>動きを見る</span><input type="range" min="0" max="100" value="${Math.round((ui.blkT || 0) * 100)}" data-bk-t><span>${s.duration}s</span></div>` : ""}
+    ${(ui.blk.anchors || []).length > 1 ? `<div><div class="pur">場所を移す</div><div class="bk-places">${ui.blk.anchors.filter((a) => a.name !== placeOf(s)).map((a) => `<button class="btn" data-bk-place="${esc(a.name)}" title="${esc(`${a.name} を 5m 手前から狙う置き方にする（あとは図で動かす）`)}">${esc(a.name)}</button>`).join("")}</div></div>` : ""}
     <div class="bk-acts">${c.travels ? `<button class="btn" data-bk-still title="動きの終わりを消して、止めた画にする">動きを消す</button>` : `<button class="btn" data-bk-path title="向いている方へ 2m 進む道を足す。橙の丸で終わりを動かせます">道を引く</button>`}
       <button class="btn" data-bk-frame title="このカットの画とカメラを細かく直す画面へ">画で確かめる →</button></div>
     <div class="rv-cost">${fl ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "previz を描いています…" : "previz を描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
@@ -2073,6 +2100,39 @@ function blockingKey(e) {
   return false;
 }
 
+/** The hand-over after a cut: a small menu of the closed list (finish::TRANSITIONS). */
+function openTrPop(id, el) {
+  closeTrPop();
+  const s = shotById(id); if (!s) return;
+  const cur = s.node.transition || "cut", r = el.getBoundingClientRect();
+  const pop = document.createElement("div");
+  pop.className = "rv-pop"; pop.id = "rv-pop";
+  pop.innerHTML = `<div class="hd">${esc(id)} から次へ · 撮り直しなし</div>${Object.keys(TRANSITION_JA).map((k) => `<button type="button" data-trset="${esc(k)}" data-trshot="${esc(id)}" class="${k === cur ? "on" : ""}">${esc(TRANSITION_JA[k])}</button>`).join("")}`;
+  document.body.appendChild(pop);
+  const w = pop.offsetWidth;
+  pop.style.left = `${Math.min(r.left, window.innerWidth - w - 8)}px`; pop.style.top = `${r.bottom + 4}px`;
+}
+function closeTrPop() { document.getElementById("rv-pop")?.remove(); }
+
+async function setTransition(id, tr) {
+  closeTrPop();
+  if (ui.busy) return;
+  ui.busy = "save"; draw();
+  try {
+    await api("POST", `/api/shots/${encodeURIComponent(id)}`, { set: { transition: tr === "cut" ? null : tr } });
+    toast(`${id} の次のつなぎを「${TRANSITION_JA[tr] || tr}」にしました（撮り直しなし）`);
+  } catch (e) { toast(e.message, true); }
+  finally { ui.busy = null; await refresh(); }
+}
+
+/** Move a cut's camera to another place: it aims at that anchor from 5 m off, keeping its lens and aim height. */
+function moveToPlace(id, name) {
+  const s = shotById(id); if (!s) return;
+  const c = s.node.camera || {};
+  const cam = { anchor: name, offset: [-500, 0, 160], ...(c.lens ? { lens: c.lens } : {}), ...(c.aim ? { aim: c.aim } : {}) };
+  blkWrite(id, { camera: cam }, `${id} を ${name} へ移した`);
+}
+
 /** Keys on your turn: J/K walk the decisions, 1-3 run an action, ←/→ pick a cut, A approves it. */
 function reviewKey(e) {
   const st = ui.status, ds = reviewDecisions(), key = e.key.toLowerCase();
@@ -2167,19 +2227,19 @@ function drawDesign() {
       <div class="mood-bar"><input type="text" id="d-title" value="${esc(t.text || st.title || "")}" placeholder="タイトル"><input type="number" id="d-title-at" step="0.1" min="0" value="${esc(t.at ?? 0.5)}" style="width:80px" title="開始（秒）"><input type="number" id="d-title-d" step="0.1" min="0.5" value="${esc(t.duration ?? 3)}" style="width:80px" title="長さ（秒）"></div>
       <label title="台本のタイトルの文字の代わりに出す。透明の背景の PNG がよい。プロジェクトの外の画像は art/ に写します">ロゴ</label>
       <div class="mood-bar"><input type="text" id="d-logo" value="${esc(f.logo || "")}" placeholder="art/logo.png"><button class="btn" id="d-logo-pick" type="button">選ぶ…</button></div>
-      <label title="ルックが決める。初めての Cut で取ってきて、書体に無い字はシステムの書体で描く">書体</label>
-      <div class="dfaces">${faces}<span class="pctl"><em title="タイトルの大きさ（画面の高さの %）">Aa</em>${sizeCtl}<small>%</small></span></div>
-      <label>動き</label>
-      <div class="dmotion"><span class="pctl" id="d-energy">${energyCtl}</span><span class="pctl" id="d-avoid" title="使わない動き">⊘ ${avoidCtl}</span></div>
-      <label title="好きなティザーの動画を測り、つなぎの長さ（黒・白フラッシュ・白飛び・黒地の文字）を写す。画・文字・音は写さない">参照のティザー</label>
-      <div>${referenceHtml(st.reference)}</div>
+      <label class="pro-only" title="ルックが決める。初めての Cut で取ってきて、書体に無い字はシステムの書体で描く">書体</label>
+      <div class="dfaces pro-only">${faces}<span class="pctl"><em title="タイトルの大きさ（画面の高さの %）">Aa</em>${sizeCtl}<small>%</small></span></div>
+      <label class="pro-only">動き</label>
+      <div class="dmotion pro-only"><span class="pctl" id="d-energy">${energyCtl}</span><span class="pctl" id="d-avoid" title="使わない動き">⊘ ${avoidCtl}</span></div>
+      <label class="pro-only" title="好きなティザーの動画を測り、つなぎの長さ（黒・白フラッシュ・白飛び・黒地の文字）を写す。画・文字・音は写さない">参照のティザー</label>
+      <div class="pro-only">${referenceHtml(st.reference)}</div>
       <label title="最後のカットの後ろに付く黒い画面。1行に1つ（発売日、プラットフォーム、ウィッシュリスト）">エンドカード</label>
       <div><textarea id="d-end" rows="3" placeholder="Steam でウィッシュリスト登録受付中&#10;2026年 冬">${esc((e.lines || []).join("\n"))}</textarea>
         <input type="number" id="d-end-d" step="0.5" min="0.5" max="10" value="${esc(e.duration ?? 3)}" style="width:80px;margin-top:6px" title="長さ（秒）"> 秒</div>
     </div>
-    <h4 class="sec">カットごと</h4>
-    <div class="pctl" title="字幕の出始め（全カット）"><em>⏱</em>${segHtml("capat", [{ k: "0", label: "頭" }, { k: "0.3", label: "0.3" }, { k: "0.5", label: "0.5" }, { k: "mid", label: "中央" }])}</div>
-    <div class="assets-wrap" style="max-height:none"><table class="assets"><thead><tr><th>カット</th><th>字幕</th><th>開始(秒)</th><th>次へのつなぎ</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <h4 class="sec pro-only">カットごと</h4>
+    <div class="pctl pro-only" title="字幕の出始め（全カット）"><em>⏱</em>${segHtml("capat", [{ k: "0", label: "頭" }, { k: "0.3", label: "0.3" }, { k: "0.5", label: "0.5" }, { k: "mid", label: "中央" }])}</div>
+    <div class="assets-wrap pro-only" style="max-height:none"><table class="assets"><thead><tr><th>カット</th><th>字幕</th><th>開始(秒)</th><th>次へのつなぎ</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="btns"><button class="btn dark" id="d-save">保存</button><button class="btn" id="d-cut">保存して Cut で焼き込む</button></div>`;
 }
 
@@ -2490,7 +2550,7 @@ function briefField(key, label, hint, value, { area = false, ph = "" } = {}) {
   const v = Array.isArray(value) ? value.join(area ? "\n" : ", ") : value ?? "";
   const input = area ? `<textarea data-bf="${key}" rows="${key === "plan" ? 8 : key === "notes" ? 3 : 2}" placeholder="${esc(ph)}" data-orig="${esc(v)}">${esc(v)}</textarea>`
     : `<input type="text" data-bf="${key}" placeholder="${esc(ph)}" value="${esc(v)}" data-orig="${esc(v)}">`;
-  return `<label title="${esc(hint)}">${esc(label)}</label><div>${input}</div>`;
+  return `<label class="pro-only" title="${esc(hint)}">${esc(label)}</label><div class="pro-only">${input}</div>`;
 }
 
 async function fetchGenres() {
@@ -2705,7 +2765,18 @@ function closeRowTyping() {
 const normChip = (s) => String(s || "").replace(/[\s。、.,!！?？・]/g, "").toLowerCase();
 const hashOf = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 const stackOf = (key) => (ui.stacks[key] ||= []);
-const predOn = () => { try { return localStorage.getItem("sp-predict") !== "0"; } catch { return true; } };
+/** Simple or pro (D-82), remembered per viewer in this browser (never in shots.yaml). */
+function uiPro() {
+  if (ui.uiMode == null) { try { ui.uiMode = localStorage.getItem("sp-ui-mode") || "simple"; } catch { ui.uiMode = "simple"; } }
+  return ui.uiMode === "pro";
+}
+function setUiMode(m) {
+  ui.uiMode = m;
+  try { localStorage.setItem("sp-ui-mode", m); } catch {}
+  ui.preds = {}; drawDesign.key = ""; drawBrief.key = ""; drawStructure.key = "";
+  draw();
+}
+const predOn = () => { if (!uiPro()) return false; try { return localStorage.getItem("sp-predict") !== "0"; } catch { return true; } };
 /** The mood palette: atmosphere words grouped the way a mood board is talked about. */
 const MOOD_GROUPS = [
   { g: "光", c: "#f5b301", items: ["月明かり", "夕焼けの逆光", "明滅する蛍光灯", "非常灯の赤", "窓から差す光", "朝の柔らかい光", "提灯の灯り"] },
@@ -3020,6 +3091,7 @@ const ASPECT_COST = {
   shot: ["画が変われば、このカットだけ撮り直します", false, "画が変わる場合のみ"], camera: ["このカットだけ撮り直します", false, "このカットだけ"],
   light: ["このカットだけ撮り直します", false, "このカットだけ"], sound: ["撮り直しなし", true], finish: ["撮り直しなし · Cut で焼き込み", true],
 };
+const TRANSITION_SHORT = { cut: "カット", dip: "黒", flash: "白", whiteout: "白飛び", glitch: "崩し" };
 const TRANSITION_JA = { cut: "カット", dip: "黒をはさむ", flash: "白をはさむ", whiteout: "白に飛ばす", glitch: "崩す（グリッチ）" };
 const AVOID_JA = { fade: "フェード", flicker: "明滅", focus: "ピント", slam: "叩きつけ", pop: "ポップ", type: "タイプ", wipe: "ワイプ", glitch: "グリッチ", drift: "漂い", glow: "光", dip: "黒はさみ",
   flash: "白フラッシュ", whiteout: "白飛び", chroma: "色ずれ", static: "砂嵐", vhs: "VHS", shake: "揺れ", redflash: "赤閃光" };
@@ -5564,8 +5636,7 @@ function cmpTarget() {
 function drawCStack() {
   const box = $("cstack"), st = ui.status; if (!box || !st) return;
   const t = cmpTarget();
-  const open = planning() || ui.typing === t.key || !!$("note").value.trim();
-  $("note").hidden = !open;
+  $("note").hidden = false; // D-82: the box is always there; chips are a shortcut, not the only way
   const code = composerExamples().map((x) => chipOf(x, { g: "定番" }));
   // a whole-teaser note can fix what the shot check found on the whole
   if (t.key === "cmp:whole") code.unshift(...findings().filter((x) => !x.shot && x.severity !== "P2").map(fixChip));
@@ -6490,6 +6561,8 @@ $("blockpanel").addEventListener("click", (e) => {
   const nav = e.target.closest("[data-bk-nav]");
   if (nav && s) { const t = ui.status.shots[s.index + Number(nav.dataset.bkNav)]; if (t) { ui.sel = t.id; ui.scopeAll = false; ui.blkT = 0; draw(); } return; }
   if (!b || ui.busy) return;
+  const place = e.target.closest("[data-bk-place]");
+  if (place) { moveToPlace(s.id, place.dataset.bkPlace); return; }
   if (e.target.closest("[data-bk-still]")) blkWrite(s.id, { "camera.end": null, "camera.move": null }, `${s.id} の動きを消した`);
   else if (e.target.closest("[data-bk-path]")) {
     const f = dirOf(b.start.rotation[1]), [x, y, z] = b.start.location;
@@ -6501,7 +6574,17 @@ $("blockpanel").addEventListener("input", (e) => {
   if (r) { ui.blkT = Number(r.value) / 100; drawBlkSvg(); }
 });
 window.addEventListener("resize", () => { if (ui.tab === "blocking") drawBlkSvg(); });
+document.addEventListener("click", (e) => {
+  const m = e.target.closest("[data-uimode]");
+  if (m) { setUiMode(m.dataset.uimode); return; }
+  const set = e.target.closest("[data-trset]");
+  if (set) { setTransition(set.dataset.trshot, set.dataset.trset); return; }
+  if (!e.target.closest("#rv-pop, [data-rv-tr]")) closeTrPop();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTrPop(); });
 $("reviewpanel").addEventListener("click", (e) => {
+  const trc = e.target.closest("[data-rv-tr]");
+  if (trc) { openTrPop(trc.dataset.rvTr, trc); return; }
   const cut = e.target.closest("[data-rv-cut]");
   if (cut) { ui.sel = cut.dataset.rvCut; ui.scopeAll = false; draw(); return; }
   const act = e.target.closest("[data-rv-act]");

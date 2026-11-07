@@ -1864,5 +1864,16 @@
  "{0} の動きの終わりを動かした": "Moved where {0}'s move ends",
  "{0} の向きを変えた": "Turned {0}",
  "{0} の動きを消した": "Removed the move of {0}",
- "{0} に道を引いた": "Drew a path for {0}"
+ "{0} に道を引いた": "Drew a path for {0}",
+ "シンプル: 場所とカメラ・音・つなぎを直す。プロ: 細かい欄と予測のチップも出す": "Simple: fix places, cameras, sound and hand-overs. Pro: also the fine fields and predicted chips",
+ "シンプル": "Simple",
+ "プロ": "Pro",
+ "{0} から次へのつなぎ（押して変える。撮り直しなし）": "Hand-over from {0} to the next (press to change; nothing is shot again)",
+ "{0} を 5m 手前から狙う置き方にする（あとは図で動かす）": "Aim at {0} from 5 m off (then move it on the map)",
+ "場所を移す": "Move to another place",
+ "{0} から次へ · 撮り直しなし": "From {0} to the next · nothing is shot again",
+ "{0} の次のつなぎを「{1}」にしました（撮り直しなし）": "Set the hand-over after {0} to \"{1}\" (nothing is shot again)",
+ "{0} を {1} へ移した": "Moved {0} to {1}",
+ "白": "White",
+ "崩し": "Glitch"
 }
