@@ -549,6 +549,54 @@ fn file_url(root: &Path, path: &Path) -> Option<String> {
     Some(format!("/files/{}", parts.join("/")))
 }
 
+/// What the blocking map draws (D-77), seen from above: the anchors, the game's shapes (three
+/// only: its objects' boxes at t = 0), and every shot's camera resolved to where it stands, where
+/// it ends, where it looks and how wide it sees. Read-only; the page writes through /api/shots/.
+pub fn blocking_payload(ws: &Workspace) -> Result<Value> {
+    let defn = &ws.defn;
+    let anchors: Vec<Value> = defn
+        .anchors
+        .iter()
+        .map(|(name, at)| {
+            let b = defn.known_box(name);
+            json!({"name": name, "at": at, "center": b.map(|b| b.center), "size": b.map(|b| b.size)})
+        })
+        .collect();
+    let mut shapes = Vec::new();
+    if defn.project.engine == "three" {
+        // a missing or broken game leaves the map with the anchors only (the render says why)
+        if let Ok(scene) = crate::three::Scene::load(&crate::three::game_dir(defn)) {
+            for o in &scene.objects {
+                for (b, solid) in o.boxes_at(0.0) {
+                    shapes.push(json!({"name": o.name, "label": o.label, "center": b.center, "half": b.half, "yaw": b.yaw,
+                                       "solid": solid, "structure": o.structure}));
+                }
+            }
+        }
+    }
+    // a shot that does not resolve is left off the map (the status shows its error)
+    let shots: Vec<Value> = defn
+        .shots
+        .iter()
+        .enumerate()
+        .filter_map(|(i, node)| {
+            let r = crate::model::resolve_shot(defn, node, i).ok()?;
+            let cam = node.get("camera").cloned().unwrap_or_else(|| json!({}));
+            Some(json!({
+                "id": r.id, "index": i, "beat": r.beat, "duration": r.duration, "curve": r.curve,
+                "form": if cam.get("anchor").is_some() { "anchor" } else { "location" },
+                "anchor": cam.get("anchor"), "offset": cam.get("offset"), "look_at": cam.get("look_at"),
+                "rotation": cam.get("rotation"), "end": cam.get("end"), "move": cam.get("move"),
+                "start": {"location": r.start.location, "rotation": r.start.rotation.as_array()},
+                "finish": {"location": r.end.location, "rotation": r.end.rotation.as_array()},
+                "target": r.target, "lens": r.focal_length(),
+                "hfov": crate::geometry::hfov_from_focal(r.focal_length(), r.sensor_width()),
+            }))
+        })
+        .collect();
+    Ok(json!({"engine": defn.project.engine, "anchors": anchors, "shapes": shapes, "shots": shots}))
+}
+
 pub fn status_payload(ws: &Workspace) -> Result<Value> {
     let qualities = fp::quality_names(&ws.defn);
     let resolved = ws.resolved()?;
@@ -1038,6 +1086,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
         ("POST", "/api/render") => render_stream(stream, app, req),
         ("POST", "/api/produce") => produce_stream(stream, app, req),
         ("GET" | "HEAD", "/api/sound") => send_json(stream, head, 200, &sound_payload(&app.ws()?)?).map_err(io),
+        ("GET" | "HEAD", "/api/blocking") => send_json(stream, head, 200, &blocking_payload(&app.ws()?)?).map_err(io),
         ("POST", "/api/sound") => {
             let body = req.json()?;
             let _guard = app.mutate()?;

@@ -1039,6 +1039,48 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-approve .btn { flex: 1; justify-content: center; min-height: 32px; }
 @media (max-width: 1360px) { #reviewpanel { grid-template-columns: minmax(0, 1fr) 248px; } .rv-head .legend { display: none; } .rv-det { grid-template-columns: 1fr; } }
 
+/* ------------------------------------------------------------------ blocking map (D-77): the cameras seen from above, moved by hand */
+#blockpanel { display: grid; grid-template-columns: minmax(0, 1fr) 292px; overflow: hidden; background: var(--card); }
+.bk-map { position: relative; min-width: 0; min-height: 0; background: var(--soft); overflow: hidden; }
+#bk-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; user-select: none; }
+#bk-svg.panning { cursor: grabbing; }
+#bk-svg .grid { stroke: color-mix(in srgb, var(--ink) 7%, transparent); vector-effect: non-scaling-stroke; }
+#bk-svg .grid.major { stroke: color-mix(in srgb, var(--ink) 13%, transparent); }
+#bk-svg .shape { fill: color-mix(in srgb, var(--ink) 7%, transparent); stroke: color-mix(in srgb, var(--ink) 32%, transparent); vector-effect: non-scaling-stroke; }
+#bk-svg .shape.wall { fill: color-mix(in srgb, var(--ink) 20%, var(--soft)); stroke: color-mix(in srgb, var(--ink) 45%, transparent); }
+#bk-svg .shape.soft { fill: none; stroke-dasharray: 3 3; }
+#bk-svg .lbl { fill: var(--muted); font-family: var(--mono); pointer-events: none; }
+#bk-svg .anc { fill: var(--card); stroke: var(--title); stroke-width: 2; vector-effect: non-scaling-stroke; }
+#bk-svg .anc-box { fill: color-mix(in srgb, var(--title) 10%, transparent); stroke: color-mix(in srgb, var(--title) 55%, transparent); stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+#bk-svg .cone { fill: color-mix(in srgb, var(--establish) 10%, transparent); stroke: color-mix(in srgb, var(--establish) 45%, transparent); vector-effect: non-scaling-stroke; }
+#bk-svg .cam .body { fill: var(--muted); }
+#bk-svg .cam { cursor: pointer; opacity: .55; }
+#bk-svg .cam.sel { opacity: 1; cursor: move; }
+#bk-svg .cam.sel .cone { fill: color-mix(in srgb, var(--stale) 16%, transparent); stroke: var(--stale); }
+#bk-svg .cam.sel .body { fill: var(--ink); }
+#bk-svg .path { stroke: var(--stale); stroke-width: 2; stroke-dasharray: 6 4; fill: none; vector-effect: non-scaling-stroke; }
+#bk-svg .aim { stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+#bk-svg .h { fill: var(--card); stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; cursor: grab; }
+#bk-svg .h.end { stroke: var(--stale); }
+#bk-svg .h.rot { stroke: var(--establish); }
+#bk-svg .aim, #bk-svg .path, #bk-svg .ghost, #bk-svg .cam.sel .cone { pointer-events: none; }
+#bk-svg .ghost { fill: none; stroke: var(--ink); stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; opacity: .6; }
+.bk-tools { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; align-items: center; }
+.bk-tools .btn { font-size: 11.5px; padding: 3px 9px; background: var(--card); }
+.bk-tools .btn.on { border-color: var(--ink); }
+.bk-hint { position: absolute; left: 10px; bottom: 10px; right: 10px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.bk-side { border-left: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
+.bk-side h3 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.bk-side h3 .id { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-side .pur { font-size: 12px; color: var(--muted); }
+.bk-thumb { aspect-ratio: 16 / 9; background: var(--stage) center / contain no-repeat; border-radius: 4px; border: 1px solid #30393c; }
+.bk-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 11.5px; margin: 0; }
+.bk-facts dt { color: var(--muted); }
+.bk-facts dd { margin: 0; font-family: var(--mono); }
+.bk-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.bk-acts .btn { font-size: 11.5px; padding: 3px 9px; }
+.bk-scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
+
 #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 8px 14px;
   border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
 #toast.err { background: var(--err); color: #fff; }
@@ -1135,6 +1177,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div id="capturepanel" class="panel main" hidden></div>
     <div id="publishpanel" class="panel main" hidden></div>
     <div id="reviewpanel" class="main" hidden aria-label="あなたの番"></div>
+    <div id="blockpanel" class="main" hidden aria-label="配置図"></div>
     <div id="stage" class="main">
       <div id="view"></div>
       <div class="scrub" id="scrub"><span id="f-label"></span><input type="range" id="frame" min="0" max="0" value="0"><span id="f-time"></span></div>
@@ -1178,7 +1221,7 @@ const QUALITY_JA = { previz: "previz", still: "still", preview: "preview", final
 const VERDICT_JA = { "launch-grade": "公開水準", close: "あと少し", "needs work": "要修正", "not launch-grade": "公開水準に届かない", "n.a.": "採点なし" };
 
 // The production workflow (brief -> structure -> framing -> capture -> finish) and the view each stage opens.
-const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish", publish: "publish", review: "structure" };
+const STAGE_OF = { design: "finish", scout: "scout", brief: "brief", structure: "structure", shot: "framing", capture: "capture", teaser: "finish", sound: "finish", publish: "publish", review: "structure", blocking: "framing" };
 const BEAT_JA = {
   hook: "最初の 2〜5 秒。スクロールを止める1枚か、問い",
   establish: "どこで、どんなゲームかを見せる",
@@ -1379,11 +1422,11 @@ function draw() {
   for (const b of document.querySelectorAll("#finish-seg button")) b.classList.toggle("on", b.dataset.fin === ui.tab);
   const tweak = ui.tab === "shot" && ui.mode === "tweak";
   const snd = ui.tab === "sound";
-  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel", publish: "publishpanel", review: "reviewpanel" }[ui.tab];
+  const panel = { scout: "scoutpanel", brief: "briefpanel", structure: "structpanel", capture: "capturepanel", design: "designpanel", publish: "publishpanel", review: "reviewpanel", blocking: "blockpanel" }[ui.tab];
   $("scoutpanel").hidden = ui.tab !== "scout";
   $("designpanel").hidden = ui.tab !== "design";
   const finishing = ui.tab === "teaser" || snd || ui.tab === "design";
-  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("reviewpanel").hidden = ui.tab !== "review"; $("capturepanel").hidden = ui.tab !== "capture"; $("publishpanel").hidden = ui.tab !== "publish";
+  $("briefpanel").hidden = ui.tab !== "brief"; $("structpanel").hidden = ui.tab !== "structure"; $("reviewpanel").hidden = ui.tab !== "review"; $("blockpanel").hidden = ui.tab !== "blocking"; $("capturepanel").hidden = ui.tab !== "capture"; $("publishpanel").hidden = ui.tab !== "publish";
   $("stage").hidden = tweak || snd || !!panel; $("tweak").hidden = !tweak; $("soundpanel").hidden = !snd;
   $("toolbar").hidden = !!panel && ui.tab !== "design";
   for (const el of [$("quality"), $("mark"), $("mode-seg")]) el.hidden = finishing;
@@ -1400,7 +1443,7 @@ function draw() {
     $("cut-next").disabled = !s || s.index >= n - 1;
   }
   // your turn draws its own lanes on the same time axis as the cuts
-  $("timeline").hidden = ui.tab === "review";
+  $("timeline").hidden = ui.tab === "review" || ui.tab === "blocking";
   $("timeline").classList.toggle("folded", !!ui.tlFold);
   $("tl-fold").textContent = ui.tlFold ? "▸ タイムライン" : "▾ タイムライン";
   $("board").classList.toggle("on", ui.board);
@@ -1412,7 +1455,7 @@ function draw() {
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
   const via = { "claude-code": "Claude Code", "api-key": "API" }[st.ai?.active] || "未接続";
   $("model").textContent = `${via} · ${st.ai?.model || ""} · ${st.ai?.effort || ""}`;
-  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture(); else if (ui.tab === "publish") drawPublish(); else if (ui.tab === "review") drawReview();
+  if (ui.tab === "design") drawDesign(); else if (ui.tab === "scout") drawScout(); else if (ui.tab === "brief") drawBrief(); else if (ui.tab === "structure") drawStructure(); else if (ui.tab === "capture") drawCapture(); else if (ui.tab === "publish") drawPublish(); else if (ui.tab === "review") drawReview(); else if (ui.tab === "blocking") drawBlocking();
   else if (ui.tab === "teaser") drawTeaser(); else if (snd) drawSoundPanel(); else if (tweak) drawTweak(); else drawStage();
   drawTimeline();
   drawChips();
@@ -1531,9 +1574,9 @@ const moveOf = (s) => s.node?.camera?.end ? "keyframed" : s.node?.camera?.move?.
 
 // The road (D-74, D-79): each step is done, yours (the human has the ball), running (Claude is on it)
 // or still ahead. It only says whose turn it is; the counts live on each step's own screen.
-const ROAD_TAB = { plan: "brief", scout: "scout", script: "structure", blocking: "shot", review: "review",
+const ROAD_TAB = { plan: "brief", scout: "scout", script: "structure", blocking: "blocking", review: "review",
   sound: "sound", capture: "capture", cut: "teaser", publish: "publish" };
-const ROAD_OF = { brief: "plan", scout: "scout", structure: "script", shot: "blocking", review: "review",
+const ROAD_OF = { brief: "plan", scout: "scout", structure: "script", shot: "blocking", blocking: "blocking", review: "review",
   sound: "sound", capture: "capture", teaser: "cut", design: "cut", publish: "publish" };
 // what Claude is busy with -> the step it works on (a first pass reports its own steps)
 const BUSY_ROAD = { discover: "plan", mood: "plan", concept: "plan", scout: "scout", stage: "scout", assets: "scout", match: "scout",
@@ -1754,6 +1797,7 @@ function reviewCutHtml() {
       <div class="pur">${esc(s.purpose || "（見せるもの未記入）")}</div>
       <dl class="rv-facts"><dt>場所</dt><dd>${esc(placeOf(s) || "—")}</dd><dt>カメラ</dt><dd>${esc(MOVE_JA[mv] || mv)} · ${s.lens ?? "—"}mm</dd></dl>
       <div class="rv-nudges">${RV_NUDGES.map((k) => `<button class="btn" data-rv-nudge="${k}"${ui.busy || !nudgeCan(s, k) ? " disabled" : ""}>${esc(nudgeJa(k))}</button>`).join("")}
+        <button class="btn" data-rv-blk title="上から見た配置図で、カメラをドラッグして動かす">配置図 →</button>
         <button class="btn" data-rv-open title="画とカメラを1カットずつ細かく直す画面へ">細かく直す →</button></div>
       <div class="rv-cost">${cost}</div>
       <div class="rv-approve"><button class="btn ${a === "approved" ? "ok" : "dark"}" data-rv-approve${ui.busy || (p0 && a !== "approved") ? " disabled" : ""}
@@ -1776,6 +1820,257 @@ function runReviewAct(d, k) {
     draw(); addChip(cmpTarget().key, fixChip(d.f));
     toast("左の欄に積みました。送ると Claude が直します");
   }
+}
+
+// ------------------------------------------------------------------ the blocking map (D-77)
+// The cuts' cameras seen from above (UE axes: X right, Y down), over the anchors and, on three,
+// the game's own shapes. Drag a camera to move it, its orange end to move where it travels, its
+// blue ring to turn it. A drop writes once through /api/shots/ (undoable, D-67) and only that
+// cut's previz is drawn again. The map keeps nothing of its own: shots.yaml stays the source.
+
+const BLK_SNAP = 5, BLK_TURN = 5;
+const deg = (a) => (a * Math.PI) / 180;
+const dirOf = (yaw) => [Math.cos(deg(yaw)), Math.sin(deg(yaw))];
+const blkShot = (id) => ui.blk?.shots.find((s) => s.id === id);
+const snapTo = (v, step) => Math.round(v / step) * step;
+
+async function fetchBlocking() {
+  if (ui.blkKey === ui.statusKey || ui.blkLoading) return;
+  ui.blkLoading = true;
+  const key = ui.statusKey;
+  try { ui.blk = await api("GET", "/api/blocking"); ui.blkKey = key; ui.blkLive = {}; }
+  catch (e) { toast(e.message, true); }
+  finally { ui.blkLoading = false; }
+  if (!ui.blkView) blkFit();
+  if (ui.tab === "blocking") drawBlocking();
+}
+
+/** A camera as it stands now: its resolved place, with what the hand is dragging laid over it. */
+function blkCam(s) {
+  const live = ui.blkLive?.[s.id] || {};
+  const start = live.start || s.start.location;
+  const dx = start[0] - s.start.location[0], dy = start[1] - s.start.location[1];
+  // an explicit end stays where it is while the start moves; a move (dolly, orbit) travels with it
+  const finish = live.finish || (s.end ? s.finish.location : [s.finish.location[0] + dx, s.finish.location[1] + dy]);
+  const toward = (from, to) => (Math.atan2(to[1] - from[1], to[0] - from[0]) * 180) / Math.PI;
+  // an aimed camera keeps facing what it aims at; the rest keep their turn
+  const yaw = live.yaw ?? (s.target && live.start ? toward(start, s.target) : s.start.rotation[1]);
+  const endYaw = s.target && (live.start || live.finish) ? toward(finish, s.target) : s.finish.rotation[1] + (yaw - s.start.rotation[1]);
+  const travels = !!live.finish || Math.hypot(s.finish.location[0] - s.start.location[0], s.finish.location[1] - s.start.location[1]) > 1;
+  return { start, finish, yaw, endYaw, travels };
+}
+
+function blkFit() {
+  const d = ui.blk; if (!d) return;
+  const xs = [], ys = [];
+  for (const a of d.anchors) { xs.push(a.at[0]); ys.push(a.at[1]); }
+  for (const s of d.shots) for (const p of [s.start.location, s.finish.location, s.target].filter(Boolean)) { xs.push(p[0]); ys.push(p[1]); }
+  if (!xs.length) { xs.push(-500, 500); ys.push(-500, 500); }
+  const svg = $("bk-svg"), W = svg?.clientWidth || 800, H = svg?.clientHeight || 520;
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = Math.max(300, 0.15 * Math.max(x1 - x0, y1 - y0));
+  x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
+  let w = x1 - x0, h = y1 - y0;
+  if (w / h > W / H) { const nh = (w * H) / W; y0 -= (nh - h) / 2; h = nh; } else { const nw = (h * W) / H; x0 -= (nw - w) / 2; w = nw; }
+  ui.blkView = { x: x0, y: y0, w, h };
+}
+
+function drawBlocking() {
+  const box = $("blockpanel");
+  if (!box.querySelector("#bk-svg")) {
+    box.innerHTML = `<div class="bk-map"><svg id="bk-svg" aria-label="配置図"></svg>
+        <div class="bk-tools"><button class="btn" data-bk-all title="ほかのカットのカメラも薄く描く"></button><button class="btn" data-bk-fit title="全体を入れる (F)">全体</button></div>
+        <div class="bk-hint">カメラをドラッグで動かす · 橙の丸: 動きの終わり · 青の丸: 向き · 背景をドラッグで視点を動かす · ホイールで拡大 · ←→ でカット</div></div>
+      <aside class="bk-side" id="bk-side"></aside>`;
+  }
+  fetchBlocking();
+  blkPointer();
+  if (!ui.blk) { $("bk-side").innerHTML = `<div class="rv-empty">読み込み中…</div>`; return; }
+  if (!ui.blkView) blkFit();
+  blkFollow();
+  box.querySelector("[data-bk-all]").textContent = ui.blkAll === false ? "このカットだけ" : "全カット";
+  box.querySelector("[data-bk-all]").classList.toggle("on", ui.blkAll !== false);
+  drawBlkSvg();
+  drawBlkSide();
+}
+
+/** When the selected cut changes, bring its camera into view if it is off the map. */
+function blkFollow() {
+  if (ui.blkFocus === ui.sel) return;
+  ui.blkFocus = ui.sel;
+  const b = blkShot(ui.sel), v = ui.blkView; if (!b || !v) return;
+  const [x, y] = b.start.location, m = 0.12;
+  if (x < v.x + v.w * m || x > v.x + v.w * (1 - m) || y < v.y + v.h * m || y > v.y + v.h * (1 - m)) ui.blkView = { ...v, x: x - v.w / 2, y: y - v.h / 2 };
+}
+
+function drawBlkSvg() {
+  const svg = $("bk-svg"), d = ui.blk, v = ui.blkView;
+  if (!svg || !d || !v) return;
+  svg.setAttribute("viewBox", `${v.x} ${v.y} ${v.w} ${v.h}`);
+  const px = v.w / (svg.clientWidth || 800); // world cm per screen pixel
+  const fs = 11 * px;
+  // grid: a line every 1 m, a darker one every 5 m (coarser when far out)
+  const step = px > 6 ? 500 : 100;
+  let grid = "";
+  for (let x = Math.floor(v.x / step) * step; x <= v.x + v.w; x += step) grid += `<line class="grid${x % (step * 5) === 0 ? " major" : ""}" x1="${x}" y1="${v.y}" x2="${x}" y2="${v.y + v.h}"/>`;
+  for (let y = Math.floor(v.y / step) * step; y <= v.y + v.h; y += step) grid += `<line class="grid${y % (step * 5) === 0 ? " major" : ""}" x1="${v.x}" y1="${y}" x2="${v.x + v.w}" y2="${y}"/>`;
+  // the game's shapes (three): walls darker, things that do not block sight dashed
+  const band = (s) => s.center[2] - s.half[2] < 220 && s.center[2] + s.half[2] > 25 && s.half[0] < 4000 && s.half[1] < 4000;
+  const shown = d.shapes.filter(band);
+  const shapes = shown.map((s) => {
+    const cls = ["shape", s.structure ? "wall" : "", s.solid ? "" : "soft"].join(" ");
+    return `<g transform="translate(${s.center[0]} ${s.center[1]}) rotate(${s.yaw})"><rect class="${cls}" x="${-s.half[0]}" y="${-s.half[1]}" width="${2 * s.half[0]}" height="${2 * s.half[1]}"/></g>`;
+  }).join("");
+  // the things' names only when close enough to read them
+  const labels = px > 1.6 ? "" : [...new Map(shown.filter((s) => !s.structure && s.solid).map((s) => [s.name, s])).values()]
+    .map((s) => `<text class="lbl" x="${s.center[0]}" y="${s.center[1]}" font-size="${fs * 0.85}" text-anchor="middle">${esc(s.label || s.name)}</text>`).join("");
+  const anchors = d.anchors.map((a) => {
+    const boxHtml = a.size ? `<rect class="anc-box" x="${a.center[0] - a.size[0] / 2}" y="${a.center[1] - a.size[1] / 2}" width="${a.size[0]}" height="${a.size[1]}"/>` : "";
+    return `${boxHtml}<circle class="anc" cx="${a.at[0]}" cy="${a.at[1]}" r="${5 * px}"/><text class="lbl" x="${a.at[0] + 8 * px}" y="${a.at[1] - 8 * px}" font-size="${fs}">${esc(a.name)}</text>`;
+  }).join("");
+  const sel = ui.sel;
+  const cams = d.shots.filter((s) => s.id === sel || ui.blkAll !== false).sort((a) => (a.id === sel ? 1 : -1)).map((s) => blkCamSvg(s, s.id === sel, px, fs)).join("");
+  svg.innerHTML = `<g>${grid}</g><g>${shapes}${labels}</g><g>${anchors}</g><g>${cams}</g>`;
+}
+
+function blkCamSvg(s, selected, px, fs) {
+  const c = blkCam(s), [x, y] = c.start, f = dirOf(c.yaw);
+  const reach = s.target ? Math.min(Math.max(Math.hypot(s.target[0] - x, s.target[1] - y), 250), 3000) : 900;
+  const a = dirOf(c.yaw - s.hfov / 2), b = dirOf(c.yaw + s.hfov / 2);
+  const cone = `<path class="cone" d="M${x} ${y}L${x + a[0] * reach} ${y + a[1] * reach}L${x + b[0] * reach} ${y + b[1] * reach}Z"/>`;
+  const body = `<g transform="translate(${x} ${y}) rotate(${c.yaw})"><rect class="body" x="${-9 * px}" y="${-6 * px}" width="${14 * px}" height="${12 * px}" rx="${2 * px}"/><path class="body" d="M${5 * px} ${-4 * px}L${11 * px} ${-7 * px}L${11 * px} ${7 * px}L${5 * px} ${4 * px}Z"/></g>`;
+  const label = `<text class="lbl" x="${x - 12 * px}" y="${y + 18 * px}" font-size="${fs}" text-anchor="end">${esc(s.id.split("_")[0])}</text>`;
+  if (!selected) return `<g class="cam" data-bk-cam="${esc(s.id)}">${cone}${body}${label}</g>`;
+  const [ex, ey] = c.finish;
+  const path = c.travels ? `<line class="path" x1="${x}" y1="${y}" x2="${ex}" y2="${ey}"/><circle class="h end" data-bk-h="end" cx="${ex}" cy="${ey}" r="${7 * px}"/>` : "";
+  const aim = s.target ? `<line class="aim" x1="${x}" y1="${y}" x2="${s.target[0]}" y2="${s.target[1]}"/><path class="aim" d="M${s.target[0] - 6 * px} ${s.target[1]}h${12 * px}M${s.target[0]} ${s.target[1] - 6 * px}v${12 * px}"/>` : "";
+  // the ring turns the camera only where it is not aimed at something (an aimed camera turns by moving)
+  const rot = s.target ? "" : `<line class="aim" x1="${x}" y1="${y}" x2="${x + f[0] * 70 * px}" y2="${y + f[1] * 70 * px}"/><circle class="h rot" data-bk-h="rot" cx="${x + f[0] * 70 * px}" cy="${y + f[1] * 70 * px}" r="${6 * px}"/>`;
+  let ghost = "";
+  if (c.travels && ui.blkT > 0) {
+    const t = ui.blkT, gx = x + (ex - x) * t, gy = y + (ey - y) * t, gy2 = c.yaw + (c.endYaw - c.yaw) * t, g2 = dirOf(gy2);
+    ghost = `<g class="ghost-cam"><circle class="ghost" cx="${gx}" cy="${gy}" r="${8 * px}"/><line class="ghost" x1="${gx}" y1="${gy}" x2="${gx + g2[0] * reach * 0.6}" y2="${gy + g2[1] * reach * 0.6}"/></g>`;
+  }
+  return `<g class="cam sel" data-bk-cam="${esc(s.id)}">${cone}${aim}${path}${ghost}<g data-bk-h="body">${body}</g>${rot}${label}</g>`;
+}
+
+function drawBlkSide() {
+  const el = $("bk-side"), st = ui.status, s = shot(), b = s && blkShot(s.id);
+  if (!s || !b) { el.innerHTML = `<div class="rv-empty"><b>カットがありません</b>カメラを置けるカットがここに出ます。</div>`; return; }
+  const c = blkCam(b), tk = bestTake(s), n = st.shots.length;
+  const mv = moveOf(s), fl = ui.flash?.id === s.id ? ui.flash : null;
+  const how = b.form === "anchor" ? `${typeof b.anchor === "string" ? b.anchor : "点"} を基準に置く` : "座標で置く";
+  const aim = b.look_at ? `${typeof b.look_at === "string" ? b.look_at : "点"} を狙う` : b.form === "anchor" ? `${typeof b.anchor === "string" ? b.anchor : "点"} を狙う` : "向きで決める";
+  const r0 = (v) => Math.round(v);
+  el.innerHTML = `<h3><button class="icon" data-bk-nav="-1" title="前のカット (←)"${s.index === 0 ? " disabled" : ""}>‹</button><span class="id">${esc(s.id)}</span><button class="icon" data-bk-nav="1" title="次のカット (→)"${s.index >= n - 1 ? " disabled" : ""}>›</button></h3>
+    <div class="pur">${esc(s.purpose || "")}</div>
+    <div class="bk-thumb" style="${tk ? `background-image:url('${esc(tk.t.url)}')` : ""}" title="${esc(tk ? tk.q : "まだ撮っていません")}"></div>
+    <dl class="bk-facts"><dt>置き方</dt><dd>${esc(how)}</dd><dt>向き</dt><dd>${esc(aim)}</dd>
+      <dt>位置</dt><dd>${r0(c.start[0])}, ${r0(c.start[1])}, ${r0(b.start.location[2])} cm</dd><dt>レンズ</dt><dd>${b.lens}mm · 画角 ${Math.round(b.hfov)}°</dd>
+      <dt>動き</dt><dd>${esc(MOVE_JA[mv] || mv)}</dd></dl>
+    ${c.travels ? `<div class="bk-scrub"><span>動きを見る</span><input type="range" min="0" max="100" value="${Math.round((ui.blkT || 0) * 100)}" data-bk-t><span>${s.duration}s</span></div>` : ""}
+    <div class="bk-acts">${c.travels ? `<button class="btn" data-bk-still title="動きの終わりを消して、止めた画にする">動きを消す</button>` : `<button class="btn" data-bk-path title="向いている方へ 2m 進む道を足す。橙の丸で終わりを動かせます">道を引く</button>`}
+      <button class="btn" data-bk-frame title="このカットの画とカメラを細かく直す画面へ">画で確かめる →</button></div>
+    <div class="rv-cost">${fl ? `<b>${esc(fl.text)}</b><br>撮り直し: <b>${esc((fl.stale || []).join(", ") || "なし")}</b>${fl.previz ? `<div>${fl.previz === "running" ? "previz を描いています…" : "previz を描き直しました"}</div>` : ""}<div>ほかのカットは前の take を使います</div>`
+      : `動かすと、このカットの previz だけが描き直されます。元に戻すは Ctrl+Z。`}</div>`;
+}
+
+/** The screen point of a pointer event, in world cm. */
+function blkWorld(e) {
+  const svg = $("bk-svg"), p = svg.createSVGPoint();
+  p.x = e.clientX; p.y = e.clientY;
+  const q = p.matrixTransform(svg.getScreenCTM().inverse());
+  return [q.x, q.y];
+}
+
+async function blkWrite(id, set, text) {
+  if (ui.busy) return;
+  ui.busy = "save";
+  let out = null;
+  try { out = await api("POST", `/api/shots/${encodeURIComponent(id)}`, { set }); afterEdit(id, out, text); }
+  catch (e) { toast(e.message, true); ui.blkLive = {}; }
+  finally { ui.busy = null; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+}
+
+/** Write what the hand moved: the start, the end or the turn (in the form the shot already uses). */
+function blkCommit(id, kind) {
+  const b = blkShot(id), live = ui.blkLive?.[id]; if (!b || !live) return;
+  const set = {}, r = (v) => Math.round(v);
+  if (kind === "body") {
+    const [x, y] = live.start;
+    if (b.form === "anchor") {
+      const off = b.offset || [-600, 0, 150];
+      set["camera.offset"] = [r(x - (b.start.location[0] - off[0])), r(y - (b.start.location[1] - off[1])), off[2]];
+    } else set["camera.location"] = [r(x), r(y), r(b.start.location[2])];
+  } else if (kind === "end") {
+    set["camera.end.location"] = [r(live.finish[0]), r(live.finish[1]), r(b.finish.location[2])];
+    if (b.move && !b.end) set["camera.move"] = null;
+  } else if (kind === "rot") {
+    const rot = b.rotation || b.start.rotation;
+    set["camera.rotation"] = [Math.round(rot[0] * 10) / 10, Math.round(live.yaw * 10) / 10, Math.round((rot[2] || 0) * 10) / 10];
+  }
+  const said = { body: `${id} のカメラを動かした`, end: `${id} の動きの終わりを動かした`, rot: `${id} の向きを変えた` }[kind];
+  blkWrite(id, set, said);
+}
+
+function blkPointer() {
+  const svg = $("bk-svg");
+  if (!svg || svg.dataset.wired) return;
+  svg.dataset.wired = "1";
+  svg.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest("[data-bk-h]"), cam = e.target.closest("[data-bk-cam]");
+    if (cam && cam.dataset.bkCam !== ui.sel) { ui.sel = cam.dataset.bkCam; ui.scopeAll = false; draw(); return; }
+    if (h && !ui.busy) {
+      const b = blkShot(ui.sel); if (!b) return;
+      ui.blkDrag = { kind: h.dataset.bkH, id: b.id, p0: blkWorld(e), moved: false };
+    } else ui.blkDrag = { kind: "pan", p0: [e.clientX, e.clientY], v0: { ...ui.blkView } };
+    svg.setPointerCapture(e.pointerId);
+    svg.classList.toggle("panning", ui.blkDrag.kind === "pan");
+  });
+  svg.addEventListener("pointermove", (e) => {
+    const g = ui.blkDrag; if (!g) return;
+    if (g.kind === "pan") {
+      const k = ui.blkView.w / (svg.clientWidth || 800);
+      ui.blkView = { ...g.v0, x: g.v0.x - (e.clientX - g.p0[0]) * k, y: g.v0.y - (e.clientY - g.p0[1]) * k };
+      drawBlkSvg(); return;
+    }
+    const b = blkShot(g.id), w = blkWorld(e), snap = e.shiftKey ? 1 : BLK_SNAP;
+    const live = (ui.blkLive[g.id] ||= {});
+    if (g.kind === "body") live.start = [snapTo(b.start.location[0] + w[0] - g.p0[0], snap), snapTo(b.start.location[1] + w[1] - g.p0[1], snap)];
+    else if (g.kind === "end") live.finish = [snapTo(w[0], snap), snapTo(w[1], snap)];
+    else if (g.kind === "rot") {
+      const at = live.start || b.start.location;
+      live.yaw = snapTo((Math.atan2(w[1] - at[1], w[0] - at[0]) * 180) / Math.PI, e.shiftKey ? 1 : BLK_TURN);
+    }
+    g.moved = true;
+    drawBlkSvg();
+  });
+  const up = () => {
+    const g = ui.blkDrag; ui.blkDrag = null; svg.classList.remove("panning");
+    if (g && g.kind !== "pan" && g.moved) blkCommit(g.id, g.kind);
+  };
+  svg.addEventListener("pointerup", up);
+  svg.addEventListener("pointercancel", () => { ui.blkDrag = null; ui.blkLive = {}; drawBlkSvg(); });
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const v = ui.blkView, [wx, wy] = blkWorld(e), k = Math.pow(1.0015, e.deltaY);
+    const w = Math.min(Math.max(v.w * k, 200), 40000), s = w / v.w;
+    ui.blkView = { x: wx - (wx - v.x) * s, y: wy - (wy - v.y) * s, w, h: v.h * s };
+    drawBlkSvg();
+  }, { passive: false });
+}
+
+/** Keys on the map: ←/→ pick a cut, F fits the whole. */
+function blockingKey(e) {
+  const st = ui.status;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    const i = st.shots.findIndex((s) => s.id === ui.sel), t = st.shots[i + (e.key === "ArrowRight" ? 1 : -1)];
+    if (t) { ui.sel = t.id; ui.scopeAll = false; ui.blkT = 0; draw(); }
+    return true;
+  }
+  if (e.key.toLowerCase() === "f") { blkFit(); drawBlkSvg(); return true; }
+  return false;
 }
 
 /** Keys on your turn: J/K walk the decisions, 1-3 run an action, ←/→ pick a cut, A approves it. */
@@ -6187,6 +6482,25 @@ for (const b of document.querySelectorAll(".road-btn")) b.addEventListener("clic
 for (const b of document.querySelectorAll(".seg button[data-mode]")) b.addEventListener("click", () => { stopFollowing(); ui.mode = b.dataset.mode; ui.tab = "shot"; draw(); });
 for (const b of document.querySelectorAll("#finish-seg button")) b.addEventListener("click", () => { stopFollowing(); ui.tab = ui.fin = b.dataset.fin; ui.region = null; draw(); });
 $("approve").addEventListener("click", () => { const s = shot(); if (s) approve(s.id, s.approval !== "approved"); });
+$("blockpanel").addEventListener("click", (e) => {
+  const s = shot(), b = s && blkShot(s.id);
+  if (e.target.closest("[data-bk-all]")) { ui.blkAll = ui.blkAll === false; drawBlocking(); return; }
+  if (e.target.closest("[data-bk-fit]")) { blkFit(); drawBlkSvg(); return; }
+  if (e.target.closest("[data-bk-frame]")) { goStage("framing"); return; }
+  const nav = e.target.closest("[data-bk-nav]");
+  if (nav && s) { const t = ui.status.shots[s.index + Number(nav.dataset.bkNav)]; if (t) { ui.sel = t.id; ui.scopeAll = false; ui.blkT = 0; draw(); } return; }
+  if (!b || ui.busy) return;
+  if (e.target.closest("[data-bk-still]")) blkWrite(s.id, { "camera.end": null, "camera.move": null }, `${s.id} の動きを消した`);
+  else if (e.target.closest("[data-bk-path]")) {
+    const f = dirOf(b.start.rotation[1]), [x, y, z] = b.start.location;
+    blkWrite(s.id, { "camera.end.location": [Math.round(x + f[0] * 200), Math.round(y + f[1] * 200), Math.round(z)] }, `${s.id} に道を引いた`);
+  }
+});
+$("blockpanel").addEventListener("input", (e) => {
+  const r = e.target.closest("[data-bk-t]");
+  if (r) { ui.blkT = Number(r.value) / 100; drawBlkSvg(); }
+});
+window.addEventListener("resize", () => { if (ui.tab === "blocking") drawBlkSvg(); });
 $("reviewpanel").addEventListener("click", (e) => {
   const cut = e.target.closest("[data-rv-cut]");
   if (cut) { ui.sel = cut.dataset.rvCut; ui.scopeAll = false; draw(); return; }
@@ -6201,6 +6515,7 @@ $("reviewpanel").addEventListener("click", (e) => {
   if (nav && s) { const t = ui.status.shots[s.index + Number(nav.dataset.rvNav)]; if (t) { ui.sel = t.id; ui.scopeAll = false; draw(); } return; }
   if (e.target.closest("[data-rv-approve]") && s) { approve(s.id, s.approval !== "approved"); return; }
   if (e.target.closest("[data-rv-open]")) { goStage("framing"); return; }
+  if (e.target.closest("[data-rv-blk]")) { goStage("blocking"); return; }
   if (e.target.closest("[data-rv-sound]")) { ui.rvSound = !ui.rvSound; draw(); }
 });
 // panels and the findings bar: one delegated handler
@@ -6348,6 +6663,9 @@ document.addEventListener("keydown", (e) => {
   if (ui.tab === "review" && st.shots.length && !e.ctrlKey && !e.metaKey && !e.altKey) {
     if (reviewKey(e)) { e.preventDefault(); return; }
   }
+  if (ui.tab === "blocking" && st.shots.length && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (blockingKey(e)) { e.preventDefault(); return; }
+  }
   const i = st.shots.findIndex((s) => s.id === ui.sel);
   if (ui.tab === "sound") {
     if ((e.key === "Delete" || e.key === "Backspace") && ui.snd?.kind === "sfx") { deleteSfx(); e.preventDefault(); return; }
@@ -6380,7 +6698,7 @@ setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refr
 function applyHash() {
   for (const part of location.hash.slice(1).split("&").filter(Boolean)) {
     if (part === "canvas") { ui.tab = "structure"; ui.cvView = "canvas"; }
-    else if (["teaser", "sound", "design", "scout", "brief", "structure", "capture", "review"].includes(part)) { ui.tab = part; if (["teaser", "sound", "design"].includes(part)) ui.fin = part; }
+    else if (["teaser", "sound", "design", "scout", "brief", "structure", "capture", "review", "blocking"].includes(part)) { ui.tab = part; if (["teaser", "sound", "design"].includes(part)) ui.fin = part; }
     else if (part === "tweak") { ui.mode = "tweak"; ui.tab = "shot"; } else { ui.sel = decodeURIComponent(part); ui.tab = "shot"; }
   }
 }

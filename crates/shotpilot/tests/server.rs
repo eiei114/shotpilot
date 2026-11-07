@@ -125,6 +125,46 @@ fn index_and_status() {
     assert_eq!(st["shots"][0]["node"]["id"], "s01_gate");
 }
 
+/// The blocking map (D-77) reads every camera from above without writing anything, and a camera
+/// it moves is written in the form the shot already uses, so only that shot is drawn again.
+#[test]
+fn the_blocking_map_reads_cameras_and_a_moved_camera_rerenders_only_its_shot() {
+    let s = srv();
+    let before = std::fs::read_to_string(s.f.path()).unwrap();
+    let (code, map) = jcall(&s, "GET", "/api/blocking", None);
+    assert_eq!(code, 200, "{map}");
+    assert_eq!(std::fs::read_to_string(s.f.path()).unwrap(), before, "reading the map wrote shots.yaml");
+    let shots = map["shots"].as_array().unwrap().clone();
+    assert_eq!(shots.len(), 6);
+    for sh in &shots {
+        assert_eq!(sh["start"]["location"].as_array().unwrap().len(), 3, "{sh}");
+        assert!(sh["hfov"].as_f64().unwrap() > 0.0, "{sh}");
+    }
+    assert!(!map["anchors"].as_array().unwrap().is_empty());
+    render(&s, "previz");
+
+    let cam = shots.iter().find(|x| x["id"] == "s03_window").unwrap();
+    let x = |v: &Value| v.as_f64().unwrap();
+    let set = if cam["form"] == "anchor" {
+        let off = cam["offset"].as_array().cloned().unwrap_or_else(|| vec![json!(-600.0), json!(0.0), json!(150.0)]);
+        json!({"camera.offset": [x(&off[0]) + 120.0, x(&off[1]) - 40.0, off[2].clone()]})
+    } else {
+        let l = &cam["start"]["location"];
+        json!({"camera.location": [x(&l[0]) + 120.0, x(&l[1]) - 40.0, l[2].clone()]})
+    };
+    let (code, rep) = jcall(&s, "POST", "/api/shots/s03_window", Some(json!({"set": set})));
+    assert_eq!(code, 200, "{rep}");
+    assert_eq!(rep["stale"], json!(["s03_window"]));
+    let moved = jcall(&s, "GET", "/api/blocking", None).1;
+    let m = moved["shots"].as_array().unwrap().iter().find(|v| v["id"] == "s03_window").unwrap().clone();
+    assert_eq!(m["form"], cam["form"], "the camera kept its form");
+    assert!((x(&m["start"]["location"][0]) - x(&cam["start"]["location"][0]) - 120.0).abs() < 1e-6, "{m}");
+
+    let (mut second, _) = render(&s, "previz");
+    assert_eq!(second.remove("s03_window").unwrap(), "rendered");
+    assert!(second.values().all(|a| a == "reused"));
+}
+
 #[test]
 fn status_polling_is_a_304_while_nothing_changes() {
     let s = srv();
