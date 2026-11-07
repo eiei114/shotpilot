@@ -34,6 +34,25 @@ shotpilot status                                # 各カットの状態（fresh 
 
 `render` の `rendered` と `reused` が、何を撮り直したかを示す。誤った指定にはメッセージだけが出る（直し方を含む）。アプリは `cargo build --release -p shotpilot-app` で、`target/release/shotpilot-app.exe` が開く。
 
+## UE なしで本物の画を撮る（Three.js のサンプルゲーム、D-72）
+
+mock の previz は線画なので、光や人影まで見たいときは `engine: three` を使う。同梱の病棟（UE のサンプル `Lanternless` と同じ間取りとアンカーに、手すり・扉・ベッド・カーテン・自販機・砂嵐のテレビ・ガウンの患者を置いたもの）を、Windows に入っている Edge（無ければ Chrome）を画面に出さずに起動して撮る。UE も API キーも要らない。
+
+```bash
+mkdir ward && cd ward
+shotpilot init --engine three                   # Lanternless のティザー（10 カット）と、病棟のゲーム（game/）
+shotpilot render still                          # 10 カット × 3 コマを Edge で描く（数秒）
+shotpilot set s07_figure_mid camera.lens.focal_length=50
+shotpilot render still                          # → still: 1 rendered, 9 reused
+# ゲームのほうを直す: ストレッチャーの色を変える
+#   game/objects/stretcher.json の最初の部品（マットレス）の "color" を "#2f5f8f" に変える
+shotpilot status                                # ストレッチャーが写っていたカットだけが GAME になる
+shotpilot render still                          # → そのカットだけを撮り直す（ほかは使い回し）
+shotpilot render preview && shotpilot cut       # 全コマを撮り、文字と音を載せた Cut にする（ffmpeg）
+```
+
+画は、質感をノイズから焼いた PBR の材質を HDR で描き、AO・レンズの絞りどおりの被写界深度・ブルーム・床に溜まる霧・グレインを重ねる（still は10カットで約10秒、preview の約1000コマで約45秒）。ゲームは `game/` の JSON で、物ごとに1ファイル（`objects/<名前>.json`）になっている。物を直すと、それが写っていたカットだけが古くなる（写っていたかは、視野と、ほかの壁に遮られていないかで決める）。`shotpilot scout` で各アンカーを4方向から撮れる（壁の向こうに出たカメラは壁の手前へ寄せる）。アプリでは、ホームの「Three.js のサンプルゲームで試す」から開ける。描くブラウザは `SHOTPILOT_BROWSER` で指定できる。デモ動画は UE で撮っている。three は試すための体験版で、自分の Three.js のゲームを撮る機能ではない。
+
 ## ゲームを Claude Code で直しているなら（D-66）
 
 ゲーム本体を Claude Code で直していると、ティザーのどのカットが古くなったかは誰も教えてくれない。Shotpilot は、それを Claude Code の中で知らせる。
@@ -58,7 +77,7 @@ shotpilot --file Teaser/shots.yaml claude install   # Skill とフックを入�
 
 ## ハッカソン期間中に作ったもの
 
-開発期間は 2026-11-02 12:30 〜 11-08 20:00。既存のプロジェクトのコードと設計は使っていない（D-05）。git の記録は次のとおり（決定の記録は `.claude/rules/product-decisions.md` の D-01〜D-69）。
+開発期間は 2026-11-02 12:30 〜 11-08 20:00。既存のプロジェクトのコードと設計は使っていない（D-05）。git の記録は次のとおり（決定の記録は `.claude/rules/product-decisions.md` の D-01〜D-73）。
 
 | 日 | したこと |
 |---|---|
@@ -69,6 +88,7 @@ shotpilot --file Teaser/shots.yaml claude install   # Skill とフックを入�
 | 11/05 | ゲームの変化の検知（D-37）、カット表での確認（D-36）、previz で止める（D-38）、企画（D-45）、構成画（D-46）、発信計画（D-47）、書体と動き（D-52、D-53） |
 | 11/05〜06 | サンプルのゲーム4本（D-54、D-61）、カメラ効果（D-57）、チップで積む指示（D-62）、ノードのキャンバス（D-63）、音を作品ごとに変える（D-64）、不変条件をテストに結ぶ（D-65）、Claude Code との連携（D-66） |
 | 11/06〜07 | サンプルの場所の作り込み（D-69）。構造の点検、GeometryScripting の形、Niagara の効果集、ジャンルごとの動き、4本のティザーの撮り直し |
+| 11/07 | Three.js のサンプルゲーム（D-72）。UE を持たない人が、同じ病棟のティザーを Edge か Chrome で撮れる。画も作り込んだ（質感・AO・被写界深度・霧、D-73） |
 
 ## Claude の使い方
 
@@ -350,5 +370,6 @@ fingerprint は Python 版（〜0.1）と同じ正規化 JSON を hash するの
 - 書体は Google Fonts のもの（OFL。Kosugi・Kosugi Maru・Rock Salt は Apache 2.0）。使うときに取ってきてキャッシュし、リポジトリにもバイナリにも入れない。
 - サンプルのゲームは Epic の UE 5.8 Third Person テンプレートのアセット（マネキン、試作用の箱）で作る。アセットはリポジトリに入れず、組み立てのスクリプト（`tools/ue_sample/`）だけを置く。効果・形・動きもエンジンと Epic 同梱のプラグイン（Niagara、NiagaraToolsets、GeometryScripting）でコードから作り、外部の素材は使わない。
 - 効果音と曲は、作者が Splice で購入したサンプルを手元のライブラリ（リポジトリの外）から使う。リポジトリには入れず、再配布しない。`shotpilot init` の仮の音（`drone.wav` など）はコードで合成したもの。
+- Three.js（MIT License, Copyright © 2010-2024 three.js authors）の 0.170.0 を `crates/shotpilot/three/` に同梱し、バイナリに埋め込む（ライセンスは `three/LICENSE-three.txt`）。サンプルの病棟（`threegame.rs`）は箱・円柱・マネキンをコードで組んだもので、質感（タイル・漆喰・塗装・金属・布）も描画のページがノイズから焼く。外部の素材は使わない。
 - ムードボードと構成画は OpenAI の画像生成（参照のみ）。ティザーの画はすべてゲームから撮る。
 - 実測したティザー（`references/teasers/`）は、長さ・カット・明るさなどの測定値と分析だけを置く。動画とフレーム画像は入れていない。

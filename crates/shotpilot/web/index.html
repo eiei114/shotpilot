@@ -1814,7 +1814,8 @@ function drawScout() {
   filterAssets();
   // UE5: the first visit with nothing scouted starts it (once per project in this session,
   // so a failure is shown, not retried in a loop)
-  if (ue && !anchors.length && !ui.busy && !autoScouted.has(st.path)) {
+  // an engine that draws (UE, the three sample game) scouts on its own when nothing is anchored yet
+  if (st.engine !== "mock" && !anchors.length && !ui.busy && !autoScouted.has(st.path)) {
     autoScouted.add(st.path);
     runScout();
   }
@@ -5351,9 +5352,9 @@ async function produceAll({ review = true, resume = false } = {}) {
   const tick = setInterval(() => { const el = $("produce-state"); if (el) el.textContent = `作っています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
   try {
     const r = await fetch("/api/produce", { method: "POST", headers: { "Content-Type": "application/json" },
-      // the shoot after the review films with the engine (still) on a UE project, so what was
-      // filmed can be looked at once and a hidden subject fixed once (D-50); previz otherwise
-      body: JSON.stringify({ note, quality: resume && st.engine === "ue5" ? "still" : "previz", mood: true, review, resume }) });
+      // the shoot after the review films with the engine (still) on a UE or three project, so what
+      // was filmed can be looked at once and a hidden subject fixed once (D-50); previz otherwise
+      body: JSON.stringify({ note, quality: resume && st.engine !== "mock" ? "still" : "previz", mood: true, review, resume }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {

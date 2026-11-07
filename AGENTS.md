@@ -25,6 +25,7 @@ cargo clippy --all-targets        # 警告ゼロを保つ
 cargo build --release             # target/release/shotpilot.exe（CLI）
 cargo build --release -p shotpilot-app   # target/release/shotpilot-app.exe（デスクトップアプリ）
 shotpilot init --engine mock      # サンプル shots.yaml を作る
+shotpilot init --engine three     # Three.js のサンプルゲーム（病棟、game/）と Lanternless のティザーを作る。Edge か Chrome で撮る（UE なし、D-72）
 shotpilot status                  # fresh / stale / out-of-sync の一覧
 shotpilot render previz           # 古くなったショットだけをエンジンなしで描く
 shotpilot set s03 camera.lens.focal_length=50
@@ -71,7 +72,10 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/state.rs        .shotpilot/state.json と render/<shot>/<quality>/<fp12>/ の take 管理
   src/content.rs      take が写していたゲームの中身（エンジンが報告したパッケージのファイルと SHA-256）。変わったカットだけを古いとする
   src/workspace.rs    上の3つとエンジンを束ねる。全操作はここを通る
-  src/engines.rs      mock / ue5 バックエンド。共通の job/result JSON プロトコル
+  src/engines.rs      mock / ue5 / three バックエンド。共通の job/result JSON プロトコル。エディタの無いエンジンのシーケンスの台帳（SeqStore）
+  src/three.rs        Three.js のエンジン（D-72）。game/ の JSON の読み込み、写っていた物の判定（D-56）とロケハンの壁よけ（D-55）、loopback のサーバーと headless の Edge / Chrome
+  src/threegame.rs    three のサンプルゲーム。Lanternless の病棟（間取りとアンカーは UE 版と同じ座標、中身は three 独自）を、物ごとに1ファイルで書き出す
+  three/              描画のページ（render.html。手続きで焼く質感、AO・被写界深度・ブルーム・高さの霧・グレイン）と同梱の Three.js 0.170（MIT。バイナリに埋め込む）、サンプルの shots.yaml（ward.yaml）
   src/sync.rs         Sequencer → shots.yaml の逆同期（base / engine / ours の三方比較）
   src/scout.rs        工程0「ロケハン」: アセットの棚卸し、props への追加、アンカーのロケハン写真
   src/moodboard.rs    ブリーフのムードボード（参照画像の保存、OpenAI での生成、plan に渡す画像ブロック）
@@ -161,6 +165,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - **つなぎはレシピから描き、入れ替えは覆った瞬間のカットの境目で行う（D-70）。** 描き方は `references/motion/transitions.json`（出ていくカットの終わりと入るカットの始めに分けた、覆いの色・長さ・緩急・露出）にだけ置き、`handover.rs` が ffmpeg のフィルタにする。`finish.rs` に描き方を直書きしない。2 つの画を重ねるつなぎ（クロスフェード、プッシュなど）は足さない。長さは `profiles.json` の `dip`・`flash`・`whiteout`・`glitch` と勢いで決まる。`finish.motion` が無いときは、レシピ以前と同じ `fade` の式で描く（`the_base_profile_draws_the_hand_overs_it_drew_before` が守る）。plan が書いたつなぎは、コードで `cut` のほか 2 種（`dip` とルックの差し色を先に）に整え、人間や修正で 3 種以上になったらカット検査の P2（`transition.mix`）で示す。つなぎの語を足すときは、`finish::TRANSITIONS` と `transitions.json` と `TRANSITIONS.md` を一緒に直す（`every_recipe_is_a_hand_over_with_known_parts` が守る）。どれも編集的で、撮り直しは起きない。 守るテスト: `the_base_profile_draws_the_hand_overs_it_drew_before`、`every_recipe_is_a_hand_over_with_known_parts`、`a_plan_hands_over_with_cut_and_two_others`、`more_than_two_kinds_of_hand_over_are_pointed_out`。
 - **参照のティザーから写すのはタイミングだけ（D-71）。** 測る物差しはコーパスと同じにする（カットは D-29 の場面転換の山、明るさは D-53 の 12fps・幅 320px としきい値）。しきい値を変えると、コーパスの数値とも、前に測った参照とも比べられなくなる。写すのはつなぎの長さ（`finish.motion` の `dip`・`flash`・`whiteout`・`accent`・`card`。秒は測ったままで、勢いで伸び縮みさせない）と、回数と置き場所の割合（plan と画・文字の修正への節）だけ。参照の画・文字・音は Cut にも plan にも入れない。`reference/<id>/` の縮小版とコマは比べる用で、人が見るだけにする。比べた結果を Claude に読ませない（D-22）。測った長さはルックより強く、plan とルックの適用でも上に重ねる（open-design の「測ったもの > 人の言葉 > 好み」）。避けた動き（`avoid`）は人の言葉なので残す。保ちが 1.2 秒を超える白はつなぎではなく白い画として数えない。参照を切り替えると、前の参照が書いたままの値は取り除く（人が直した値は残す）。参照の縮小版とコマは新しいプロジェクトの `.gitignore` で除外する（測った値の `facts.json` は残す）。どれも編集的で、撮り直しは起きない。 守るテスト: `a_video_is_measured_and_a_cut_compared_with_it`、`a_measured_reference_lends_its_lengths_and_nothing_re_renders`、`a_plan_keeps_what_the_reference_measured`、`switching_references_leaves_nothing_of_the_old_one`、`a_reference_teaser_is_borrowed_from_the_design_panel`。
 - **Claude Code のフック（D-66）は知らせるだけにする。** 撮影せず、shots.yaml も state.json も take も書き換えない（覚えておくのは `.shotpilot/claude_hook.json` だけ）。何も古くなければ何も出さず、同じ変化は1回だけ言う。どんな失敗でも終了コード 0 で黙る（ゲーム開発のセッションを止めない）。取り付けは、既存の `.claude/settings.json` のキー・順序・ほかのフックを保ち、読めない JSON は書き換えずに止める。 守るテスト: `the_hook_speaks_claude_codes_json_and_never_fails_the_session`、`nothing_out_of_date_means_no_words`、`a_game_change_names_only_the_cuts_that_showed_it`、`an_edit_to_shots_yaml_says_what_it_means_for_rerendering`、`install_adds_the_skill_and_hooks_and_keeps_the_rest`、`install_refuses_to_overwrite_settings_it_cannot_read`。
+- **Three.js の体験版（D-72）は、UE と同じループを同じ判定で回す。** ゲームは `project.game`（既定 `game/`）の JSON で、物ごとに1ファイル（`objects/<名前>.json`）にする。写っていた物（視野と、ほかの固い物に遮られないか。D-56）とロケハンの壁よけ（D-55、UE の `clear_view` と同じ規則）は Rust で決め、ブラウザは描くだけにする。take の `deps` は `scene.json` と写っていた物のファイルで、物を1つ直すとそれが写っていたカットだけが古くなり、戻せば前の take を使う。描画のページ（`three/render.html`）はショットの時刻 `t` だけで動かし、時計や `Math.random` を使わない。描き方を変えたら `three::RENDERER_VERSION` を上げる（three の take の指紋にだけ入り、UE と mock の take は動かない）。テストからブラウザを起動しない（`three::use_stand_in_browser`）。 守るテスト: `the_three_sample_films_without_ue_and_redraws_only_the_shot_that_changed`、`editing_one_thing_in_the_three_game_redraws_only_the_shots_that_showed_it`、`a_wall_hides_what_is_behind_it_from_the_three_takes`、`a_scout_camera_behind_a_three_wall_stands_in_front_of_it`、`the_three_game_offers_its_anchors_places_and_props`、`three_takes_carry_their_own_renderer_version`、`a_three_project_without_its_game_says_so_and_previz_still_works`、`the_home_makes_a_three_project_with_the_ward_to_film`。 人間が守る: render.html の描き方を変えたときに `three::RENDERER_VERSION` を上げること（画素はテストで見ない）。
 - ユーザー向けのエラーは `Error::user`（`bail!`）で返す。CLI はメッセージだけを出す。`unwrap` で落とさない。 守るテスト: `user_errors_are_400_with_message`、`unknown_kinds_and_amounts_and_the_ends_are_user_errors`。 人間が守る: CLI でメッセージだけを出し、本体に unwrap を増やさないこと。
 - 座標系は UE 準拠（cm、Z が上、X が前、Y が右、左手系、回転は度）。`geometry.rs` は依存なしのまま保つ。 守るテスト: `yaw_and_pitch_follow_the_ue_directions`、`geometry_uses_nothing_but_std_and_serde_json`、`basis_is_ue_convention`、`project_center_and_sides`。
 
@@ -178,6 +183,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - やる: デスクトップアプリ（`shotpilot-app`、Tauri）。ブラウザは使わない。中身はコアを組み込んだ loopback サーバーと、ビルド不要の HTML 1枚。
 - やる: BGM と SE（D-19）。`shots.yaml` に書き、cut のときにミックスして載せる。映像は撮り直さない。検証は earshot 式のサウンドチェック。
 - やる: 仕上げ（D-25）。帯・タイトル・エンドカード・字幕・カットのつなぎ（黒/白をはさむ）を shots.yaml に書き、Cut で焼き込む。撮り直しは起きない。
+- やる: Three.js のサンプルゲームで撮る体験版（D-72）。審査員や UE を持たない人が、同じループを手元で試すためのもの。自分の Three.js のゲームを撮る対応はまだしない。デモ動画は UE で撮る。
 - やる: 公開後の発信計画（D-47）。ティザーのあとの動画（発表・ゲームプレイ・デモ／フェス・ローンチ・アップデート・セール）をチェックシートで並べ、それぞれを隣の別プロジェクトとして起こす。アップデート連動と定期発信の候補は、ゲームの変化の検知（D-37）から出す。1プロジェクトが作る映像は1本のまま。
 - やらない: Unity / Godot / Roblox 対応、エンジン抽象化レイヤ、TikTok / Shorts 向け短尺（定期発信も横長の take のまま）、複数尺への展開、Electron、Web 公開する UI、GUI での録画後の自由な映像編集（トリム、エフェクト、クロスフェード）。
 - mock エンジンはテストとデモ用で、別エンジン対応の足場ではない。抽象化を先回りして作らない。
@@ -187,6 +193,6 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 
 - Rust（edition 2021）。Python は `ue/sp_entry.py` だけに留める（Unreal 同梱の Python で動かす必要があるため）。例外は `tools/ue_sample/`（入口の `build_graybox.py` と、組み立ての `graybox/` パッケージ）で、サンプルのゲーム（D-54）のマップをエディタの中で組む道具。製品には入らず、バイナリにも埋め込まない。
 - コード中のコメントと doc コメントは英語。ユーザー向けの CLI 出力は英語でもよい。サンプルの `shots.yaml` の中身は日本語でよい。
-- 依存クレートを増やさない（現状: serde_json, yaml-rust2, sha2, miniz_oxide, chrono, ureq, clap。アプリは tauri, rfd）。
+- 依存クレートを増やさない（現状: serde_json, yaml-rust2, sha2, miniz_oxide, chrono, ureq, clap。アプリは tauri, rfd）。three の描画は同梱の Three.js（`three/three.module.min.js`）と、PC にある Edge か Chrome で行う。
 - 画面のスクロールバーと範囲スライダーは、各ページ冒頭の共通 CSS（`::-webkit-scrollbar` と `::-webkit-slider-*`、色は `--scroll` / `--scroll-hover`、スライダーのつまみの色は `--range`）で描く。OS 既定のバー（矢印・白いトラック）を出さない。`scrollbar-color` と `scrollbar-width` は使わない（Chromium ではその要素だけ OS のバーに戻る）。ページを足したら同じ CSS を入れる（`every_page_draws_its_own_scrollbars` が守る）。
 - コミットは小さく分ける。push は人間の確認を取ってから行う。

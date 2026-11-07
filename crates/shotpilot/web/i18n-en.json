@@ -1779,5 +1779,8 @@
  "Cut と比べる": "Compare with the Cut",
  "測って、つなぎの長さを写しました。Cut で焼き込むと見られます（撮り直しなし）": "Measured, and borrowed its transition lengths. Burn them in with Cut to see them (nothing re-renders)",
  "比べました。左が参照、右が Cut です": "Compared. The reference is on the left, the Cut on the right",
- "この画面では動画を選べません。動画のパスを入力してください": "This screen cannot pick a video. Type the video's path"
+ "この画面では動画を選べません。動画のパスを入力してください": "This screen cannot pick a video. Type the video's path",
+ "…または Three.js のサンプルゲームで試す（UE なし・病棟のホラー 10カット）": "...or try the Three.js sample game (no UE, a 10-cut ward horror)",
+ "Three.js のサンプルゲーム": "Three.js sample game",
+ "同梱の病棟（Lanternless）を Edge か Chrome で撮る。UE は要らない": "Films the bundled ward (Lanternless) in Edge or Chrome. No UE needed"
 }

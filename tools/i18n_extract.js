@@ -143,8 +143,10 @@ function rust(file) {
 const web = path.join(repo, "crates/shotpilot/web");
 page(path.join(web, "home.html"));
 page(path.join(web, "index.html"));
+// finish.rs and templates.rs hold the teaser's own words; threegame.rs the sample game's signs
+// (pixels in the game, not words on the screen)
 for (const f of fs.readdirSync(path.join(repo, "crates/shotpilot/src"))) {
-  if (!f.endsWith(".rs") || ["finish.rs", "templates.rs"].includes(f)) continue;
+  if (!f.endsWith(".rs") || ["finish.rs", "templates.rs", "threegame.rs"].includes(f)) continue;
   rust(path.join(repo, "crates/shotpilot/src", f));
 }
 const dictFile = path.join(web, "i18n-en.json");

@@ -42,6 +42,8 @@ pub mod storyboard;
 pub mod suggest;
 pub mod sync;
 pub mod templates;
+pub mod three;
+pub mod threegame;
 pub mod workspace;
 pub mod yamlio;
 

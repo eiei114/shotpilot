@@ -67,6 +67,8 @@ pub trait Engine {
 pub fn make_engine(defn: &Definition) -> Result<Box<dyn Engine>> {
     if defn.project.engine == "ue5" {
         Ok(Box::new(Ue5Engine::new(defn)?))
+    } else if defn.project.engine == "three" {
+        Ok(Box::new(crate::three::ThreeEngine::new(defn)?))
     } else {
         Ok(Box::new(MockEngine::new(defn)?))
     }
@@ -88,35 +90,100 @@ fn read_json(path: &Path) -> Result<Value> {
     Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
 }
 
-// --------------------------------------------------------------------------- mock
+// --------------------------------------------------------------------------- sequence store
 
-/// Stands in for UE: "assets" are JSON files, "renders" are tinted previz frames.
-pub struct MockEngine {
-    defn: Definition,
-    store: PathBuf,
+/// The shot sequences an engine without an editor keeps (mock, three): each pushed payload as a
+/// JSON file, read back by `pull`, and a log of every launch (what the tests count).
+pub struct SeqStore {
+    pub dir: PathBuf,
 }
 
-impl MockEngine {
-    pub fn new(defn: &Definition) -> Result<MockEngine> {
-        let store = defn.root().join(".shotpilot").join("mock_engine");
-        std::fs::create_dir_all(&store)?;
-        jobs_dir(defn)?;
-        Ok(MockEngine { defn: defn.clone(), store })
+impl SeqStore {
+    pub fn new(dir: PathBuf) -> Result<SeqStore> {
+        std::fs::create_dir_all(&dir)?;
+        Ok(SeqStore { dir })
     }
 
-    fn asset_file(&self, asset: &str) -> PathBuf {
-        self.store.join(format!("{}.json", asset.trim_matches('/').replace('/', "__")))
+    pub fn asset_file(&self, asset: &str) -> PathBuf {
+        self.dir.join(format!("{}.json", asset.trim_matches('/').replace('/', "__")))
     }
 
-    fn launch(&self, kind: &str, detail: Value) -> Result<()> {
+    pub fn launch(&self, kind: &str, detail: Value) -> Result<()> {
         let mut rec = Map::new();
         rec.insert("kind".into(), json!(kind));
         if let Value::Object(d) = detail {
             rec.extend(d);
         }
-        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(self.store.join("launches.jsonl"))?;
+        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(self.dir.join("launches.jsonl"))?;
         writeln!(f, "{}", Value::Object(rec))?;
         Ok(())
+    }
+
+    pub fn build(&self, items: &[Value], master: Option<&Value>, force: bool) -> Result<Value> {
+        let mut shots = Map::new();
+        for it in items {
+            let id = it["id"].as_str().unwrap_or_default().to_string();
+            let p = self.asset_file(it["asset"].as_str().unwrap_or_default());
+            if p.exists() && !it["base"].is_null() && !force {
+                let current = read_json(&p)?;
+                if !same_payload(Some(&readback_subset(&current)), Some(&it["base"])) {
+                    shots.insert(id, json!({"status": "diverged", "engine": readback_subset(&current)}));
+                    continue;
+                }
+            }
+            std::fs::write(&p, serde_json::to_string_pretty(&it["payload"])?)?;
+            shots.insert(id, json!({"status": "built", "engine": readback_subset(&it["payload"])}));
+        }
+        let mut out = json!({"shots": shots});
+        if let Some(m) = master {
+            std::fs::write(self.asset_file(m["asset"].as_str().unwrap_or_default()), serde_json::to_string_pretty(m)?)?;
+            let frames: i64 = m["shots"].as_array().map(|a| a.iter().filter_map(|s| s["frames"].as_i64()).sum()).unwrap_or(0);
+            out["master"] = json!({"asset": m["asset"], "frames": frames});
+        }
+        Ok(out)
+    }
+
+    pub fn pull(&self, items: &[Value]) -> Result<Value> {
+        self.launch("pull", json!({"shots": items.iter().map(|i| &i["id"]).collect::<Vec<_>>()}))?;
+        let mut shots = Map::new();
+        for it in items {
+            let p = self.asset_file(it["asset"].as_str().unwrap_or_default());
+            let v = if p.exists() { readback_subset(&read_json(&p)?) } else { Value::Null };
+            shots.insert(it["id"].as_str().unwrap_or_default().to_string(), v);
+        }
+        Ok(json!({"shots": shots}))
+    }
+
+    /// The shots whose build did not land (diverged or failed): their renders are refused.
+    pub fn blocked(build: &Value) -> Vec<String> {
+        build["shots"]
+            .as_object()
+            .map(|m| m.iter().filter(|(_, v)| v["status"] != "built").map(|(k, _)| k.clone()).collect())
+            .unwrap_or_default()
+    }
+}
+
+// --------------------------------------------------------------------------- mock
+
+/// Stands in for UE: "assets" are JSON files, "renders" are tinted previz frames.
+pub struct MockEngine {
+    defn: Definition,
+    store: SeqStore,
+}
+
+impl MockEngine {
+    pub fn new(defn: &Definition) -> Result<MockEngine> {
+        let store = SeqStore::new(defn.root().join(".shotpilot").join("mock_engine"))?;
+        jobs_dir(defn)?;
+        Ok(MockEngine { defn: defn.clone(), store })
+    }
+
+    fn asset_file(&self, asset: &str) -> PathBuf {
+        self.store.asset_file(asset)
+    }
+
+    fn launch(&self, kind: &str, detail: Value) -> Result<()> {
+        self.store.launch(kind, detail)
     }
 
     /// The mock game's content behind a shot, as UE reports it from the PIE world: the files
@@ -185,27 +252,7 @@ impl MockEngine {
     }
 
     fn do_build(&self, items: &[Value], master: Option<&Value>, force: bool) -> Result<Value> {
-        let mut shots = Map::new();
-        for it in items {
-            let id = it["id"].as_str().unwrap_or_default().to_string();
-            let p = self.asset_file(it["asset"].as_str().unwrap_or_default());
-            if p.exists() && !it["base"].is_null() && !force {
-                let current = read_json(&p)?;
-                if !same_payload(Some(&readback_subset(&current)), Some(&it["base"])) {
-                    shots.insert(id, json!({"status": "diverged", "engine": readback_subset(&current)}));
-                    continue;
-                }
-            }
-            std::fs::write(&p, serde_json::to_string_pretty(&it["payload"])?)?;
-            shots.insert(id, json!({"status": "built", "engine": readback_subset(&it["payload"])}));
-        }
-        let mut out = json!({"shots": shots});
-        if let Some(m) = master {
-            std::fs::write(self.asset_file(m["asset"].as_str().unwrap_or_default()), serde_json::to_string_pretty(m)?)?;
-            let frames: i64 = m["shots"].as_array().map(|a| a.iter().filter_map(|s| s["frames"].as_i64()).sum()).unwrap_or(0);
-            out["master"] = json!({"asset": m["asset"], "frames": frames});
-        }
-        Ok(out)
+        self.store.build(items, master, force)
     }
 }
 
@@ -230,10 +277,7 @@ impl Engine for MockEngine {
         } else {
             Value::Null
         };
-        let blocked: Vec<String> = build["shots"]
-            .as_object()
-            .map(|m| m.iter().filter(|(_, v)| v["status"] != "built").map(|(k, _)| k.clone()).collect())
-            .unwrap_or_default();
+        let blocked = SeqStore::blocked(&build);
         let resolved = resolve_all(&self.defn)?;
         let t0 = Instant::now();
         let mut renders = Map::new();
@@ -271,14 +315,7 @@ impl Engine for MockEngine {
     }
 
     fn pull(&self, items: &[Value]) -> Result<Value> {
-        self.launch("pull", json!({"shots": items.iter().map(|i| &i["id"]).collect::<Vec<_>>()}))?;
-        let mut shots = Map::new();
-        for it in items {
-            let p = self.asset_file(it["asset"].as_str().unwrap_or_default());
-            let v = if p.exists() { readback_subset(&read_json(&p)?) } else { Value::Null };
-            shots.insert(it["id"].as_str().unwrap_or_default().to_string(), v);
-        }
-        Ok(json!({"shots": shots}))
+        self.store.pull(items)
     }
 
     fn assets(&self) -> Result<Value> {
@@ -297,10 +334,10 @@ impl Engine for MockEngine {
         // the mock level: `level.json` holds what is tagged, `landmarks.json` ({name: entry})
         // what a level without tags offers, scored by size as the real engine does
         let tagged = out["anchors"].as_object().is_some_and(|m| !m.is_empty());
-        let marks = self.store.join("landmarks.json");
+        let marks = self.store.dir.join("landmarks.json");
         // a new project with no level of its own films the sample courtyard, so trying
         // Shotpilot without UE still gets places to scout
-        let courtyard = !marks.exists() && !self.store.join("level.json").exists() && self.defn.anchors.is_empty();
+        let courtyard = !marks.exists() && !self.store.dir.join("level.json").exists() && self.defn.anchors.is_empty();
         if (!tagged || candidates) && (marks.exists() || courtyard) {
             let level = if courtyard { mock_courtyard() } else { read_json(&marks)? };
             let cands: Vec<Value> = level
@@ -339,7 +376,7 @@ fn mock_courtyard() -> Value {
 
 impl MockEngine {
     fn inventory(&self) -> Result<Value> {
-        let f = self.store.join("assets.json");
+        let f = self.store.dir.join("assets.json");
         if f.exists() {
             return Ok(json!({"assets": read_json(&f)?}));
         }
@@ -355,7 +392,7 @@ impl MockEngine {
     }
 
     fn level(&self) -> Result<Value> {
-        let level = self.store.join("level.json");
+        let level = self.store.dir.join("level.json");
         if level.exists() {
             return Ok(json!({"anchors": read_json(&level)?}));
         }
@@ -376,7 +413,7 @@ impl MockEngine {
 }
 
 /// Rebuild a ResolvedShot from what is actually stored in the engine asset.
-fn shot_from_payload(base: &ResolvedShot, payload: &Value) -> ResolvedShot {
+pub(crate) fn shot_from_payload(base: &ResolvedShot, payload: &Value) -> ResolvedShot {
     let xf = |d: &Value| -> Xform {
         Xform::new(vec3(&d["location"]).unwrap_or([0.0; 3]), Rot::from_array(vec3(&d["rotation"]).unwrap_or([0.0; 3])))
     };

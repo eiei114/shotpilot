@@ -230,6 +230,10 @@ pub fn render_fingerprint(defn: &Definition, shot: &ResolvedShot, quality_name: 
         if let Some(g) = &defn.project.game_mode {
             body["game_mode"] = json!(g);
         }
+        // the page that draws three takes has its own version, so it never moves UE or mock takes
+        if defn.project.engine == "three" {
+            body["three"] = json!(crate::three::RENDERER_VERSION);
+        }
     }
     Ok(digest(&body))
 }

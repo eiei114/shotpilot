@@ -670,6 +670,12 @@ pub fn derive(ws: &Workspace, video: &str, carry: Carry) -> Result<PathBuf> {
     let dir = crate::projects::free_folder(parent, &crate::projects::folder_name(&title));
 
     let mut doc = crate::yamlio::Doc::load(&ws.path)?;
+    if ws.defn.project.engine == "three" {
+        // the new video films the same game (D-72), as a UE one films the same .uproject
+        let game = normalize(&std::path::absolute(crate::three::game_dir(&ws.defn))?);
+        let rel = crate::cut::relpath(&game, &normalize(&std::path::absolute(&dir)?));
+        doc.upsert_entries("project", &[("game".into(), json!(rel))])?;
+    }
     let value = doc.value()?;
     doc.upsert_entries("project", &[("name".into(), json!(title))])?;
     if ws.defn.project.engine == "ue5" {

@@ -1,0 +1,332 @@
+# Lanternless: the three engine's sample (D-72). The same teaser as the UE sample, filmed in the
+# three game's own ward in game/ (one file per thing, the anchors where the UE sample has them).
+# Draws in Edge or Chrome:
+#   shotpilot render still && shotpilot cut
+# Then change one shot (shotpilot set s03_stretcher_empty camera.lens.focal_length=50) or one
+# thing in the game (game/objects/stretcher.json) and render again: only what changed is drawn.
+version: 1
+
+project:
+  name: {name}
+  engine: three        # mock (no engine) | ue5 | three (draws the game in game/ with Edge or Chrome)
+  game: game           # scene.json, objects/ and props/ of the game the shots film
+
+teaser:
+  title: ""
+  pitch: ""
+  target_duration: 45
+  fps: 30
+  resolution: [1920, 1080]
+
+brief:
+  kind: teaser  # teaser | gameplay
+  genre: ホラー
+  audience: 静かな心理ホラーや探索ホラーが好きな Steam ユーザー
+  core: 誰もいないはずの病棟で、廊下の奥から何かが確かに近づいてくるという気配  # the one experience the viewer must get
+  must_show:
+    - 受付
+    - ストレッチャー
+    - 空の椅子
+    - 床に倒れた患者（部分のみ）
+    - 廊下の奥から近づく人影
+    - タイトル Lanternless
+    - Steam でウィッシュリスト登録
+  references: []
+  style: yt-yd6oGFqE1F8
+  design: quiet-dread
+  skills:
+    - mood-teaser
+    - threat-reveal
+    - cold-open
+    - title-drop
+    - end-card
+  plan: "目的：Lanternless の最初の公開ティザーです。Steam のウィッシュリストにつなげます。成果物は約36秒のティザーで、ゲームの仕組みは見せません。主軸は mood-teaser で、場所と光と音だけで怖がらせます。人影は threat-reveal の考え方で出し惜しみし、最初は痕跡だけ、最後に一瞬近づかせます。正体は明かしません。最初の3秒は cold-open、終盤は title-drop、最後の行動の呼びかけは end-card で作ります。見た目は quiet-dread です。\n\n空間の流れ：受付（x≈-360）から廊下を +x の方向へ進みます。途中にストレッチャー（x≈1210）と空の椅子（x≈1180, y≈-480）があり、床の患者（x≈1500, y≈300）が続き、人影は奥（x≈2450）に立っています。ティザー全体がこの一本の廊下の前進になり、カットが進むごとにカメラは人影に近づきます。\n\nビートマップ（時間 → 観客に残るもの → 焦点 → 変化 → 文字・音 → 抜け方）\n・hook 0–4秒 → 「誰もいないのに、何かがいた」 → 空の椅子 → 非常灯の明滅で、椅子の影が一瞬だけ二重になる → 文字なし。蛍光灯のジジッという音と遠い心電図音 → 明滅が消える瞬間に黒へハードカット\n・establish 4–14秒 → 「明かりの消えた夜の病棟」 → 受付カウンター → 人のいない受付から、カメラがゆっくり廊下の奥へ向く → 黒地に短い一文「夜勤は、まだ終わっていない」（仮）。低い空調音 → 廊下の奥の闇でカット\n・escalate 14–30秒 → 「ここで何かが起きた。それが今もいる」 → ストレッチャー、床の患者、奥の人影 → 短いカットを重ねるたびに奥へ進む。ストレッチャーの空の寝台と、床の患者の手先だけをピント外れで映し、全身は見せない。最後は暗い廊下の奥に人影が小さく立ち、次のカットで明らかに近づいている → 音を段階的に抜いて足音一つだけにし、最後は無音 → 人影が近づいた瞬間に暗転（脅かしは一度だけ）\n・title 30–36秒 → 「Lanternless」という名前を覚える → タイトル文字 → 黒の無音を1.5秒置いてからタイトルを3秒出し、続けて end-card → 「Lanternless」に続けて「Steam でウィッシュリスト登録」。最後に遠くで蛍光灯が一度だけ点く音 → 黒のまま終える\n\n手順：1) ロケハンで scout_targets の5か所を見つけ、廊下の軸と非常灯の位置を確認します。2) ビートマップから脚本（黒地の文字2枚以内）とショットリストを作ります。カメラは目線より低い110–140cmで、ほぼ据え置きかゆっくりした前進です。3) previz でカットごとの尺と人影の距離（奥 → 中間 → 近距離）を決めます。4) 音を先に組み、そのリズムに映像を合わせて最初のカットにします。\n\n制約：発売日、価格、対応プラットフォーム（Steam 以外）は書きません。床の患者と人影は全身も顔も映しません。\n\nScout targets:\n- 空の椅子を床から約80cmの高さで正面に収められ、背後に非常灯か窓明かりが入る位置 (冒頭の一枚（hook）。影の明滅を見せるため、椅子の背後に光源が必要)\n- 受付カウンター越しに、+x 方向の廊下の奥まで見通せる位置 (establish で病棟の広さと、奥へ進む方向を一枚で示すため)\n- ストレッチャーの寝台面を手前の前景にして、廊下の奥を背景に置ける低い位置 (escalate の最初のカット。空の寝台で『誰かがいた』を示すため)\n- 床の患者の手先か足先だけが画面の端に入り、全身は柱や影で隠れる位置 (何が起きたかを見せずに痕跡だけ示すため)\n- 人影（x≈2450）を遠景・中景・近景の3段階で正面から撮れる廊下の軸と、その途中の暗い区間 (人影が近づく段階と、最後に一度だけ脅かす瞬間を作るため)\n\nAssumptions:\n- タイトルは依頼文の『Lanternless』とします（プロジェクトのタイトルは未設定）\n- 長さは最初のティザーとして約36秒とします\n- 行動の呼びかけは依頼にある目的から『Steam でウィッシュリスト登録』のみとし、発売日・価格・その他のプラットフォームは載せません\n- 廊下は受付から +x の方向へ一直線に続き、人影はその奥に立つとみなします\n- 見た目の指定がないため、静かな心理ホラーに合う quiet-dread を選びました\n- 黒地の一文『夜勤は、まだ終わっていない』は仮のコピーで、差し替えられます\n- 人影の動きは、カットごとに配置の距離を変えて表現します"
+  direction: 青緑がかった闇に非常灯の赤が一点だけ灯る quiet-dread の見た目で作ります。細身で静かな文字を使い、長く溜めてから一度だけ近づかせます。
+
+anchors:
+  empty_chair:
+    at: [1177.5, -482.5, 0.0]
+    size: [45.0, 45.0, 46.0]
+    center: [1200.0, -460.0, 23.0]
+  fallen_patient:
+    at: [1507.4, 300.9, 31.7]
+    size: [230.5, 177.5, 48.2]
+    center: [1600.0, 340.0, 24.1]
+  figure:
+    at: [2450.0, 0.0, 0.0]
+    size: [61.1, 61.6, 178.0]
+    center: [2446.9, -0.5, 88.5]
+  reception_desk:
+    at: [-360.0, 230.0, -0.0]
+    size: [120.0, 300.0, 110.0]
+    center: [-300.0, 380.0, 55.0]
+  stretcher:
+    at: [1209.5, -5.0, 76.0]
+    size: [210.2, 110.1, 8.0]
+    center: [1300.0, 50.0, 80.0]
+
+defaults:
+  lens: {focal_length: 35, aperture: 2.8}
+
+shots:
+  - id: s01_chair_hook
+    beat: hook
+    purpose: 誰もいない椅子なのに、さっきまで誰かが座っていた気配を一枚で残す。
+    duration: 3.5
+    camera:
+      location: [935.0, -185.0, 95.0]
+      rotation: [-10.7, -46.1, 0.0]
+      lens: {focal_length: 35.0}
+      end:
+        location: [1080, -340, 55]
+        rotation: [-12.5, -45.0, 0.0]
+        curve: ease_in_out
+    environment: {time_of_day: night}
+    notes: 椅子を床から約75cmの高さで正面に置く。背後の窓か非常灯（赤、全編でこの1点だけ）を逆光にし、明滅で椅子の影が一瞬だけ二重になる。明滅は1秒に3回まで。スカウト写真では柱が椅子を隠していたため、-x側から回り込んで撮る。柱が入る場合は y を -60 までずらす。明滅が消えた瞬間に黒へハードカットする。
+    fx:
+      - {type: flicker, at: 2.4}
+    sfx:
+      - file: audio/hit.wav
+        at: 1.8
+        gain: -9.0
+        label: 非常灯の明滅（影が二重になる瞬間）
+
+  - id: s02_reception_wide
+    beat: establish
+    purpose: 明かりの消えた夜の病棟で、受付に誰もいないことを見せる。
+    duration: 6.25
+    camera:
+      location: [-60.0, 520.0, 140.0]
+      look_at: reception_desk
+      lens: {focal_length: 24.0}
+      end:
+        location: [-80.0, -100.0, 125.0]
+        rotation: [-3.0, 36.0, 0.0]
+        curve: ease_in_out
+    environment: {time_of_day: night}
+    notes: カウンターの黒い塊を手前に置き、右奥の開口部と青い窓まで見通す。ゆっくり横に滑らせ、最後は廊下の暗い奥に視線を向けて止める。人影はまだ画に入れない（入る場合は角度を右へ振る）。空調の低い音だけを鳴らす。
+    sfx:
+      - file: audio/hit.wav
+        at: 3.8
+        gain: -8.0
+        label: 廊下の奥からのノック（場違いな音）
+
+  - id: s03_stretcher_empty
+    beat: establish
+    purpose: 空の寝台で、ここに誰かが寝かされていたことを示す。
+    duration: 4.75
+    camera:
+      location: [1130.0, -110.0, 105.0]
+      rotation: [-6.1, 43.3, 0.0]
+      lens: {focal_length: 35.0}
+      end:
+        location: [1470.0, -110.0, 105.0]
+        rotation: [-6.1, 136.7, 0.0]
+        curve: ease_in_out
+    environment: {time_of_day: night}
+    notes: 寝台の天板とほぼ同じ高さから横向きに撮る。天板の上には何もなく、床に脚の影が濃く落ちる。廊下の奥（+x）はフレームの外に置き、人影は見せない。
+
+  - id: s04_patient_feet
+    beat: establish
+    purpose: 床に倒れた誰かの足先だけを見せ、何が起きたかは見せない。
+    duration: 4.0
+    camera:
+      location: [1450.0, 228.0, 30.0]
+      rotation: [-7.0, 61.0, 0.0]
+      lens: {focal_length: 50.0}
+      end:
+        location: [1474.0, 246.0, 22.0]
+        rotation: [-6.0, 65.0, 0.0]
+        curve: ease_in_out
+    environment: {time_of_day: night}
+    notes: 床すれすれの低い位置から撮る。足先と脚の一部だけを画面の端に入れ、胴と顔は影とフレームの外に隠す。奥に倒れたスタンドの暖色の光を逆光にして、足先を影絵で浮かせる。次のカットへは黒をはさんで時間を飛ばす。
+    transition: dip
+
+  - id: s05_stretcher_corridor
+    beat: escalate
+    purpose: 廊下のずっと奥に、何かが立っていることに初めて気づかせる。
+    duration: 2.75
+    camera:
+      location: [650.0, 80.0, 85.0]
+      look_at: figure
+      lens: {focal_length: 24.0}
+      end:
+        location: [1120.0, 60.0, 95.0]
+        look_at: figure
+        curve: linear
+    environment: {time_of_day: night}
+    notes: スカウト写真の構図を使う。空の寝台を手前に横切らせ、突き当たりのトップライトの下に人影が小さな逆光シルエットで立つ。説明はせず、気づいた人だけが見つける大きさにする。足音を一つだけ入れる。
+
+  - id: s06_chair_again
+    beat: escalate
+    purpose: 冒頭の空の椅子に戻り、まだ空いていることがかえって不気味だと感じさせる。
+    duration: 2.25
+    camera:
+      location: [1470.0, -180.0, 100.0]
+      rotation: [-11.2, -134.0, 0.0]
+      lens: {focal_length: 50.0}
+      end:
+        location: [1340, -310, 55]
+        rotation: [-12.5, -134.0, 0.0]
+        curve: ease_in_out
+    environment: {time_of_day: night}
+    notes: hookとは反対の+x側から、寄りで撮る。赤い非常灯は今度は明滅させず、点いたままにする。音を一段抜く。
+
+  - id: s07_figure_mid
+    beat: escalate
+    purpose: 人影がさっきより明らかに近い距離に立っていることを示す。
+    duration: 2.25
+    camera:
+      location: [1400.0, -40.0, 125.0]
+      rotation: [-2.0, 2.2, 0.0]
+      lens: {focal_length: 35.0}
+      end:
+        location: [1750.0, -20.0, 125.0]
+        rotation: [-2.0, 1.6, 0.0]
+        curve: ease_in
+    environment: {time_of_day: night}
+    notes: 廊下の軸上から、壁と天井が一点に収束するシンメトリーな構図で撮る。人影は全身が入るが、完全な逆光で顔も細部も見えない。横移動はごくわずかにして、覗いている目線にする。
+
+  - id: s08_patient_hand
+    beat: escalate
+    purpose: 床に伸びた手先だけで、ここで起きたことを一瞬だけ思い出させる。
+    duration: 1.75
+    camera:
+      anchor: fallen_patient
+      offset: [-75.0, -95.0, 156.0]
+      move: {type: crane_down, distance: 160.0}
+      lens: {focal_length: 50.0}
+    environment: {time_of_day: night}
+    notes: s04とは反対の-x側から撮る。手先だけを手前に入れ、ピントを外して輪郭だけにする。全身と顔は映さない。音は足音一つだけにする。
+    sfx:
+      - file: audio/hit.wav
+        at: 1.0
+        gain: -7.0
+        label: 遠い足音ひとつ
+
+  - id: s09_figure_close
+    beat: escalate
+    purpose: 人影が目の前まで近づいた、一度だけの山を作る。
+    duration: 1.25
+    camera:
+      location: [1750.0, 0.0, 140.0]
+      rotation: [-1.0, 0.0, 0.0]
+      lens: {focal_length: 50.0}
+      end:
+        location: [2180.0, 0.0, 140.0]
+        rotation: [0.0, 0.0, 0.0]
+        curve: ease_in
+    environment: {time_of_day: night}
+    notes: 胸から上だけのシルエット。トップライトの逆光で顔は真っ黒のまま、正体は見せない。脅かしはここ一度だけ。無音にして、近づいた瞬間に黒へ落とす。
+    transition: dip
+    sfx:
+      - file: audio/hit.wav
+        at: 0.0
+        gain: -2.0
+        label: 近い足音：一度だけの脅かし
+    fx:
+      - {type: flicker, at: 0.5}
+
+  - id: s10_reception_title
+    beat: title
+    purpose: 最初の受付に戻り、やはり誰もいないことで静かに締める。
+    duration: 4.5
+    camera:
+      location: [-30.0, 330.0, 120.0]
+      rotation: [-13.3, 169.5, 0.0]
+      lens: {focal_length: 24.0}
+      end:
+        location: [-40.0, -60.0, 120.0]
+        rotation: [-7.3, 120.6, 0.0]
+        curve: ease_in_out
+    environment: {time_of_day: night}
+    notes: s02とは反対の+y側から、引きで据え置く。低いカメラで天井を広く入れ、上三分の一を空けておく。無音のまま保持し、黒からタイトルへ移る。
+    transition: dip
+
+stage:
+  summary: 夜の閉鎖病棟。西端（X≈-360）のロビーに受付カウンターがあり、卓上スタンドだけが暖色に灯っている。ロビーには青緑の連結椅子の列、壁の赤い自販機の明かり、砂嵐を映すブラウン管のテレビ、車椅子、枯れた鉢植え、床に散った書類がある。東へ延びる約26mの廊下は、壁の下半分が剥げかけた深緑の塗装、上半分が染みのある漆喰で、両側に手すりが続く。床は濡れたように光る白と黒の市松タイル。天井の蛍光灯はほとんどが消え、入口近くの1灯と、X≈1500で明滅する1灯、突き当たり（X≈2540）の1灯だけが点く。突き当たりの光の下に痩せた人影（figure）が立ち、ゆっくり近づいてくる。廊下の途中（X≈1300）に白いシーツの残った空のストレッチャーと点滴スタンド、南側の病室103（L1）に窓を向いた空の木の椅子、北側の病室102（R2）の床に倒れた患者がいる。病室の扉は開いたままで、扉の上に部屋番号の札が出ている。非常口の赤い表示（X≈1160、南の壁）が全編で唯一の赤。病室の格子窓から月光が差し、霧の中に光の筋が見える。空気には常に霧と浮遊する塵がある。
+  anchors:
+    empty_chair: 病室103の中央、格子窓に向いて置かれた木の椅子（座面の高さ46cm、背もたれは廊下側）。窓から月光が差し込み、椅子と格子の影が床の市松タイルに長く落ちる。左奥（X≈960）に金属のキャビネット、右奥にマットレスを外したベッドの枠がある。天井の蛍光灯は弱く冷たく、部屋は青い。廊下側から撮ると椅子の背中越しに窓を見ることになり、誰かが座っていたような構図になる。
+    fallen_patient: 病室102の床に、ガウンを着た患者がうつ伏せに倒れている（230×178cmの範囲、頭は東、足は西）。頭の先に倒れたフロアスタンドが転がり、暖色の光が床を這う。北の壁には格子窓、西の壁際にマットレスのずれたベッドがあり、シーツが床へ垂れている。戸口（X≈1610）には痙攣する患者が立ち、奥の壁際に壁を向いて立つ患者がいる。床すれすれの低い位置から西側（足の側）に寄ると、足先と脛だけがランプの逆光で影絵になる。
+    figure: 廊下の突き当たりに立つ、背の高い痩せた黒い人影（約186cm）。手足が長く、首を傾げている。真上の蛍光灯が白い円錐の光を落とし、背後の漆喰と剥げた腰壁が明るく、人影は真っ黒な逆光のシルエットになる。足元の市松タイルが濡れて光る。左右は手すりの付いた幅3mの廊下で、右手前に医療用のカートがある。廊下の軸から正面に撮ると一点透視の構図が素直に決まる。人影は12秒かけて X≈1550 まで歩いて近づく。
+    reception_desk: ロビー北側の受付カウンター（高さ110cm、長さ300cm）。客側（西）は深緑の腰板、内側（東）は事務机で、ベージュのブラウン管モニター、キーボード、電話、書類、色の違うバインダーが並び、卓上スタンドの暖色の光が手元を照らす。上に「受付 RECEPTION」の吊り札、北の壁に記録の棚と止まった時計がある。内側の事務椅子は斜めに引かれたまま、誰も座っていない。東側から撮ると、カウンター越しにロビーの市松の床と連結椅子、奥の格子窓が見える。
+    stretcher: 廊下の途中に斜めに置かれたストレッチャー。濃紺のマットレスの上に白いシーツが半分かかったまま残り、片側の縁から床へ垂れている。枕もある。細い金属の脚と車輪、そばに点滴スタンドと空に近い点滴の袋。左右は手すりの付いた深緑の腰壁と漆喰の壁で、奥の突き当たりに明るい蛍光灯と人影が見える。寝台の高さから撮ると、空のシーツ越しに廊下の奥行きが出る。
+  mood:
+    place: stretcher
+    detail: empty_chair
+    threat: figure
+    title: reception_desk
+
+script:
+  - id: c_night
+    kind: card
+    ja: 夜勤は、まだ終わらない
+    en: The night shift isn't over.
+    dur: 3.3
+    after: s01_chair_hook
+
+  - id: bk
+    kind: black
+    dur: 0.8
+    after: s10_reception_title
+
+  - id: ttl
+    kind: title
+    ja: Lanternless
+    dur: 3.5
+    after: bk
+    sfx:
+      - file: audio/hit.wav
+        at: 0.0
+        gain: -4.0
+        label: タイトルのブーム
+
+  - id: endcard
+    kind: card
+    ja: Steamでウィッシュリスト登録
+    en: Wishlist on Steam
+    dur: 4.5
+    after: ttl
+    sfx:
+      - file: audio/hit.wav
+        at: 1.0
+        gain: -8.0
+        label: 遠くで蛍光灯が一度だけ点く
+
+finish:
+  title: null
+  end_card: null
+  grade: horror
+  letterbox: 2.39
+  typeface: mincho
+  fonts:
+    display: Shippori Mincho:500
+    body: Zen Kaku Gothic Antique:400
+    latin: Newsreader:400
+    title: IM Fell English:400
+  title_size: 0.16
+  motion:
+    profile: horror
+    title:
+      in: fade
+      in_s: 1.2
+      hold: still
+      out: fade
+      out_s: 0.9
+    avoid:
+      - glitch
+      - flash
+      - whiteout
+      - slam
+      - pop
+    energy: calm
+
+audio:
+  music:
+    - file: audio/drone.wav
+      from: start
+      gain: -10.0
+      fade_in: 1.5
+      fade_out: 2.0
+      label: 低いドローン（仮の音。好きな曲に差し替える）
+  loudness: -16.0

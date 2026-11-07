@@ -134,6 +134,9 @@ shots:
       - {file: audio/hit.wav, at: 0, gain: 0, label: title}
 "#;
 
+/// The three engine's sample (D-72): the Lanternless teaser, filmed in the ward of threegame.rs.
+pub const THREE_WARD: &str = include_str!("../three/ward.yaml");
+
 pub const EMPTY: &str = r#"version: 1
 
 project:
@@ -170,7 +173,7 @@ shots: []
 
 /// A reference teaser's copies of its pictures (D-71) stay out as well: only what was measured
 /// (`facts.json`) belongs with the project.
-pub const GITIGNORE: &str = "render/\ncut/\n.shotpilot/jobs/\n.shotpilot/logs/\n.shotpilot/ue_userdir/\n.shotpilot/mock_engine/\n.shotpilot/sp_entry.py\npromo/posts/\n\
+pub const GITIGNORE: &str = "render/\ncut/\n.shotpilot/jobs/\n.shotpilot/logs/\n.shotpilot/ue_userdir/\n.shotpilot/mock_engine/\n.shotpilot/three_engine/\n.shotpilot/sp_entry.py\npromo/posts/\n\
                               reference/*/proxy.mp4\nreference/*/contact.jpg\nreference/*/compare/\n";
 
 /// Fill a template. `uproject` and `map` are YAML scalars (use "null" for none).

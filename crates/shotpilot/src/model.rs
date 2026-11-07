@@ -76,8 +76,11 @@ pub fn valid_package(s: &str) -> bool {
 #[derive(Debug, Clone)]
 pub struct ProjectCfg {
     pub name: String,
-    pub engine: String, // mock | ue5
+    pub engine: String, // mock | ue5 | three
     pub uproject: Option<String>,
+    /// The three engine's game folder (scene.json, objects/, props/), relative to shots.yaml.
+    /// None = `game` (D-72).
+    pub game: Option<String>,
     pub map: Option<String>,
     pub ue_cmd: Option<String>,
     pub content_root: String,
@@ -486,6 +489,7 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
         name: opt_str(p.get("name")).filter(|s| !s.is_empty()).unwrap_or(dir_name),
         engine: opt_str(p.get("engine")).unwrap_or_else(|| "mock".into()),
         uproject: opt_str(p.get("uproject")),
+        game: opt_str(p.get("game")).filter(|s| !s.is_empty()),
         map: opt_str(p.get("map")),
         ue_cmd: opt_str(p.get("ue_cmd")),
         content_root: opt_str(p.get("content_root"))
@@ -507,8 +511,8 @@ pub fn parse(data: &Value, path: &Path) -> Result<Definition> {
             }
         },
     };
-    if project.engine != "mock" && project.engine != "ue5" {
-        errs.push(format!("project.engine: must be 'mock' or 'ue5', got '{}'", project.engine));
+    if !["mock", "ue5", "three"].contains(&project.engine.as_str()) {
+        errs.push(format!("project.engine: must be 'mock', 'ue5' or 'three', got '{}'", project.engine));
     }
     if project.engine == "ue5" {
         if project.uproject.is_none() {

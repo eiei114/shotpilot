@@ -141,7 +141,8 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .ex .t svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
 .ex .d { color: var(--muted); font-size: 13px; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ex .tag { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 1px 8px; }
-.blank { margin-top: 14px; border: 0; background: none; color: var(--muted); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.blank { margin-top: 14px; border: 0; background: none; color: var(--muted); font-size: 13px; display: flex; gap: 4px; align-items: center; }
+.blank + .blank { margin-top: 6px; }
 .blank:hover { color: var(--ink); }
 
 /* ------------------------------------------------------------------ the vibe stack (D-62)
@@ -307,6 +308,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
         <div id="examples"></div>
       </div>
       <button class="blank" id="sample">…またはサンプルで試す（UE なし・6カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button class="blank" id="sample-three">…または Three.js のサンプルゲームで試す（UE なし・病棟のホラー 10カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
     </section>
 
     <!-- all projects -->
@@ -372,6 +374,7 @@ const KINDS = {
 const ENGINES = {
   mock: { label: "UE なしで試す", d: "エンジンを起動せず、ワイヤーフレーム（previz）で確かめる" },
   ue5: { label: "Unreal Engine 5", d: "UE プロジェクトのレベルから撮る。Sequencer と Movie Render Queue を使う" },
+  three: { label: "Three.js のサンプルゲーム", d: "同梱の病棟（Lanternless）を Edge か Chrome で撮る。UE は要らない" },
 };
 const EXAMPLES = [
   { kind: "teaser", genre: "ホラー", title: "一人称ホラーのティザー", tag: "30秒", beats: [3, 4, 5, 2],
@@ -604,7 +607,7 @@ function drawHome() {
   $("genre-menu").innerHTML = [`<button data-genre=""><span class="ck">${ui.genre ? "" : "✓"}</span><span class="t">あとで決める</span><span class="d">ブリーフで選べます。説明文から Claude が読み取ります</span></button>`]
     .concat(gs.map((g) => `<button data-genre="${esc(g.name)}"><span class="ck">${g.name === ui.genre ? "✓" : ""}</span><span class="t">${esc(g.name)}</span><span class="d">${esc(g.headline)}（${g.n} 本を実測）</span></button>`)).join("");
   const e = ENGINES[ui.engine];
-  $("engine-btn").innerHTML = `${ui.engine === "ue5" ? ICON.cube : ICON.wire}${esc(e.label)}${ICON.chev}`;
+  $("engine-btn").innerHTML = `${ui.engine === "mock" ? ICON.wire : ICON.cube}${esc(e.label)}${ICON.chev}`;
   $("engine-menu").innerHTML = Object.entries(ENGINES).map(([key, v]) => `<button data-engine="${key}"><span class="ck">${key === ui.engine ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
   const ai = ui.home?.ai || {};
   $("ai-dot").className = "dot" + (ai.ready ? "" : " bad");
@@ -674,7 +677,7 @@ function card(p) {
   if (!gone) {
     if (p.cut) badge = `<span class="badge">${ICON.check}Cut あり</span>`;
     else if (p.shots && p.taken) badge = `<span class="badge${p.fresh < p.shots ? " warn" : ""}">撮影 ${p.fresh}/${p.shots}</span>`;
-    else badge = `<span class="badge">${p.engine === "ue5" ? "UE5" : "UE なし"}</span>`;
+    else badge = `<span class="badge">${p.engine === "ue5" ? "UE5" : p.engine === "three" ? "Three.js" : "UE なし"}</span>`;
   }
   const menu = ui.menu === p.path ? `<div class="menu">${gone ? "" : `<button data-act="reveal" data-path="${esc(p.path)}"><span class="t">フォルダを開く</span></button>`}
       <button data-act="forget" data-path="${esc(p.path)}"><span class="t">一覧から外す</span><span class="d">フォルダとファイルは消えません</span></button></div>` : "";
@@ -792,14 +795,14 @@ async function hydrateUproject() {
   catch { ui.uproject = null; drawTray(); }
 }
 
-async function create(sample = false) {
+async function create(sample = false, sampleEngine = "mock") {
   if (ui.busy) return;
   const prompt = $("prompt").value.trim();
   if (!sample && !prompt) { $("prompt").focus(); toast("どんな映像にしたいかを書いてください"); return; }
   // the stacked atmosphere rides on the prompt: the planning turn reads both as the request
   const vibe = vibeNote();
   const pitch = vibe ? `${prompt}\n${window.SP_LANG === "en" ? "Mood" : "雰囲気"}: ${vibe}` : prompt;
-  const body = { engine: sample ? "mock" : ui.engine, kind: ui.kind, genre: sample ? "" : ui.genre, sample,
+  const body = { engine: sample ? sampleEngine : ui.engine, kind: ui.kind, genre: sample ? "" : ui.genre, sample,
     name: sample ? "サンプル" : (ui.name.trim() || nameFromPrompt(prompt)), pitch: sample ? "" : pitch,
     location: ui.location };
   if (!sample && ui.engine === "ue5") {
@@ -864,6 +867,7 @@ document.addEventListener("click", (e) => {
 });
 $("send").addEventListener("click", () => create(false));
 $("sample").addEventListener("click", () => create(true));
+$("sample-three").addEventListener("click", () => create(true, "three"));
 $("model-btn").addEventListener("click", () => go("settings"));
 $("open-btn").addEventListener("click", openFolder);
 $("recent-h").addEventListener("click", () => { ui.railOpen = !ui.railOpen; savePrefs(); drawRail(); });

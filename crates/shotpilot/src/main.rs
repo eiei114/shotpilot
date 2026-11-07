@@ -30,7 +30,8 @@ struct Cli {
 enum Cmd {
     /// write a starter shots.yaml
     Init {
-        #[arg(long, default_value = "mock", value_parser = ["mock", "ue5"])]
+        /// mock (no engine), ue5, or three (a sample game drawn in Edge or Chrome, D-72)
+        #[arg(long, default_value = "mock", value_parser = ["mock", "ue5", "three"])]
         engine: String,
         #[arg(long)]
         uproject: Option<String>,
@@ -509,11 +510,23 @@ fn run(cli: Cli) -> Result<u8> {
             });
             let uproject = uproject.map(|u| serde_json::to_string(&u).unwrap_or_default()).unwrap_or("null".into());
             let map = map.map(|m| yamlio::emit_str(&m)).unwrap_or("null".into());
-            let tpl = if empty { templates::EMPTY } else { templates::DEMO };
+            let three = engine == "three";
+            let tpl = match (empty, three) {
+                (true, _) => templates::EMPTY,
+                (false, true) => templates::THREE_WARD,
+                (false, false) => templates::DEMO,
+            };
             std::fs::write(file, templates::render(tpl, &name, &engine, &uproject, &map))?;
             if !empty {
                 if let Some(dir) = abs.parent() {
                     sound::write_demo_audio(dir)?; // placeholder BGM and effects the demo refers to
+                }
+            }
+            if three {
+                // the game the shots film (an existing game/ is left as it is)
+                let game = abs.parent().map(|p| p.join("game")).unwrap_or_else(|| "game".into());
+                if shotpilot::threegame::write(&game)? {
+                    println!("wrote the sample game in {}", game.display());
                 }
             }
             let gi = abs.parent().map(|p| p.join(".gitignore")).unwrap_or_else(|| ".gitignore".into());

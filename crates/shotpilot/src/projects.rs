@@ -264,7 +264,7 @@ pub struct NewProject {
     pub location: PathBuf,
     /// Project name; also the folder name, made safe for the file system.
     pub name: String,
-    /// mock | ue5
+    /// mock | ue5 | three
     pub engine: String,
     pub uproject: Option<PathBuf>,
     /// e.g. /Game/Maps/Courtyard (ue5 only)
@@ -310,7 +310,7 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
         bail!("プロジェクト名を入れてください");
     }
     let (parent, uproject_yaml, map_yaml) = match p.engine.as_str() {
-        "mock" => (p.location.clone(), "null".to_string(), "null".to_string()),
+        "mock" | "three" => (p.location.clone(), "null".to_string(), "null".to_string()),
         "ue5" => {
             let Some(up) = p.uproject.as_deref().and_then(find_uproject) else {
                 bail!("UE プロジェクト（.uproject）を選んでください");
@@ -324,7 +324,7 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
             // the project folder sits next to the .uproject, so the link stays relative
             (parent, serde_json::to_string(&format!("../{file}"))?, crate::yamlio::emit_str(map))
         }
-        other => bail!("engine must be mock or ue5 (got '{other}')"),
+        other => bail!("engine must be mock, ue5 or three (got '{other}')"),
     };
     if parent.as_os_str().is_empty() {
         bail!("保存先のフォルダを選んでください");
@@ -333,7 +333,8 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
     std::fs::create_dir_all(&dir)?;
     let shots = dir.join("shots.yaml");
     let text = if p.sample {
-        templates::render(templates::DEMO, &name, &p.engine, &uproject_yaml, &map_yaml)
+        let tpl = if p.engine == "three" { templates::THREE_WARD } else { templates::DEMO };
+        templates::render(tpl, &name, &p.engine, &uproject_yaml, &map_yaml)
     } else {
         let extra = templates::Extra { title: "", pitch: &p.pitch, kind: &p.kind, genre: &p.genre };
         let text = templates::render_with(templates::EMPTY, &name, &p.engine, &uproject_yaml, &map_yaml, &extra);
@@ -346,6 +347,10 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
     std::fs::write(&shots, text)?;
     if p.sample {
         crate::sound::write_demo_audio(&dir)?;
+    }
+    if p.engine == "three" {
+        // the game it films (D-72): the sample ward, which people then edit as their own
+        crate::threegame::write(&dir.join("game"))?;
     }
     let gi = dir.join(".gitignore");
     if !gi.exists() {

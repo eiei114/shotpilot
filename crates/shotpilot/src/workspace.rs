@@ -1827,7 +1827,8 @@ impl Workspace {
         // where each camera really stood: the engine pulls a camera in front of a wall it would
         // otherwise see through (`clear_view`), and says so
         let mut stood: Vec<(crate::geometry::Vec3, f64)> = cams.iter().map(|c| (c.location, c.focal_length)).collect();
-        if self.defn.project.engine == "ue5" {
+        // an engine that draws (UE, three) photographs; mock draws the previz lines
+        if self.defn.project.engine != "mock" {
             let raw = dir.join(".raw");
             let q = fp::quality(&self.defn, "still")?;
             let mut build = Vec::new();
