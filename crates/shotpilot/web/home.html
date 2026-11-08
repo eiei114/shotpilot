@@ -8,20 +8,19 @@
 <style>
 :root {
   --app: #dfe7ea; --card: #ffffff; --ink: #111312; --muted: #6b7276; --faint: #9aa1a5; --line: #e4e8ea;
-  --soft: #f3f6f7; --tray: #eceff0; --accent: #3be02b; --accent-ink: #0b3d06; --stale: #d99a00; --err: #d92d20;
+  --soft: #f3f6f7; --accent: #3be02b; --accent-ink: #0b3d06; --stale: #d99a00; --err: #d92d20;
   --hook: #ff6b3d; --establish: #3d8bff; --escalate: #b45cff; --title: #3be02b;
   --shadow: 0 1px 3px rgb(16 24 40 / .06); --pop: 0 10px 34px rgb(16 24 40 / .16);
   --scroll: #c9d1d5; --scroll-hover: #a3acb1;
   /* sel: outline of what is chosen, hovered or focused; primary: filled main buttons; err-fg: red text */
   --sel: var(--ink); --primary: var(--ink); --err-fg: var(--err); --ok: #2e7d32; --warn: #b26a00;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  --serif: "Iowan Old Style", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
     --scroll: #34393c; --scroll-hover: #4b5155;
-    --soft: #202325; --tray: #1d2022; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
+    --soft: #202325; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
     --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
   }
 }
@@ -85,45 +84,72 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
   min-width: 0; min-height: 0; overflow-y: auto; position: relative; }
 .view { min-height: 100%; }
 
-/* ------------------------------------------------------------------ home: hero + composer */
-#v-home { display: flex; flex-direction: column; align-items: center; padding: 11vh 32px 60px; }
-.hero { text-align: center; margin-bottom: 26px; }
-.hero h1 { font-family: var(--serif); font-size: 44px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -.01em; font-weight: 700; }
-.hero h1 mark { background: color-mix(in srgb, var(--accent) 34%, transparent); color: inherit; padding: 0 .12em; border-radius: 4px;
-  box-shadow: inset -3px 0 0 var(--accent); }
-.hero p { margin: 0; color: var(--muted); font-size: 15px; }
-.cwrap { width: min(780px, 100%); background: var(--tray); border-radius: 20px; padding: 4px 4px 0; }
-.composer { background: var(--card); border-radius: 17px; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 14px 14px 12px;
-  display: grid; gap: 10px; }
-.composer:focus-within { border-color: color-mix(in srgb, var(--ink) 30%, var(--line)); }
-#prompt { border: 0; outline: 0; resize: none; background: transparent; min-height: 74px; max-height: 260px; padding: 2px 4px; font-size: 15px; line-height: 1.6; }
+/* ------------------------------------------------------------------ home: the slate
+   A left-aligned heading over a slate: the teaser's beats as a band on top, labelled cells for what is
+   being made, the pitch, and a foot with where it goes and the shoot button. The examples are timelines. */
+#v-home { padding: 9vh 40px 64px; container-type: inline-size; }
+.home-col { width: min(860px, 100%); margin: 0 auto; }
+.hero { margin-bottom: 22px; }
+.eyebrow { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; color: var(--muted); font-size: 12px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; }
+.recdot { width: 8px; height: 8px; border-radius: 50%; background: var(--err); flex: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--err) 22%, transparent); animation: rec 2.4s ease-in-out infinite; }
+@keyframes rec { 50% { opacity: .3; } }
+.hero h1 { font-size: 36px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.02em; font-weight: 700; }
+.hero p { margin: 0; color: var(--muted); font-size: 14.5px; }
+.slate { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.slate:focus-within { border-color: color-mix(in srgb, var(--ink) 32%, var(--line)); }
+.beatband { position: relative; display: flex; gap: 2px; height: 6px; border-radius: 11px 11px 0 0; overflow: hidden; }
+.beatband i { display: block; }
+.beatband::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 30%; opacity: 0; transform: translateX(-110%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / .8), transparent); }
+.slate.thinking .beatband::after { opacity: 1; animation: sweep 1.4s ease-in-out infinite; }
+@keyframes sweep { to { transform: translateX(440%); } }
+.slate-head { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.cell-wrap { position: relative; min-width: 0; background: var(--card); }
+.cell { width: 100%; height: 100%; display: grid; align-content: start; gap: 2px; padding: 9px 14px 10px; border: 0; background: none; text-align: left;
+  color: var(--ink); min-width: 0; }
+.cell:hover { background: var(--soft); }
+.cell .k { font-size: 11px; color: var(--faint); letter-spacing: .04em; }
+.cell .v { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; min-width: 0; }
+.cell .txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.cell svg.i { width: 15px; height: 15px; }
+.cell .chev { width: 12px; height: 12px; opacity: .55; margin-left: auto; }
+.cell.accent .v { color: var(--accent-ink); }
+@media (prefers-color-scheme: dark) { .cell.accent .v { color: var(--accent); } }
+#model-btn .txt { font-weight: 500; color: var(--muted); }
+#model-btn:hover .txt { color: var(--ink); }
+.slate-body { display: grid; gap: 10px; padding: 16px 18px 12px; }
+#prompt { border: 0; outline: 0; resize: none; background: transparent; min-height: 92px; max-height: 280px; padding: 0; font-size: 16px; line-height: 1.65; }
 #prompt::placeholder { color: var(--faint); }
-.crow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.crow .sp { flex: 1; }
-.pill { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+.slate-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 8px 7px 6px; border-top: 1px solid var(--line);
+  background: var(--soft); border-radius: 0 0 11px 11px; }
+.slate-foot .go { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.flow { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--card); font-size: 13px; font-weight: 500; white-space: nowrap; }
-.pill:hover { background: var(--soft); }
-.pill.accent { background: color-mix(in srgb, var(--accent) 16%, var(--card)); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); color: var(--accent-ink); }
-@media (prefers-color-scheme: dark) { .pill.accent { color: var(--accent); } }
-.pill svg.i { width: 15px; height: 15px; }
-.pill .chev { width: 12px; height: 12px; opacity: .6; }
-.round { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--ink); display: grid; place-items: center; }
-.round svg { width: 17px; height: 17px; stroke: var(--accent); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.model { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--soft);
-  color: var(--muted); font-size: 12.5px; }
-.model:hover { color: var(--ink); }
+.flow:hover { border-color: var(--sel); }
+.flow svg.i { width: 15px; height: 15px; }
+.flow .chev { width: 12px; height: 12px; opacity: .55; }
+.shoot { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 8px 0 13px; border: 0; border-radius: 8px;
+  background: var(--primary); color: var(--card); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.shoot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--err); }
+.shoot:hover:not(:disabled) { opacity: .88; }
+.shoot kbd { font: 600 10.5px var(--mono); padding: 2px 5px; border-radius: 4px; color: color-mix(in srgb, var(--card) 70%, transparent);
+  background: color-mix(in srgb, var(--card) 16%, transparent); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; flex: none; }
 .dot.bad { background: var(--err); } .dot.warn { background: var(--stale); }
-.tray { display: flex; align-items: center; gap: 4px 14px; padding: 9px 14px 11px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
-.tray .slot { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 4px 6px; border-radius: 8px; color: var(--muted);
+.tray { display: flex; align-items: center; gap: 2px 6px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; min-width: 0; }
+.tray .slot { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 5px 8px; border-radius: 7px; color: var(--muted);
   max-width: 100%; min-width: 0; }
-.tray button.slot:hover { color: var(--ink); background: color-mix(in srgb, var(--card) 60%, transparent); }
-.tray .slot .v { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
-.tray .slot input { border: 0; outline: 0; background: transparent; color: var(--ink); width: 180px; padding: 0; }
+.tray button.slot:hover { color: var(--ink); background: var(--card); }
+.tray .slot .v { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+.tray .slot input { border: 0; outline: 0; background: transparent; color: var(--ink); width: 170px; padding: 0; }
 .tray .slot input::placeholder { color: var(--faint); }
-.tray select { border: 0; background: transparent; color: var(--ink); max-width: 300px; padding: 2px 0; outline: 0; }
+.tray select { border: 0; background: transparent; color: var(--ink); max-width: 260px; padding: 2px 0; outline: 0; }
+.tray .slot svg.i { width: 15px; height: 15px; }
 .tray .sep { width: 1px; height: 16px; background: var(--line); }
-.hint { width: min(780px, 100%); margin-top: 10px; font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; padding: 0 6px; }
+@container (max-width: 640px) { .slate-head { grid-template-columns: 1fr 1fr; } }
+.hint { margin-top: 10px; font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; padding: 0 2px; }
 .hint button { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 600; text-decoration: underline; }
 .menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 240px; background: var(--card); border: 1px solid var(--line);
   border-radius: 14px; box-shadow: var(--pop); padding: 6px; display: grid; gap: 2px; }
@@ -136,29 +162,25 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .menu .d { grid-column: 2; color: var(--muted); font-size: 12px; white-space: normal; }
 .menu.right { left: auto; right: 0; }
 
-.examples { width: min(780px, 100%); margin-top: 34px; display: grid; gap: 4px; }
-.examples h2 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 6px 6px; }
-.ex { display: grid; grid-template-columns: 132px 1fr; gap: 16px; align-items: center; text-align: left; border: 0; background: none;
-  padding: 8px; border-radius: 14px; color: var(--ink); }
-.ex:hover { background: var(--soft); }
-.ex .art { height: 74px; border-radius: 9px; border: 1px solid var(--line); overflow: hidden; display: flex; background: #0d0e0e; padding: 7px; gap: 3px;
-  align-items: flex-end; }
-.ex .art i { display: block; border-radius: 3px; }
-.ex .t { font-weight: 600; font-size: 14px; display: flex; gap: 7px; align-items: center; }
-.ex .t svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
-.ex .d { color: var(--muted); font-size: 13px; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ex .tag { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 1px 8px; }
-.blank { margin-top: 14px; border: 0; background: none; color: var(--muted); font-size: 13px; display: flex; gap: 4px; align-items: center; }
-.blank + .blank { margin-top: 6px; }
+.examples { margin-top: 36px; }
+.examples h2 { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; margin: 0 0 10px 2px; }
+#examples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@container (max-width: 640px) { #examples { grid-template-columns: 1fr; } }
+.ex { display: grid; gap: 6px; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 12px 14px 13px;
+  color: var(--ink); min-width: 0; transition: border-color .14s; }
+.ex:hover { border-color: var(--sel); }
+.ex .track { display: flex; gap: 3px; height: 18px; }
+.ex .track i { display: block; border-radius: 3px; }
+.ex .ruler { display: flex; justify-content: space-between; font: 10.5px var(--mono); color: var(--faint); margin-bottom: 4px; }
+.ex .t { font-weight: 600; font-size: 14px; }
+.ex .m { display: flex; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+.ex .m span + span::before { content: "·"; margin: 0 6px; color: var(--faint); }
+.samples { margin-top: 18px; display: grid; justify-items: start; gap: 4px; }
+.blank { border: 0; background: none; color: var(--muted); font-size: 13px; display: flex; gap: 4px; align-items: center; padding: 2px 0; }
 .blank:hover { color: var(--ink); }
 
 /* ------------------------------------------------------------------ the vibe stack (D-62)
    Atmosphere chips stacked onto the first prompt, chained; Claude predicts the next ones from what is typed. */
-.cwrap { position: relative; isolation: isolate; }
-.cwrap::before { content: ""; position: absolute; inset: -3px; border-radius: 23px; z-index: -1; opacity: 0; transition: opacity .4s;
-  background: linear-gradient(120deg, var(--hook), var(--escalate), var(--establish), var(--title)); background-size: 300% 300%; filter: blur(16px); }
-.cwrap.thinking::before { opacity: .38; animation: aurora 3.2s ease-in-out infinite; }
-@keyframes aurora { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 .vrail { display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px; padding: 0 2px; }
 .vrail:empty { display: none; }
 .vnode { --c: var(--ink); display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
@@ -170,7 +192,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .vnode button { border: 0; background: none; padding: 0 3px; color: var(--muted); font-size: 11px; line-height: 1; }
 .vnode button:hover { color: var(--err-fg); }
 .vlink { width: 16px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--hook), var(--escalate), var(--establish)); opacity: .75; }
-.vibes { width: min(780px, 100%); margin-top: 16px; display: grid; gap: 10px; }
+.vibes { margin-top: 18px; display: grid; gap: 10px; }
 .vhead { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .vhead h2 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 8px 0 6px; }
 .vhead .sp { flex: 1; }
@@ -195,7 +217,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .vchip.ghost { width: 104px; height: 31px; border: 0; padding: 0; animation: vshimmer 1.3s linear infinite;
   background: linear-gradient(90deg, var(--soft) 20%, color-mix(in srgb, var(--escalate) 22%, var(--soft)) 50%, var(--soft) 80%); background-size: 220% 100%; }
 @keyframes vshimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
-@media (prefers-reduced-motion: reduce) { .cwrap.thinking::before, .vnode.new, .vchip.ghost { animation: none; } .vchip { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .recdot, .slate.thinking .beatband::after, .vnode.new, .vchip.ghost { animation: none; } .vchip { transition: none; } }
 
 /* ------------------------------------------------------------------ all projects */
 .page { padding: 34px 34px 50px; }
@@ -270,7 +292,8 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .modal .list button { text-align: left; border: 1px solid var(--line); background: none; border-radius: 10px; padding: 9px 12px; display: grid; gap: 2px; }
 .modal .list button:hover { background: var(--soft); }
 .modal .list small { color: var(--muted); font-family: var(--mono); font-size: 11.5px; word-break: break-all; }
-@media (max-width: 860px) { #shell { grid-template-columns: 1fr; } #rail { display: none; } #main { margin: 8px; } .hero h1 { font-size: 32px; } }
+@media (max-width: 860px) { #shell { grid-template-columns: 1fr; } #rail { display: none; } #main { margin: 8px; } #v-home { padding: 6vh 18px 48px; }
+  .hero h1 { font-size: 28px; } }
 </style>
 </head>
 <body>
@@ -287,36 +310,45 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
   </nav>
 
   <main id="main">
-    <!-- home: what will you shoot today? -->
+    <!-- home: a heading over the slate -->
     <section class="view" id="v-home">
-      <div class="hero">
-        <h1>どんな<mark id="kind-word">ティザー</mark>を撮る？</h1>
-        <p>カットを Claude が組み、気になる1カットだけ直して撮り直す。</p>
-      </div>
-      <div class="cwrap" id="cwrap">
-        <div class="composer">
-          <textarea id="prompt" rows="3" placeholder=""></textarea>
-          <div class="vrail" id="vrail"></div>
-          <div class="crow">
-            <span class="pill-wrap" style="position:relative"><button class="pill accent" id="kind-btn"></button><div class="menu" id="kind-menu" hidden></div></span>
-            <span class="pill-wrap" style="position:relative"><button class="pill" id="genre-btn" title="ジャンル。選ぶと、そのジャンルで実測したティザーの型（速さ・色調・台本の手法）で組みます"></button><div class="menu" id="genre-menu" hidden></div></span>
-            <span class="pill-wrap" style="position:relative"><button class="pill" id="engine-btn"></button><div class="menu" id="engine-menu" hidden></div></span>
-            <span class="sp"></span>
-            <span class="pill-wrap" style="position:relative"><button class="pill" id="flow-btn" title="送ったあとの進め方"></button><div class="menu right" id="flow-menu" hidden></div></span>
-            <button class="model" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="ai-name">Claude</span></button>
-            <button class="round" id="send" title="作る (Ctrl+Enter)"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      <div class="home-col">
+        <div class="hero">
+          <div class="eyebrow"><i class="recdot"></i><span id="kind-word">新しいティザー</span></div>
+          <h1>ゲームの見せ場を、一文で。</h1>
+          <p>Claude が企画からカットまで組む。気になる1カットを直せば、撮り直すのもその1カットだけ。</p>
+        </div>
+        <div class="slate" id="slate">
+          <div class="beatband" aria-hidden="true"><i style="flex:3;background:var(--hook)"></i><i style="flex:4;background:var(--establish)"></i><i style="flex:5;background:var(--escalate)"></i><i style="flex:2;background:var(--title)"></i></div>
+          <div class="slate-head">
+            <span class="cell-wrap"><button class="cell" id="kind-btn"></button><div class="menu" id="kind-menu" hidden></div></span>
+            <span class="cell-wrap"><button class="cell" id="genre-btn" title="ジャンル。選ぶと、そのジャンルで実測したティザーの型（速さ・色調・台本の手法）で組みます"></button><div class="menu" id="genre-menu" hidden></div></span>
+            <span class="cell-wrap"><button class="cell" id="engine-btn"></button><div class="menu" id="engine-menu" hidden></div></span>
+            <span class="cell-wrap"><button class="cell" id="model-btn" title="Claude への接続"><span class="k">Claude</span><span class="v"><span class="dot" id="ai-dot"></span><span class="txt" id="ai-name">Claude</span></span></button></span>
+          </div>
+          <div class="slate-body">
+            <textarea id="prompt" rows="3" placeholder=""></textarea>
+            <div class="vrail" id="vrail"></div>
+          </div>
+          <div class="slate-foot">
+            <div class="tray" id="tray"></div>
+            <div class="go">
+              <span style="position:relative"><button class="flow" id="flow-btn" title="送ったあとの進め方"></button><div class="menu right" id="flow-menu" hidden></div></span>
+              <button class="shoot" id="send" title="作る (Ctrl+Enter)"><span>作る</span><kbd>Ctrl ⏎</kbd></button>
+            </div>
           </div>
         </div>
-        <div class="tray" id="tray"></div>
+        <div class="vibes" id="vibes"></div>
+        <div class="hint" id="ai-warn" hidden><span class="dot bad"></span><span id="ai-err">Claude に接続されていません。</span><button data-view="settings">接続を設定する</button></div>
+        <div class="examples">
+          <h2>書き出しの例</h2>
+          <div id="examples"></div>
+        </div>
+        <div class="samples">
+          <button class="blank" id="sample">…またはサンプルで試す（UE なし・6カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
+          <button class="blank" id="sample-three">…または Three.js のサンプルゲームで試す（UE なし・病棟のホラー 10カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
+        </div>
       </div>
-      <div class="vibes" id="vibes"></div>
-      <div class="hint" id="ai-warn" hidden><span class="dot bad"></span><span id="ai-err">Claude に接続されていません。</span><button data-view="settings">接続を設定する</button></div>
-      <div class="examples">
-        <h2>例</h2>
-        <div id="examples"></div>
-      </div>
-      <button class="blank" id="sample">…またはサンプルで試す（UE なし・6カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
-      <button class="blank" id="sample-three">…または Three.js のサンプルゲームで試す（UE なし・病棟のホラー 10カット）<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m9 6 6 6-6 6"/></svg></button>
     </section>
 
     <!-- all projects -->
@@ -376,8 +408,8 @@ const BEAT = { hook: "var(--hook)", establish: "var(--establish)", escalate: "va
 const STORE = "shotpilot.home";
 
 const KINDS = {
-  teaser: { word: "ティザー", label: "ティザー", d: "30〜60秒。hook → establish → escalate → title の型で、見たくさせる" },
-  gameplay: { word: "ゲームプレイ映像", label: "ゲームプレイ", d: "遊びの流れを見せる。操作と手触りが伝わる尺と画角で組む" },
+  teaser: { fresh: "新しいティザー", label: "ティザー", d: "30〜60秒。hook → establish → escalate → title の型で、見たくさせる" },
+  gameplay: { fresh: "新しいゲームプレイ映像", label: "ゲームプレイ", d: "遊びの流れを見せる。操作と手触りが伝わる尺と画角で組む" },
 };
 const ENGINES = {
   mock: { label: "UE なしで試す", d: "エンジンを起動せず、グレーボックス（仮撮り）で確かめる" },
@@ -518,7 +550,6 @@ const ICON = {
   folder: '<svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   map: '<svg class="i" viewBox="0 0 24 24"><path d="m9 4-6 3v13l6-3 6 3 6-3V4l-6 3z"/><path d="M9 4v13M15 7v13"/></svg>',
   tag: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/></svg>',
-  spark: '<svg viewBox="0 0 24 24"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>',
   dots: '<svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>',
 };
 
@@ -563,7 +594,7 @@ function vibeAdd(c) {
 }
 function vibeDrop(i) { ui.vibes.splice(i, 1); ui.vnew = -1; drawVibes(); vpredictSoon(); }
 
-/** The chain inside the composer, and the palette under it (Claude's predictions first). */
+/** The chain inside the slate, and the palette under it (Claude's predictions first). */
 function drawVibes() {
   $("vrail").innerHTML = ui.vibes.map((v, i) => `${i ? '<i class="vlink"></i>' : ""}<span class="vnode${v.ai ? " ai" : ""}${i === ui.vnew ? " new" : ""}"${v.c ? ` style="--c:${v.c}"` : ""}>${esc(v.label)}<button type="button" data-vrm="${i}" title="外す">✕</button></span>`).join("");
   ui.vnew = -1;
@@ -586,7 +617,7 @@ function drawVibes() {
       : (typed ? `<span class="muted" title="下から選べます">予測なし</span>${p?.state === "failed" ? `<button type="button" class="vchip" data-vretry title="再試行">↻</button>` : ""}` : '<span class="vchip ghost" title="ゲームのことを書くと、合いそうな雰囲気を Claude が予測します"></span><span class="vchip ghost"></span><span class="vchip ghost"></span>');
     aiRow = `<div class="vrow"><span class="lbl" title="この企画に合いそう">✦</span>${body}</div>`;
   }
-  $("cwrap").classList.toggle("thinking", p?.state === "loading");
+  $("slate").classList.toggle("thinking", p?.state === "loading");
   $("vibes").innerHTML = `<div class="vhead"><h2 title="雰囲気を積む">雰囲気</h2>${VIBES.map((x) => `<button type="button" class="vtab${x.g === g.g ? " on" : ""}" data-vtab="${esc(x.g)}" style="--c:${x.c}"><i></i>${esc(x.g)}</button>`).join("")}
       <span class="sp"></span>${ai ? `<button type="button" class="vtoggle" data-vpred title="Claude の予測: ${predOn() ? "オン" : "オフ"}。雰囲気を予測します（軽い呼び出し）">✦ ${predOn() ? "オン" : "オフ"}</button>` : ""}</div>
     ${aiRow}<div class="vrow">${codeIdx.map((i) => chip(i, false)).join("")}</div>`;
@@ -612,19 +643,21 @@ function drawRail() {
     || `<div class="rail-foot" style="padding:4px 12px">まだありません</div>`;
 }
 
+/** One labelled cell of the slate: a small label over the value. */
+const cellHtml = (label, value) => `<span class="k">${esc(label)}</span><span class="v">${value}${ICON.chev}</span>`;
+
 function drawHome() {
   const k = KINDS[ui.kind];
-  // the word inside the heading reads in lower case in English ("What teaser will you make?")
-  $("kind-word").textContent = window.SP_LANG === "en" ? window.tr(k.word).toLowerCase() : k.word;
-  $("kind-btn").innerHTML = `${ICON.film}${esc(k.label)}${ICON.chev}`;
+  $("kind-word").textContent = k.fresh;
+  $("kind-btn").innerHTML = cellHtml("種類", `${ICON.film}<span class="txt">${esc(k.label)}</span>`);
   $("kind-menu").innerHTML = Object.entries(KINDS).map(([key, v]) => `<button data-kind="${key}"><span class="ck">${key === ui.kind ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
   const gs = ui.genres?.genres || [];
-  $("genre-btn").innerHTML = `${esc(ui.genre ? `ジャンル: ${ui.genre}` : "ジャンル: あとで")}${ICON.chev}`;
+  $("genre-btn").innerHTML = cellHtml("ジャンル", `<span class="txt">${esc(ui.genre || "あとで決める")}</span>`);
   $("genre-btn").classList.toggle("accent", !!ui.genre);
   $("genre-menu").innerHTML = [`<button data-genre=""><span class="ck">${ui.genre ? "" : "✓"}</span><span class="t">あとで決める</span><span class="d">ブリーフで選べます。説明文から Claude が読み取ります</span></button>`]
     .concat(gs.map((g) => `<button data-genre="${esc(g.name)}"><span class="ck">${g.name === ui.genre ? "✓" : ""}</span><span class="t">${esc(g.name)}</span><span class="d">${esc(g.headline)}（${g.n} 本を実測）</span></button>`)).join("");
   const e = ENGINES[ui.engine];
-  $("engine-btn").innerHTML = `${ui.engine === "mock" ? ICON.wire : ICON.cube}${esc(e.label)}${ICON.chev}`;
+  $("engine-btn").innerHTML = cellHtml("エンジン", `${ui.engine === "mock" ? ICON.wire : ICON.cube}<span class="txt">${esc(e.label)}</span>`);
   $("engine-menu").innerHTML = Object.entries(ENGINES).map(([key, v]) => `<button data-engine="${key}"><span class="ck">${key === ui.engine ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
   const ai = ui.home?.ai || {};
   $("ai-dot").className = "dot" + (ai.ready ? "" : " bad");
@@ -641,16 +674,19 @@ function drawHome() {
   drawTray();
   drawVibes();
   if (!$("examples").childElementCount) {
+    // each example as a timeline: its beats in proportion, from 0:00 to its length
+    const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     $("examples").innerHTML = EXAMPLES.map((x, i) => {
-      const bars = ["hook", "establish", "escalate", "title"].map((b, j) =>
-        `<i style="flex:${x.beats[j]};height:${30 + (j === 2 ? 60 : j * 14)}%;background:${BEAT[b]}"></i>`).join("");
-      return `<button class="ex" data-ex="${i}" title="${esc(x.prompt)}"><span class="art">${bars}</span>
-        <span><span class="t">${ICON.spark}${esc(x.title)}<span class="tag">${esc(KINDS[x.kind].label)} · ${esc(x.tag)}</span></span></span></button>`;
+      const track = ["hook", "establish", "escalate", "title"].map((b, j) =>
+        `<i style="flex:${x.beats[j]};background:${BEAT[b]}" title="${b}"></i>`).join("");
+      return `<button class="ex" data-ex="${i}" title="${esc(x.prompt)}"><span class="track">${track}</span>
+        <span class="ruler"><span>0:00</span><span>${clock(parseInt(x.tag, 10) || 0)}</span></span>
+        <span class="t">${esc(x.title)}</span><span class="m"><span>${esc(x.genre)}</span><span>${esc(KINDS[x.kind].label)}</span></span></button>`;
     }).join("");
   }
 }
 
-/** Under the composer: where it goes (like open-design's working directory). */
+/** The slate's foot: where the project goes, and its name. */
 function drawTray() {
   const tray = $("tray");
   const keep = document.activeElement?.id === "name-in";
@@ -931,7 +967,7 @@ document.addEventListener("keydown", (e) => {
 // cards change when a project is edited elsewhere (CLI, another window)
 window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 
-// the placeholder cycles through examples, like open-design's hero
+// the placeholder cycles through examples
 let ph = 0;
 const setPh = () => { $("prompt").placeholder = PLACEHOLDERS[ph++ % PLACEHOLDERS.length]; };
 setPh(); setInterval(() => { if (!$("prompt").value) setPh(); }, 6000);
