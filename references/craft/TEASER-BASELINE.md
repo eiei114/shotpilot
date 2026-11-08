@@ -1,6 +1,6 @@
 # Teaser baseline — 主観を数値に置き換えた基準
 
-> 出典: open-design（nexu-io/open-design、Apache-2.0）の OD Next。Core の Design baseline、タスクプロファイル `hyperframes` と `motion-design` の文言を、ゲームのティザー向けに言い換えた（D-49）。
+> 出典: open-design（nexu-io/open-design、Apache-2.0）の文言の一部を、ゲームのティザー向けに言い換えた（D-49）。
 > plan と、画や文字を変える修正指示のときに、この本文がそのまま Claude に渡る。読み時間の数値は `script::reading_secs` と同じで、コードがそれに合わせて長さを整える。
 
 ## 1. 基準値（書くときに満たす値）

@@ -4288,7 +4288,7 @@ function drawBrief() {
     </div></div>`;
   } else if (sub === "look") {
     body = `<div class="scrollbox look-wrap">
-      <h4 class="sec" title="デザインシステム（open-design 式）。色調・帯・書体・カードの間・カメラの言葉をまとめて決めます。DESIGN.md を Claude が全文読みます">ルック</h4>
+      <h4 class="sec" title="デザインシステム。色調・帯・書体・カードの間・カメラの言葉をまとめて決めます。DESIGN.md を Claude が全文読みます">ルック</h4>
       ${designPicker(b)}
       <h4 class="sec" title="ティザーの型の手順書。企画で Claude が選び、構成を組むときに全文を読みます。押して足し外し（点線は既定で効いているもの）">スキル</h4>
       ${skillPicker(b)}
@@ -7222,7 +7222,7 @@ function drawCheck() {
   if (!snd) { box.innerHTML = ""; return; }
   if (snd.error) { box.innerHTML = `<div class="err-box">${esc(snd.error)}</div>`; return; }
   if (!c) {
-    box.innerHTML = `<div class="sp-box"><h3>サウンドチェック</h3><div class="sp-hint" title="音を置くと、プロのローンチ映像7本と比べた採点がここに出ます（earshot の検証部分を移植）。">音を置くと採点が出ます</div></div>`;
+    box.innerHTML = `<div class="sp-box"><h3>サウンドチェック</h3><div class="sp-hint" title="音を置くと、プロのローンチ映像7本と比べた採点がここに出ます。">音を置くと採点が出ます</div></div>`;
     return;
   }
   const pct = c.score == null ? "—" : `${Math.round(c.score * 100)}%`;
@@ -7240,7 +7240,7 @@ function drawCheck() {
   const nm = (c.not_measured || []).map((x) => x.metric).join(", ");
   box.innerHTML = `<div class="sp-box">
       <div class="verdict"><span class="vbadge ${esc(vcls)}">${esc(c.verdict_ja)}</span><span class="score">${pct}<small>${c.in_range} / ${c.scored} 指標が範囲内 · 重大 ${c.critical_issues} · 要対応 ${c.major_issues}</small></span></div>
-      <div class="src">earshot critique の検証部分（モデル不要）を移植 · 基準: プロのローンチ映像 7 本 · ${esc(c.duration)}s を計測</div>
+      <div class="src">基準: プロのローンチ映像 7 本 · ${esc(c.duration)}s を計測</div>
     </div>
     ${nActs ? `<div class="sp-box"><h3>直すところ ${nActs} 件 <small>右の「指摘」に並んでいます →</small></h3>${tips}</div>` : `<div class="sp-box"><h3>直すところはありません</h3>${tips}</div>`}
     <div class="sp-box curve"><h3>ラウドネスの流れ <small>平均との差（LU）</small></h3>${curveSvg(c)}
@@ -7550,7 +7550,7 @@ async function fetchKits() {
   finally { fetchKits.busy = false; }
 }
 
-/** The planning turn's question form (open-design's question-form): defaults prefilled, an "other" field on choices. */
+/** The planning turn's question form: defaults prefilled, an "other" field on choices. */
 function formHtml(e) {
   const q = (x) => {
     const id = esc(x.id), opts = x.options || [];

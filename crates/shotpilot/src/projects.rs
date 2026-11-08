@@ -333,7 +333,7 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
     std::fs::create_dir_all(&dir)?;
     let shots = dir.join("shots.yaml");
     let text = if p.sample {
-        let tpl = if p.engine == "three" { templates::THREE_WARD } else { templates::DEMO };
+        let tpl = if p.engine == "three" { templates::THREE_VILLAGE } else { templates::DEMO };
         templates::render(tpl, &name, &p.engine, &uproject_yaml, &map_yaml)
     } else {
         let extra = templates::Extra { title: "", pitch: &p.pitch, kind: &p.kind, genre: &p.genre };
@@ -346,10 +346,14 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
     };
     std::fs::write(&shots, text)?;
     if p.sample {
-        crate::sound::write_demo_audio(&dir)?;
+        if p.engine == "three" {
+            crate::sound::write_village_audio(&dir)?;
+        } else {
+            crate::sound::write_demo_audio(&dir)?;
+        }
     }
     if p.engine == "three" {
-        // the game it films (D-72): the sample ward, which people then edit as their own
+        // the game it films (D-72, D-100): the sample village, which people then edit as their own
         crate::threegame::write(&dir.join("game"))?;
     }
     let gi = dir.join(".gitignore");

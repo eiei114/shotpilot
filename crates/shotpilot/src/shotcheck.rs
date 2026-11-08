@@ -82,7 +82,7 @@ pub const RULES: &[Rule] = &[
     Rule { id: "title.short", severity: Severity::P2, basis: "inferred",
            summary: "The title beat holds >= 2 s so the card can be read" },
     Rule { id: "transition.mix", severity: Severity::P2, basis: "inferred",
-           summary: "One main hand-over (cut) and at most two others (open-design: one primary transition and one or two accents)" },
+           summary: "One main hand-over (cut) and at most two others" },
 ];
 
 /// The longest hook a teaser holds before `hook.long`: the upper quartile (10.4 s) of the hooks

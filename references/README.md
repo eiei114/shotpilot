@@ -1,30 +1,28 @@
 # references/
 
-Reference material for planning teasers, laid out after open-design
-(`design-systems/` + `craft/` + `design-templates/` + `skills/`). `craft/` and `genres/` are
+Reference material for planning teasers. `craft/` and `genres/` are
 embedded in the binary (`crates/shotpilot/src/refs.rs`) and handed to Claude on every `plan`;
 `design-systems/` and `skills/` are embedded too (`designsys.rs`, `skills.rs`) and handed to
 Claude when the planning turn picked them.
 
-| Axis | open-design | here | holds |
-|---|---|---|---|
-| Universal rules | `craft/*.md` | `craft/` | what holds for any game teaser, measured over every teaser (D-29) |
-| Genre package | `design-systems/<brand>/` | `genres/<id>/` | one genre: prose + measured numbers + aliases (D-29) |
-| Style package | `design-systems/<brand>/` | `teasers/<id>/` | one real teaser: "Inspired by" prose + measured numbers |
-| Shape | `design-templates/` | `craft.rs` skeleton | `hook → establish → escalate → title` |
-| Look | `design-systems/<brand>/` | `design-systems/<id>/` | one look a teaser wears: `DESIGN.md` + `tokens.json` + `manifest.json` (D-45) |
-| Playbook | `skills/<id>/SKILL.md` | `skills/<id>/SKILL.md` | one kind of teaser, or one part of it (D-45) |
-| Type rules | `craft/typography*.md` | `craft/TEASER-TYPE.md` | how to set teaser text: sizes per role, faces, tracking, leading, punctuation, per genre (measured) |
-| Font catalog | hyperframes `references/typography.md` | `fonts/` | which faces to pick: every Google Fonts Japanese family + Latin candidates, overused list |
+| Axis | here | holds |
+|---|---|---|
+| Universal rules | `craft/` | what holds for any game teaser, measured over every teaser (D-29) |
+| Genre package | `genres/<id>/` | one genre: prose + measured numbers + aliases (D-29) |
+| Style package | `teasers/<id>/` | one real teaser: "Inspired by" prose + measured numbers |
+| Shape | `craft.rs` skeleton | `hook → establish → escalate → title` |
+| Look | `design-systems/<id>/` | one look a teaser wears: `DESIGN.md` + `tokens.json` + `manifest.json` (D-45) |
+| Playbook | `skills/<id>/SKILL.md` | one kind of teaser, or one part of it (D-45) |
+| Type rules | `craft/TEASER-TYPE.md` | how to set teaser text: sizes per role, faces, tracking, leading, punctuation, per genre (measured) |
+| Font catalog | `fonts/` | which faces to pick: every Google Fonts Japanese family + Latin candidates, overused list |
 
 ## Type and fonts (D-52)
 
 The numbers come from 77 teasers read frame by frame and from JLREQ, Netflix's Japanese
 timed-text guide, EBU R95 and the BBC subtitle guidelines; the notes are in
-`research_notes/文字デザインと書体/`. Like open-design injecting only the craft sections a
-skill requires, the planner and the text and picture edits get only section 10 of
-`craft/TEASER-TYPE.md` (how the script's lines are written, `refs::type_text`); the sizes and
-faces in the rest of the file are applied by code (`finish.rs`).
+`research_notes/文字デザインと書体/`. The planner and the text and picture edits get only
+section 10 of `craft/TEASER-TYPE.md` (how the script's lines are written, `refs::type_text`);
+the sizes and faces in the rest of the file are applied by code (`finish.rs`).
 
 - A look's `tokens.json` names its faces from the catalogue as `type.display` / `body` /
   `latin` (`"Family:weight"`) and `type.title_size`; planning (and `shotpilot design <id>`)
@@ -43,11 +41,11 @@ faces in the rest of the file are applied by code (`finish.rs`).
 
 ## Motion (D-53, D-70)
 
-| Axis | open-design | here | holds |
-|---|---|---|---|
-| Motion rules | task profiles `motion-design`, `hyperframes` | `motion/MOTION.md` | the vocabulary (entrances, holds, exits, hand-overs), what code keeps (reading time, 3 flashes a second), section 6 for the planner |
-| Motion defaults | `references/transitions.md` energy table | `motion/profiles.json` | one profile per genre (and a Japanese-PV variant for four of them): each role's entrance, hold and exit with seconds, the dip length, the accent |
-| Transitions | Motion Design workflow (`skills/motion-design`), `hyperframes/references/transitions.md`, `transitions/catalog.md` and `css-*.md`, `motion-principles.md` | `motion/TRANSITIONS.md`, `motion/transitions.json` | how a hand-over is chosen (relationship, one main hand-over and one or two accents, narrative position; section 8 for the planner) and drawn (recipes: what covers each side of the cut, for how long, with which ease; swapped at the cut while covered) |
+| Axis | here | holds |
+|---|---|---|
+| Motion rules | `motion/MOTION.md` | the vocabulary (entrances, holds, exits, hand-overs), what code keeps (reading time, 3 flashes a second), section 6 for the planner |
+| Motion defaults | `motion/profiles.json` | one profile per genre (and a Japanese-PV variant for four of them): each role's entrance, hold and exit with seconds, the dip length, the accent |
+| Transitions | `motion/TRANSITIONS.md`, `motion/transitions.json` | how a hand-over is chosen (relationship, one main hand-over and one or two accents, narrative position; section 8 for the planner) and drawn (recipes: what covers each side of the cut, for how long, with which ease; swapped at the cut while covered) |
 
 The numbers come from 33 teasers read frame by frame (`research_notes/モーションデザイン/corpus_*.md`)
 and 736 measured from luma (`auto_measure.md`). A look's `tokens.json` picks a profile and
@@ -59,7 +57,7 @@ hand-over from its recipe in `transitions.json` (the `base` profile keeps the ol
 
 ## Design systems and skills (D-45)
 
-The planning turn (`ai::discover`, after open-design's OD Next planning turn) reads two
+The planning turn (`ai::discover`) reads two
 catalogues and picks from them; the picks go to `brief.design` and `brief.skills`. When the
 shot list is written, the planner reads the picked `DESIGN.md` whole ("## Active design
 system", treated as authoritative), its `tokens.json`, and the whole body of every picked
@@ -69,7 +67,7 @@ skill ("## Active skill"). The design system's tokens also set `finish.grade`,
 - `design-systems/<id>/`: twelve generic looks (quiet-dread, vhs-found-footage,
   cozy-pastel, storybook, grimdark, epic-fantasy, neon-action, retro-pixel,
   arthouse-minimal, noir-mystery, cold-scifi, command-room). `DESIGN.md` keeps the nine
-  sections of the DESIGN.md convention (VoltAgent / Google Stitch), adapted to teasers:
+  sections of the DESIGN.md convention, adapted to teasers:
   1 Visual Theme & Atmosphere, 2 Color & Grade, 3 Typography Rules, 4 Title & Card
   Stylings, 5 Pacing & Transitions, 6 Camera Language, 7 Sound Character, 8 Do's and
   Don'ts, 9 Agent Prompt Guide. None copies a studio's identity: no names, logos or
@@ -77,7 +75,7 @@ skill ("## Active skill"). The design system's tokens also set `finish.grade`,
 - A project may keep its own `DESIGN.md` next to shots.yaml (the game's brand). It wins
   for the prose; the numbers still come from `brief.design`. `shotpilot design <id> --fork`
   copies a look there to start from.
-- `skills/<id>/SKILL.md`: eighteen playbooks, after open-design's SKILL.md (front matter
+- `skills/<id>/SKILL.md`: eighteen playbooks (front matter
   `name`, `ja_name`, `description`, `triggers`, `sp: {mode, kind, genres, design_system,
   example_prompt}`; body: Resource map, Workflow, Hard rules). `main` skills shape the
   whole teaser (announce, mood, gameplay-first, release-date, demo, character, world tour,

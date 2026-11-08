@@ -57,7 +57,7 @@ impl Family {
     }
 }
 
-/// An overused face and what to use instead (open-design's ban list and genre clichés).
+/// An overused face and what to use instead (the faces language models default to, and genre clichés).
 #[derive(Debug, Clone)]
 pub struct Overused {
     pub family: String,

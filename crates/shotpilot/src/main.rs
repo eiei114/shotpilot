@@ -515,13 +515,18 @@ fn run(cli: Cli) -> Result<u8> {
             let three = engine == "three";
             let tpl = match (empty, three) {
                 (true, _) => templates::EMPTY,
-                (false, true) => templates::THREE_WARD,
+                (false, true) => templates::THREE_VILLAGE,
                 (false, false) => templates::DEMO,
             };
             std::fs::write(file, templates::render(tpl, &name, &engine, &uproject, &map))?;
             if !empty {
                 if let Some(dir) = abs.parent() {
-                    sound::write_demo_audio(dir)?; // placeholder BGM and effects the demo refers to
+                    // placeholder music, air and effects the sample refers to
+                    if three {
+                        sound::write_village_audio(dir)?;
+                    } else {
+                        sound::write_demo_audio(dir)?;
+                    }
                 }
             }
             if three {

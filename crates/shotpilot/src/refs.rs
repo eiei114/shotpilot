@@ -1,9 +1,8 @@
 //! Measured teaser references, embedded at build time (D-29).
 //!
-//! open-design hands the model a design system before it writes. Here the same role is
-//! played by `references/craft/` (what holds for any game teaser) and
-//! `references/genres/<id>/` (one genre), both measured from published teasers with
-//! ffmpeg (`research_data/tools/`). Each package is prose (`*.md`, read by people and by
+//! The model reads these before it writes: `references/craft/` (what holds for any game
+//! teaser) and `references/genres/<id>/` (one genre), both measured from published teasers
+//! with ffmpeg (`research_data/tools/`). Each package is prose (`*.md`, read by people and by
 //! the planner) plus numbers (`tokens.json`, read by code).
 //!
 //! The planner gets the prose and a short line of the numbers. The skeleton takes its hook
@@ -17,8 +16,8 @@ const CRAFT_DOC: &str = include_str!("../../../references/craft/TEASER-CRAFT.md"
 const CRAFT_TOKENS: &str = include_str!("../../../references/craft/tokens.json");
 const BASELINE_DOC: &str = include_str!("../../../references/craft/TEASER-BASELINE.md");
 
-/// The teaser baseline (D-49): checkable values, what to avoid, and defect -> decision, as
-/// open-design's Design baseline. The header above the first `##` is for maintainers.
+/// The teaser baseline (D-49): checkable values, what to avoid, and defect -> decision.
+/// The header above the first `##` is for maintainers.
 pub fn baseline_text() -> String {
     let body = BASELINE_DOC.find("\n## ").map_or(BASELINE_DOC, |i| &BASELINE_DOC[i + 1..]);
     format!("\n## Teaser baseline (checkable values, what to avoid, defect -> decision)\n{}\n", nested(body.trim_end()))
@@ -51,8 +50,8 @@ pub fn motion_text() -> String {
 }
 
 /// The writing side of the type rules (D-52): section 10 of TEASER-TYPE.md, the only part a
-/// writer of the script acts on. Like open-design injecting the craft sections a skill
-/// requires, the rest of the file (sizes, faces, tracking) stays with the code that draws.
+/// writer of the script acts on. The rest of the file (sizes, faces, tracking) stays with the
+/// code that draws.
 pub fn type_text() -> String {
     let body = TYPE_DOC.find("\n## 10.").map_or("", |i| &TYPE_DOC[i + 1..]);
     let body = body.split_once('\n').map_or("", |(_, b)| b);

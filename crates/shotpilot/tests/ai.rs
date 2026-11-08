@@ -221,7 +221,7 @@ fn request_text(req: &Value) -> String {
 
 #[test]
 fn every_path_that_writes_shots_gets_the_frozen_spec() {
-    // D-48: open-design hands the same frozen spec to every path that writes the artifact.
+    // D-48: the same frozen spec goes to every path that writes shots.
     // Each path that asks Claude for shots, and which parts of the spec it carries.
     let mut f = ws();
     measured_reference(&f.ws, "demo");
@@ -644,7 +644,7 @@ fn a_free_note_on_a_cut_may_set_its_camera_effects() {
 
 #[test]
 fn a_plan_hands_over_with_cut_and_two_others() {
-    // D-70 (open-design: one primary transition and one or two accents): code keeps dip and the
+    // D-70 (one primary transition and one or two accents): code keeps dip and the
     // look's accent (the base profile's is flash); the planner's other hand-overs become cuts
     let f = ws();
     let shot = |id: &str, beat: &str, t: &str| {

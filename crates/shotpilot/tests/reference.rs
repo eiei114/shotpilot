@@ -1,6 +1,6 @@
 //! A reference teaser (D-71): measured once, it lends the cut its hand-over lengths and tells
 //! the planner where its hand-overs fall; its pictures never reach the cut and nothing
-//! re-renders. After open-design's "replicate a reference video".
+//! re-renders.
 
 mod common;
 

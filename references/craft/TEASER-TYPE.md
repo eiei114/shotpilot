@@ -1,6 +1,6 @@
 # Teaser type — ティザーの文字の組み方
 
-> 出典: open-design（nexu-io/open-design、Apache-2.0）の `craft/typography.md`、`craft/typography-hierarchy.md`、`design-templates/hyperframes/references/typography.md` を、ゲームのティザー向けに言い換えた。数値は、手元のティザー 77 本（6 ジャンル＋SF、日本語の PV を含む）を 1 コマずつ測った値と、W3C の日本語組版要件（JLREQ）、Netflix の日本語字幕ガイド、EBU R95、BBC の字幕ガイドから取った。測った記録は `research_notes/文字デザインと書体/`。
+> 出典: open-design（nexu-io/open-design、Apache-2.0）の文字組みの文書の一部を、ゲームのティザー向けに言い換えた。数値は、手元のティザー 77 本（6 ジャンル＋SF、日本語の PV を含む）を 1 コマずつ測った値と、W3C の日本語組版要件（JLREQ）、Netflix の日本語字幕ガイド、EBU R95、BBC の字幕ガイドから取った。測った記録は `research_notes/文字デザインと書体/`。
 > ルック（`design-systems/<id>/`）が「どの書体か」を決め、このファイルが「どう組むか」を決める。書体の候補は `references/fonts/`。
 > 10 節だけが plan と、画・文字を変える修正に渡る（D-52、`refs::type_text`）。それより前の節は、コード（`finish.rs`）が描くときの値と、その根拠。
 

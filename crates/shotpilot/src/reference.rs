@@ -1,7 +1,6 @@
 //! A reference teaser (D-71): a video the director likes, measured the way the corpus was
-//! (D-29, D-53) so the cut can borrow how it is paced and how it hands over. After open-design's
-//! "replicate a reference video" (`od media reference` / `od media compare`): measure the timeline,
-//! never estimate it, and let what was measured outrank taste.
+//! (D-29, D-53) so the cut can borrow how it is paced and how it hands over. Measure the
+//! timeline, never estimate it, and let what was measured outrank taste.
 //!
 //! What is borrowed is timing only: the lengths of the dips, flashes and whiteouts and of the
 //! text on black go into `finish.motion`; how often and where they fall reaches the planner. The
@@ -22,7 +21,7 @@ use crate::{bail, Result};
 
 /// Samples a second, on a 320 px wide picture (the corpus's measure).
 pub const FPS: f64 = 12.0;
-/// open-design's limits for a reference video.
+/// Limits for a reference video.
 pub const MAX_SECS: f64 = 180.0;
 pub const MAX_BYTES: u64 = 200 * 1024 * 1024;
 

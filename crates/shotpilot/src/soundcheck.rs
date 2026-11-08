@@ -1,39 +1,16 @@
-//! Sound check: the teaser's mix measured against professional launch films.
+//! Sound check: the teaser's mix measured against professional launch films: BS.1770
+//! loudness, true peak, loudness range, the loudness arc and the ending, onset and
+//! salient-hit density, sound on cuts, spectral balance and stereo width, scored against a
+//! profile of 7 launch films with fixed weights, tolerances, practice windows and verdict
+//! bands.
 //!
-//! This is a port of the model-free half of earshot's `critique`
-//! (<https://github.com/Leonxlnx/earshot>, `earshot/critique.py`, `profile.py`,
-//! `features.py`): BS.1770 loudness, true peak, loudness range, the loudness arc and
-//! the ending, onset and salient-hit density, sound on cuts, spectral balance and
-//! stereo width, scored against earshot's bundled profile of 7 launch films with the
-//! same weights, tolerances, practice windows and verdict bands.
+//! Not measured: the checks that need ML models (realness, music and speech presence) and
+//! beat tracking. They are listed as not measured and the verdict says "partial". Onsets
+//! follow librosa's spectral-flux recipe on a 24 kHz copy. Picture events are the shot
+//! boundaries themselves, which makes sound-on-cut exact.
 //!
-//! Not ported: the checks that need ML models (realness, music and speech presence)
-//! and beat tracking. They are listed as not measured and the verdict says "partial",
-//! as earshot's `--fast` does. Onsets follow librosa's spectral-flux recipe on a
-//! 24 kHz copy (earshot uses 22.05 kHz), so onset counts are close, not identical.
-//! Picture events are the shot boundaries themselves, which makes sound-on-cut exact
-//! here where earshot has to detect cuts in the video.
-//!
-//! earshot is MIT licensed:
-//!
-//! > Copyright (c) 2026 Leon Lin
-//! >
-//! > Permission is hereby granted, free of charge, to any person obtaining a copy of
-//! > this software and associated documentation files (the "Software"), to deal in the
-//! > Software without restriction, including without limitation the rights to use,
-//! > copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
-//! > Software, and to permit persons to whom the Software is furnished to do so,
-//! > subject to the following conditions:
-//! >
-//! > The above copyright notice and this permission notice shall be included in all
-//! > copies or substantial portions of the Software.
-//! >
-//! > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//! > IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-//! > FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-//! > COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
-//! > AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-//! > WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//! Ported from earshot (MIT, Copyright (c) 2026 Leon Lin); the full notice is in
+//! THIRD_PARTY_NOTICES.md.
 
 use serde_json::{json, Map, Value};
 
@@ -57,7 +34,7 @@ const SHIFTS: &[f64] = &[0.23, 0.31, 0.43, 0.57, 0.71, 0.87, 1.13, 1.37, -0.29, 
 
 // --------------------------------------------------------------------------- the reference profile
 
-/// earshot's bundled profile (`data/launch_profile.json`): 7 professional launch films.
+/// The reference profile: 7 professional launch films.
 /// Per metric: n, min, max, median, p10, p90.
 const PROFILE: &[(&str, f64, f64, f64, f64, f64, f64)] = &[
     ("lufs_i", 7.0, -22.2, -7.3, -14.8, -19.32, -9.16),
@@ -143,7 +120,7 @@ const fn sp(key: &'static str, group: &'static str, label: &'static str, unit: &
     Spec { key, group, label, unit, decimals, weight, tol, sides, practice: None, why }
 }
 
-/// Weights and tolerances are earshot's `critique.SPEC`; labels and reasons in Japanese.
+/// Weights and tolerances per metric; labels and reasons in Japanese.
 const SPECS: &[Spec] = &[
     Spec { practice: Some((Some(-16.0), Some(-9.0))),
            ..sp("lufs_i", "loudness", "統合ラウドネス", "LUFS", 1, 3, 1.0, Sides::Both,
@@ -206,7 +183,7 @@ const SPECS: &[Spec] = &[
 
 /// Metrics that need a model or beat tracking: never measured here.
 const NEEDS_MODEL: &[(&str, &str)] = &[
-    ("p_real", "本物の録音らしさ（realness）。earshot の学習済みモデルが必要"),
+    ("p_real", "本物の録音らしさ（realness）。学習済みのモデルが必要"),
     ("music_frac", "音楽が鳴っている割合。AudioSet の分類モデルが必要"),
     ("speech_frac", "声の割合。AudioSet の分類モデルが必要"),
     ("tempo", "テンポ。ビート追跡が必要"),
@@ -301,7 +278,7 @@ fn argmax(xs: &[f64]) -> usize {
     best
 }
 
-/// `m:ss.ss`, as earshot prints times.
+/// `m:ss.ss`.
 pub fn fmt_t(t: f64) -> String {
     let t = t.max(0.0);
     let m = (t / 60.0).floor();
@@ -396,7 +373,7 @@ fn power(frame: &[f64], nfft: usize) -> Vec<f64> {
 
 // --------------------------------------------------------------------------- measurements
 
-/// BS.1770 K-weighting at 48 kHz (the two biquads earshot uses).
+/// BS.1770 K-weighting at 48 kHz (two biquads).
 fn kweight(x: &[f32]) -> Vec<f64> {
     let stages = [
         ([1.53512485958697, -2.69169618940638, 1.19839281085285], [1.0, -1.69065929318241, 0.73248077421585]),
@@ -1088,7 +1065,7 @@ struct Action {
     at: Option<f64>,
 }
 
-/// Concrete fixes for one out-of-range metric (earshot's `_actions`, in Japanese).
+/// Concrete fixes for one out-of-range metric (in Japanese).
 fn actions(key: &'static str, st: &str, v: f64, me: &Measured, cuts: &[Cut]) -> Vec<(String, Option<f64>)> {
     let rng = stat(key).map(|s| format!("基準 {} .. {}", fmt_value(key, Some(s.min)), fmt_value(key, Some(s.max)))).unwrap_or_default();
     let low = st == "low";
@@ -1350,8 +1327,8 @@ pub fn check(pcm: &Pcm, cuts: &[Cut], fps: f64) -> Value {
     let (t0, step) = (me.tm.first().copied().unwrap_or(0.0), 0.1);
     json!({
         "version": CHECK_VERSION,
-        "source": "earshot critique（モデルを使わない部分の移植）",
-        "profile": "ローンチ映像 7 本（earshot 同梱のプロファイル）",
+        "source": "モデルを使わない検証",
+        "profile": "ローンチ映像 7 本のプロファイル",
         "duration": round(me.dur, 3),
         "verdict": verdict, "verdict_ja": verdict_ja(verdict),
         "score": score.map(|s| round(s, 3)), "in_range": in_range, "scored": scored,

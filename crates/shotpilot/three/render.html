@@ -98,8 +98,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(G.background || "#000000");
 scene.fog = new THREE.FogExp2(new THREE.Color(FOG.color), FOG.density);
 if (G.ambient) scene.add(new THREE.HemisphereLight(new THREE.Color(G.ambient.sky || "#404040"), new THREE.Color(G.ambient.ground || "#101010"), G.ambient.intensity ?? 0.3));
-if (G.moon) {
-  const m = G.moon;
+// the one far light: the sun by day, the moon by night (the same keys)
+const SUN = G.sun || G.moon;
+if (SUN) {
+  const m = SUN;
   const light = new THREE.DirectionalLight(new THREE.Color(m.color || "#ffffff"), m.intensity ?? 0.5);
   const centre = P(m.center || [0, 0, 0]);
   light.position.copy(centre).add(D(m.from || [-1, 0, 1]).normalize().multiplyScalar(40));
@@ -286,6 +288,36 @@ Surf concrete(vec2 uv) {
   return Surf(col * (1.0 - wet * 0.3), mix(0.95, 0.3, wet), 0.0, fine * 0.4 + big * 0.2 - crack * 0.4);
 }
 
+Surf grass(vec2 uv) {
+  float big = fbm(uv, 3, 5, uSeed), mid = fbm(uv, 14, 4, uSeed + 5), fine = fbm(uv, 96, 3, uSeed + 13);
+  float blades = fbm2(uv, ivec2(160, 48), 3, uSeed + 9);
+  vec3 col = mix(uC2, uC1, smoothstep(0.3, 0.7, big * 0.6 + mid * 0.4));
+  col = mix(col, uC3, smoothstep(0.6, 0.78, mid) * 0.55);
+  col *= 0.84 + 0.28 * blades;
+  ivec2 cell = ivec2(floor(uv * 256.0)) % 256;
+  float bloom = step(0.992, h21(cell, uSeed + 21)) * uWear;
+  col = mix(col, h21(cell, uSeed + 23) > 0.5 ? vec3(0.96, 0.94, 0.86) : vec3(0.96, 0.82, 0.3), bloom * 0.85);
+  return Surf(col, 0.86 + 0.1 * fine, 0.0, blades * 0.35 + big * 0.1);
+}
+
+// Rows of roof tiles, each row overlapping the one below; uN rows per repeat.
+Surf shingle(vec2 uv) {
+  float rows = max(2.0, floor(uN / 2.0) * 2.0);
+  vec2 g = vec2(uv.x * rows * 0.5, uv.y * rows);
+  float row = floor(g.y);
+  g.x += mod(row, 2.0) * 0.5;
+  ivec2 id = ivec2(mod(floor(g.x), rows * 0.5), mod(row, rows));
+  vec2 f = fract(g);
+  float lip = smoothstep(0.0, 0.22, f.y);
+  float gap = 1.0 - smoothstep(0.0, 0.06, min(f.x, 1.0 - f.x));
+  vec3 base = mix(uC1, uC2, h21(id, uSeed));
+  base *= 0.86 + 0.24 * fbm(uv, 24, 3, uSeed + 3);
+  float moss = smoothstep(0.62, 0.8, fbm(uv, 5, 4, uSeed + 7)) * uWear;
+  base = mix(base, base * vec3(0.8, 0.9, 0.7), moss * 0.4);
+  vec3 col = base * (0.6 + 0.4 * lip) * (1.0 - 0.35 * gap);
+  return Surf(col, 0.5 + 0.25 * moss, 0.0, f.y * 0.5 - gap * 0.25);
+}
+
 void main() {
   Surf s = KIND(vUv);
   if (uMode == 0) gl_FragColor = vec4(s.albedo, 1.0);
@@ -304,6 +336,7 @@ void main() {
 const KINDS = {
   tiles: { n: 8, bump: 3 }, plaster: { bump: 0.8 }, paint: { bump: 1.5 }, ceiling: { n: 4, bump: 3 }, wood: { bump: 1.5 },
   metal: { bump: 1.5, metal: 0.85 }, fabric: { n: 90, bump: 2 }, plastic: { bump: 1 }, concrete: { bump: 3 },
+  grass: { bump: 2.5 }, shingle: { n: 10, bump: 4 },
 };
 const bakers = {};
 const normalMat = fsMat(NORMAL_FS, { tData: { value: null }, uTexel: { value: new THREE.Vector2() }, uStrength: { value: 1 } });
@@ -572,6 +605,38 @@ function decal(p, X, Y, Z, name) {
   return m;
 }
 
+// A windmill's sails: `blades` arms of a spar and a cloth panel round a hub on the box's thin
+// (front-to-back) axis, turning `spin` degrees a second. Kept in step with previz/game.rs.
+function sails(p, X, Y, Z) {
+  const g = new THREE.Group();
+  const R = Math.min(X, Y) / 2, n = p.blades || 4;
+  const wood = material({ mat: p.frame_mat || "timber" }), cloth = material(p);
+  const hub = solid(new THREE.Mesh(new THREE.CylinderGeometry(R * 0.07, R * 0.07, Math.max(Z, R * 0.12), 16), wood));
+  hub.rotation.x = PI / 2;
+  g.add(hub);
+  const turn = new THREE.Group();
+  g.add(turn);
+  for (let i = 0; i < n; i++) {
+    const arm = new THREE.Group();
+    arm.rotation.z = i * 2 * PI / n;
+    turn.add(arm);
+    const spar = solid(new THREE.Mesh(new THREE.BoxGeometry(R * 0.035, R, R * 0.035), wood));
+    spar.position.y = R / 2;
+    arm.add(spar);
+    const panel = solid(new THREE.Mesh(new THREE.BoxGeometry(R * 0.26, R * 0.72, R * 0.012), cloth));
+    panel.position.set(R * 0.15, R * 0.6, 0);
+    arm.add(panel);
+    for (let k = 0; k < 5; k++) {
+      const bar = solid(new THREE.Mesh(new THREE.BoxGeometry(R * 0.3, R * 0.014, R * 0.02), wood));
+      bar.position.set(R * 0.15, R * (0.28 + k * 0.17), R * 0.014);
+      arm.add(bar);
+    }
+  }
+  const rate = (p.spin ?? 20) * DEG;
+  live.push(t => { turn.rotation.z = -rate * t; });
+  return g;
+}
+
 // Soft round sprites for halos and dust.
 function radial(inner = 0) {
   const c = document.createElement("canvas");
@@ -660,7 +725,7 @@ function figure(p) {
   // the figure's left is -X when it faces -Z
   const [uaL, faL] = arm(-1), [uaR, faR] = arm(1), [thL, shL] = leg(-1), [thR, shR] = leg(1);
   if (cloth) {
-    const len = p.dress === "uniform" ? 0.86 : 0.98;
+    const len = p.dress_len ?? (p.dress === "uniform" ? 0.86 : 0.98);
     const g = new THREE.CylinderGeometry(0.168 * k, 0.26 * k, len * k, 40, 8, true);
     const pos = g.attributes.position, r = rng(p.seed || "gown");
     const ph = r() * 6;
@@ -679,6 +744,33 @@ function figure(p) {
   if (p.holds === "clipboard") {
     const board = solid(new THREE.Mesh(roundedBox(0.22 * k, 0.3 * k, 0.012 * k, 0.005), material({ mat: p.holds_mat || "accent" })));
     board.position.set(0.02 * k, -0.3 * k, -0.06 * k); board.rotation.x = 0.9; faL.add(board);
+  } else if (p.holds) {
+    // what it carries, in the hand at the end of the forearm (y down the forearm, -z ahead)
+    const hand = -(0.27 * al + 0.1 * al) * k;
+    const mat = material({ mat: p.holds_mat || ({ can: "tin", teapot: "teapot", basket: "basket", broom: "plank" })[p.holds] || "accent" });
+    const g = new THREE.Group();
+    const add = (geo, x, y, z, rx = 0, rz = 0, m = mat) => { const s = solid(new THREE.Mesh(geo, m)); s.position.set(x * k, y * k, z * k); s.rotation.set(rx, 0, rz); g.add(s); return s; };
+    if (p.holds === "can") {
+      add(new THREE.CylinderGeometry(0.075, 0.085, 0.17, 18), 0, -0.1, -0.03);
+      add(new THREE.CylinderGeometry(0.01, 0.016, 0.26, 8), 0, -0.07, -0.18, -1.05);
+      add(new THREE.TorusGeometry(0.06, 0.01, 6, 16, PI), 0, 0.0, -0.03, 0, PI / 2);
+    } else if (p.holds === "teapot") {
+      const body = add(new THREE.SphereGeometry(0.075, 20, 14), 0, -0.07, -0.05); body.scale.set(1, 0.82, 1);
+      add(new THREE.CylinderGeometry(0.008, 0.016, 0.12, 8), 0, -0.04, -0.15, -1.1);
+      add(new THREE.SphereGeometry(0.018, 10, 8), 0, -0.005, -0.05);
+      add(new THREE.TorusGeometry(0.05, 0.01, 6, 16, PI), 0, -0.07, 0.03, 0, PI / 2);
+    } else if (p.holds === "basket") {
+      add(new THREE.CylinderGeometry(0.15, 0.12, 0.13, 20, 1, true), 0, -0.2, 0);
+      add(new THREE.CylinderGeometry(0.12, 0.12, 0.01, 20), 0, -0.26, 0);
+      add(new THREE.TorusGeometry(0.13, 0.01, 6, 20, PI), 0, -0.13, 0, 0, 0);
+      const veg = material({ mat: "apple" });
+      for (const [x, z] of [[-0.05, -0.03], [0.04, 0.02], [0.0, 0.05]]) add(new THREE.SphereGeometry(0.04, 12, 8), x, -0.15, z, 0, 0, veg);
+    } else if (p.holds === "broom") {
+      add(new THREE.CylinderGeometry(0.012, 0.012, 1.3, 8), 0, -0.25, -0.12, 0.5);
+      add(new THREE.CylinderGeometry(0.03, 0.09, 0.3, 12), 0, -0.85, -0.42, 0.5);
+    }
+    g.position.y = hand;
+    (p.holds === "basket" ? faL : faR).add(g);
   }
   const J = { body, hips, spine, chest, neck, head, uaL, faL, uaR, faR, thL, shL, thR, shR };
   const rest = {};
@@ -742,6 +834,31 @@ const MOVES = {
              hips: { h: 0.95 * k - 0.015 * k * Math.abs(cos(ph)), y: 0.05 * s }, spine: { x: -0.08 }, chest: { z: 0.04 * s },
              head: { x: 0.12, z: 0.42 + 0.05 * sin(t * 0.7) }, uaL: { x: 0.08 - 0.06 * s, z: -0.04 }, uaR: { x: 0.08 + 0.06 * s, z: 0.04 }, faL: { x: 0.15 }, faR: { x: 0.2 } };
   },
+  // the village's (D-100): walking, running, watering, pouring, sweeping, waving, sitting
+  walk: (t, k) => {
+    const ph = t * 2 * PI / 1.1, s = sin(ph);
+    return { thL: { x: 0.42 * s }, thR: { x: -0.42 * s }, shL: { x: -0.1 - 0.55 * Math.max(0, -cos(ph)) }, shR: { x: -0.1 - 0.55 * Math.max(0, cos(ph)) },
+             hips: { h: 0.95 * k - 0.02 * k * Math.abs(cos(ph)), y: 0.06 * s }, chest: { y: -0.08 * s }, head: { x: -0.04 },
+             uaL: { x: -0.35 * s, z: -0.06 }, uaR: { x: 0.35 * s, z: 0.06 }, faL: { x: 0.25 }, faR: { x: 0.25 } };
+  },
+  run: (t, k) => {
+    const ph = t * 2 * PI / 0.62, s = sin(ph);
+    return { thL: { x: 0.75 * s }, thR: { x: -0.75 * s }, shL: { x: -0.3 - 1.1 * Math.max(0, -cos(ph)) }, shR: { x: -0.3 - 1.1 * Math.max(0, cos(ph)) },
+             hips: { h: 0.93 * k + 0.03 * k * Math.abs(sin(ph)), y: 0.08 * s }, spine: { x: -0.15 }, chest: { y: -0.12 * s }, head: { x: 0.12 },
+             uaL: { x: -0.7 * s, z: -0.12 }, uaR: { x: 0.7 * s, z: 0.12 }, faL: { x: 1.2 }, faR: { x: 1.2 } };
+  },
+  water: t => ({ spine: { x: -0.15 }, head: { x: 0.25 }, uaR: { x: 0.95 + 0.06 * sin(t * 1.3), z: 0.12 }, faR: { x: 0.3 }, uaL: { z: -0.14 }, faL: { x: 0.2 } }),
+  pour: t => {
+    const u = 0.5 - 0.5 * cos(t * 1.1);
+    return { spine: { x: -0.12 }, head: { x: 0.3 }, uaR: { x: 0.75 + 0.25 * u, z: 0.18 }, faR: { x: 0.9 - 0.3 * u, z: 0.25 * u }, uaL: { x: 0.5, z: -0.1 }, faL: { x: 1.3 } };
+  },
+  sweep: t => {
+    const s = sin(t * 2.4);
+    return { spine: { x: -0.3, y: 0.25 * s }, chest: { y: 0.15 * s }, head: { x: 0.35 }, uaL: { x: 0.6 + 0.2 * s, z: 0.2 }, faL: { x: 0.6 }, uaR: { x: 0.5 + 0.2 * s, z: -0.2 }, faR: { x: 0.9 } };
+  },
+  wave: t => ({ chest: { x: 0.02 * sin(t * 1.7) }, head: { z: 0.1 * sin(t * 0.9) }, uaR: { x: 0.3, z: 2.5 }, faR: { z: 0.45 * sin(t * 6) }, uaL: { z: -0.08 } }),
+  sit: (t, k) => ({ hips: { h: 0.6 * k }, thL: { x: 1.5, z: -0.05 }, thR: { x: 1.5, z: 0.05 }, shL: { x: -1.45 }, shR: { x: -1.45 }, spine: { x: 0.05 },
+                    chest: { x: 0.02 * sin(t * 1.5) }, head: { x: 0.05, y: 0.25 * sin(t * 0.35) }, uaL: { x: 0.35, z: -0.05 }, faL: { x: 0.9 }, uaR: { x: 0.35, z: 0.05 }, faR: { x: 0.9 } }),
 };
 
 // ------------------------------------------------------------------ objects
@@ -760,6 +877,7 @@ function part(grp, p, name) {
     let m;
     if (p.shape === "sign") m = panel(p, X, Y, Z, name);
     else if (p.shape === "decal") m = decal(p, X, Y, Z, name);
+    else if (p.shape === "sails") m = sails(p, X, Y, Z);
     else {
       const mat = material(p);
       let geo;
@@ -775,9 +893,11 @@ function part(grp, p, name) {
   } else if (p.cylinder) {
     const [r, h] = p.cylinder;
     const mat = material(p);
-    const geo = new THREE.CylinderGeometry((p.top ?? r) * S, r * S, h * S, p.sides || 24, 1, !!p.open);
+    let geo = new THREE.CylinderGeometry((p.top ?? r) * S, r * S, h * S, p.sides || 24, 1, !!p.open);
     const [sx, sy] = mat.userData.scale;
     scaleUV(geo, 2 * PI * r * S / sx, h * S / sy);
+    // a few sides (a hipped roof, a square post) are flat faces, not a rounded cylinder
+    if ((p.sides || 24) <= 8) { geo = geo.toNonIndexed(); geo.computeVertexNormals(); }
     const m = solid(new THREE.Mesh(geo, mat));
     if (p.axis === "x") m.rotation.x = PI / 2;
     else if (p.axis === "y") m.rotation.z = PI / 2;
@@ -786,7 +906,9 @@ function part(grp, p, name) {
     grp.add(holder);
   } else if (p.sphere) {
     const mat = material(p);
-    const geo = new THREE.SphereGeometry(p.sphere * S, 24, 16);
+    // big balls (a hill, a tree's crown) get more segments so their outline stays round
+    const [ws, hs] = p.sphere >= 1000 ? [96, 48] : p.sphere >= 100 ? [40, 24] : [24, 16];
+    const geo = new THREE.SphereGeometry(p.sphere * S, ws, hs);
     const [sx, sy] = mat.userData.scale;
     scaleUV(geo, 2 * PI * p.sphere * S / sx, PI * p.sphere * S / sy);
     const m = solid(new THREE.Mesh(geo, mat));
@@ -877,15 +999,15 @@ function object(o, name) {
 
 for (const o of job.scene.objects) object(o, o.name);
 
-// the night outside: a sky with the moon where the moonlight comes from
+// the sky, with the sun (or the moon) where its light comes from, and stars unless `stars: 0`
 if (G.sky) {
   const sk = G.sky;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(200, 48, 24), new THREE.ShaderMaterial({
     uniforms: { uTop: { value: new THREE.Color(sk.top || "#03060c") }, uHorizon: { value: new THREE.Color(sk.horizon || "#0c1218") },
-                uMoon: { value: D(G.moon?.from || [-1, 0, 1]).normalize() }, uMoonColor: { value: new THREE.Color(sk.moon || "#dfe8ff") },
-                uSize: { value: (sk.moon_size ?? 1.1) * DEG }, uGlow: { value: sk.glow ?? 1 } },
+                uMoon: { value: D(SUN?.from || [-1, 0, 1]).normalize() }, uMoonColor: { value: new THREE.Color(sk.sun || sk.moon || "#dfe8ff") },
+                uSize: { value: (sk.sun_size ?? sk.moon_size ?? 1.1) * DEG }, uGlow: { value: sk.glow ?? 1 }, uStars: { value: sk.stars ?? 1 } },
     vertexShader: "varying vec3 vD; void main() { vD = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }",
-    fragmentShader: HASH + `uniform vec3 uTop, uHorizon, uMoon, uMoonColor; uniform float uSize, uGlow; varying vec3 vD;
+    fragmentShader: HASH + `uniform vec3 uTop, uHorizon, uMoon, uMoonColor; uniform float uSize, uGlow, uStars; varying vec3 vD;
       void main() {
         vec3 d = normalize(vD);
         float up = d.y;
@@ -895,7 +1017,7 @@ if (G.sky) {
         col += uMoonColor * (pow(max(m, 0.0), 400.0) * 0.6 + pow(max(m, 0.0), 24.0) * 0.06) * uGlow;
         ivec3 c = ivec3(floor(d * 500.0) + 1000.0);
         float st = step(0.9993, h21(c.xy, c.z)) * smoothstep(0.08, 0.35, up);
-        col += st * 0.5;
+        col += st * 0.5 * uStars;
         gl_FragColor = vec4(col, 1.0);
       }`,
     depthWrite: false, side: THREE.BackSide,

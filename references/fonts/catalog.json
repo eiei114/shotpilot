@@ -5,7 +5,7 @@
   "metadata": "https://fonts.google.com/metadata/fonts (fetched 2026-11-05)",
   "coverage": "cmap of the first TTF of each family in github.com/google/fonts, counted against JIS X 0208 level 1 (2,965 kanji) and level 2 (3,390 kanji)",
   "about": "DESCRIPTION.en_us.html of each family in github.com/google/fonts",
-  "overused": "open-design design-templates/hyperframes/references/typography.md (od-ban); research_notes/文字デザインと書体/web_trailer_type_and_legibility.md (cliche)"
+  "overused": "open-design design-templates/hyperframes/references/typography.md (llm-default); research_notes/文字デザインと書体/web_trailer_type_and_legibility.md (cliche)"
  },
  "registers": {
   "dread": "不穏・ホラー",
@@ -4322,9 +4322,9 @@
  "overused": [
   {
    "family": "Inter",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 5,
-   "why": "LLM が既定で選ぶ書体（open-design の禁止リスト）",
+   "why": "LLM が既定で選ぶ書体",
    "instead": [
     "Hanken Grotesk",
     "Geist",
@@ -4333,7 +4333,7 @@
   },
   {
    "family": "Roboto",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 2,
    "why": "同上",
    "instead": [
@@ -4343,7 +4343,7 @@
   },
   {
    "family": "Open Sans",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 3,
    "why": "同上",
    "instead": [
@@ -4353,7 +4353,7 @@
   },
   {
    "family": "Noto Sans",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 20,
    "why": "同上",
    "instead": [
@@ -4363,7 +4363,7 @@
   },
   {
    "family": "Lato",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 9,
    "why": "同上",
    "instead": [
@@ -4373,7 +4373,7 @@
   },
   {
    "family": "Poppins",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 8,
    "why": "同上",
    "instead": [
@@ -4383,7 +4383,7 @@
   },
   {
    "family": "Nunito",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 25,
    "why": "同上",
    "instead": [
@@ -4393,7 +4393,7 @@
   },
   {
    "family": "Playfair Display",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 24,
    "why": "同上",
    "instead": [
@@ -4403,7 +4403,7 @@
   },
   {
    "family": "Cormorant Garamond",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 65,
    "why": "同上。x ハイトが低く、日本語の横では小さく見える",
    "instead": [
@@ -4413,7 +4413,7 @@
   },
   {
    "family": "EB Garamond",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 84,
    "why": "同上",
    "instead": [
@@ -4423,7 +4423,7 @@
   },
   {
    "family": "Bodoni Moda",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 146,
    "why": "同上",
    "instead": [
@@ -4433,7 +4433,7 @@
   },
   {
    "family": "Cinzel",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 120,
    "why": "同上。Trajan 風の金の大文字はファンタジーの定番（Trajan は「映画ポスターの Arial」と呼ばれる）",
    "instead": [
@@ -4444,7 +4444,7 @@
   },
   {
    "family": "Prata",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 256,
    "why": "同上",
    "instead": [
@@ -4454,9 +4454,9 @@
   },
   {
    "family": "Syne",
-   "kind": "od-ban",
+   "kind": "llm-default",
    "popularity": 185,
-   "why": "open-design が「AI デザインの印」と名指しする書体",
+   "why": "「AI デザインの印」と見られやすい書体",
    "instead": [
     "Unbounded",
     "Archivo"

@@ -61,7 +61,7 @@ fn default_dur(kind: &str) -> f64 {
     }
 }
 
-/// Seconds a line must stay on screen to be read (D-49, from open-design's video profile):
+/// Seconds a line must stay on screen to be read (D-49):
 /// at least 1.5 s; Japanese 1 s per 4 characters, English 1 s per 3 words, plus 0.5 s. A
 /// count is a running number read at a glance (1 s). A black gap has no text. The values
 /// live here only; the plan, the edits and the shot check all use this.

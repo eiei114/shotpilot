@@ -1,7 +1,7 @@
 {
   "schemaVersion": "shotpilot-transitions/v1",
   "sources": {
-    "recipes": "open-design (nexu-io/open-design, Apache-2.0): design-templates/hyperframes/references/transitions.md, transitions/catalog.md, transitions/css-dissolve.md (Color Dip), css-light.md (Overexposure Burn), css-distortion.md (Glitch), motion-principles.md (ease direction)",
+    "recipes": "open-design (nexu-io/open-design, Apache-2.0), transition references, adapted",
     "lengths": "research_notes/モーションデザイン/corpus_cozy_rpg.md (RPG whiteouts: rise 0.2-0.5 s, hold 0-0.5 s, decay 0.7-1.0 s), auto_measure.md (black gaps and white flashes over 736 teasers)",
     "rules": "references/motion/TRANSITIONS.md"
   },

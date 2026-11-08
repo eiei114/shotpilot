@@ -1,6 +1,6 @@
 //! The first pass: everything constrained up front, then one go to a teaser you can watch.
 //!
-//! Like open-design's production turn: plan first when there is no plan (D-45), gather what
+//! Plan first when there is no plan (D-45), gather what
 //! is missing (scout photos at the places the plan needs, the stage,
 //! a mood board), hand the planner every constraint at once (brief, stage, craft rules,
 //! skeleton, scout photos, mood board, finish), write the shot list and the finish, render
@@ -393,8 +393,8 @@ fn finish(ws: &mut Workspace, claude: &dyn Claude, opts: &ProduceOpts, emit: &mu
         step("render", "failed", format!("{} 本失敗", failed.len()), emit, &mut steps);
     }
 
-    // 7. one look at what the engine filmed, and at most one repair (D-50, open-design's
-    // bounded video exception). Previz draws boxes, so there is nothing to look at there.
+    // 7. one look at what the engine filmed, and at most one repair (D-50, the one
+    // bounded exception to D-22). Previz draws boxes, so there is nothing to look at there.
     if !crate::fingerprint::is_previz(&crate::fingerprint::quality(&ws.defn, &opts.quality)?) {
         see_and_repair(ws, claude, &opts.quality, emit, &mut steps, &mut notes)?;
     }

@@ -1,7 +1,7 @@
 //! How the burned-in text moves and how shots hand over (D-53).
 //!
-//! A small vocabulary the planner picks from and code turns into ffmpeg expressions, after
-//! open-design's motion-design profile ("the model picks from enums, code sets the numbers"):
+//! A small vocabulary the planner picks from and code turns into ffmpeg expressions (the
+//! model picks from enums, code sets the numbers):
 //! entrances (`cut fade flicker focus slam pop type wipe glitch`), holds (`still drift glow`),
 //! exits (`cut fade glitch`) and the hand-overs between shots (`cut dip flash whiteout glitch`).
 //! How a hand-over is drawn is its recipe (`handover.rs`, D-70); this holds its lengths.

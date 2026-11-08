@@ -1,15 +1,18 @@
-//! The three engine's sample game (D-72): Lanternless, the closed-down ward at night. The floor
-//! plan and the five anchors stand where the UE sample has them, so the same shots.yaml films
-//! both; what fills the rooms is the three game's own (handrails, doors, beds and curtains, a
-//! vending machine and a television of static, patients in gowns, the yard and the moon).
+//! The three engine's sample game (D-72, D-100): KettleHill, a village on a green hill on a
+//! clear afternoon. Five places to film, each with its own colour and outline so a camera that
+//! points at one is plain to see: the white windmill with its turning sails, the market stall
+//! under a red and cream awning, the teahouse with its dark roof and red lanterns, the old oak
+//! that children run around, and the vegetable rows with the sunflowers. Houses, a well, the
+//! paths between them and the hills far off fill the rest; villagers pour tea, wave, water,
+//! sweep and walk.
 //!
-//! One file per thing (`objects/<name>.json`): edit the stretcher and only the shots that showed
-//! it go stale. Written once by `shotpilot init --engine three`; after that it is the game, and
-//! people edit it by hand.
+//! One file per thing (`objects/<name>.json`): repaint the stall's awning and only the shots that
+//! showed it go stale. Written once by `shotpilot init --engine three`; after that it is the game,
+//! and people edit it by hand.
 //!
 //! Every part's `box` (or cylinder, sphere, figure) is also the shape shotpilot uses to decide
 //! what a shot saw. Keys only the page reads refine how it looks: `shape` (round, curtain, torus,
-//! sign, decal), `tilt`, `dress`, `build`, `halo`, `beam`.
+//! sign, decal, sails), `tilt`, `sides`, `dress`, `holds`, `build`, `halo`.
 
 use std::path::{Path, PathBuf};
 
@@ -20,9 +23,13 @@ use crate::three::{OBJECTS_DIR, PROPS_DIR, SCENE_FILE};
 
 type V3 = [f64; 3];
 
-const H: f64 = 300.0; // ceiling
-const THICK: f64 = 20.0;
-const DADO: f64 = 105.0; // where the painted lower wall meets the plaster
+const FH: f64 = 45.0; // the teahouse floor
+const EAVE: f64 = 280.0; // where the teahouse roof starts
+const SQRT2: f64 = std::f64::consts::SQRT_2;
+
+/// The windmill's sails face the square: the way from the mill to the well.
+const MILL: (f64, f64) = (2400.0, -1800.0);
+const MILL_YAW: f64 = 143.130_102_354_155_98; // atan2(1800, -2400)
 
 /// `v` with the keys of `extra` added (or replaced).
 fn with(mut v: Value, extra: Value) -> Value {
@@ -55,196 +62,61 @@ fn post(base: V3, diameter: f64, height: f64, mat: &str) -> Value {
     json!({"cylinder": [diameter / 2.0, height], "at": [base[0], base[1], base[2] + height / 2.0], "mat": mat})
 }
 
+/// A cone standing on `base`.
+fn cone(base: V3, radius: f64, height: f64, mat: &str) -> Value {
+    json!({"cylinder": [radius, height], "top": 0.0, "at": [base[0], base[1], base[2] + height / 2.0], "mat": mat})
+}
+
 /// A cylinder lying along X (or Y) centred on `at`.
 fn rod(at: V3, diameter: f64, length: f64, axis: &str, mat: &str) -> Value {
     json!({"cylinder": [diameter / 2.0, length], "axis": axis, "at": at, "mat": mat})
 }
 
-/// A sign or board: text (or a drawing) on its two broad faces.
+fn ball(r: f64, at: V3, mat: &str) -> Value {
+    json!({"sphere": r, "at": at, "mat": mat})
+}
+
+/// A ball in a colour of its own.
+fn ball_c(r: f64, at: V3, mat: &str, color: &str) -> Value {
+    json!({"sphere": r, "at": at, "mat": mat, "color": color})
+}
+
+/// A sign or board: text on its two broad faces.
 fn sign(size: V3, at: V3, text: &str, fg: &str, bg: &str) -> Value {
-    json!({"box": size, "at": at, "mat": "frame", "shape": "sign", "text": text, "fg": fg, "bg": bg})
+    json!({"box": size, "at": at, "mat": "timber", "shape": "sign", "text": text, "fg": fg, "bg": bg})
 }
 
-fn drawn(size: V3, at: V3, draw: &str) -> Value {
-    json!({"box": size, "at": at, "mat": "frame", "shape": "sign", "draw": draw})
+/// A square hipped roof: its eaves `half` from the middle on every side, `height` tall, standing on
+/// `eave`. A four-sided cylinder turned by 45 degrees. Never hides what is behind it: its box is
+/// far larger than the roof.
+fn roof(at: (f64, f64), eave: f64, half: f64, top: f64, height: f64, mat: &str) -> Value {
+    json!({"cylinder": [half * SQRT2, height], "top": top * SQRT2, "sides": 4, "yaw": 45.0,
+           "at": [at.0, at.1, eave + height / 2.0], "mat": mat, "solid": false})
 }
 
-/// A stain on the floor.
-fn stain(size: [f64; 2], at: [f64; 2], yaw: f64, kind: &str) -> Value {
-    json!({"box": [size[0], size[1], 0.4], "at": [at[0], at[1], 0.2], "yaw": yaw, "shape": "decal", "stain": kind, "solid": false})
-}
-
-fn figure(mv: &str, feet: V3, facing: f64) -> Value {
-    json!({"figure": mv, "at": feet, "facing": facing, "height": 175})
-}
-
-fn patient(mv: &str, feet: V3, facing: f64) -> Value {
-    with(figure(mv, feet, facing), json!({"dress": "gown"}))
+/// A villager: a figure in clothes of `dress`, its skirt or tunic `len` long.
+fn villager(mv: &str, feet: V3, facing: f64, dress: &str, len: f64, height: f64) -> Value {
+    json!({"figure": mv, "at": feet, "facing": facing, "height": height, "dress": dress, "dress_len": len})
 }
 
 fn point(at: V3, color: &str, intensity: f64, range: f64) -> Value {
     json!({"light": "point", "at": at, "color": color, "intensity": intensity, "range": range})
 }
 
-/// A light pointing straight down from `at`.
-fn downlight(at: V3, color: &str, intensity: f64, cone: f64) -> Value {
-    json!({"light": "spot", "at": at, "toward": [at[0], at[1], 0.0], "color": color, "intensity": intensity,
-           "range": 900, "cone": cone, "penumbra": 0.85})
-}
-
-fn along(a: (f64, f64), b: (f64, f64), u: f64) -> (f64, f64) {
-    let l = (b.0 - a.0).hypot(b.1 - a.1);
-    (a.0 + (b.0 - a.0) * u / l, a.1 + (b.1 - a.1) * u / l)
-}
-
 fn yaw_of(a: (f64, f64), b: (f64, f64)) -> f64 {
     (b.1 - a.1).atan2(b.0 - a.0).to_degrees()
 }
 
-/// A straight wall from a to b with openings (u0, u1, bottom, top) measured from a; `ends` adds
-/// length at each end, as `Level.wall` does in the UE builder. Painted below the dado, plaster
-/// above, and a rail where they meet.
-fn wall(a: (f64, f64), b: (f64, f64), holes: &[(f64, f64, f64, f64)], ends: (f64, f64)) -> Vec<Value> {
-    let length = (b.0 - a.0).hypot(b.1 - a.1);
-    let yaw = yaw_of(a, b);
-    let mut pieces = Vec::new();
-    let mut u = -ends.0;
-    let mut sorted = holes.to_vec();
-    sorted.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
-    for (u0, u1, bottom, top) in sorted {
-        if u0 > u {
-            pieces.push((u, u0, 0.0, H));
-        }
-        if bottom > 0.0 {
-            pieces.push((u0, u1, 0.0, bottom));
-        }
-        if top < H {
-            pieces.push((u0, u1, top, H));
-        }
-        u = u1;
-    }
-    if u < length + ends.1 {
-        pieces.push((u, length + ends.1, 0.0, H));
-    }
-    let mut out = Vec::new();
-    for (u0, u1, z0, z1) in pieces {
-        let (x, y) = along(a, b, (u0 + u1) / 2.0);
-        for (lo, hi, mat) in [(z0, z1.min(DADO), "dado"), (z0.max(DADO), z1, "plaster")] {
-            if hi - lo > 0.5 {
-                out.push(bxy([u1 - u0, THICK, hi - lo], [x, y, (lo + hi) / 2.0], mat, yaw));
-            }
-        }
-        if z0 < DADO && z1 > DADO + 4.0 {
-            out.push(thin(bxy([u1 - u0, THICK + 3.0, 5.0], [x, y, DADO + 2.0], "rail", yaw)));
-        }
-    }
-    out
+/// A path of trodden earth from a to b, `width` wide.
+fn path(a: (f64, f64), b: (f64, f64), width: f64) -> Value {
+    let len = (b.0 - a.0).hypot(b.1 - a.1);
+    thin(bxy([len, width, 1.2], [(a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0, 0.6], "path", yaw_of(a, b)))
 }
 
-/// The window in the opening (u0..u1, bottom..top) of wall a -> b: a frame, glass, bars, a sill.
-fn window(a: (f64, f64), b: (f64, f64), u0: f64, u1: f64, bottom: f64, top: f64) -> Vec<Value> {
-    let yaw = yaw_of(a, b);
-    let mut out = Vec::new();
-    let (cx, cy) = along(a, b, (u0 + u1) / 2.0);
-    let mid = (bottom + top) / 2.0;
-    out.push(thin(bxy([u1 - u0, 1.0, top - bottom], [cx, cy, mid], "glass", yaw)));
-    for (u, w) in [(u0 + 3.0, 6.0), (u1 - 3.0, 6.0), ((u0 + u1) / 2.0, 4.0)] {
-        let (x, y) = along(a, b, u);
-        out.push(thin(bxy([w, THICK + 4.0, top - bottom], [x, y, mid], "frame", yaw)));
-    }
-    out.push(thin(bxy([u1 - u0, THICK + 4.0, 6.0], [cx, cy, top - 3.0], "frame", yaw)));
-    out.push(thin(bxy([u1 - u0, THICK + 4.0, 3.0], [cx, cy, (bottom + top) * 0.5 + 8.0], "frame", yaw)));
-    out.push(thin(bxy([u1 - u0 + 10.0, THICK + 14.0, 4.0], [cx, cy, bottom + 2.0], "frame", yaw)));
-    let n = ((u1 - u0) / 16.0).floor() as i64;
-    for i in 1..=n {
-        let (x, y) = along(a, b, u0 + (u1 - u0) * i as f64 / (n + 1) as f64);
-        out.push(post([x, y, bottom], 2.6, top - bottom, "iron"));
-    }
-    out
-}
-
-/// Door frame inside an opening of wall a -> b: two jambs and a head.
-fn doorway(a: (f64, f64), b: (f64, f64), u0: f64, u1: f64, top: f64) -> Vec<Value> {
-    let yaw = yaw_of(a, b);
-    let mut out: Vec<Value> = [u0 + 3.0, u1 - 3.0]
-        .iter()
-        .map(|u| {
-            let (x, y) = along(a, b, *u);
-            thin(bxy([6.0, THICK + 6.0, top], [x, y, top / 2.0], "frame", yaw))
-        })
-        .collect();
-    let (x, y) = along(a, b, (u0 + u1) / 2.0);
-    out.push(thin(bxy([u1 - u0, THICK + 6.0, 8.0], [x, y, top + 4.0], "frame", yaw)));
-    out
-}
-
-/// A door leaf hung at `hinge`, opened to `angle` degrees (world yaw of the leaf from the hinge).
-fn door(hinge: (f64, f64), angle: f64, width: f64, height: f64) -> Vec<Value> {
-    let (s, c) = angle.to_radians().sin_cos();
-    let at = |u: f64| (hinge.0 + c * u, hinge.1 + s * u);
-    let (x, y) = at(width / 2.0);
-    let (hx, hy) = at(width - 12.0);
-    vec![
-        json!({"box": [width, 4.5, height], "at": [x, y, height / 2.0 + 1.0], "yaw": angle, "mat": "door", "shape": "round", "r": 1.0}),
-        thin(json!({"box": [26.0, 1.0, 34.0], "at": [at(width * 0.5).0, at(width * 0.5).1, 165.0], "yaw": angle, "mat": "glass"})),
-        thin(json!({"box": [4.0, 9.0, 14.0], "at": [hx, hy, 100.0], "yaw": angle, "mat": "steel", "shape": "round", "r": 1.0})),
-    ]
-}
-
-/// A plastic chair: seat, back and four legs, standing at `at` facing `facing`.
-fn chair_parts(mat: &str) -> Vec<Value> {
-    let mut p = vec![rb([44.0, 44.0, 5.0], [0.0, 0.0, 44.0], mat), with(rb([6.0, 44.0, 40.0], [-21.0, 0.0, 68.0], mat), json!({"tilt": [0.0, 0.0]}))];
-    for (x, y) in [(-18.0, -18.0), (-18.0, 18.0), (18.0, -18.0), (18.0, 18.0)] {
-        p.push(thin(post([x, y, 0.0], 2.4, 42.0, "steel")));
-    }
-    p
-}
-
-/// A hospital bed in its own frame (head towards -x), length 200 along x.
-fn bed_parts(with_mattress: bool) -> Vec<Value> {
-    let mut p = Vec::new();
-    if with_mattress {
-        p.push(rb([194.0, 86.0, 14.0], [2.0, 0.0, 51.0], "vinyl"));
-        p.push(with(rb([196.0, 90.0, 3.0], [4.0, 0.0, 59.0], "sheet"), json!({"r": 1.5})));
-        p.push(rb([34.0, 58.0, 12.0], [-78.0, 0.0, 66.0], "sheet"));
-        p.push(json!({"box": [150.0, 4.0, 34.0], "at": [12.0, 45.0, 44.0], "mat": "sheet", "shape": "curtain"}));
-    } else {
-        for i in 0..9 {
-            p.push(thin(rod([-90.0 + 22.5 * i as f64, 0.0, 44.0], 1.6, 84.0, "y", "iron")));
-        }
-    }
-    p.push(rb([200.0, 90.0, 6.0], [0.0, 0.0, 41.0], "steel"));
-    p.push(rb([6.0, 94.0, 96.0], [-103.0, 0.0, 48.0], "bedhead"));
-    p.push(rb([6.0, 94.0, 66.0], [103.0, 0.0, 33.0], "bedhead"));
-    for (x, y) in [(-92.0, -40.0), (-92.0, 40.0), (92.0, -40.0), (92.0, 40.0)] {
-        p.push(thin(post([x, y, 10.0], 4.0, 32.0, "steel")));
-        p.push(thin(json!({"box": [10.0, 3.0, 10.0], "at": [x, y, 5.5], "mat": "rubber", "shape": "torus"})));
-    }
-    for y in [-45.0, 45.0] {
-        p.push(thin(rod([0.0, y, 72.0], 2.4, 110.0, "x", "steel")));
-        for x in [-50.0, 50.0] {
-            p.push(thin(post([x, y, 44.0], 2.0, 28.0, "steel")));
-        }
-    }
-    p
-}
-
-/// A wheelchair in its own frame, facing +x.
-fn wheelchair_parts() -> Vec<Value> {
-    let mut p = vec![
-        rb([44.0, 44.0, 5.0], [0.0, 0.0, 50.0], "vinyl"),
-        with(rb([6.0, 44.0, 44.0], [-24.0, 0.0, 76.0], "vinyl"), json!({"tilt": [0.0, 0.0]})),
-    ];
-    for y in [-27.0, 27.0] {
-        p.push(thin(json!({"box": [62.0, 3.5, 62.0], "at": [-6.0, y, 31.0], "mat": "rubber", "shape": "torus"})));
-        p.push(thin(json!({"box": [50.0, 1.5, 50.0], "at": [-6.0, y * 1.07, 31.0], "mat": "steel", "shape": "torus"})));
-        p.push(thin(rod([4.0, y * 0.85, 68.0], 2.4, 46.0, "x", "steel")));
-        p.push(thin(json!({"box": [10.0, 2.5, 10.0], "at": [26.0, y * 0.75, 5.0], "mat": "rubber", "shape": "torus"})));
-        p.push(thin(post([26.0, y * 0.75, 8.0], 2.0, 40.0, "steel")));
-        p.push(thin(post([-26.0, y * 0.85, 48.0], 2.0, 50.0, "steel")));
-    }
-    p.push(thin(rb([16.0, 40.0, 2.0], [32.0, 0.0, 14.0], "steel")));
-    p
+/// `at` moved `d` along the way `yaw` (degrees) points.
+fn ahead(at: (f64, f64), yaw: f64, d: f64) -> (f64, f64) {
+    let (s, c) = yaw.to_radians().sin_cos();
+    (at.0 + c * d, at.1 + s * d)
 }
 
 fn structure(label: &str, parts: Vec<Value>) -> Value {
@@ -266,16 +138,14 @@ fn anchored(label: &str, anchor: Value, parts: Vec<Value>) -> Value {
 
 fn scene() -> Value {
     json!({
-        "name": "Lanternless",
-        "background": "#020306",
-        "exposure": 1.15,
-        "fog": {"color": "#0a1016", "density": 0.022, "ground": 0.09, "height": 0.7},
-        "sky": {"top": "#010205", "horizon": "#0b1219", "moon": "#d9e4ff", "moon_size": 1.2},
-        "post": {"bloom": 0.55, "threshold": 1.4, "ao": 0.9, "ao_radius": 0.55, "vignette": 0.6, "grain": 0.035, "aberration": 0.0022, "dof": 1.0},
-        "ambient": {"sky": "#1a2633", "ground": "#050606", "intensity": 0.18},
-        "moon": {"from": [-0.742, -0.52, 0.423], "color": "#8fa8ff", "intensity": 0.55, "shadow": true,
-                 "center": [900, 0, 0], "reach": 2600},
-        "flicker": {"offset": 1.4, "period": 2.6, "dips": [[0, 0.08], [0.17, 0.25]], "low": 0.12},
+        "name": "KettleHill",
+        "background": "#cfe1ef",
+        "exposure": 1.0,
+        "fog": {"color": "#c9dbea", "density": 0.0045, "ground": 0.0, "height": 6.0},
+        "sky": {"top": "#4a8bd6", "horizon": "#d4e5f2", "sun": "#fff4d8", "sun_size": 1.6, "glow": 0.8, "stars": 0},
+        "post": {"bloom": 0.2, "threshold": 2.4, "ao": 0.7, "ao_radius": 0.6, "vignette": 0.22, "grain": 0.01, "aberration": 0.0006, "dof": 1.0},
+        "ambient": {"sky": "#b9d3ef", "ground": "#7a8a4c", "intensity": 1.0},
+        "sun": {"from": [-0.56, -0.5, 0.66], "color": "#fff0d6", "intensity": 3.0, "shadow": true, "center": [0, 0, 0], "reach": 3600},
         "materials": materials(),
     })
 }
@@ -283,496 +153,505 @@ fn scene() -> Value {
 /// The materials, by name: `tex` names the surface the page bakes from noise.
 fn materials() -> Value {
     let mut m = json!({
-                "floor": {"tex": "tiles", "color": "#aaa592", "color2": "#283330", "color3": "#3b3a34", "n": 8, "scale": [2.4, 2.4]},
-                "yard": {"tex": "concrete", "color": "#33362f", "color2": "#1b2617", "scale": [6, 6]},
-                "plaster": {"tex": "plaster", "color": "#8d9184", "color2": "#26301f", "scale": [4, 3]},
-                "dado": {"tex": "paint", "color": "#2c4740", "color2": "#8a8775", "scale": [2, 3]},
-                "ceiling": {"tex": "ceiling", "color": "#a3a399", "color2": "#77786f", "n": 4, "scale": [2.4, 2.4]},
-                "rail": {"tex": "paint", "color": "#4d5a52", "color2": "#8a8775", "scale": [2, 3], "wear": 0.6},
-                "frame": {"tex": "paint", "color": "#59625b", "color2": "#8f8b78", "scale": [1, 1.5], "wear": 0.8},
-                "door": {"tex": "paint", "color": "#556a64", "color2": "#9a9684", "scale": [1.2, 2.2]},
-                "bedhead": {"tex": "paint", "color": "#7d8a86", "color2": "#a8a594", "scale": [1, 1], "wear": 0.7},
-                "laminate": {"tex": "paint", "color": "#6b5a45", "color2": "#a89878", "scale": [1.5, 1.5], "wear": 0.6},
-                "cart": {"tex": "paint", "color": "#8fa39a", "color2": "#b5b2a2", "scale": [1, 1], "wear": 0.8},
-                "concrete": {"tex": "concrete", "color": "#4a4c46", "color2": "#26301f", "scale": [3, 3]},
-                "metal": {"tex": "metal", "color": "#5e6468", "color2": "#5a3a22", "metal": 0.8, "scale": [1, 1]},
-                "steel": {"tex": "metal", "color": "#a6acb0", "color2": "#6b4a2c", "metal": 0.9, "wear": 0.35, "scale": [0.8, 0.8]},
-                "iron": {"tex": "metal", "color": "#3a3d3f", "color2": "#5a3a22", "metal": 0.7, "wear": 1.2, "scale": [0.6, 0.6]},
-                "paint_metal": {"tex": "metal", "color": "#6f7d76", "color2": "#5d4630", "metal": 0.15, "wear": 0.45, "scale": [1, 1]},
-                "wood": {"tex": "wood", "color": "#3a281b", "color2": "#5c4330", "scale": [1.2, 1.2]},
-                "bark": {"tex": "wood", "color": "#1c1814", "color2": "#2a241e", "scale": [1.5, 0.6], "wear": 1.4},
-                "vinyl": {"tex": "plastic", "color": "#2f4f4c", "scale": [1, 1]},
-                "seat": {"tex": "plastic", "color": "#2d5560", "scale": [0.8, 0.8], "wear": 0.8},
-                "plastic_old": {"tex": "plastic", "color": "#b7ad95", "scale": [0.6, 0.6]}
+        "grass": {"tex": "grass", "color": "#86b44c", "color2": "#5f8f36", "color3": "#b4c763", "scale": [3, 3]},
+        "meadow": {"tex": "grass", "color": "#8fbb58", "color2": "#6c9b42", "color3": "#b9c975", "scale": [9, 9], "wear": 0.2},
+        "path": {"tex": "concrete", "color": "#c2a77e", "color2": "#9a7c55", "scale": [2.5, 2.5], "wear": 0.5},
+        "stone": {"tex": "concrete", "color": "#cfc8b8", "color2": "#93a06e", "scale": [1.6, 1.6], "wear": 0.35},
+        "soil": {"tex": "concrete", "color": "#7a5636", "color2": "#5c3f27", "scale": [1.5, 1.5], "wear": 0.6},
+        "plaster_white": {"tex": "plaster", "color": "#f1ece0", "color2": "#a3ad8e", "scale": [4, 3], "wear": 0.2},
+        "plaster_cream": {"tex": "plaster", "color": "#ecdcbb", "color2": "#a3ad8e", "scale": [4, 3], "wear": 0.2},
+        "plaster_pink": {"tex": "plaster", "color": "#efd2c4", "color2": "#a3ad8e", "scale": [4, 3], "wear": 0.2},
+        "timber": {"tex": "wood", "color": "#6e4a2c", "color2": "#8c6340", "scale": [1.2, 1.2], "wear": 0.4},
+        "plank": {"tex": "wood", "color": "#a87d50", "color2": "#c79a68", "scale": [1.2, 1.2], "wear": 0.5},
+        "crate": {"tex": "wood", "color": "#b98f5c", "color2": "#d2a874", "scale": [0.8, 0.8], "wear": 0.6},
+        "bark": {"tex": "wood", "color": "#5b4330", "color2": "#715640", "scale": [1.5, 0.6], "wear": 0.8},
+        "roof_orange": {"tex": "shingle", "color": "#d86b3c", "color2": "#b24f2c", "n": 10, "scale": [1, 1.4]},
+        "roof_red": {"tex": "shingle", "color": "#c4493b", "color2": "#9c3a30", "n": 10, "scale": [1, 1.4]},
+        "roof_blue": {"tex": "shingle", "color": "#4f73a3", "color2": "#3b5a84", "n": 10, "scale": [1, 1.4]},
+        "roof_green": {"tex": "shingle", "color": "#5f8f5e", "color2": "#466f48", "n": 10, "scale": [1, 1.4]},
+        "kawara": {"tex": "shingle", "color": "#55606c", "color2": "#3d4651", "n": 12, "scale": [1, 1.4]},
+        "awning_red": {"tex": "fabric", "color": "#d9433b", "n": 60, "scale": [1, 1], "wear": 0.2, "double": true},
+        "awning_cream": {"tex": "fabric", "color": "#f3ebd8", "n": 60, "scale": [1, 1], "wear": 0.2, "double": true},
+        "sail": {"tex": "fabric", "color": "#f2e9d4", "n": 50, "scale": [1, 1], "wear": 0.3, "double": true},
+        "noren": {"tex": "fabric", "color": "#2f5486", "n": 60, "scale": [1, 1], "wear": 0.1, "double": true},
+        "tatami": {"tex": "fabric", "color": "#c9c08a", "n": 140, "scale": [1, 1], "wear": 0.2},
+        "figure": {"tex": "plastic", "color": "#efdcc2", "scale": [0.5, 0.5], "wear": 0.2},
+        "cloth_indigo": {"tex": "fabric", "color": "#34508a", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_rose": {"tex": "fabric", "color": "#df8e93", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_yellow": {"tex": "fabric", "color": "#ecc04e", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_blue": {"tex": "fabric", "color": "#5d8dd0", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_green": {"tex": "fabric", "color": "#69a85b", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_red": {"tex": "fabric", "color": "#e0574a", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_teal": {"tex": "fabric", "color": "#3fa7a0", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_brown": {"tex": "fabric", "color": "#9a6b45", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "apron_green": {"tex": "fabric", "color": "#4f9a6a", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true}
     });
     if let (Some(o), Value::Object(more)) = (m.as_object_mut(), json!({
-                "sheet": {"tex": "fabric", "color": "#b9bab0", "n": 110, "scale": [1, 1], "double": true},
-                "gown": {"tex": "fabric", "color": "#7c97a0", "n": 80, "scale": [0.8, 0.8], "double": true},
-                "uniform": {"tex": "fabric", "color": "#3a4850", "n": 80, "scale": [0.8, 0.8], "double": true},
-                "curtain": {"tex": "fabric", "color": "#62806f", "n": 60, "scale": [1.5, 2.5], "double": true},
-                "figure": {"tex": "plastic", "color": "#d2cbbd", "scale": [0.5, 0.5], "wear": 0.6},
-                "shade": {"color": "#08090a", "rough": 0.85},
-                "glass": {"glass": true, "color": "#a8bccb", "opacity": 0.1},
-                "bag": {"glass": true, "color": "#dfe9e4", "opacity": 0.45, "rough": 0.2},
-                "paper": {"color": "#cfcabb", "rough": 0.9},
-                "binder": {"color": "#33465e", "rough": 0.6},
-                "void": {"color": "#000000", "rough": 1.0},
-                "rubber": {"color": "#141414", "rough": 0.75},
-                "dry": {"color": "#4a3f2c", "rough": 0.9},
-                "soil": {"color": "#1f1812", "rough": 1.0},
-                "accent": {"color": "#6a2b25", "rough": 0.6},
-                "screen_dead": {"color": "#0a0d0e", "rough": 0.08, "metal": 0.2},
-                "lamp_on": {"color": "#e6f2ec", "glow": 9.0},
-                "lamp_off": {"color": "#26292a", "rough": 0.25},
-                "lamp_flicker": {"color": "#d6f2e6", "glow": 9.0, "flicker": true},
-                "lamp_warm": {"color": "#ffd3a2", "glow": 7.0},
-                "exit": {"color": "#ff1a10", "glow": 9.0}
+        "leaves": {"color": "#5d9a3a", "rough": 0.85},
+        "pine": {"color": "#3d6d3c", "rough": 0.9},
+        "bush": {"color": "#4f8f3a", "rough": 0.9},
+        "stem": {"color": "#5e8f34", "rough": 0.8},
+        "pumpkin": {"color": "#ec8a2c", "rough": 0.55},
+        "apple": {"color": "#cf3a2e", "rough": 0.35},
+        "cabbage": {"color": "#9ccb5c", "rough": 0.6},
+        "petal": {"color": "#f6c824", "rough": 0.7},
+        "seed": {"color": "#5a3b20", "rough": 0.9},
+        "sack": {"color": "#d8c28f", "rough": 0.95},
+        "straw": {"color": "#e3c66e", "rough": 0.9},
+        "window": {"color": "#33475a", "rough": 0.15, "metal": 0.1},
+        "door_wood": {"color": "#7a4b2b", "rough": 0.6},
+        "water": {"color": "#2c5466", "rough": 0.05, "metal": 0.2},
+        "tin": {"color": "#9aa6ad", "rough": 0.35, "metal": 0.8},
+        "teapot": {"color": "#3c5c4c", "rough": 0.3},
+        "cup": {"color": "#f1eadc", "rough": 0.3},
+        "basket": {"color": "#b8894f", "rough": 0.85},
+        "cushion_red": {"color": "#b8433c", "rough": 0.9},
+        "lantern_red": {"color": "#e8523e", "glow": 1.4},
+        "lantern_paper": {"color": "#f6dfae", "glow": 1.6},
+        "flower_pink": {"color": "#f08ab0", "rough": 0.7},
+        "flower_white": {"color": "#f6f2ea", "rough": 0.7},
+        "flower_violet": {"color": "#9a78d0", "rough": 0.7}
     })) {
         o.extend(more);
     }
     m
 }
 
-/// Every object of the ward, by file name.
+/// A cottage: plastered walls on a stone footing, a door on the side `door_yaw` faces, windows,
+/// a hipped roof and a chimney, built around (x, y).
+fn cottage(at: (f64, f64), size: (f64, f64), wall: &str, roof_mat: &str, door_yaw: f64) -> Vec<Value> {
+    let (x, y) = at;
+    let (w, d) = size;
+    let h = 300.0;
+    let mut p = vec![
+        bx([w, d, h], [x, y, h / 2.0], wall),
+        bx([w + 10.0, d + 10.0, 34.0], [x, y, 17.0], "stone"),
+    ];
+    // timber corners and a beam under the eaves
+    for (cx, cy) in [(-1.0, -1.0), (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0)] {
+        p.push(thin(bx([14.0, 14.0, h], [x + cx * (w / 2.0 + 2.0), y + cy * (d / 2.0 + 2.0), h / 2.0], "timber")));
+    }
+    p.push(thin(bx([w + 8.0, d + 8.0, 14.0], [x, y, h - 7.0], "timber")));
+    // the door and two windows on the door side, one window on each other side
+    let half = |yaw: f64| if (yaw.to_radians().cos()).abs() > 0.5 { w / 2.0 } else { d / 2.0 };
+    for side in [0.0, 90.0, 180.0, 270.0] {
+        let yaw = door_yaw + side;
+        let n = half(yaw) + 3.0;
+        let (fx, fy) = ahead((x, y), yaw, n);
+        let (sx, sy) = (-(yaw.to_radians().sin()), yaw.to_radians().cos()); // along the wall
+        let span = if (yaw.to_radians().cos()).abs() > 0.5 { d } else { w };
+        if side == 0.0 {
+            p.push(bxy([8.0, 96.0, 190.0], [fx, fy, 34.0 + 95.0], "door_wood", yaw));
+            p.push(thin(bxy([10.0, 112.0, 10.0], [fx, fy, 34.0 + 195.0], "timber", yaw)));
+            for u in [-0.3, 0.3] {
+                let (wx, wy) = (fx + sx * span * u, fy + sy * span * u);
+                p.push(bxy([6.0, 70.0, 80.0], [wx, wy, 185.0], "window", yaw));
+                p.push(thin(bxy([10.0, 82.0, 8.0], [wx, wy, 141.0], "timber", yaw)));
+                // a box of flowers under the window
+                p.push(thin(bxy([22.0, 78.0, 16.0], [wx + (yaw.to_radians().cos()) * 10.0, wy + (yaw.to_radians().sin()) * 10.0, 130.0], "crate", yaw)));
+                for k in 0..5 {
+                    let v = (k as f64 - 2.0) * 15.0;
+                    let mat = ["flower_pink", "flower_white", "flower_violet"][k % 3];
+                    p.push(thin(ball(7.0, [wx + (yaw.to_radians().cos()) * 12.0 + sx * v, wy + (yaw.to_radians().sin()) * 12.0 + sy * v, 143.0], mat)));
+                }
+            }
+        } else if side != 180.0 {
+            p.push(bxy([6.0, 70.0, 80.0], [fx, fy, 185.0], "window", yaw));
+            p.push(thin(bxy([10.0, 82.0, 8.0], [fx, fy, 141.0], "timber", yaw)));
+        }
+    }
+    p.push(roof(at, h, w.max(d) / 2.0 + 55.0, 18.0, 230.0, roof_mat));
+    p.push(rb([42.0, 42.0, 170.0], [x + w * 0.22, y - d * 0.18, h + 130.0], "stone"));
+    p
+}
+
+/// A round-headed tree: a trunk and two or three balls of leaves.
+fn round_tree(at: (f64, f64), scale: f64, tone: usize) -> Vec<Value> {
+    let (x, y) = at;
+    let greens = ["#5d9a3a", "#6aa646", "#4f8b35", "#77b04e"];
+    let g = |i: usize| greens[(tone + i) % greens.len()];
+    vec![
+        post([x, y, 0.0], 34.0 * scale, 240.0 * scale, "bark"),
+        ball_c(135.0 * scale, [x, y, 320.0 * scale], "leaves", g(0)),
+        ball_c(100.0 * scale, [x + 45.0 * scale, y - 30.0 * scale, 405.0 * scale], "leaves", g(1)),
+        ball_c(95.0 * scale, [x - 55.0 * scale, y + 40.0 * scale, 375.0 * scale], "leaves", g(2)),
+    ]
+}
+
+fn pine(at: (f64, f64), scale: f64) -> Vec<Value> {
+    let (x, y) = at;
+    vec![
+        post([x, y, 0.0], 26.0 * scale, 130.0 * scale, "bark"),
+        cone([x, y, 110.0 * scale], 125.0 * scale, 230.0 * scale, "pine"),
+        cone([x, y, 230.0 * scale], 98.0 * scale, 190.0 * scale, "pine"),
+        cone([x, y, 340.0 * scale], 68.0 * scale, 150.0 * scale, "pine"),
+    ]
+}
+
+/// Keys for a figure that runs round (cx, cy) at `r`, starting at `from` degrees, once per `secs`.
+fn round_path(c: (f64, f64), r: f64, from: f64, secs: f64) -> Value {
+    let keys: Vec<Value> = (0..=8)
+        .map(|j| {
+            let a = from + 45.0 * j as f64;
+            let (s, co) = a.to_radians().sin_cos();
+            json!([secs * j as f64 / 8.0, (c.0 + r * co).round(), (c.1 + r * s).round(), a + 90.0])
+        })
+        .collect();
+    Value::Array(keys)
+}
+
+/// Every object of the village, by file name.
 fn objects() -> Vec<(&'static str, Value)> {
     let mut o: Vec<(&str, Value)> = Vec::new();
 
-    o.push(("floor", structure("Ground and roof", vec![
-        bx([8000.0, 6000.0, 20.0], [0.0, 0.0, -12.0], "yard"),
-        bx([3400.0, 1300.0, 2.0], [900.0, 0.0, -1.0], "floor"),
-        bx([3440.0, 1340.0, 20.0], [900.0, 0.0, H + 10.0], "ceiling"),
+    o.push(("ground", structure("The ground", vec![bx([30000.0, 30000.0, 20.0], [0.0, 0.0, -10.0], "grass")])));
+
+    // far hills all round, in the haze
+    let mut hills = Vec::new();
+    for (x, y, r, sx, sz) in [(7200.0, -2200.0, 4200.0, 1.3, 0.24), (-1800.0, 7600.0, 4600.0, 1.0, 0.2), (-7600.0, -1200.0, 3900.0, 1.0, 0.26),
+                              (1600.0, -7600.0, 4300.0, 1.2, 0.22), (6400.0, 5600.0, 3600.0, 1.0, 0.27), (-6200.0, 5200.0, 3400.0, 1.1, 0.23),
+                              (-5200.0, -6000.0, 3800.0, 1.0, 0.21)] {
+        hills.push(json!({"sphere": r, "scale": [sx, 1.0, sz], "at": [x, y, 0.0], "mat": "meadow", "solid": false}));
+    }
+    o.push(("hills", structure("Hills far off", hills)));
+
+    // the square with the well, and the paths out to each place
+    let square = (0.0, 0.0);
+    o.push(("paths", structure("The square and the paths", vec![
+        json!({"cylinder": [520.0, 1.6], "sides": 48, "at": [0.0, 0.0, 0.8], "mat": "stone", "solid": false}),
+        path(square, (-500.0, 690.0), 150.0),
+        path(square, (760.0, -290.0), 150.0),
+        path(square, ahead(MILL, MILL_YAW, 240.0), 140.0),
+        path(square, (-1160.0, -1005.0), 140.0),
+        path(square, (-1740.0, 600.0), 140.0),
+        path((-500.0, 690.0), (-500.0, 640.0), 190.0),
     ])));
+    let mut well = vec![
+        post([0.0, 0.0, 0.0], 150.0, 70.0, "stone"),
+        thin(post([0.0, 0.0, 70.0], 162.0, 8.0, "stone")),
+        thin(post([0.0, 0.0, 69.0], 128.0, 2.0, "water")),
+        rod([0.0, 0.0, 212.0], 9.0, 170.0, "y", "timber"),
+        thin(post([22.0, 0.0, 120.0], 1.0, 90.0, "timber")),
+        thin(json!({"cylinder": [13.0, 20.0], "top": 15.0, "at": [22.0, 0.0, 112.0], "mat": "crate"})),
+        roof(square, 228.0, 108.0, 8.0, 58.0, "roof_blue"),
+    ];
+    for y in [-76.0, 76.0] {
+        well.push(thin(post([0.0, y, 70.0], 11.0, 160.0, "timber")));
+    }
+    o.push(("well", thing("The well in the square", well)));
 
-    // lobby x -800..0, y -650..650
-    let mut lobby = Vec::new();
-    let (fa, fb) = ((-800.0, 650.0), (-800.0, -650.0));
-    lobby.extend(wall(fa, fb, &[(150.0, 450.0, 100.0, 230.0), (850.0, 1150.0, 100.0, 230.0)], (10.0, 10.0)));
-    lobby.extend(window(fa, fb, 150.0, 450.0, 100.0, 230.0));
-    lobby.extend(window(fa, fb, 850.0, 1150.0, 100.0, 230.0));
-    let (sa, sb) = ((-800.0, -650.0), (0.0, -650.0));
-    lobby.extend(wall(sa, sb, &[(300.0, 600.0, 100.0, 230.0)], (-10.0, -10.0)));
-    lobby.extend(window(sa, sb, 300.0, 600.0, 100.0, 230.0));
-    lobby.extend(wall((-800.0, 650.0), (0.0, 650.0), &[], (-10.0, -10.0)));
-    lobby.extend(wall((0.0, -650.0), (0.0, 650.0), &[(510.0, 790.0, 0.0, 260.0)], (10.0, 10.0)));
-    lobby.extend(doorway((0.0, -650.0), (0.0, 650.0), 510.0, 790.0, 260.0));
-    o.push(("lobby", structure("Lobby walls", lobby)));
+    // ------------------------------------------------------------------ the windmill
+    let (mx, my) = MILL;
+    let door = ahead(MILL, MILL_YAW, 190.0);
+    let hub = ahead(MILL, MILL_YAW, 232.0);
+    let axle = ahead(MILL, MILL_YAW, 185.0);
+    let w1 = ahead(MILL, MILL_YAW, 172.0);
+    let w2 = ahead(MILL, MILL_YAW, 161.0);
+    o.push(("windmill", anchored("SP_windmill",
+        json!({"at": [mx, my, 0.0], "size": [700.0, 700.0, 900.0], "center": [2330.0, -1750.0, 450.0]}),
+        vec![
+            post([mx, my, 0.0], 430.0, 30.0, "stone"),
+            json!({"cylinder": [190.0, 610.0], "top": 145.0, "at": [mx, my, 335.0], "mat": "plaster_white"}),
+            thin(post([mx, my, 633.0], 306.0, 14.0, "timber")),
+            json!({"cylinder": [208.0, 220.0], "top": 0.0, "at": [mx, my, 750.0], "mat": "roof_orange"}),
+            bxy([12.0, 92.0, 160.0], [door.0, door.1, 110.0], "door_wood", MILL_YAW),
+            thin(bxy([14.0, 104.0, 10.0], [door.0, door.1, 195.0], "timber", MILL_YAW)),
+            bxy([10.0, 42.0, 56.0], [w1.0, w1.1, 340.0], "window", MILL_YAW),
+            bxy([10.0, 40.0, 52.0], [w2.0, w2.1, 490.0], "window", MILL_YAW),
+            thin(bxy([100.0, 18.0, 18.0], [axle.0, axle.1, 650.0], "timber", MILL_YAW)),
+            json!({"box": [14.0, 960.0, 960.0], "at": [hub.0, hub.1, 650.0], "yaw": MILL_YAW, "shape": "sails", "blades": 4,
+                   "spin": 24.0, "mat": "sail", "frame_mat": "timber", "solid": false}),
+        ])));
+    let sweep_at = ahead(MILL, MILL_YAW + 28.0, 330.0);
+    o.push(("miller", thing("The miller sweeping by the door", vec![with(
+        villager("sweep", [sweep_at.0, sweep_at.1, 0.0], MILL_YAW + 200.0, "cloth_green", 0.86, 172.0),
+        json!({"holds": "broom"}),
+    )])));
+    o.push(("sacks", thing("Flour sacks by the mill", {
+        let s = ahead(MILL, MILL_YAW - 35.0, 245.0);
+        vec![
+            json!({"sphere": 32.0, "scale": [1.0, 0.8, 1.1], "at": [s.0, s.1, 32.0], "mat": "sack"}),
+            json!({"sphere": 30.0, "scale": [0.9, 0.8, 1.1], "at": [s.0 + 40.0, s.1 + 35.0, 30.0], "mat": "sack"}),
+            json!({"sphere": 28.0, "scale": [1.0, 0.8, 1.0], "at": [s.0 + 18.0, s.1 + 12.0, 78.0], "mat": "sack"}),
+        ]
+    })));
 
-    // corridor x 0..2600, y -150..150, ending in a blank wall
-    let mut corridor = Vec::new();
-    let (s0, s1) = ((0.0, -150.0), (2600.0, -150.0));
-    let (n0, n1) = ((0.0, 150.0), (2600.0, 150.0));
-    corridor.extend(wall(s0, s1, &[(1100.0, 1220.0, 0.0, 220.0)], (-10.0, 10.0)));
-    corridor.extend(wall(n0, n1, &[(600.0, 720.0, 0.0, 220.0), (1550.0, 1670.0, 0.0, 220.0)], (-10.0, 10.0)));
-    corridor.extend(wall((2600.0, -150.0), (2600.0, 150.0), &[], (-10.0, -10.0)));
-    corridor.extend(doorway(s0, s1, 1100.0, 1220.0, 220.0));
-    corridor.extend(doorway(n0, n1, 600.0, 720.0, 220.0));
-    corridor.extend(doorway(n0, n1, 1550.0, 1670.0, 220.0));
-    o.push(("corridor", structure("Corridor walls", corridor)));
-
-    // handrails along both corridor walls, broken by the doors
-    let mut rails = Vec::new();
-    for (y, runs) in [(134.0, vec![(10.0, 590.0), (730.0, 1540.0), (1680.0, 2590.0)]), (-134.0, vec![(10.0, 1090.0), (1230.0, 2590.0)])] {
-        for (x0, x1) in runs {
-            rails.push(thin(rod([(x0 + x1) / 2.0, y, 88.0], 5.0, x1 - x0, "x", "rail")));
-            let n = ((x1 - x0) / 150.0).ceil() as i64;
-            for i in 0..=n {
-                let x = x0 + 8.0 + (x1 - x0 - 16.0) * i as f64 / n as f64;
-                rails.push(thin(bx([3.0, 8.0, 3.0], [x, y + 4.0 * y.signum(), 86.0], "steel")));
+    // ------------------------------------------------------------------ the market stall
+    let mut stall = Vec::new();
+    // the awning: red and cream stripes, high at the back, a fringe hanging at the front
+    for i in 0..8 {
+        let y = -510.0 + 52.5 * (i as f64 + 0.5);
+        let mat = if i % 2 == 0 { "awning_red" } else { "awning_cream" };
+        stall.push(thin(json!({"box": [236.0, 52.5, 3.0], "at": [915.0, y, 252.0], "mat": mat, "tilt": [16.0, 0.0]})));
+        stall.push(thin(bx([3.0, 52.5, 22.0], [801.0, y, 208.0], mat)));
+    }
+    for (x, y, h) in [(812.0, -505.0, 220.0), (812.0, -95.0, 220.0), (1015.0, -505.0, 312.0), (1015.0, -95.0, 312.0)] {
+        stall.push(thin(post([x, y, 0.0], 10.0, h, "timber")));
+    }
+    stall.push(rb([110.0, 400.0, 92.0], [872.0, -300.0, 46.0], "plank"));
+    stall.push(rb([126.0, 412.0, 5.0], [870.0, -300.0, 94.5], "timber"));
+    stall.push(sign([3.0, 200.0, 40.0], [1018.0, -300.0, 292.0], "やさい  VEGETABLES", "#fff6e4", "#3f7a4a"));
+    for (y, kind) in [(-440.0, 0), (-345.0, 1), (-250.0, 2), (-155.0, 3)] {
+        stall.push(rb([62.0, 82.0, 14.0], [852.0, y, 104.0], "crate"));
+        match kind {
+            0 => {
+                for (dx, dy) in [(-12.0, -22.0), (10.0, 4.0), (-8.0, 26.0)] {
+                    stall.push(json!({"sphere": 15.0, "scale": [1.0, 1.0, 0.78], "at": [852.0 + dx, y + dy, 122.0], "mat": "pumpkin"}));
+                }
+            }
+            1 => {
+                for k in 0..9 {
+                    let (dx, dy) = ((k % 3) as f64 * 16.0 - 16.0, (k / 3) as f64 * 22.0 - 22.0);
+                    stall.push(thin(ball(6.0, [852.0 + dx, y + dy, 117.0], "apple")));
+                }
+            }
+            2 => {
+                for (dx, dy) in [(-12.0, -20.0), (12.0, -18.0), (-10.0, 18.0), (13.0, 20.0)] {
+                    stall.push(thin(ball(12.0, [852.0 + dx, y + dy, 120.0], "cabbage")));
+                }
+            }
+            _ => {
+                for k in 0..6 {
+                    let dy = (k as f64 - 2.5) * 12.0;
+                    stall.push(thin(json!({"cylinder": [3.2, 30.0], "top": 0.6, "axis": "x", "at": [852.0, y + dy, 115.0], "mat": "pumpkin"})));
+                }
             }
         }
     }
-    o.push(("handrails", structure("Corridor handrails", rails)));
-
-    // the doors stand open into their rooms
-    let mut doors = door((602.0, 162.0), 100.0, 114.0, 216.0);
-    doors.extend(door((1552.0, 162.0), 70.0, 114.0, 216.0));
-    doors.extend(door((1218.0, -162.0), 262.0, 114.0, 216.0));
-    o.push(("doors", structure("Room doors", doors)));
-
-    o.push(("room_signs", structure("Room signs", vec![
-        sign([3.0, 30.0, 16.0], [590.0, 122.0, 245.0], "101", "#1d2420", "#d9d6c8"),
-        sign([3.0, 30.0, 16.0], [1540.0, 122.0, 245.0], "102", "#1d2420", "#d9d6c8"),
-        sign([3.0, 30.0, 16.0], [1090.0, -122.0, 245.0], "103", "#1d2420", "#d9d6c8"),
-        sign([3.0, 120.0, 34.0], [950.0, 0.0, 262.0], "病棟  WARD", "#e3e0d2", "#24443c"),
-        thin(post([950.0, -45.0, 279.0], 0.6, 21.0, "steel")),
-        thin(post([950.0, 45.0, 279.0], 0.6, 21.0, "steel")),
+    stall.push(rb([50.0, 40.0, 32.0], [785.0, -470.0, 16.0], "crate"));
+    stall.push(json!({"sphere": 17.0, "scale": [1.0, 1.0, 0.78], "at": [785.0, -470.0, 44.0], "mat": "pumpkin"}));
+    stall.push(rb([50.0, 40.0, 32.0], [785.0, -130.0, 16.0], "crate"));
+    stall.push(rb([46.0, 36.0, 28.0], [787.0, -132.0, 46.0], "crate"));
+    stall.push(json!({"sphere": 25.0, "scale": [1.0, 1.0, 0.75], "at": [770.0, -360.0, 18.0], "mat": "pumpkin"}));
+    stall.push(json!({"sphere": 21.0, "scale": [1.0, 1.0, 0.75], "at": [760.0, -255.0, 15.0], "mat": "pumpkin"}));
+    o.push(("market_stall", anchored("SP_market_stall",
+        json!({"at": [900.0, -300.0, 0.0], "size": [300.0, 440.0, 280.0], "center": [910.0, -300.0, 140.0]}), stall)));
+    o.push(("stall_keeper", thing("The stall keeper waving", vec![villager("wave", [985.0, -300.0, 0.0], 180.0, "apron_green", 0.86, 168.0)])));
+    o.push(("barrels", thing("Barrels by the stall", vec![
+        json!({"cylinder": [28.0, 72.0], "top": 25.0, "at": [790.0, -40.0, 36.0], "mat": "crate"}),
+        json!({"cylinder": [28.0, 72.0], "top": 25.0, "at": [845.0, -8.0, 36.0], "mat": "crate"}),
+        thin(json!({"sphere": 6.0, "at": [790.0, -40.0, 76.0], "mat": "apple"})),
     ])));
+    o.push(("shopper", json!({
+        "label": "A shopper with a basket", "at": [260, -60, 0],
+        "path": [[0, 260, -60, 337.8], [5, 690, -236, 337.8], [6, 690, -236, 157.8], [11, 260, -60, 157.8], [12, 260, -60, 337.8]],
+        "parts": [with(villager("walk", [0.0, 0.0, 0.0], 0.0, "cloth_yellow", 0.9, 164.0), json!({"holds": "basket"}))],
+    })));
 
-    o.push(("pipes", structure("Ceiling pipes", vec![
-        thin(rod([-400.0, -120.0, H - 7.0], 10.0, 780.0, "x", "metal")),
-        thin(rod([1300.0, 108.0, H - 8.0], 11.0, 2540.0, "x", "metal")),
-        thin(rod([1300.0, 92.0, H - 6.0], 5.0, 2540.0, "x", "iron")),
-    ])));
-
-    // lobby: the reception desk (nobody behind it), its lamp still on
-    let mut desk = vec![
-        rb([100.0, 300.0, 75.0], [-290.0, 380.0, 37.5], "laminate"),
-        rb([104.0, 304.0, 4.0], [-290.0, 380.0, 77.0], "wood"),
-        rb([20.0, 300.0, 110.0], [-350.0, 380.0, 55.0], "dado"),
-        rb([38.0, 312.0, 5.0], [-352.0, 380.0, 112.0], "wood"),
-        rb([38.0, 40.0, 34.0], [-305.0, 330.0, 96.0], "plastic_old"),
-        thin(bx([1.0, 30.0, 24.0], [-285.5, 330.0, 98.0], "screen_dead")),
-        thin(rb([15.0, 44.0, 3.0], [-262.0, 330.0, 80.5], "plastic_old")),
-        thin(rb([18.0, 22.0, 8.0], [-268.0, 255.0, 83.0], "rubber")),
-        thin(bxy([22.0, 30.0, 4.0], [-290.0, 455.0, 81.0], "paper", 8.0)),
-        thin(bxy([22.0, 30.0, 0.4], [-272.0, 418.0, 79.2], "paper", -21.0)),
-        thin(post([-318.0, 500.0, 79.0], 14.0, 2.0, "iron")),
-        thin(json!({"cylinder": [1.0, 34.0], "at": [-316.0, 497.0, 96.0], "mat": "iron", "tilt": [0.0, -18.0]})),
-        thin(json!({"cylinder": [10.0, 12.0], "top": 4.0, "open": true, "at": [-310.0, 492.0, 114.0], "mat": "iron", "tilt": [0.0, 25.0]})),
-        thin(json!({"sphere": 3.0, "at": [-309.0, 491.0, 111.0], "mat": "lamp_warm"})),
-        with(point([-306.0, 488.0, 104.0], "#ffbb7a", 5.0, 520.0), json!({"shadow": true, "halo": 60, "halo_opacity": 0.18})),
+    // ------------------------------------------------------------------ the teahouse
+    let mid = (FH + EAVE) / 2.0;
+    let wall_h = EAVE - FH;
+    let mut tea = vec![
+        rb([700.0, 850.0, FH], [-500.0, 1125.0, FH / 2.0], "plank"),
+        rb([190.0, 64.0, 22.0], [-500.0, 668.0, 11.0], "stone"),
+        thin(bx([660.0, 660.0, 1.0], [-500.0, 1200.0, FH + 0.5], "tatami")),
+        bx([700.0, 18.0, wall_h], [-500.0, 1541.0, mid], "plaster_cream"),
+        bx([18.0, 690.0, wall_h], [-841.0, 1195.0, mid], "plaster_cream"),
+        bx([18.0, 690.0, wall_h], [-159.0, 1195.0, mid], "plaster_cream"),
+        bx([150.0, 14.0, wall_h], [-775.0, 857.0, mid], "plaster_cream"),
+        bx([150.0, 14.0, wall_h], [-225.0, 857.0, mid], "plaster_cream"),
+        thin(bx([700.0, 16.0, 18.0], [-500.0, 857.0, EAVE - 9.0], "timber")),
+        thin(bx([700.0, 14.0, 16.0], [-500.0, 707.0, EAVE - 8.0], "timber")),
+        json!({"box": [190.0, 6.0, 72.0], "at": [-500.0, 849.0, EAVE - 20.0 - 36.0], "mat": "noren", "shape": "curtain", "solid": false}),
+        sign([84.0, 3.0, 38.0], [-500.0, 704.0, EAVE - 34.0], "茶  TEA", "#f6efe0", "#3b2a1e"),
+        sign([56.0, 3.0, 110.0], [-500.0, 1530.0, 175.0], "一\n期\n一\n会", "#2a2420", "#efe6d0"),
+        rb([116.0, 72.0, 6.0], [-500.0, 1260.0, FH + 30.0], "timber"),
+        rb([48.0, 48.0, 8.0], [-595.0, 1260.0, FH + 4.0], "cushion_red"),
+        rb([48.0, 48.0, 8.0], [-405.0, 1260.0, FH + 4.0], "cushion_red"),
+        rb([52.0, 34.0, 3.0], [-548.0, 748.0, FH + 1.5], "timber"),
+        thin(post([-560.0, 742.0, FH + 3.0], 8.0, 7.0, "cup")),
+        thin(post([-536.0, 754.0, FH + 3.0], 8.0, 7.0, "cup")),
+        roof((-500.0, 1125.0), EAVE, 495.0, 50.0, 250.0, "kawara"),
+        rb([86.0, 86.0, 22.0], [-500.0, 1125.0, EAVE + 250.0 + 11.0], "kawara"),
     ];
-    for (i, c) in ["#33465e", "#5e3333", "#3d5e33", "#33465e", "#6b5a2a", "#2e2e2e"].iter().enumerate() {
-        desk.push(thin(json!({"box": [24.0, 5.0, 30.0], "at": [-270.0, 470.0 + 6.0 * i as f64, 94.0], "mat": "binder", "color": c})));
+    for (x, y) in [(-843.0, 707.0), (-157.0, 707.0), (-843.0, 857.0), (-157.0, 857.0), (-843.0, 1543.0), (-157.0, 1543.0)] {
+        tea.push(thin(bx([14.0, 14.0, wall_h], [x, y, mid], "timber")));
     }
-    o.push(("reception_desk", anchored("SP_reception_desk",
-        json!({"at": [-360.0, 230.0, 0.0], "size": [120.0, 300.0, 110.0], "center": [-300.0, 380.0, 55.0]}), desk)));
-    o.push(("reception_sign", thing("Reception sign", vec![
-        sign([3.0, 130.0, 42.0], [-300.0, 380.0, 252.0], "受付\nRECEPTION", "#e8e4d4", "#20342f"),
-        thin(post([-300.0, 330.0, 273.0], 0.6, 27.0, "steel")),
-        thin(post([-300.0, 430.0, 273.0], 0.6, 27.0, "steel")),
+    for (dx, dy) in [(-50.0, -30.0), (50.0, -30.0), (-50.0, 30.0), (50.0, 30.0)] {
+        tea.push(thin(bx([4.0, 4.0, 26.0], [-500.0 + dx, 1260.0 + dy, FH + 14.0], "timber")));
+    }
+    o.push(("teahouse", anchored("SP_teahouse",
+        json!({"at": [-500.0, 1125.0, 0.0], "size": [760.0, 900.0, 540.0], "center": [-500.0, 1125.0, 270.0]}), tea)));
+    // red lanterns at the front corners of the eaves, an andon inside
+    let mut lanterns = Vec::new();
+    for x in [-805.0, -195.0] {
+        lanterns.push(thin(post([x, 712.0, 262.0], 1.0, 18.0, "timber")));
+        lanterns.push(thin(post([x, 712.0, 256.0], 14.0, 5.0, "timber")));
+        lanterns.push(json!({"sphere": 17.0, "scale": [1.0, 1.0, 1.35], "at": [x, 712.0, 234.0], "mat": "lantern_red"}));
+        lanterns.push(thin(post([x, 712.0, 209.0], 14.0, 4.0, "timber")));
+        lanterns.push(with(point([x, 712.0, 234.0], "#ffb070", 2.6, 420.0), json!({"halo": 40, "halo_opacity": 0.1})));
+    }
+    lanterns.push(rb([26.0, 26.0, 48.0], [-760.0, 1460.0, FH + 24.0], "lantern_paper"));
+    lanterns.push(point([-760.0, 1460.0, FH + 34.0], "#ffd29a", 3.0, 520.0));
+    o.push(("lanterns", thing("Lanterns of the teahouse", lanterns)));
+    o.push(("stone_lantern", thing("Stone lantern by the steps", vec![
+        rb([40.0, 40.0, 12.0], [-690.0, 630.0, 6.0], "stone"),
+        post([-690.0, 630.0, 12.0], 18.0, 70.0, "stone"),
+        rb([44.0, 44.0, 34.0], [-690.0, 630.0, 99.0], "stone"),
+        json!({"cylinder": [36.0, 22.0], "top": 6.0, "sides": 4, "yaw": 45.0, "at": [-690.0, 630.0, 127.0], "mat": "stone"}),
     ])));
-    o.push(("clerk_chair", thing_at("Clerk's chair", [-195.0, 410.0, 0.0], 215.0, {
-        let mut p = vec![
-            rb([48.0, 48.0, 8.0], [0.0, 0.0, 48.0], "seat"),
-            rb([8.0, 44.0, 50.0], [-24.0, 0.0, 80.0], "seat"),
-            thin(post([0.0, 0.0, 10.0], 5.0, 36.0, "steel")),
-        ];
-        for a in 0..5 {
-            let r = (a as f64 * 72.0).to_radians();
-            p.push(thin(bxy([30.0, 4.0, 3.0], [15.0 * r.cos(), 15.0 * r.sin(), 8.0], "steel", a as f64 * 72.0)));
-        }
-        p
-    })));
-    let mut shelf = vec![
-        rb([100.0, 34.0, 190.0], [-140.0, 622.0, 95.0], "paint_metal"),
+    o.push(("tea_master", thing("The tea master pouring", vec![with(
+        villager("pour", [-470.0, 792.0, FH], 210.0, "cloth_indigo", 0.86, 170.0),
+        json!({"holds": "teapot"}),
+    )])));
+    o.push(("tea_guest", thing("A guest on the veranda", vec![villager("sit", [-640.0, 724.0, 0.0], 270.0, "cloth_rose", 0.75, 162.0)])));
+
+    // ------------------------------------------------------------------ the old oak
+    let (ox, oy) = (-1500.0, -1300.0);
+    let mut oak = vec![
+        json!({"cylinder": [88.0, 50.0], "top": 60.0, "at": [ox, oy, 25.0], "mat": "bark"}),
+        json!({"cylinder": [60.0, 330.0], "top": 40.0, "at": [ox, oy, 215.0], "mat": "bark"}),
     ];
-    for z in [55.0, 105.0, 155.0] {
-        for i in 0..11 {
-            let c = ["#33465e", "#5e3333", "#3d5e33", "#6b5a2a", "#2e2e2e", "#4a4a6e"][(i * 7 + z as usize / 5) % 6];
-            let lean = if i == 9 { 12.0 } else { 0.0 };
-            shelf.push(thin(json!({"box": [6.5, 26.0, 32.0], "at": [-184.0 + 8.0 * i as f64, 600.0, z + 17.0], "mat": "binder", "color": c, "tilt": [0.0, lean]})));
-        }
+    for (i, a) in [20.0f64, 95.0, 170.0, 245.0, 315.0].iter().enumerate() {
+        let len = 230.0 - 18.0 * i as f64;
+        let (s, c) = a.to_radians().sin_cos();
+        oak.push(thin(json!({"cylinder": [17.0, len], "top": 8.0, "at": [ox + c * len * 0.35, oy + s * len * 0.35, 330.0 + len * 0.3],
+                             "mat": "bark", "yaw": a, "tilt": [0.0, -52.0]})));
     }
-    shelf.push(drawn([40.0, 3.0, 40.0], [-140.0, 637.0, 245.0], "clock"));
-    o.push(("records_shelf", thing("Records shelf and clock", shelf)));
-
-    // waiting area: two rows of linked seats, one knocked over
-    for (name, y) in [("waiting_seats", -560.0), ("waiting_seats_front", -360.0)] {
-        let mut p = vec![thin(bx([370.0, 6.0, 5.0], [-505.0, y - 6.0, 38.0], "steel"))];
-        for i in 0..7 {
-            let x = -660.0 + 52.0 * i as f64;
-            if name == "waiting_seats_front" && i == 2 {
-                continue;
-            }
-            p.push(rb([46.0, 44.0, 5.0], [x, y, 44.0], "seat"));
-            p.push(rb([46.0, 5.0, 40.0], [x, y - 22.0, 70.0], "seat"));
-        }
-        for x in [-680.0, -505.0, -330.0] {
-            p.push(thin(bx([4.0, 40.0, 38.0], [x, y - 6.0, 19.0], "steel")));
-        }
-        o.push((if name == "waiting_seats" { "waiting_benches" } else { "waiting_benches_front" },
-                thing(if name == "waiting_seats" { "Waiting seats by the wall" } else { "Waiting seats" }, p)));
+    let greens = ["#5d9a3a", "#6aa646", "#4f8b35", "#77b04e", "#609d3f"];
+    for (i, (dx, dy, z, r)) in [(0.0, 0.0, 610.0, 250.0), (190.0, 120.0, 520.0, 190.0), (-180.0, 150.0, 540.0, 200.0), (150.0, -180.0, 500.0, 185.0),
+                                (-170.0, -160.0, 520.0, 195.0), (40.0, 230.0, 470.0, 160.0), (-230.0, 10.0, 470.0, 165.0), (220.0, 20.0, 640.0, 150.0),
+                                (-60.0, -40.0, 730.0, 170.0)].iter().enumerate() {
+        oak.push(ball_c(*r, [ox + dx, oy + dy, *z], "leaves", greens[i % greens.len()]));
     }
-    o.push(("fallen_seat", thing_at("A seat on its side", [-540.0, -270.0, 22.0], 35.0, {
-        let mut p = chair_parts("seat");
-        for v in p.iter_mut() {
-            v["tilt"] = json!([0.0, 88.0]);
-            if let Some(at) = v["at"].as_array().cloned() {
-                // lying on its side: up becomes sideways
-                let (x, y, z) = (at[0].as_f64().unwrap_or(0.0), at[1].as_f64().unwrap_or(0.0), at[2].as_f64().unwrap_or(0.0));
-                v["at"] = json!([x, -(z - 22.0), y + 0.0]);
-            }
-        }
-        p
-    })));
-    o.push(("vending_machine", thing("Vending machine", vec![
-        with(rb([92.0, 74.0, 183.0], [-95.0, -604.0, 91.5], "paint_metal"), json!({"color": "#6d1b17"})),
-        json!({"box": [80.0, 3.0, 168.0], "at": [-95.0, -566.0, 96.0], "mat": "frame", "shape": "sign", "draw": "vending", "glow": 1.4}),
-        with(point([-95.0, -500.0, 120.0], "#cfe0ff", 3.2, 520.0), json!({"halo": 150, "halo_opacity": 0.12})),
-    ])));
-    o.push(("television", thing("Television of static", vec![
-        rb([40.0, 72.0, 52.0], [-772.0, 0.0, 232.0], "plastic_old"),
-        json!({"box": [3.0, 62.0, 42.0], "at": [-751.0, 0.0, 232.0], "mat": "frame", "shape": "sign", "draw": "static", "glow": 1.4}),
-        thin(bx([22.0, 12.0, 8.0], [-788.0, 0.0, 204.0], "iron")),
-        with(point([-700.0, 0.0, 228.0], "#a8bdd9", 1.4, 500.0), json!({"halo": 90, "halo_opacity": 0.08})),
-    ])));
-    o.push(("notice_board", thing("Notice board", vec![drawn([3.0, 130.0, 85.0], [-12.0, 380.0, 150.0], "notices")])));
-    for (name, at) in [("dead_plant", [-735.0, 585.0]), ("dead_plant_door", [-60.0, -210.0])] {
-        let mut p = vec![
-            post([at[0], at[1], 0.0], 44.0, 42.0, "concrete"),
-            thin(post([at[0], at[1], 38.0], 38.0, 2.0, "soil")),
-        ];
-        for i in 0..6 {
-            let a = i as f64 * 60.0 + 15.0;
-            p.push(thin(json!({"cylinder": [0.8, 70.0 + 12.0 * (i % 3) as f64], "at": [at[0], at[1], 75.0], "mat": "dry", "yaw": a, "tilt": [12.0 + 6.0 * (i % 2) as f64, 0.0]})));
-            p.push(thin(json!({"box": [26.0, 9.0, 0.6], "at": [at[0] + 18.0 * a.to_radians().cos(), at[1] + 18.0 * a.to_radians().sin(), 92.0 + 8.0 * (i % 3) as f64],
-                               "mat": "dry", "yaw": a, "tilt": [0.0, -55.0]})));
-        }
-        o.push((name, thing("Dead plant", p)));
+    o.push(("old_oak", anchored("SP_old_oak",
+        json!({"at": [ox, oy, 0.0], "size": [820.0, 820.0, 780.0], "center": [ox, oy, 390.0]}), oak)));
+    for (name, label, from, h, dress) in [("kid_red", "A child running round the oak", 0.0, 118.0, "cloth_red"),
+                                          ("kid_yellow", "A child running round the oak", 120.0, 112.0, "cloth_yellow"),
+                                          ("kid_teal", "A child running round the oak", 240.0, 126.0, "cloth_teal")] {
+        let keys = round_path((ox, oy), 330.0, from, 9.0);
+        let start = keys[0].clone();
+        o.push((name, json!({
+            "label": label, "at": [start[1], start[2], 0], "loop": 9,
+            "path": keys,
+            "parts": [villager("run", [0.0, 0.0, 0.0], 0.0, dress, 0.55, h)],
+        })));
     }
-    o.push(("wheelchair", thing_at("Wheelchair", [-150.0, 110.0, 0.0], 205.0, wheelchair_parts())));
-    let mut litter = vec![
-        stain([180.0, 140.0], [-430.0, 120.0], 0.0, "pool"),
-        stain([120.0, 90.0], [-140.0, -380.0], 30.0, "pool"),
+    let mut bench = vec![
+        rb([150.0, 42.0, 6.0], [ox, -850.0, 42.0], "plank"),
+        rb([150.0, 6.0, 34.0], [ox, -826.0, 76.0], "plank"),
     ];
-    for (i, (x, y)) in [(-470.0, 40.0), (-430.0, 85.0), (-395.0, -20.0), (-520.0, 140.0), (-250.0, -150.0), (-610.0, -120.0), (-180.0, 250.0)].iter().enumerate() {
-        litter.push(thin(bxy([21.0, 29.7, 0.3], [*x, *y, 0.4], "paper", (i as f64 * 47.0) % 180.0)));
+    for x in [ox - 62.0, ox + 62.0] {
+        bench.push(thin(bx([6.0, 38.0, 39.0], [x, -850.0, 19.5], "timber")));
+        bench.push(thin(bx([6.0, 6.0, 90.0], [x, -826.0, 45.0], "timber")));
     }
-    litter.push(thin(json!({"box": [60.0, 60.0, 1.5], "at": [-505.0, -300.0, 276.0], "mat": "ceiling", "tilt": [28.0, 12.0]})));
-    litter.push(thin(bx([60.0, 60.0, 0.6], [-505.0, -330.0, 299.6], "void")));
-    o.push(("lobby_litter", thing("Papers, stains and a fallen ceiling tile", litter)));
+    o.push(("oak_bench", thing("The bench facing the oak", bench)));
+    o.push(("elder", thing("An old man on the bench", vec![villager("sit", [ox + 20.0, -838.0, 0.0], 270.0, "cloth_brown", 0.62, 166.0)])));
 
-    // the stretcher left askew in the corridor, and an IV stand beside it
-    let mut stretcher = vec![
-        with(rb([196.0, 66.0, 10.0], [0.0, 0.0, 81.0], "vinyl"), json!({"r": 4.0, "color": "#232b33"})),
-        with(rb([150.0, 70.0, 2.0], [22.0, 2.0, 86.5], "sheet"), json!({"yaw": 4.0, "r": 0.8})),
-        rb([30.0, 52.0, 9.0], [-80.0, 0.0, 91.0], "sheet"),
-        json!({"box": [120.0, 4.0, 50.0], "at": [26.0, 37.0, 63.0], "mat": "sheet", "shape": "curtain"}),
-    ];
-    for y in [-33.0, 33.0] {
-        stretcher.push(thin(rod([0.0, y, 74.0], 3.6, 200.0, "x", "steel")));
-        stretcher.push(thin(rod([0.0, y * 0.8, 16.0], 3.0, 180.0, "x", "steel")));
+    // ------------------------------------------------------------------ the fields
+    let (fx, fy) = (-2300.0, 580.0);
+    let mut field = vec![thin(bx([1000.0, 480.0, 2.0], [fx, fy, 1.0], "soil"))];
+    for y in [400.0, 520.0, 640.0, 760.0] {
+        field.push(rb([960.0, 70.0, 18.0], [fx, y, 9.0], "soil"));
     }
-    for x in [-90.0, 0.0, 90.0] {
-        stretcher.push(thin(rod([x, 0.0, 74.0], 3.0, 66.0, "y", "steel")));
-    }
-    for (lx, ly) in [(-90.0, -26.0), (-90.0, 26.0), (90.0, -26.0), (90.0, 26.0)] {
-        stretcher.push(thin(post([lx, ly, 10.0], 4.0, 64.0, "steel")));
-        stretcher.push(thin(json!({"box": [12.0, 3.0, 12.0], "at": [lx, ly, 6.0], "mat": "rubber", "shape": "torus"})));
-    }
-    o.push(("stretcher", json!({
-        "label": "SP_stretcher", "at": [1300.0, 50.0, 0.0], "yaw": 12.0,
-        "anchor": {"at": [1209.5, -5.0, 76.0], "size": [210.2, 110.1, 8.0], "center": [1300.0, 50.0, 80.0]},
-        "parts": stretcher,
-    })));
-    let mut iv = Vec::new();
-    for a in 0..5 {
-        let r = (a as f64 * 72.0).to_radians();
-        iv.push(thin(bxy([30.0, 3.0, 2.5], [14.0 * r.cos(), 14.0 * r.sin(), 6.0], "steel", a as f64 * 72.0)));
-        iv.push(thin(json!({"sphere": 2.5, "at": [27.0 * r.cos(), 27.0 * r.sin(), 2.5], "mat": "rubber"})));
-    }
-    iv.push(thin(post([0.0, 0.0, 6.0], 2.6, 172.0, "steel")));
-    iv.push(thin(bx([3.0, 34.0, 2.0], [0.0, 0.0, 176.0], "steel")));
-    iv.push(thin(rb([5.0, 13.0, 22.0], [0.0, 14.0, 160.0], "bag")));
-    iv.push(thin(json!({"cylinder": [0.35, 90.0], "at": [6.0, 18.0, 110.0], "mat": "bag", "tilt": [14.0, 0.0]})));
-    o.push(("iv_stand", thing_at("IV stand", [1190.0, 105.0, 0.0], 0.0, iv)));
-    o.push(("medical_cart", thing_at("Medical cart", [2150.0, -110.0, 0.0], 0.0, vec![
-        rb([72.0, 46.0, 84.0], [0.0, 0.0, 50.0], "cart"),
-        rb([76.0, 50.0, 3.0], [0.0, 0.0, 93.5], "steel"),
-        thin(rb([60.0, 3.0, 3.0], [0.0, 25.0, 74.0], "steel")),
-        thin(rb([60.0, 3.0, 3.0], [0.0, 25.0, 52.0], "steel")),
-        thin(rb([60.0, 3.0, 3.0], [0.0, 25.0, 30.0], "steel")),
-        thin(post([-18.0, 6.0, 95.0], 7.0, 16.0, "bag")),
-        thin(post([-6.0, -8.0, 95.0], 5.0, 12.0, "glass")),
-        thin(rb([22.0, 14.0, 4.0], [16.0, 4.0, 97.0], "steel")),
-        thin(json!({"box": [10.0, 3.0, 10.0], "at": [-30.0, 18.0, 5.0], "mat": "rubber", "shape": "torus"})),
-        thin(json!({"box": [10.0, 3.0, 10.0], "at": [30.0, 18.0, 5.0], "mat": "rubber", "shape": "torus"})),
-        thin(json!({"box": [10.0, 3.0, 10.0], "at": [-30.0, -18.0, 5.0], "mat": "rubber", "shape": "torus"})),
-        thin(json!({"box": [10.0, 3.0, 10.0], "at": [30.0, -18.0, 5.0], "mat": "rubber", "shape": "torus"})),
-    ])));
-    let mut cmess = vec![
-        stain([90.0, 70.0], [1360.0, -60.0], 15.0, "pool"),
-        stain([160.0, 60.0], [1680.0, 110.0], 205.0, "smear"),
-        stain([110.0, 80.0], [2300.0, 40.0], 60.0, "pool"),
-    ];
-    for (i, (x, y)) in [(1240.0, -80.0), (1420.0, 20.0), (1470.0, -95.0), (900.0, 60.0), (2000.0, -30.0)].iter().enumerate() {
-        cmess.push(thin(bxy([21.0, 29.7, 0.3], [*x, *y, 0.4], "paper", (i as f64 * 61.0 + 20.0) % 180.0)));
-    }
-    o.push(("corridor_litter", thing("Papers and stains in the corridor", cmess)));
-
-    // ceiling lamps; the first still lights, the one at 1500 is failing, most are dead; the one
-    // above the end of the corridor is the last that works
-    let mut lamps = Vec::new();
-    for x in [300.0, 600.0, 900.0, 1200.0, 1500.0, 1800.0, 2100.0, 2400.0] {
-        let mat = match x as i64 {
-            300 => "lamp_on",
-            1500 => "lamp_flicker",
-            _ => "lamp_off",
-        };
-        let mut f = vec![
-            rb([64.0, 34.0, 5.0], [x, 0.0, H - 2.5], "frame"),
-            bx([58.0, 28.0, 1.0], [x, 0.0, H - 5.4], mat),
-        ];
-        if x as i64 == 1200 {
-            // hanging by one end
-            f = vec![
-                json!({"box": [64.0, 34.0, 5.0], "at": [x + 4.0, 0.0, H - 14.0], "mat": "frame", "shape": "round", "tilt": [0.0, 0.0], "yaw": 0.0}),
-                thin(json!({"box": [58.0, 28.0, 1.0], "at": [x + 4.0, 0.0, H - 16.9], "mat": "lamp_off"})),
-                thin(post([x - 26.0, 0.0, H - 14.0], 0.6, 14.0, "iron")),
-            ];
+    for (row, y) in [(0, 400.0), (1, 520.0)] {
+        for k in 0..12 {
+            let x = fx - 440.0 + 80.0 * k as f64 + if row == 1 { 40.0 } else { 0.0 };
+            field.push(ball_c(15.0, [x, y, 28.0], "cabbage", if (k + row) % 3 == 0 { "#8fc152" } else { "#a6d266" }));
         }
-        lamps.extend(f.into_iter().map(thin));
     }
-    lamps.push(thin(rb([90.0, 40.0, 5.0], [2540.0, 0.0, H - 2.5], "frame")));
-    lamps.push(thin(bx([84.0, 34.0, 1.0], [2540.0, 0.0, H - 5.4], "lamp_on")));
-    lamps.push(with(downlight([300.0, 0.0, H - 8.0], "#dff0ff", 70.0, 62.0), json!({"shadow": true, "halo": 90, "halo_opacity": 0.14})));
-    lamps.push(with(downlight([1500.0, 0.0, H - 8.0], "#d9ffe6", 70.0, 62.0), json!({"shadow": true, "flicker": true, "halo": 90, "halo_opacity": 0.14})));
-    lamps.push(with(downlight([2540.0, 0.0, H - 8.0], "#c8d8ff", 150.0, 55.0),
-                    json!({"shadow": true, "shadow_size": 2048, "halo": 130, "halo_opacity": 0.22, "beam": 0.05})));
-    lamps.push(point([2480.0, 0.0, 60.0], "#7f96c0", 2.0, 400.0));
-    // the rooms and the lobby
-    for (x, y, mat) in [(700.0, 400.0, "lamp_on"), (1300.0, -300.0, "lamp_on"), (1700.0, 400.0, "lamp_off"), (-200.0, -300.0, "lamp_off"), (-600.0, 300.0, "lamp_off")] {
-        lamps.push(thin(rb([64.0, 34.0, 5.0], [x, y, H - 2.5], "frame")));
-        lamps.push(thin(bx([58.0, 28.0, 1.0], [x, y, H - 5.4], mat)));
+    for k in 0..30 {
+        let x = fx - 450.0 + 31.0 * k as f64;
+        field.push(thin(cone([x, 640.0, 18.0], 6.0, 20.0 + (k % 3) as f64 * 4.0, "stem")));
     }
-    lamps.push(with(downlight([700.0, 400.0, H - 8.0], "#cdf2d9", 22.0, 65.0), json!({"halo": 70, "halo_opacity": 0.1})));
-    lamps.push(with(downlight([1300.0, -300.0, H - 8.0], "#bfd9ff", 26.0, 65.0), json!({"shadow": true, "halo": 70, "halo_opacity": 0.1})));
-    // the lobby pendant, warm and low
-    lamps.push(thin(post([-400.0, 0.0, 225.0], 0.8, 75.0, "iron")));
-    lamps.push(thin(json!({"cylinder": [28.0, 22.0], "top": 6.0, "open": true, "at": [-400.0, 0.0, 216.0], "mat": "iron"})));
-    lamps.push(thin(json!({"sphere": 5.0, "at": [-400.0, 0.0, 210.0], "mat": "lamp_warm"})));
-    lamps.push(with(point([-400.0, 0.0, 200.0], "#ffc28a", 26.0, 1100.0), json!({"shadow": true, "halo": 130, "halo_opacity": 0.16})));
-    o.push(("ceiling_lamps", thing("Ceiling lamps", lamps)));
-    o.push(("exit_sign", thing("Exit sign", vec![
-        json!({"box": [40.0, 4.0, 15.0], "at": [1160.0, -137.0, 245.0], "mat": "frame", "shape": "sign", "text": "非常口  EXIT",
-               "fg": "#ffe9e0", "bg": "#d0180d", "glow": 5.0, "border": false}),
-        with(point([1160.0, -110.0, 236.0], "#ff1408", 0.7, 380.0), json!({"halo": 60, "halo_opacity": 0.25})),
+    o.push(("crop_row", anchored("SP_crop_row",
+        json!({"at": [fx, fy, 0.0], "size": [1000.0, 520.0, 80.0], "center": [fx, fy, 40.0]}), field)));
+    let mut sunflowers = Vec::new();
+    for k in 0..6 {
+        let x = fx - 400.0 + 160.0 * k as f64;
+        let h = 150.0 + (k % 3) as f64 * 14.0;
+        sunflowers.push(thin(post([x, 760.0, 18.0], 5.0, h, "stem")));
+        sunflowers.push(thin(json!({"box": [3.0, 26.0, 12.0], "at": [x, 760.0, 18.0 + h * 0.5], "mat": "stem", "tilt": [0.0, 25.0]})));
+        sunflowers.push(thin(json!({"cylinder": [24.0, 3.0], "axis": "x", "at": [x + 3.0, 760.0, 18.0 + h], "mat": "petal"})));
+        sunflowers.push(thin(json!({"cylinder": [11.0, 5.0], "axis": "x", "at": [x + 5.0, 760.0, 18.0 + h], "mat": "seed"})));
+    }
+    o.push(("sunflowers", thing("Sunflowers along the last row", sunflowers)));
+    o.push(("farmer", thing("The farmer watering the rows", vec![with(
+        villager("water", [-2380.0, 580.0, 2.0], 270.0, "cloth_blue", 0.6, 170.0),
+        json!({"holds": "can"}),
+    )])));
+    o.push(("scarecrow", thing("A scarecrow", vec![
+        thin(post([-1960.0, 860.0, 0.0], 8.0, 190.0, "timber")),
+        thin(rod([-1960.0, 860.0, 150.0], 6.0, 130.0, "y", "timber")),
+        thin(bx([22.0, 70.0, 62.0], [-1960.0, 860.0, 135.0], "cloth_red")),
+        ball(18.0, [-1960.0, 860.0, 196.0], "sack"),
+        thin(post([-1960.0, 860.0, 208.0], 64.0, 3.0, "straw")),
+        thin(json!({"cylinder": [15.0, 18.0], "top": 11.0, "at": [-1960.0, 860.0, 219.0], "mat": "straw"})),
+    ])));
+    let mut fence = Vec::new();
+    let (x0, x1, y0, y1) = (-2850.0, -1750.0, 300.0, 860.0);
+    let mut posts: Vec<(f64, f64)> = Vec::new();
+    for k in 0..=7 {
+        let x = x0 + (x1 - x0) * k as f64 / 7.0;
+        posts.push((x, y0));
+        posts.push((x, y1 + 40.0));
+    }
+    for k in 1..4 {
+        let y = y0 + (y1 + 40.0 - y0) * k as f64 / 4.0;
+        posts.push((x0, y));
+        if !(540.0..=700.0).contains(&y) {
+            posts.push((x1, y));
+        }
+    }
+    for (x, y) in posts {
+        fence.push(thin(post([x, y, 0.0], 10.0, 105.0, "timber")));
+    }
+    for z in [52.0, 92.0] {
+        fence.push(thin(rod([(x0 + x1) / 2.0, y0, z], 6.0, x1 - x0, "x", "timber")));
+        fence.push(thin(rod([(x0 + x1) / 2.0, y1 + 40.0, z], 6.0, x1 - x0, "x", "timber")));
+        fence.push(thin(rod([x0, (y0 + y1 + 40.0) / 2.0, z], 6.0, y1 + 40.0 - y0, "y", "timber")));
+        fence.push(thin(rod([x1, (y0 + 540.0) / 2.0, z], 6.0, 540.0 - y0, "y", "timber")));
+        fence.push(thin(rod([x1, (700.0 + y1 + 40.0) / 2.0, z], 6.0, y1 + 40.0 - 700.0, "y", "timber")));
+    }
+    o.push(("field_fence", structure("The fence round the fields", fence)));
+    o.push(("wheelbarrow", thing_at("A wheelbarrow of pumpkins", [-1640.0, 760.0, 0.0], 200.0, vec![
+        rb([90.0, 60.0, 30.0], [0.0, 0.0, 45.0], "crate"),
+        thin(json!({"box": [44.0, 6.0, 44.0], "at": [58.0, 0.0, 22.0], "mat": "timber", "shape": "torus"})),
+        thin(rod([-70.0, -24.0, 52.0], 4.0, 80.0, "x", "timber")),
+        thin(rod([-70.0, 24.0, 52.0], 4.0, 80.0, "x", "timber")),
+        thin(bx([5.0, 5.0, 30.0], [-25.0, -24.0, 15.0], "timber")),
+        thin(bx([5.0, 5.0, 30.0], [-25.0, 24.0, 15.0], "timber")),
+        json!({"sphere": 16.0, "scale": [1.0, 1.0, 0.78], "at": [-10.0, -10.0, 66.0], "mat": "pumpkin"}),
+        json!({"sphere": 15.0, "scale": [1.0, 1.0, 0.78], "at": [18.0, 12.0, 66.0], "mat": "pumpkin"}),
     ])));
 
-    // R1: a bed with someone in it reaching up, one swaying at the west wall, one cowering in
-    // the far corner, one leaning out of the doorway, and the night nurse with her clipboard
-    o.push(("bed_r1", thing_at("Bed in R1", [700.0, 520.0, 0.0], 0.0, bed_parts(true))));
-    o.push(("bed_patient", thing("Patient in the bed", vec![patient("reach", [790.0, 520.0, 51.0], 0.0)])));
-    o.push(("swaying_patient", thing("Swaying patient", vec![patient("sway", [440.0, 560.0, 0.0], 180.0)])));
-    o.push(("cowering_patient", thing("Cowering patient", vec![patient("cower", [880.0, 600.0, 0.0], 90.0)])));
-    o.push(("peeking_patient", thing("Peeking patient", vec![patient("peek", [748.0, 192.0, 0.0], 270.0)])));
-    o.push(("night_nurse", thing("Night nurse", vec![with(figure("nurse", [700.0, 405.0, 0.0], 0.0), json!({"holds": "clipboard", "dress": "uniform"}))])));
-    o.push(("curtain_r1", thing("Bed curtain in R1", vec![
-        json!({"box": [160.0, 12.0, 205.0], "at": [905.0, 335.0, 190.0], "mat": "curtain", "shape": "curtain"}),
-        thin(rod([900.0, 335.0, 294.0], 2.5, 190.0, "x", "steel")),
-    ])));
-    o.push(("bedside_r1", thing("Bedside cabinet in R1", vec![
-        rb([40.0, 42.0, 74.0], [632.0, 612.0, 37.0], "paint_metal"),
-        thin(post([622.0, 606.0, 74.0], 7.0, 10.0, "plastic_old")),
-        thin(bxy([18.0, 24.0, 0.4], [640.0, 620.0, 74.3], "paper", 14.0)),
-    ])));
-
-    // R2: the fallen patient by a lamp on the floor, one twitching in the doorway, one at the wall
-    o.push(("fallen_lamp", thing("Lamp on the floor", vec![
-        thin(json!({"cylinder": [1.4, 150.0], "axis": "x", "at": [1580.0, 450.0, 3.0], "mat": "iron", "yaw": 30.0})),
-        json!({"cylinder": [18.0, 26.0], "top": 9.0, "open": true, "axis": "x", "at": [1652.0, 492.0, 14.0], "mat": "iron", "yaw": 30.0}),
-        thin(json!({"sphere": 5.0, "at": [1648.0, 489.0, 14.0], "mat": "lamp_warm"})),
-        with(point([1665.0, 482.0, 22.0], "#ffb878", 2.2, 650.0), json!({"shadow": true, "halo": 60, "halo_opacity": 0.2})),
-    ])));
-    let (c, s) = (20f64.to_radians().cos(), 20f64.to_radians().sin());
-    o.push(("fallen_patient", anchored("SP_fallen_patient",
-        json!({"at": [1507.4, 300.9, 31.7], "size": [230.5, 177.5, 48.2], "center": [1600.0, 340.0, 24.1]}),
-        vec![patient("face_down", [1600.0 - 87.5 * c, 340.0 - 87.5 * s, 0.0], 20.0)])));
-    o.push(("twitching_patient", thing("Twitching patient", vec![patient("twitch", [1610.0, 215.0, 0.0], 270.0)])));
-    o.push(("standing_patient", thing("Patient facing the wall", vec![patient("head_turn", [1950.0, 612.0, 0.0], 90.0)])));
-    o.push(("bed_r2", thing_at("Bed in R2", [1510.0, 560.0, 0.0], 0.0, {
-        let mut p = bed_parts(false);
-        p.push(with(rb([190.0, 84.0, 14.0], [8.0, -14.0, 52.0], "vinyl"), json!({"yaw": 9.0})));
-        p.push(json!({"box": [150.0, 6.0, 52.0], "at": [6.0, -52.0, 28.0], "mat": "sheet", "shape": "curtain"}));
-        p
-    })));
-    o.push(("bedside_r2", thing_at("Overturned cabinet in R2", [1730.0, 590.0, 20.0], 25.0, vec![
-        with(rb([40.0, 74.0, 42.0], [0.0, 0.0, 1.0], "paint_metal"), json!({"tilt": [0.0, 0.0]})),
-        thin(bxy([18.0, 24.0, 0.4], [40.0, -30.0, -19.5], "paper", 40.0)),
-    ])));
-
-    // L1: one chair facing the window, a cabinet, a stripped bed
-    let mut chair = vec![rb([45.0, 45.0, 4.0], [1200.0, -460.0, 44.0], "wood")];
-    for (x, y) in [(-19.0, -19.0), (19.0, -19.0), (-19.0, 19.0), (19.0, 19.0)] {
-        chair.push(thin(rb([3.5, 3.5, 42.0], [1200.0 + x, -460.0 + y, 21.0], "wood")));
-    }
-    for x in [-19.0, 19.0] {
-        chair.push(thin(rb([3.5, 3.5, 52.0], [1200.0 + x, -440.0, 70.0], "wood")));
-    }
-    for z in [62.0, 78.0, 92.0] {
-        chair.push(thin(rb([40.0, 2.5, 7.0], [1200.0, -440.0, z], "wood")));
-    }
-    o.push(("empty_chair", anchored("SP_empty_chair",
-        json!({"at": [1177.5, -482.5, 0.0], "size": [45.0, 45.0, 46.0], "center": [1200.0, -460.0, 23.0]}), chair)));
-    o.push(("cabinet", thing("Cabinet", vec![
-        rb([60.0, 120.0, 180.0], [960.0, -560.0, 90.0], "paint_metal"),
-        thin(bx([1.0, 1.0, 170.0], [990.5, -560.0, 90.0], "iron")),
-        thin(rb([2.5, 3.0, 16.0], [991.5, -572.0, 100.0], "steel")),
-        thin(rb([2.5, 3.0, 16.0], [991.5, -548.0, 100.0], "steel")),
-        thin(rb([30.0, 40.0, 22.0], [955.0, -580.0, 191.0], "plastic_old")),
-    ])));
-    o.push(("bed_l1", thing_at("Stripped bed in L1", [1400.0, -560.0, 0.0], 0.0, bed_parts(false))));
-    o.push(("curtain_l1", thing("Window curtain in L1", vec![
-        json!({"box": [64.0, 10.0, 150.0], "at": [1132.0, -626.0, 160.0], "mat": "curtain", "shape": "curtain"}),
-        thin(rod([1200.0, -628.0, 238.0], 2.0, 230.0, "x", "steel")),
-    ])));
-
-    // the ones that move, over one 12 s loop (every shot starts at 0 s)
-    o.push(("figure", json!({
-        "label": "SP_figure", "at": [2450, 0, 0],
-        "anchor": {"at": [2450.0, 0.0, 0.0], "size": [61.1, 61.6, 178.0], "center": [2446.9, -0.5, 88.5]},
-        "path": [[0, 2450, 0, 180], [1.5, 2450, 0, 180], [12, 1550, 0, 180]],
-        "parts": [with(figure("stalk", [0.0, 0.0, 0.0], 0.0), json!({"build": "thin", "height": 186}))],
-    })));
-    o.push(("pacing_patient", json!({
-        "label": "Pacing patient", "at": [500, 300, 0],
-        "path": [[0, 500, 300, 0], [5, 920, 300, 0], [6, 920, 300, 180], [11, 500, 300, 180], [12, 500, 300, 360]],
-        "parts": [patient("shamble", [0.0, 0.0, 0.0], 0.0)],
-    })));
-    o.push(("crawling_patient", json!({
-        "label": "Crawling patient", "at": [1850, 480, 0],
-        "path": [[0, 1850, 480, 233], [12, 1770, 375, 233]],
-        "parts": [patient("crawl", [0.0, 0.0, 0.0], 0.0)],
-    })));
-
-    // outside: dead trees, the yard light, the wall around the grounds
+    // ------------------------------------------------------------------ houses, trees, flowers
+    o.push(("house_red", thing("Cottage with the red roof", cottage((700.0, 1450.0), (520.0, 420.0), "plaster_white", "roof_red", 270.0))));
+    o.push(("house_blue", thing("Cottage with the blue roof", cottage((1750.0, 450.0), (460.0, 460.0), "plaster_pink", "roof_blue", 180.0))));
+    o.push(("farmhouse", thing("The farmhouse", cottage((-2650.0, -250.0), (560.0, 420.0), "plaster_cream", "roof_green", 0.0))));
     let mut trees = Vec::new();
-    for (i, (x, y, h)) in [(-1300.0, 300.0, 650.0), (-1550.0, -250.0, 800.0), (-1200.0, -900.0, 550.0), (700.0, 1200.0, 700.0),
-                           (1700.0, 1350.0, 600.0), (1200.0, -1250.0, 750.0), (-1450.0, 900.0, 620.0), (2300.0, -1150.0, 680.0)].iter().enumerate() {
-        let r = h * 0.035;
-        trees.push(json!({"cylinder": [r, *h], "top": r * 0.35, "at": [*x, *y, h / 2.0], "mat": "bark"}));
-        for b in 0..5 {
-            let a = (i * 97 + b * 71) as f64 % 360.0;
-            let z = h * (0.45 + 0.1 * b as f64);
-            let len = h * (0.35 - 0.04 * b as f64);
-            let (sa, ca) = a.to_radians().sin_cos();
-            trees.push(thin(json!({"cylinder": [r * 0.3, len], "top": r * 0.06, "at": [x + ca * len * 0.35, y + sa * len * 0.35, z + len * 0.35],
-                                   "mat": "bark", "yaw": a, "tilt": [0.0, -(40.0 + 8.0 * b as f64)]})));
+    for (i, (x, y, s)) in [(1300.0, 2000.0, 1.1), (-1300.0, 2400.0, 1.2), (3200.0, -500.0, 1.0), (-3100.0, 1700.0, 1.15), (300.0, -2600.0, 1.05),
+                           (3500.0, -2700.0, 1.2), (-3300.0, -1700.0, 1.1), (2500.0, 1600.0, 0.95), (-400.0, 2700.0, 1.0), (4200.0, 600.0, 1.3)]
+        .iter()
+        .enumerate()
+    {
+        trees.extend(round_tree((*x, *y), *s, i));
+    }
+    for (x, y, s) in [(3900.0, 1500.0, 1.2), (-3800.0, 300.0, 1.3), (1500.0, -3400.0, 1.25), (-2100.0, -3200.0, 1.15), (-4200.0, -900.0, 1.1), (2600.0, -3600.0, 1.2)] {
+        trees.extend(pine((x, y), s));
+    }
+    o.push(("trees", structure("Trees round the village", trees)));
+    let mut garden = Vec::new();
+    for (x, y, r) in [(-380.0, 520.0, 46.0), (-640.0, 540.0, 40.0), (480.0, 380.0, 52.0), (560.0, 300.0, 40.0), (1300.0, 160.0, 50.0),
+                      (2000.0, 120.0, 46.0), (-1000.0, 180.0, 44.0), (-1100.0, -500.0, 50.0), (1500.0, 1200.0, 48.0), (230.0, 1300.0, 46.0)] {
+        garden.push(ball(r, [x, y, r * 0.7], "bush"));
+    }
+    let blooms = ["flower_pink", "flower_white", "flower_violet", "petal"];
+    for (i, (cx, cy)) in [(-300.0, 560.0), (-760.0, 520.0), (420.0, 330.0), (330.0, 1240.0), (1520.0, 260.0)].iter().enumerate() {
+        for k in 0..14 {
+            let a = k as f64 * 137.5;
+            let rr = 12.0 + 6.0 * (k as f64).sqrt() * 3.0;
+            let (s, c) = a.to_radians().sin_cos();
+            garden.push(thin(ball(7.5, [cx + c * rr, cy + s * rr, 8.0], blooms[(i + k) % blooms.len()])));
         }
     }
-    o.push(("dead_trees", structure("Dead trees outside", trees)));
-    o.push(("yard", structure("The grounds", vec![
-        bx([40.0, 4200.0, 240.0], [-2100.0, 0.0, 120.0], "concrete"),
-        bx([5400.0, 40.0, 240.0], [600.0, 2100.0, 120.0], "concrete"),
-        bx([5400.0, 40.0, 240.0], [600.0, -2100.0, 120.0], "concrete"),
-        bx([40.0, 4200.0, 240.0], [3300.0, 0.0, 120.0], "concrete"),
-        post([-1150.0, 0.0, 0.0], 12.0, 460.0, "iron"),
-        thin(rod([-1120.0, 0.0, 455.0], 6.0, 60.0, "x", "iron")),
-        thin(rb([40.0, 22.0, 10.0], [-1090.0, 0.0, 450.0], "iron")),
-        thin(bx([34.0, 16.0, 1.0], [-1090.0, 0.0, 444.5], "lamp_on")),
-        with(json!({"light": "spot", "at": [-1090.0, 0.0, 440.0], "toward": [-900.0, 0.0, 0.0], "color": "#9db4ff", "intensity": 140.0,
-                    "range": 1600, "cone": 50, "penumbra": 0.7}), json!({"halo": 200, "halo_opacity": 0.25, "beam": 0.03})),
-    ])));
-
-    // moonlight through each barred window, seen in the haze
-    let mut moon = Vec::new();
-    for (i, (at, toward)) in [([-1050.0, 350.0, 330.0], [-600.0, 350.0, 0.0]), ([-1050.0, -350.0, 330.0], [-600.0, -350.0, 0.0]),
-                              ([-350.0, -900.0, 330.0], [-350.0, -450.0, 0.0]), ([700.0, 900.0, 330.0], [700.0, 450.0, 0.0]),
-                              ([1700.0, 900.0, 330.0], [1700.0, 450.0, 0.0]), ([1200.0, -900.0, 330.0], [1200.0, -450.0, 0.0])].iter().enumerate() {
-        let mut l = json!({"light": "spot", "at": at, "toward": toward, "color": "#8caeff", "intensity": 320, "range": 1200,
-                           "cone": 18, "penumbra": 0.6, "beam": 0.045});
-        if matches!(i, 1 | 4 | 5) {
-            l["shadow"] = json!(true);
-        }
-        moon.push(l);
-    }
-    o.push(("moonlight", structure("Moonlight", moon)));
-
-    // dust in the air of each room
-    o.push(("dust", structure("Dust in the air", vec![
-        json!({"dust": [2600, 280, 260], "at": [1300, 0, 140], "count": 900}),
-        json!({"dust": [780, 1280, 260], "at": [-400, 0, 140], "count": 700}),
-        json!({"dust": [580, 480, 260], "at": [700, 400, 140], "count": 260}),
-        json!({"dust": [580, 480, 260], "at": [1700, 400, 140], "count": 260}),
-        json!({"dust": [580, 480, 260], "at": [1200, -400, 140], "count": 260}),
-    ])));
+    o.push(("garden", structure("Bushes and flowers", garden)));
     o
 }
 
 /// What a shot can make appear (`props:` with `asset: props/<name>`).
 fn props() -> Vec<(&'static str, Value)> {
-    vec![("stranger", json!({"label": "A stranger", "parts": [patient("idle", [0.0, 0.0, 0.0], 0.0)]}))]
+    vec![("traveler", json!({"label": "A traveler", "parts": [villager("idle", [0.0, 0.0, 0.0], 0.0, "cloth_brown", 0.9, 175.0)]}))]
 }
 
 /// Write the sample game into `dir` (scene.json, objects/, props/). A folder that already has a
@@ -797,4 +676,3 @@ pub fn write(dir: &Path) -> Result<bool> {
     put(dir.join(SCENE_FILE), &scene())?;
     Ok(true)
 }
-

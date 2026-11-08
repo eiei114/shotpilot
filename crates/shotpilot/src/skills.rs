@@ -1,4 +1,4 @@
-//! Teaser skills (D-45), after open-design's skills: one playbook per kind of teaser
+//! Teaser skills (D-45): one playbook per kind of teaser
 //! (`references/skills/<id>/SKILL.md`, YAML front matter + a Markdown body).
 //!
 //! The planning turn reads the catalogue (name and description) and picks the skills that fit
@@ -127,7 +127,7 @@ pub fn active(brief: &BriefCfg) -> Vec<&'static Skill> {
     out
 }
 
-/// The catalogue the planning turn chooses from (open-design's `{{SKILL_CATALOG}}`).
+/// The catalogue the planning turn chooses from.
 pub fn catalogue_text() -> String {
     all()
         .iter()
@@ -139,7 +139,7 @@ pub fn catalogue_text() -> String {
         .join("\n")
 }
 
-/// The whole body of each active skill, for the planner (open-design's `## Active skill`).
+/// The whole body of each active skill, for the planner (`## Active skill`).
 pub fn planner_text(brief: &BriefCfg) -> String {
     active(brief)
         .iter()

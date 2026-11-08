@@ -134,8 +134,9 @@ shots:
       - {file: audio/hit.wav, at: 0, gain: 0, label: title}
 "#;
 
-/// The three engine's sample (D-72): the Lanternless teaser, filmed in the ward of threegame.rs.
-pub const THREE_WARD: &str = include_str!("../three/ward.yaml");
+/// The three engine's sample (D-72, D-100): the KettleHill teaser, filmed in the village of
+/// threegame.rs.
+pub const THREE_VILLAGE: &str = include_str!("../three/village.yaml");
 
 pub const EMPTY: &str = r#"version: 1
 

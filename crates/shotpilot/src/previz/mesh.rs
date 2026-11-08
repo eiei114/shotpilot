@@ -252,6 +252,26 @@ impl Geo {
         self.i.push([a, c, d]);
     }
 
+    /// Every triangle with its own corners and its face's normal (three's `toNonIndexed` and
+    /// `computeVertexNormals`): flat faces instead of smooth ones. The face normal is turned to the
+    /// side its corners' normals point to, so it stays outward.
+    pub fn flat(self) -> Geo {
+        let mut out = Geo::default();
+        for [a, b, c] in self.i {
+            let (pa, pb, pc) = (self.v[a as usize], self.v[b as usize], self.v[c as usize]);
+            let mut n = unit(cross(g::sub(pb, pa), g::sub(pc, pa)));
+            let along = g::add(g::add(self.n[a as usize], self.n[b as usize]), self.n[c as usize]);
+            if dot(n, along) < 0.0 {
+                n = g::scale(n, -1.0);
+            }
+            let k = out.v.len() as u32;
+            out.v.extend([pa, pb, pc]);
+            out.n.extend([n, n, n]);
+            out.i.push([k, k + 1, k + 2]);
+        }
+        out
+    }
+
     /// A box of the given size around the origin (three's BoxGeometry).
     pub fn cube(size: Vec3) -> Geo {
         let h = g::scale(size, 0.5);

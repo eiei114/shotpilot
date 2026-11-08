@@ -2130,14 +2130,10 @@ fn finish_changes(defn: &Definition, yaml: &str) -> Result<Vec<(String, Value)>>
 
 // --------------------------------------------------------------------------- planning turn (D-45)
 
-/// The planning turn's system prompt, after open-design's OD Next planning turn: route, ask
-/// only for essential gaps, otherwise a prose plan with a one-sentence direction. No step
-/// looks back at its own output (D-22).
+/// The planning turn's system prompt: route, ask only for essential gaps, otherwise a prose
+/// plan with a one-sentence direction. No step looks back at its own output (D-22).
 ///
-/// Adapted from open-design (https://github.com/nexu-io/open-design, Apache-2.0):
-/// `plugins/_official/scenarios/od-next-strategy/assets/general-orchestration.md` (planning
-/// turn, direction in one sentence), `motion-design` (the beat map row) and
-/// `apps/daemon/src/prompts/discovery.ts` (question-form rules); rewritten for game teasers.
+/// Partly adapted from third-party text under Apache-2.0; see THIRD_PARTY_NOTICES.md.
 pub fn discover_system() -> String {
     "You plan a game teaser for an indie developer before anything is filmed. The developer made a request; \
      you decide what the teaser is, which look it wears and which playbooks shape it. Production (the location \
@@ -2629,8 +2625,8 @@ pub struct Seen {
     pub note: String,
 }
 
-/// One look at the frames the engine rendered, once after the first shoot (D-50, open-design's
-/// bounded video exception): for each shot, whether its subject is actually in the picture and
+/// One look at the frames the engine rendered, once after the first shoot (D-50, the one
+/// bounded exception to D-22): for each shot, whether its subject is actually in the picture and
 /// what hides it. Facts about the engine's render, not a score. `frames`: (shot id, subject,
 /// purpose, image path). Shot ids are checked in code.
 pub fn see_frames(frames: &[(String, String, String, std::path::PathBuf)], claude: &dyn Claude) -> Result<Vec<Seen>> {

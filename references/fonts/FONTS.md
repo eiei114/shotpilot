@@ -1,6 +1,6 @@
 # Fonts — 書体の選び方と候補
 
-> 出典: open-design（nexu-io/open-design、Apache-2.0）の `design-templates/hyperframes/references/typography.md`（定番すぎる書体の禁止リスト、選び方の手順）を、日本語のティザー向けに言い換えた。候補は Google Fonts の書体（OFL）に限り、太さ・人気順位・収録文字は 2026-11-05 に Google Fonts のメタデータと実ファイルから測った（`catalog.json`）。組み方の規則は `references/craft/TEASER-TYPE.md`。
+> 出典: open-design（nexu-io/open-design、Apache-2.0）の書体の文書（定番すぎる書体の一覧、選び方の手順）を、日本語のティザー向けに言い換えた。候補は Google Fonts の書体（OFL）に限り、太さ・人気順位・収録文字は 2026-11-05 に Google Fonts のメタデータと実ファイルから測った（`catalog.json`）。組み方の規則は `references/craft/TEASER-TYPE.md`。
 
 ルックが書体を決め、`TEASER-TYPE.md` が組み方を決める。このフォルダは、その間で「どの書体を選べるか」を持つ。`catalog.json` には日本語 68 書体（Google Fonts にある日本語の全ファミリー）、欧文の候補 75 書体、定番すぎる書体 34 を入れた。各書体は、分類（明朝・ゴシック・丸ゴシック・筆・手書き・ポップ・表示用・ドット・等幅）、合う雰囲気（`registers`）、向く役割（`roles`）、漢字の収録（`coverage`）、作者の説明（`about`）を持つ。
 
@@ -14,11 +14,11 @@
 
 ## 2. 定番すぎる書体
 
-次の書体は、そのジャンルらしく見えても「このゲームらしく」は見えない。open-design は、言語モデルが同じ書体に収束して出力が似通う（AI っぽく見える）ことを理由に、最初のグループを禁止している。全 34 書体と置き換え先は `catalog.json` の `overused`。
+次の書体は、そのジャンルらしく見えても「このゲームらしく」は見えない。最初のグループは、言語モデルが同じ書体に収束して出力が似通う（AI っぽく見える）ので使わない。全 34 書体と置き換え先は `catalog.json` の `overused`。
 
 | 種類 | 書体 | 置き換え先の例 |
 |---|---|---|
-| 言語モデルの既定（open-design の禁止リスト） | Inter, Roboto, Open Sans, Noto Sans, Lato, Poppins, Nunito, Playfair Display, Cormorant Garamond, EB Garamond, Bodoni Moda, Cinzel, Prata, Syne | Hanken Grotesk, Geist, Gloock, Newsreader, Libre Bodoni, Marcellus |
+| 言語モデルの既定 | Inter, Roboto, Open Sans, Noto Sans, Lato, Poppins, Nunito, Playfair Display, Cormorant Garamond, EB Garamond, Bodoni Moda, Cinzel, Prata, Syne | Hanken Grotesk, Geist, Gloock, Newsreader, Libre Bodoni, Marcellus |
 | ファンタジーの定番 | Cinzel, Cinzel Decorative（Trajan 風の金の大文字。Trajan は「映画ポスターの Arial」と呼ばれる。実測の RPG でも 10 本中 4 本） | Marcellus, Forum, Texturina, Pirata One |
 | ホラーの定番 | Creepster, Nosifer, Eater, Butcherman（血の滴る書体。実測で 10 本中 3 本）、Special Elite, Courier Prime（かすれたタイプライター） | Gloock, Fraunces, Instrument Serif, IM Fell English, Cutive Mono |
 | SF の定番 | Orbitron, Audiowide, Michroma, Rajdhani | Chakra Petch, Oxanium, Tomorrow, Saira |

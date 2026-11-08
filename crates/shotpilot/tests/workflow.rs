@@ -828,7 +828,7 @@ fn camera_effects_are_burned_in_at_the_cut_and_never_rerender() {
 
 #[test]
 fn more_than_two_kinds_of_hand_over_are_pointed_out() {
-    // D-70 (open-design: one primary transition and one or two accents): a P2, counted as drawn
+    // D-70 (one primary transition and one or two accents): a P2, counted as drawn
     let mut f = ws();
     f.ws.render(&[], "previz", false, None).unwrap();
     let mix = |f: &common::Fixture| f.ws.check().unwrap().into_iter().filter(|x| x.rule == "transition.mix").collect::<Vec<_>>();

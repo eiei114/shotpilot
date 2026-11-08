@@ -20,7 +20,7 @@ use crate::model::{num, Definition, ResolvedShot};
 pub const RENDERER_VERSION: i64 = 1;
 /// Bump when the local previz drawing changes. Kept separate so a previz change
 /// never invalidates expensive engine takes.
-pub const PREVIZ_VERSION: i64 = 5;
+pub const PREVIZ_VERSION: i64 = 6;
 
 pub const BUILTIN_ORDER: &[&str] = &["previz", "still", "preview", "final"];
 

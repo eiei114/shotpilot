@@ -41,15 +41,19 @@ Copyright © 2010-2024 three.js authors. The full license is in
 ## open-design — Apache License 2.0
 
 Copyright nexu-io/open-design contributors (<https://github.com/nexu-io/open-design>).
-No code is copied. The following reference texts restate, in Japanese and with changes for
-teasers, parts of open-design's OD Next planning turn, Design baseline, `design-systems/` and
-`skills/` layout, the `motion-design` and `hyperframes` task profiles, and the hyperframes
-transition references. Each file names its source at the top:
+No code is copied. The following files restate, with changes for teasers, parts of
+open-design's OD Next planning turn, Design baseline, typography references, `design-systems/`
+and `skills/` layout, the `motion-design` and `hyperframes` task profiles, and the hyperframes
+transition references. Each names its source at the top (`catalog.json` in `sources`, `ai.rs`
+in the doc comment of `discover_system`):
 
 - `references/craft/TEASER-BASELINE.md`
+- `references/craft/TEASER-TYPE.md`
+- `references/fonts/FONTS.md` and the `overused` list in `references/fonts/catalog.json`
 - `references/motion/MOTION.md`
 - `references/motion/TRANSITIONS.md`
 - `references/motion/transitions.json`
+- the planning turn's system prompt in `crates/shotpilot/src/ai.rs` (`discover_system`)
 
 The license text is at <https://www.apache.org/licenses/LICENSE-2.0>.
 

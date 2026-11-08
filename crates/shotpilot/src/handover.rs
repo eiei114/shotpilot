@@ -1,11 +1,10 @@
 //! How shots hand over at a cut (D-70): the recipes in `references/motion/transitions.json`,
-//! after open-design's transition references (hyperframes `transitions.md` and its catalog),
 //! turned into ffmpeg filters on the two shots either side of the cut.
 //!
 //! Two pictures never share a frame (no crossfade, D-25). The shot going out is covered
 //! (black, white or broken frames) over its last moments, the next one starts covered and
-//! uncovers, and the swap is always the cut itself, made while the picture is covered (as
-//! open-design swaps scenes at peak white or under the blocks). Frames are changed, never
+//! uncovers, and the swap is always the cut itself, made while the picture is covered (at
+//! peak white, or under black or broken frames). Frames are changed, never
 //! added, so no shot changes length. The planner names a hand-over (`transition:`); the recipe,
 //! the look's motion profile and its energy decide how long each side runs and how it moves.
 //!
@@ -21,7 +20,7 @@ use crate::motion::Motion;
 
 const RECIPES: &str = include_str!("../../../references/motion/transitions.json");
 
-/// Ease names a recipe may use: GSAP's, as open-design writes them (power1 = squared ... power4
+/// Ease names a recipe may use: GSAP's (power1 = squared ... power4
 /// = fifth power). `.in` accelerates (into a cover), `.out` decelerates (out of one).
 pub const EASES: &[&str] = &[
     "linear", "sine.in", "sine.out", "sine.inOut", "power1.in", "power1.out", "power1.inOut", "power2.in", "power2.out",
@@ -222,7 +221,7 @@ fn cover(colour: &str, k: &str, burn: f64, a: f64, b: f64) -> String {
 }
 
 /// Broken frames over [a, b] of a shot: the colour layers thrown one way on even frames and the
-/// other way on odd ones, with grain (open-design's glitch jitters every 0.03 s or so).
+/// other way on odd ones, with grain (a glitch jitters every 0.03 s or so).
 fn broken(a: f64, b: f64, s: f64) -> String {
     let px = |v: f64| (v * s).round().max(2.0) as i64;
     let (p, q, v) = (px(12.0), px(20.0), px(3.0));
@@ -267,8 +266,8 @@ fn glitch(t0: f64, t1: f64, s: f64) -> String {
     )
 }
 
-/// Keeps a planned cut to one main hand-over (`cut`) and at most two others, as open-design keeps
-/// one primary transition and one or two accents: `dip` and the look's accent stay first, then
+/// Keeps a planned cut to one main hand-over (`cut`) and at most two others (one primary
+/// transition and one or two accents): `dip` and the look's accent stay first, then
 /// the most used; the rest become cuts. Returns a note for the human when anything changed.
 pub fn shape(shots: &mut [Value], accent: &str) -> Option<String> {
     // (kind, uses, first shot)

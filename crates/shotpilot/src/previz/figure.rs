@@ -183,6 +183,83 @@ fn pose(mv: &str, t: f64, k: f64) -> HashMap<&'static str, Ang> {
                 set("uaR", a(0.25 + 0.15 * s));
             }
         }
+        // the village's (D-100)
+        "walk" | "run" => {
+            let run = mv == "run";
+            let ph = t * 2.0 * PI / if run { 0.62 } else { 1.1 };
+            let s = sin(ph);
+            let (swing, knee, base, arm) = if run { (0.75, 1.1, -0.3, 0.7) } else { (0.42, 0.55, -0.1, 0.35) };
+            set("thL", a(swing * s));
+            set("thR", a(-swing * s));
+            set("shL", a(base - knee * (-cos(ph)).max(0.0)));
+            set("shR", a(base - knee * cos(ph).max(0.0)));
+            if run {
+                set("hips", Ang { h: Some(0.93 * k + 0.03 * k * sin(ph).abs()), y: Some(0.08 * s), ..Ang::default() });
+                set("spine", a(-0.15));
+                set("chest", yy(-0.12 * s));
+                set("head", a(0.12));
+                set("uaL", xz(-0.7 * s, -0.12));
+                set("uaR", xz(0.7 * s, 0.12));
+                set("faL", a(1.2));
+                set("faR", a(1.2));
+            } else {
+                set("hips", Ang { h: Some(0.95 * k - 0.02 * k * cos(ph).abs()), y: Some(0.06 * s), ..Ang::default() });
+                set("chest", yy(-0.08 * s));
+                set("head", a(-0.04));
+                set("uaL", xz(-arm * s, -0.06));
+                set("uaR", xz(arm * s, 0.06));
+                set("faL", a(0.25));
+                set("faR", a(0.25));
+            }
+        }
+        "water" => {
+            set("spine", a(-0.15));
+            set("head", a(0.25));
+            set("uaR", xz(0.95 + 0.06 * sin(t * 1.3), 0.12));
+            set("faR", a(0.3));
+            set("uaL", zz(-0.14));
+            set("faL", a(0.2));
+        }
+        "pour" => {
+            let u = 0.5 - 0.5 * cos(t * 1.1);
+            set("spine", a(-0.12));
+            set("head", a(0.3));
+            set("uaR", xz(0.75 + 0.25 * u, 0.18));
+            set("faR", xz(0.9 - 0.3 * u, 0.25 * u));
+            set("uaL", xz(0.5, -0.1));
+            set("faL", a(1.3));
+        }
+        "sweep" => {
+            let s = sin(t * 2.4);
+            set("spine", Ang { x: Some(-0.3), y: Some(0.25 * s), ..Ang::default() });
+            set("chest", yy(0.15 * s));
+            set("head", a(0.35));
+            set("uaL", xz(0.6 + 0.2 * s, 0.2));
+            set("faL", a(0.6));
+            set("uaR", xz(0.5 + 0.2 * s, -0.2));
+            set("faR", a(0.9));
+        }
+        "wave" => {
+            set("chest", a(0.02 * sin(t * 1.7)));
+            set("head", zz(0.1 * sin(t * 0.9)));
+            set("uaR", xz(0.3, 2.5));
+            set("faR", zz(0.45 * sin(t * 6.0)));
+            set("uaL", zz(-0.08));
+        }
+        "sit" => {
+            set("hips", Ang { h: Some(0.6 * k), ..Ang::default() });
+            set("thL", xz(1.5, -0.05));
+            set("thR", xz(1.5, 0.05));
+            set("shL", a(-1.45));
+            set("shR", a(-1.45));
+            set("spine", a(0.05));
+            set("chest", a(0.02 * sin(t * 1.5)));
+            set("head", Ang { x: Some(0.05), y: Some(0.25 * sin(t * 0.35)), ..Ang::default() });
+            set("uaL", xz(0.35, -0.05));
+            set("faL", a(0.9));
+            set("uaR", xz(0.35, 0.05));
+            set("faR", a(0.9));
+        }
         _ => {
             // idle
             set("chest", a(0.02 * sin(t * 1.7)));
@@ -215,7 +292,8 @@ pub(crate) struct Spec<'a> {
     /// The seed of its phase (the part's `seed`, else the object's name).
     pub seed: &'a str,
     pub skin: u32,
-    pub cloth: Option<(u32, bool)>,
+    /// Its clothes: their surface and how long the skirt or tunic is (in the figure's height).
+    pub cloth: Option<(u32, f64)>,
 }
 
 /// Adds the mannequin at time `t`. `root` places its feet: three's frame (the page's figure
@@ -248,8 +326,7 @@ pub(crate) fn add(b: &mut Builder, root: &Xf, spec: &Spec, t: f64, piece: u32) {
     let spine = joint(&hips, "spine", [0.0, 0.04 * k, 0.0]);
     let torso: Vec<(f64, f64)> = TORSO.iter().map(|(r, y)| (r * k, y * k)).collect();
     put(b, &Geo::lathe(&torso, 14), &spine.then(&Xf::scale([if thin { 0.8 } else { 1.0 }, 1.0, if thin { 0.56 } else { 0.66 }])), skin);
-    if let Some((cloth, uniform)) = spec.cloth {
-        let len = if uniform { 0.86 } else { 0.98 };
+    if let Some((cloth, len)) = spec.cloth {
         let at = spine.then(&Xf::translate([0.0, 0.47 * k - len * k / 2.0, 0.0])).then(&Xf::scale([1.0, 1.0, 0.76]));
         put(b, &Geo::cylinder(0.168 * k, 0.26 * k, len * k, 16, false), &at, cloth);
     }

@@ -330,8 +330,8 @@ pub enum Reach {
 }
 
 /// The spec an edit is made against: the same pieces the planner wrote the cut from, so a
-/// revised shot keeps the brief, the direction, the look and the craft (open-design's frozen
-/// Design Spec, shared by every path that writes the artifact).
+/// revised shot keeps the brief, the direction, the look and the craft (one frozen spec,
+/// shared by every path that writes shots, D-48).
 pub fn edit_spec(defn: &Definition, reach: Reach) -> String {
     let b = &defn.brief;
     let mut out = format!(

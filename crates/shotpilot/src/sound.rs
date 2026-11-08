@@ -1264,13 +1264,147 @@ fn demo_whoosh() -> Pcm {
     p
 }
 
-/// Placeholder sounds for the demo project, written under audio/ only where missing.
-/// They are synthesized, so the demo needs no downloaded assets.
-pub fn write_demo_audio(root: &Path) -> Result<Vec<String>> {
+fn midi_hz(m: f64) -> f64 {
+    440.0 * 2f64.powf((m - 69.0) / 12.0)
+}
+
+/// A soft music-box tune over C, Am, F, G (84 bpm), a bass note and a pad under it: the three
+/// sample's placeholder music (D-100).
+fn village_tune() -> Pcm {
+    let tau = std::f64::consts::TAU;
+    let eighth = 60.0 / 84.0 / 2.0;
+    let bar = eighth * 8.0;
+    let chords: [[f64; 4]; 4] = [[60.0, 64.0, 67.0, 72.0], [57.0, 60.0, 64.0, 69.0], [53.0, 57.0, 60.0, 65.0], [55.0, 59.0, 62.0, 67.0]];
+    let bars = 12;
+    let secs = bar * bars as f64 + 3.0;
+    let n = (secs * SR as f64) as usize;
+    let mut p = Pcm::silent(n);
+    // one plucked note: a few partials, a quick attack and a ringing decay
+    let mut pluck = |at: f64, hz: f64, amp: f64, decay: f64, pan: f64| {
+        let start = (at * SR as f64) as usize;
+        let len = ((decay * 5.0) * SR as f64) as usize;
+        for i in 0..len.min(n.saturating_sub(start)) {
+            let t = i as f64 / SR as f64;
+            let env = (t / 0.004).min(1.0) * (-t / decay).exp();
+            let v = (tau * hz * t).sin() + 0.3 * (tau * 2.0 * hz * t).sin() * (-t / (decay * 0.5)).exp()
+                + 0.12 * (tau * 3.01 * hz * t).sin() * (-t / (decay * 0.3)).exp();
+            let v = (v * env * amp) as f32;
+            p.l[start + i] += v * (1.0 - pan) as f32;
+            p.r[start + i] += v * (1.0 + pan) as f32;
+        }
+    };
+    let pattern = [0usize, 1, 2, 3, 2, 1, 2, 3];
+    for b in 0..bars {
+        let chord = chords[b % 4];
+        let t0 = b as f64 * bar;
+        pluck(t0, midi_hz(chord[0] - 12.0), 0.22, 1.6, 0.0);
+        for (k, &idx) in pattern.iter().enumerate() {
+            let pan = if k % 2 == 0 { -0.25 } else { 0.25 };
+            pluck(t0 + k as f64 * eighth, midi_hz(chord[idx] + 12.0), 0.11, 0.7, pan);
+        }
+        // a short tune on top every other bar
+        if b % 2 == 1 {
+            pluck(t0 + eighth * 2.0, midi_hz(chord[3] + 12.0 + 4.0), 0.07, 0.9, 0.1);
+            pluck(t0 + eighth * 5.0, midi_hz(chord[2] + 24.0), 0.06, 0.9, -0.1);
+        }
+    }
+    let end = bars as f64 * bar;
+    for (k, m) in [60.0, 64.0, 67.0, 72.0].iter().enumerate() {
+        pluck(end + k as f64 * 0.09, midi_hz(m + 12.0), 0.1, 1.2, 0.0);
+    }
+    pluck(end, midi_hz(48.0), 0.2, 2.0, 0.0);
+    // a quiet pad of the chord, swelling in each bar
+    for i in 0..n {
+        let t = i as f64 / SR as f64;
+        let b = ((t / bar) as usize).min(bars - 1);
+        let u = (t - b as f64 * bar) / bar;
+        let swell = (std::f64::consts::PI * u.clamp(0.0, 1.0)).sin().powf(0.6) * if t < end { 1.0 } else { (1.0 - (t - end) / 3.0).max(0.0) };
+        let chord = chords[b % 4];
+        let v: f64 = chord[..3].iter().map(|m| (tau * midi_hz(*m) * t).sin()).sum::<f64>() * 0.018 * swell;
+        p.l[i] += v as f32;
+        p.r[i] += v as f32;
+    }
+    p
+}
+
+/// Wind over the hill with a few birds, sixteen seconds that loop without a seam.
+fn village_breeze() -> Pcm {
+    let tau = std::f64::consts::TAU;
+    let secs = 16.0;
+    let fade = 0.5;
+    let n = (secs * SR as f64) as usize;
+    let extra = (fade * SR as f64) as usize;
+    let mut a = Pcm::silent(n + extra);
+    let mut noise = Noise(53);
+    let (mut lo_l, mut lo_r, mut lo2) = (0f32, 0f32, 0f32);
+    for i in 0..n + extra {
+        let t = i as f64 / SR as f64;
+        let gust = 0.55 + 0.3 * (tau * t * 2.0 / secs).sin() + 0.15 * (tau * t * 5.0 / secs + 1.3).sin();
+        lo_l += 0.012 * (noise.next() - lo_l);
+        lo_r += 0.012 * (noise.next() - lo_r);
+        lo2 += 0.08 * (noise.next() - lo2); // the leaves
+        let leaves = lo2 * 0.05 * (0.5 + 0.5 * (tau * t * 3.0 / secs).sin()) as f32;
+        a.l[i] = lo_l * 1.4 * gust as f32 + leaves;
+        a.r[i] = lo_r * 1.4 * gust as f32 + leaves;
+    }
+    // birds: short rising or falling chirps, in twos and threes
+    let chirps = [(1.2, 1.0), (1.42, 1.0), (3.8, -1.0), (4.02, -1.0), (4.24, -1.0), (7.5, 1.0), (9.1, -1.0), (9.3, 1.0),
+                  (11.6, 1.0), (11.8, 1.0), (13.0, -1.0), (14.6, 1.0)];
+    for (k, (at, dir)) in chirps.iter().enumerate() {
+        let start = (at * SR as f64) as usize;
+        let len = ((0.07 + 0.03 * (k % 3) as f64) * SR as f64) as usize;
+        let (f0, f1) = if *dir > 0.0 { (3100.0, 4300.0) } else { (4400.0, 3300.0) };
+        let pan = if k % 2 == 0 { -0.4f32 } else { 0.4 };
+        let mut ph = 0.0;
+        for i in 0..len {
+            let u = i as f64 / len as f64;
+            ph += tau * (f0 + (f1 - f0) * u) / SR as f64;
+            let v = (ph.sin() * (std::f64::consts::PI * u).sin().powi(2) * 0.09) as f32;
+            a.l[start + i] += v * (1.0 - pan);
+            a.r[start + i] += v * (1.0 + pan);
+        }
+    }
+    // fold the tail over the head so the loop has no seam
+    for i in 0..extra {
+        let w = i as f32 / extra as f32;
+        a.l[i] = a.l[i] * w + a.l[n + i] * (1.0 - w);
+        a.r[i] = a.r[i] * w + a.r[n + i] * (1.0 - w);
+    }
+    a.l.truncate(n);
+    a.r.truncate(n);
+    a
+}
+
+/// A small bell: inharmonic partials ringing out, and a second, higher one just after.
+fn village_chime() -> Pcm {
+    let tau = std::f64::consts::TAU;
+    let n = (2.6 * SR as f64) as usize;
+    let mut p = Pcm::silent(n);
+    for (at, hz, amp) in [(0.0, 880.0, 0.32), (0.12, 1318.5, 0.2)] {
+        let start = (at * SR as f64) as usize;
+        for i in 0..n - start {
+            let t = i as f64 / SR as f64;
+            let v: f64 = [(1.0, 1.0, 1.6), (2.76, 0.5, 0.9), (5.4, 0.25, 0.5), (8.93, 0.12, 0.3)]
+                .iter()
+                .map(|(k, a, d)| a * (tau * hz * k * t).sin() * (-t / d).exp())
+                .sum::<f64>()
+                * (t / 0.002).min(1.0)
+                * amp;
+            p.l[start + i] += v as f32;
+            p.r[start + i] += v as f32 * 0.95;
+        }
+    }
+    p
+}
+
+/// Placeholder sounds for the three sample (D-100), written under audio/ only where missing:
+/// music, the air of the hill and a small bell, all synthesized.
+pub fn write_village_audio(root: &Path) -> Result<Vec<String>> {
+    write_synth(root, &[("audio/tune.wav", village_tune), ("audio/breeze.wav", village_breeze), ("audio/chime.wav", village_chime)])
+}
+
+fn write_synth(root: &Path, items: &[(&str, fn() -> Pcm)]) -> Result<Vec<String>> {
     let mut written = Vec::new();
-    type Synth = fn() -> Pcm;
-    let items: [(&str, Synth); 3] =
-        [("audio/drone.wav", || demo_drone(32.0)), ("audio/hit.wav", demo_hit), ("audio/whoosh.wav", demo_whoosh)];
     for (rel, make) in items {
         let p = root.join(rel);
         if !p.exists() {
@@ -1279,6 +1413,12 @@ pub fn write_demo_audio(root: &Path) -> Result<Vec<String>> {
         }
     }
     Ok(written)
+}
+
+/// Placeholder sounds for the demo project, written under audio/ only where missing.
+/// They are synthesized, so the demo needs no downloaded assets.
+pub fn write_demo_audio(root: &Path) -> Result<Vec<String>> {
+    write_synth(root, &[("audio/drone.wav", || demo_drone(32.0)), ("audio/hit.wav", demo_hit), ("audio/whoosh.wav", demo_whoosh)])
 }
 
 #[cfg(test)]

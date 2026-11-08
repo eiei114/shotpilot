@@ -32,7 +32,7 @@ pub const RENDER_PAGE: &str = include_str!("../three/render.html");
 pub const THREE_JS: &[u8] = include_bytes!("../three/three.module.min.js");
 /// Bump when the page draws differently for the same scene and cameras. It is part of the
 /// fingerprint of three takes only, so UE and mock takes never move with it.
-pub const RENDERER_VERSION: i64 = 2;
+pub const RENDERER_VERSION: i64 = 3;
 /// How many seconds a moving thing's `path` loops over when it does not say.
 const LOOP_SECS: f64 = 12.0;
 
@@ -132,6 +132,7 @@ fn figure_box(mv: &str, h: f64) -> (Vec3, Vec3) {
         "face_down" => ([h / 2.0, 0.0, 15.0], [h, 70.0, 30.0]),
         "crawl" => ([h * 0.45, 0.0, 30.0], [h * 0.9, 70.0, 60.0]),
         "cower" => ([0.0, 0.0, h * 0.28], [70.0, 70.0, h * 0.56]),
+        "sit" => ([h * 0.12, 0.0, h * 0.36], [h * 0.5, 55.0, h * 0.72]),
         _ => ([0.0, 0.0, h / 2.0], [45.0, 55.0, h]),
     }
 }
@@ -164,7 +165,9 @@ fn parse_part(v: &Value, where_: &str) -> Result<Part> {
     }
     if let Some(r) = v.get("sphere") {
         let Some(r) = num(r) else { bail!("{where_}: `sphere` must be a radius in cm") };
-        return Ok(part(at, [2.0 * r; 3], yaw, r >= 15.0, true));
+        // `scale` stretches the ball (a hill, a pumpkin): [x, y, z] as the page reads it
+        let k = v.get("scale").and_then(vec3).unwrap_or([1.0; 3]);
+        return Ok(part(at, k.map(|s| 2.0 * r * s), yaw, r >= 15.0, true));
     }
     if let Some(mv) = v.get("figure") {
         let mv = mv.as_str().unwrap_or("idle");

@@ -1,0 +1,289 @@
+# KettleHill: the three engine's sample (D-72, D-100). A cozy teaser filmed in the village in
+# game/ (one file per thing; the five places to film are tagged as anchors). Draws in Edge or Chrome:
+#   shotpilot render still && shotpilot cut
+# Then change one shot (shotpilot set s04_market camera.lens.focal_length=50) or one thing in the
+# game (the awning in game/objects/market_stall.json) and render again: only what changed is drawn.
+version: 1
+
+project:
+  name: {name}
+  engine: three        # mock (no engine) | ue5 | three (draws the game in game/ with Edge or Chrome)
+  game: game           # scene.json, objects/ and props/ of the game the shots film
+
+teaser:
+  title: ""
+  pitch: ""
+  target_duration: 45
+  fps: 30
+  resolution: [1920, 1080]
+
+brief:
+  kind: teaser  # teaser | gameplay
+  genre: コージー (cozy)
+  audience: のんびりした暮らしシムや農業・お店系のコージーゲームが好きなプレイヤー
+  core: この丘の村で、午後のお茶を一杯飲みたくなる、やさしくあたたかい気持ち  # the one experience the viewer must get
+  must_show:
+    - 回る風車
+    - 畑の世話（水やり）
+    - 市場の屋台
+    - 大きな木の周りを走る子どもたち
+    - 茶屋でお茶を注ぐ場面
+    - 村の全景と KettleHill の題字
+    - Steam でウィッシュリスト登録
+  references: []
+  design: cozy-pastel
+  skills:
+    - announce-teaser
+    - title-drop
+  plan: "目的：KettleHill を初めて見る人に「この村で暮らしたい」というやさしい気持ちを残す告知ティザーです。遊び方の説明は入れず、文字は短いカード1枚と題字、最後の呼びかけだけにします。\n\n流れは村の午後をめぐる散歩です。風車で穏やかな場所だと伝え、村の全景、畑、市場で暮らしを見せ、木の周りの子どもたちと茶屋の一杯で気持ちをふくらませ、最後に丘の全景で題字を出します。カットは長め（2.5〜6秒）でゆっくりつなぎ、急な早送りや文字の連打は避けます。\n\nビートマップ（時間 → 観客に残るもの → 焦点 → 変化 → 文字・音 → 抜け方）：\n・hook 0–4秒 → 穏やかな場所だとひと目でわかる → 青空を背に回る風車の羽根 → 羽根がゆっくり画面を横切る → 文字なし。風と小鳥、オルゴールがひとつ → 短いカードへ。\n・establish 4–21秒 → ここで畑を世話し、市場で野菜を売って暮らす → 村の全景、畑、市場の屋台 → 高い俯瞰から地面の高さへ降りていく → カード「丘の上の、小さな村」。風と小鳥 → 子どもたちへ。\n・escalate 21–34秒 → 午後のあたたかさ → 木の周りの子どもたち、ベンチの老人、茶屋の軒先、お茶を注ぐ手元 → 人の動きが近くなり、最後は湯呑みに寄る → 文字なし。オルゴールが少しふくらむ → 丘の全景へ。\n・title 34–40秒 → この村の名前を覚える → 丘の全景（茶屋、風車、村） → カメラがゆっくり上がって引く → 「KettleHill」の題字と「Steam でウィッシュリスト登録」 → 題字で終わる。\n\n想定：発売時期・価格・プラットフォームは書きません（呼びかけは Steam のウィッシュリストだけ）。見た目の指定がないので、やさしいパステル調の cozy-pastel を選んでいます。"
+  direction: 青空とやわらかな午後の光の中、色の違う屋根と風車がひと目で見分けられる明るい村をめぐり、丸みのある題字にやさしい余韻を残します。
+
+anchors:
+  crop_row:
+    at: [-2300.0, 580.0, 0.0]
+    size: [1000.0, 520.0, 80.0]
+    center: [-2300.0, 580.0, 40.0]
+  market_stall:
+    at: [900.0, -300.0, 0.0]
+    size: [300.0, 440.0, 280.0]
+    center: [910.0, -300.0, 140.0]
+  old_oak:
+    at: [-1500.0, -1300.0, 0.0]
+    size: [820.0, 820.0, 780.0]
+    center: [-1500.0, -1300.0, 390.0]
+  teahouse:
+    at: [-500.0, 1125.0, 0.0]
+    size: [760.0, 900.0, 540.0]
+    center: [-500.0, 1125.0, 270.0]
+  windmill:
+    at: [2400.0, -1800.0, 0.0]
+    size: [700.0, 700.0, 900.0]
+    center: [2330.0, -1750.0, 450.0]
+
+defaults:
+  lens: {focal_length: 35, aperture: 2.8}
+
+shots:
+  - id: s01_windmill
+    beat: hook
+    purpose: 青空を背にゆっくり回る風車で、穏やかな場所だとひと目で伝える。
+    duration: 3.5
+    camera:
+      location: [1700.0, -1080.0, 60.0]
+      look_at: windmill
+      aim: upper
+      lens: {focal_length: 24.0}
+      end:
+        location: [1790.0, -1160.0, 70.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 低い位置から見上げ、白い塔と羽根を青空に抜く。羽根の回転だけが動きになるよう、カメラはわずかに寄るだけにする。
+
+  - id: s02_village_wide
+    beat: establish
+    purpose: 丘の上の村の全景で、ここが暮らしの場所だと伝える。
+    duration: 6.0
+    camera:
+      location: [-1700.0, 2300.0, 950.0]
+      look_at: [600.0, -500.0, 0.0]
+      lens: {focal_length: 24.0}
+      end:
+        location: [-1300.0, 2550.0, 950.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 茶屋の屋根を手前に、広場の井戸、屋台、奥の風車までを一枚に収める高い俯瞰。ゆっくり横に流す。
+
+  - id: s03_fields
+    beat: establish
+    purpose: 畝の間で水やりをする手ざわりを見せる。
+    duration: 4.5
+    camera:
+      location: [-2950.0, 580.0, 150.0]
+      look_at: [-2250.0, 580.0, 40.0]
+      lens: {focal_length: 35.0}
+      end:
+        location: [-2770.0, 580.0, 135.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 畑の西の端から畝に沿って見通し、水やりをする農夫と、右奥のひまわりの列を入れる。奥に村の屋根が見える。
+
+  - id: s04_market
+    beat: establish
+    purpose: 赤とクリームの日よけの屋台で、野菜を売る村の暮らしを見せる。
+    duration: 4.0
+    camera:
+      location: [520.0, -120.0, 135.0]
+      look_at: market_stall
+      aim: center
+      lens: {focal_length: 35.0}
+      end:
+        location: [540.0, -440.0, 135.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 屋台を正面寄りから目線の高さで。手を振る店主と、カボチャ・リンゴ・キャベツの箱。かごを持った客が横切る。
+    sfx:
+      - file: audio/chime.wav
+        at: 1.2
+        gain: -14.0
+        label: 屋台の小さなベル（仮の音）
+
+  - id: s05_oak_kids
+    beat: escalate
+    purpose: 大きな木の周りを子どもたちが走る、村の生活感を見せる。
+    duration: 3.5
+    camera:
+      location: [-2150.0, -1950.0, 140.0]
+      look_at: [-1500.0, -1300.0, 170.0]
+      lens: {focal_length: 24.0}
+      end:
+        location: [-2020.0, -1820.0, 135.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 目の高さから一本木全体と幹の周りを走る子どもたちを収め、ゆっくり近づく。
+
+  - id: s06_elder_bench
+    beat: escalate
+    purpose: ベンチの老人が、走り回る子どもたちを見守っていることを見せる。
+    duration: 2.5
+    camera:
+      location: [-1420.0, -1060.0, 110.0]
+      look_at: [-1480.0, -850.0, 80.0]
+      lens: {focal_length: 35.0}
+    environment: {time_of_day: afternoon}
+    notes: 木の側から老人の正面を撮る。子どもたちが手前を横切ってよい。
+
+  - id: s07_teahouse_ext
+    beat: escalate
+    purpose: 赤い提灯の下がる茶屋にたどり着く。
+    duration: 3.5
+    camera:
+      location: [-60.0, 380.0, 170.0]
+      look_at: teahouse
+      aim: center
+      lens: {focal_length: 28.0}
+      end:
+        location: [-260.0, 300.0, 165.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 広場の側から、のれんと提灯、縁側に座る客を収める。ゆっくり横に流す。
+
+  - id: s08_teahouse_eave
+    beat: escalate
+    purpose: 縁側に一杯の支度が整っていることを見せる。
+    duration: 3.0
+    camera:
+      location: [-830.0, 560.0, 120.0]
+      look_at: [-610.0, 740.0, 85.0]
+      lens: {focal_length: 50.0}
+      end:
+        location: [-780.0, 520.0, 115.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 縁側に腰かけた客と、盆の上の湯呑みを横から。前のカットから大きく角度を変える。
+
+  - id: s09_tea_pour
+    beat: escalate
+    purpose: 茶屋の主人がお茶を注ぐ、一番あたたかい瞬間を見せる。
+    duration: 3.5
+    camera:
+      location: [-560.0, 610.0, 160.0]
+      look_at: [-505.0, 772.0, 140.0]
+      lens: {focal_length: 50.0}
+      end:
+        location: [-545.0, 650.0, 158.0]
+        curve: ease_in_out
+    environment: {time_of_day: afternoon}
+    notes: 急須を傾ける主人の手元に寄る。のれんの藍と提灯の赤を背景に入れる。
+    sfx:
+      - file: audio/chime.wav
+        at: 2.6
+        gain: -16.0
+        label: 湯呑みに注ぐ小さな音（仮の音）
+
+  - id: s10_hill_title
+    beat: title
+    purpose: 丘の全景に茶屋・風車・村がまとまって見え、この村の名前を覚えてもらう。
+    duration: 5.5
+    camera:
+      location: [-2400.0, 2700.0, 400.0]
+      look_at: [400.0, -400.0, 150.0]
+      lens: {focal_length: 24.0}
+      end:
+        location: [-2700.0, 3000.0, 1100.0]
+        curve: ease_out
+    environment: {time_of_day: afternoon}
+    notes: 北西の高い位置から、手前に茶屋、奥に風車と屋台が入る全景。ゆっくり上がって丘全体が見えたところで止める。上三分の一は空を空けて題字の余白にする。
+    transition: dip
+
+script:
+  - id: c_hill
+    kind: card
+    ja: 丘の上の、小さな村
+    en: A little village on the hill
+    dur: 3.0
+    after: s01_windmill
+
+  - id: blk
+    kind: black
+    dur: 0.5
+    after: s10_hill_title
+
+  - id: ttl
+    kind: title
+    ja: KettleHill
+    dur: 3.2
+    after: blk
+    sfx:
+      - file: audio/chime.wav
+        at: 0.0
+        gain: -6.0
+        label: 題字にやわらかいチャイムをひとつ（仮の音）
+
+  - id: endcard
+    kind: card
+    ja: Steamでウィッシュリスト登録
+    en: Wishlist on Steam
+    dur: 4.0
+    after: ttl
+
+finish:
+  title: null
+  end_card: null
+  grade: warm
+  letterbox: null
+  typeface: gothic
+  title_size: 0.2
+  motion:
+    profile: cozy
+    energy: calm
+    avoid:
+      - flash
+      - whiteout
+      - glitch
+      - slam
+      - shake
+      - redflash
+      - static
+      - vhs
+      - flicker
+  fonts:
+    display: Zen Maru Gothic:900
+    body: M PLUS Rounded 1c:500
+    latin: Gabarito:700
+    title: Gluten:700
+
+audio:
+  music:
+    - file: audio/tune.wav
+      from: start
+      gain: -12.0
+      fade_in: 1.5
+      fade_out: 2.5
+      label: やさしいオルゴール（仮の音。好きな曲に差し替える）
+  ambience:
+    windmill: {file: audio/breeze.wav, gain: -14.0, label: 丘の風と小鳥（仮の音）}
+    crop_row: {file: audio/breeze.wav, gain: -14.0, label: 丘の風と小鳥（仮の音）}
+    market_stall: {file: audio/breeze.wav, gain: -15.0, label: 丘の風と小鳥（仮の音）}
+    old_oak: {file: audio/breeze.wav, gain: -14.0, label: 丘の風と小鳥（仮の音）}
+    teahouse: {file: audio/breeze.wav, gain: -16.0, label: 丘の風と小鳥（仮の音）}
+  loudness: -16.0

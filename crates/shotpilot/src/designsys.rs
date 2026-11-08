@@ -1,4 +1,4 @@
-//! Design systems for teasers (D-45), after open-design's `design-systems/`.
+//! Design systems for teasers (D-45).
 //!
 //! A design system is one look a teaser can wear: `DESIGN.md` (prose in nine sections, the
 //! planner reads it whole and treats it as authoritative), `tokens.json` (the numbers code
@@ -118,7 +118,7 @@ pub fn project_doc(root: &Path) -> Option<String> {
     std::fs::read_to_string(root.join(PROJECT_FILE)).ok().filter(|t| !t.trim().is_empty())
 }
 
-/// What the planner reads about the look, in open-design's order: identity, the whole
+/// What the planner reads about the look, in this order: identity, the whole
 /// DESIGN.md, then the tokens. Empty when no design system is active.
 pub fn planner_text(defn: &Definition) -> String {
     let preset = get(&defn.brief.design);

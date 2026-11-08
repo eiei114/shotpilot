@@ -121,6 +121,10 @@ pub(crate) fn object(b: &mut Builder, globals: &Value, o: &Object, at: Vec3, yaw
                     None => continue,
                 },
             };
+            if p.get("shape").and_then(Value::as_str) == Some("sails") {
+                sails(b, globals, p, size, &at_part, t, src);
+                continue;
+            }
             let (s, piece) = (b.surf(surf), b.piece(src));
             b.add(&Geo::cube([size[1] * S, size[2] * S, size[0] * S]), &at_part, s, piece);
         } else if let Some(c) = p.get("cylinder").and_then(Value::as_array) {
@@ -128,7 +132,8 @@ pub(crate) fn object(b: &mut Builder, globals: &Value, o: &Object, at: Vec3, yaw
             let [r, h] = rh[..] else { continue };
             let Some(surf) = surface(globals, p) else { continue };
             let top = p.get("top").and_then(num).unwrap_or(r);
-            let segs = p.get("sides").and_then(num).map(|s| s as usize).unwrap_or(24).clamp(6, 16);
+            let sides = p.get("sides").and_then(num).map(|s| s as usize);
+            let segs = sides.map(|s| s.clamp(3, 16)).unwrap_or(16);
             let open = p.get("open").and_then(Value::as_bool).unwrap_or(false);
             let turn = match p.get("axis").and_then(Value::as_str) {
                 Some("x") => [std::f64::consts::FRAC_PI_2, 0.0, 0.0],
@@ -137,12 +142,17 @@ pub(crate) fn object(b: &mut Builder, globals: &Value, o: &Object, at: Vec3, yaw
             };
             let xf = at_part.then(&Xf::three([0.0; 3], turn, Order::Xyz, [1.0; 3]));
             let (s, piece) = (b.surf(surf), b.piece(src));
-            b.add(&Geo::cylinder(top * S, r * S, h * S, segs, !open), &xf, s, piece);
+            let geo = Geo::cylinder(top * S, r * S, h * S, segs, !open);
+            // a few sides (a hipped roof) are flat faces, as the page draws them
+            let geo = if sides.is_some_and(|s| s <= 8) { geo.flat() } else { geo };
+            b.add(&geo, &xf, s, piece);
         } else if let Some(r) = p.get("sphere").and_then(num) {
             let Some(surf) = surface(globals, p) else { continue };
             let sc = p.get("scale").and_then(vec3).map(|s| [s[1], s[2], s[0]]).unwrap_or([1.0; 3]);
             let (s, piece) = (b.surf(surf), b.piece(src));
-            b.add(&Geo::sphere(r * S, 14, 8), &at_part.then(&Xf::scale(sc)), s, piece);
+            // big balls (a hill, a tree's crown) keep a round outline
+            let (w, h) = if r >= 1000.0 { (48, 24) } else if r >= 100.0 { (24, 12) } else { (14, 8) };
+            b.add(&Geo::sphere(r * S, w, h), &at_part.then(&Xf::scale(sc)), s, piece);
         } else if let Some(mv) = p.get("figure") {
             let thin = p.get("build").and_then(Value::as_str) == Some("thin");
             let skin_mat = p.get("mat").and_then(Value::as_str).unwrap_or(if thin { "shade" } else { "figure" });
@@ -158,11 +168,34 @@ pub(crate) fn object(b: &mut Builder, globals: &Value, o: &Object, at: Vec3, yaw
                 thin,
                 seed,
                 skin: b.surf(skin),
-                cloth: cloth.map(|c| (b.surf(c), dress == Some("uniform"))),
+                cloth: cloth.map(|c| {
+                    let len = p.get("dress_len").and_then(num).unwrap_or(if dress == Some("uniform") { 0.86 } else { 0.98 });
+                    (b.surf(c), len)
+                }),
             };
             let piece = b.piece(src);
             figure::add(b, &root, &spec, t, piece);
         }
+    }
+}
+
+/// A windmill's sails at time `t`, as the page's `sails()`: `blades` arms of a spar and a cloth
+/// panel round the hub on the box's thin axis, turned `spin` degrees a second.
+fn sails(b: &mut Builder, globals: &Value, p: &Value, size: Vec3, at: &Xf, t: f64, src: Option<usize>) {
+    let r = (size[1] * S).min(size[2] * S) / 2.0;
+    let n = p.get("blades").and_then(num).unwrap_or(4.0).max(1.0) as usize;
+    let rate = p.get("spin").and_then(num).unwrap_or(20.0).to_radians();
+    let wood_mat = p.get("frame_mat").and_then(Value::as_str).unwrap_or("timber");
+    let wood = surface(globals, &json!({"mat": wood_mat})).unwrap_or(Surf::plain([0.3, 0.2, 0.12]));
+    let cloth = surface(globals, p).unwrap_or(Surf::plain([0.8; 3]));
+    let (wood, cloth, piece) = (b.surf(wood), b.surf(cloth), b.piece(src));
+    let hub = at.then(&Xf::three([0.0; 3], [std::f64::consts::FRAC_PI_2, 0.0, 0.0], Order::Xyz, [1.0; 3]));
+    b.add(&Geo::cylinder(r * 0.07, r * 0.07, (size[0] * S).max(r * 0.12), 10, true), &hub, wood, piece);
+    for i in 0..n {
+        let a = i as f64 * std::f64::consts::TAU / n as f64 - rate * t;
+        let arm = at.then(&Xf::three([0.0; 3], [0.0, 0.0, a], Order::Xyz, [1.0; 3]));
+        b.add(&Geo::cube([r * 0.035, r, r * 0.035]), &arm.then(&Xf::translate([0.0, r / 2.0, 0.0])), wood, piece);
+        b.add(&Geo::cube([r * 0.26, r * 0.72, r * 0.012]), &arm.then(&Xf::translate([r * 0.15, r * 0.6, 0.0])), cloth, piece);
     }
 }
 
@@ -207,7 +240,7 @@ pub(crate) fn lights(scene: &Scene, t: f64) -> Vec<Light> {
         object_lights(o, at, yaw, Some(i), &mut out);
     }
     let gl = &scene.globals;
-    if let Some(m) = gl.get("moon").filter(|m| m.is_object()) {
+    if let Some(m) = far_light(gl) {
         let centre = m.get("center").and_then(vec3).unwrap_or([0.0; 3]);
         let reach = m.get("reach").and_then(num).unwrap_or(3000.0);
         out.push(Light {
@@ -226,6 +259,11 @@ pub(crate) fn lights(scene: &Scene, t: f64) -> Vec<Light> {
     out
 }
 
+/// The one far light: `sun` by day, `moon` by night (the same keys), as the page's `SUN`.
+fn far_light(gl: &Value) -> Option<&Value> {
+    gl.get("sun").filter(|m| m.is_object()).or_else(|| gl.get("moon").filter(|m| m.is_object()))
+}
+
 /// The scene's sky, fill, haze and finish, with the page's defaults.
 pub(crate) fn env(gl: &Value) -> Env {
     let c = |v: Option<&Value>, d: &str| v.and_then(Value::as_str).and_then(hex).or_else(|| hex(d)).unwrap_or([0.0; 3]);
@@ -239,9 +277,10 @@ pub(crate) fn env(gl: &Value) -> Env {
     let background = c(gl.get("background"), "#000000");
     let (sky_top, sky_horizon, moon) = match gl.get("sky").filter(|s| s.is_object()) {
         Some(sk) => {
-            let from = gl.get("moon").and_then(|m| m.get("from")).and_then(vec3).unwrap_or([-1.0, 0.0, 1.0]);
-            let size = sk.get("moon_size").and_then(num).unwrap_or(1.1).to_radians();
-            (c(sk.get("top"), "#03060c"), c(sk.get("horizon"), "#0c1218"), Some((unit(from), c(sk.get("moon"), "#dfe8ff"), size)))
+            let from = far_light(gl).and_then(|m| m.get("from")).and_then(vec3).unwrap_or([-1.0, 0.0, 1.0]);
+            let size = sk.get("sun_size").or_else(|| sk.get("moon_size")).and_then(num).unwrap_or(1.1).to_radians();
+            let disc = c(sk.get("sun").or_else(|| sk.get("moon")), "#dfe8ff");
+            (c(sk.get("top"), "#03060c"), c(sk.get("horizon"), "#0c1218"), Some((unit(from), disc, size)))
         }
         None => (background, background, None),
     };
