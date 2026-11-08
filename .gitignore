@@ -18,6 +18,7 @@ render/
 
 # Rust
 target/
+target-*/
 crates/shotpilot-app/gen/
 
 # Teaser references: frames of third-party works stay local
