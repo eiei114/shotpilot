@@ -14,7 +14,13 @@
 //! Each project renders its own take: the seed comes from the project, so two games that pick
 //! the same sound do not share a take (D-64). Rendering is deterministic, so one definition
 //! always gives one file, and it is rendered once.
+//!
+//! Next to the effects, the forge makes music and the air of places (`music/<id>`, `air/<id>`,
+//! forge/beds.rs, D-106). The designer is offered those only in a teaser that takes no sound from
+//! the library (`audio.library: false`, the Three.js sample's default): there every sound comes
+//! from here.
 
+mod beds;
 mod dsp;
 mod recipes;
 
@@ -93,13 +99,38 @@ pub struct Placed {
 /// The sounds shotpilot can make.
 pub struct Bank {
     pub version: String,
+    /// The effects (D-103).
     pub sounds: Vec<Made>,
     specs: Vec<Spec>,
+    /// Music and the air of places (D-106), for a teaser that takes no library sound.
+    pub beds: Vec<Made>,
+    bed_specs: Vec<beds::Bed>,
+}
+
+/// What a `make:` reference is for, by its id: music, the air of a place, or an effect.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Use {
+    Music,
+    Air,
+    Effect,
+}
+
+/// What `reference` (`make:<id>[?..]`, or a bare id) is for.
+pub fn use_of(reference: &str) -> Use {
+    let id = reference.trim();
+    let id = id.strip_prefix(PREFIX).unwrap_or(id).trim_start();
+    if id.starts_with(beds::MUSIC) {
+        Use::Music
+    } else if id.starts_with(beds::AIR) {
+        Use::Air
+    } else {
+        Use::Effect
+    }
 }
 
 impl std::fmt::Debug for Bank {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Bank({}, {} sounds)", self.version, self.sounds.len())
+        write!(f, "Bank({}, {} sounds, {} beds)", self.version, self.sounds.len(), self.beds.len())
     }
 }
 
@@ -130,21 +161,57 @@ impl Bank {
                 note: s.note.to_string(),
             })
             .collect();
-        Bank { version: VERSION.to_string(), sounds, specs }
+        let bed_specs = beds::catalogue();
+        let beds = bed_specs
+            .iter()
+            .map(|b| Made {
+                id: b.id.to_string(),
+                kinds: b.kinds.iter().map(|k| k.to_string()).collect(),
+                dur_s: b.length,
+                dur_knob: true,
+                pitch: None,
+                note: b.note.to_string(),
+            })
+            .collect();
+        Bank { version: VERSION.to_string(), sounds, specs, beds, bed_specs }
     }
 
+    /// An effect by its id.
     pub fn get(&self, id: &str) -> Option<&Made> {
         self.sounds.iter().find(|s| s.id == id)
+    }
+
+    /// Music or the air of a place by its id.
+    pub fn bed(&self, id: &str) -> Option<&Made> {
+        self.beds.iter().find(|s| s.id == id)
     }
 
     fn spec(&self, id: &str) -> Option<&Spec> {
         self.specs.iter().find(|s| s.id == id)
     }
 
-    /// Every word of `query` must appear in the id, the kinds or the line about it.
+    fn bed_spec(&self, id: &str) -> Option<&beds::Bed> {
+        self.bed_specs.iter().find(|b| b.id == id)
+    }
+
+    /// The effect or bed `id` names, with how it is made.
+    fn find(&self, id: &str) -> Option<(&Made, Src<'_>)> {
+        match (self.get(id), self.spec(id)) {
+            (Some(s), Some(spec)) => Some((s, Src::Effect(spec))),
+            _ => self.bed(id).zip(self.bed_spec(id)).map(|(s, b)| (s, Src::Bed(b))),
+        }
+    }
+
+    /// The effects where every word of `query` appears in the id, the kinds or the line about it.
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Made> {
         let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
         self.sounds.iter().filter(|s| words.iter().all(|w| s.haystack().contains(w.as_str()))).take(limit).collect()
+    }
+
+    /// The music and air, searched the same way.
+    pub fn search_beds(&self, query: &str, limit: usize) -> Vec<&Made> {
+        let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
+        self.beds.iter().filter(|s| words.iter().all(|w| s.haystack().contains(w.as_str()))).take(limit).collect()
     }
 
     /// Whether this sound has been made into the project (any knobs, any seed).
@@ -170,6 +237,30 @@ impl Bank {
             .join("\n")
     }
 
+    /// The music and air Claude may pick from in a teaser that makes every sound (D-106).
+    pub fn prompt_list_beds(&self) -> String {
+        self.beds
+            .iter()
+            .map(|s| format!("- {PREFIX}{} {:.0}s [{}] knobs: dur: {}", s.id, s.dur_s, s.kinds.join(", "), s.note))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Render one take of an effect or a bed, and where its moment is (a bed's is its start).
+    fn take_src(&self, src: &Src, knobs: &Knobs, seed: u64) -> Result<(crate::sound::Pcm, f64)> {
+        match src {
+            Src::Effect(spec) => self.take(spec, knobs, seed),
+            Src::Bed(b) => {
+                let y = beds::render(b, seed, knobs.dur);
+                if y.is_empty() || y.l.iter().chain(&y.r).any(|v| !v.is_finite()) || y.peak() < 1e-4 {
+                    bail!("{} came out silent or broken; nothing was written", b.id);
+                }
+                let pcm = crate::sound::Pcm { l: y.l.iter().map(|v| *v as f32).collect(), r: y.r.iter().map(|v| *v as f32).collect() };
+                Ok((pcm, 0.0))
+            }
+        }
+    }
+
     /// Render one take (stereo, 48 kHz) and where its moment is.
     fn take(&self, spec: &Spec, knobs: &Knobs, seed: u64) -> Result<(crate::sound::Pcm, f64)> {
         let hz = knobs.pitch.as_deref().and_then(note_hz);
@@ -186,11 +277,15 @@ impl Bank {
     /// this definition was made into before.
     pub fn make(&self, reference: &str, root: &Path) -> Result<Placed> {
         let (id, mut knobs, mut notes) = parse_ref(reference)?;
-        let (Some(s), Some(spec)) = (self.get(&id), self.spec(&id)) else {
+        let Some((s, src)) = self.find(&id) else {
             bail!("no sound '{id}' among the sounds shotpilot can make (shotpilot sound --made lists them)")
         };
+        let range = match src {
+            Src::Effect(_) => DUR_RANGE,
+            Src::Bed(_) => beds::DUR_RANGE,
+        };
         if let Some(d) = knobs.dur {
-            if !(DUR_RANGE.0..=DUR_RANGE.1).contains(&d) {
+            if !(range.0..=range.1).contains(&d) {
                 notes.push(format!("{id}: dur={d} left out (it keeps its own {:.1}s)", s.dur_s));
                 knobs.dur = None;
             }
@@ -212,7 +307,7 @@ impl Bank {
                 return Ok(placed(e["moment_s"].as_f64().unwrap_or(0.0), notes));
             }
         }
-        let (pcm, moment_s) = self.take(spec, &knobs, seed)?;
+        let (pcm, moment_s) = self.take_src(&src, &knobs, seed)?;
         // the same number the index keeps, so a reused file is placed exactly as the new one
         let moment_s = crate::geometry::round_to(moment_s, 4);
         std::fs::create_dir_all(&dir)?;
@@ -247,7 +342,7 @@ impl Bank {
     /// One take at its own length and a fixed seed, for listening before it is used (kept in
     /// the temp folder, never in a project).
     pub fn preview(&self, id: &str) -> Result<PathBuf> {
-        let (Some(s), Some(spec)) = (self.get(id), self.spec(id)) else {
+        let Some((s, src)) = self.find(id) else {
             bail!("no sound '{id}' among the sounds shotpilot can make")
         };
         let dir = std::env::temp_dir().join("shotpilot-made").join(VERSION);
@@ -255,13 +350,19 @@ impl Bank {
         if dest.is_file() {
             return Ok(dest);
         }
-        let (pcm, _) = self.take(spec, &Knobs::default(), 1)?;
+        let (pcm, _) = self.take_src(&src, &Knobs::default(), 1)?;
         std::fs::create_dir_all(&dir)?;
         let tmp = dir.join(format!(".{}.{}.partial", s.stem(), std::process::id()));
         crate::sound::write_wav16(&tmp, &pcm)?;
         std::fs::rename(&tmp, &dest)?;
         Ok(dest)
     }
+}
+
+/// How a sound of the bank is made.
+enum Src<'a> {
+    Effect(&'a Spec),
+    Bed(&'a beds::Bed),
 }
 
 /// Seconds from the start to where a take is placed from: its onset (24 dB under its peak) or
@@ -390,16 +491,26 @@ fn write_index(dir: &Path, name: &str, entry: Value) -> Result<()> {
 }
 
 /// How the designer is told about the sounds made in code (the one-go design and a sound note).
-pub fn guide() -> String {
-    format!(
+/// `all_made`: the teaser takes no library sound, so its music and air are made here too (D-106).
+pub fn guide(all_made: bool) -> String {
+    let lead = if all_made {
+        "Sounds made in code (synthesized by shotpilot, no recordings). This teaser takes no sound from the \
+         library: its music, the air of its places and its effects are all made here, each rendered for this \
+         teaser alone, so no other teaser has the same take. Music: name a `make:music/<id>` in a music cue, \
+         with `dur=<seconds>` as long as the cue must run (it plays once and ends on a last chord). The air of \
+         a place: name a `make:air/<id>` for that place (it loops under the place's shots). Effects: name one \
+         from the effect list on a shot or a line."
+    } else {
         "Sounds made in code (synthesized by shotpilot, no recordings). Each is rendered for this teaser \
          alone, so no other teaser has the same take. Take one for an effect when no library sound fits the \
-         moment or the look; music and the air of a place still come from the library. Name it as \
-         `{PREFIX}<id>`; add knobs after `?` joined by `&`: `dur=<seconds>` sets its length (a riser that must \
-         fit before the cut, a hit whose tail is too long), `pitch=<note>` tunes it where its line lists a pitch \
-         (C2, F#3) to sit with the music. For a made sound, `at` is where its moment lands: the hit, or the top \
-         of a riser, swell or whoosh. The code starts the file that much earlier, at most {}s before its piece, \
-         so give a long riser a shorter `dur`.",
+         moment or the look; music and the air of a place still come from the library."
+    };
+    format!(
+        "{lead} Name it as `{PREFIX}<id>`; add knobs after `?` joined by `&`: `dur=<seconds>` sets its length \
+         (a riser that must fit before the cut, a hit whose tail is too long), `pitch=<note>` tunes an effect \
+         where its line lists a pitch (C2, F#3) to sit with the music. For a made effect, `at` is where its \
+         moment lands: the hit, or the top of a riser, swell or whoosh. The code starts the file that much \
+         earlier, at most {}s before its piece, so give a long riser a shorter `dur`.",
         crate::model::fmt_g(crate::sound::LEAD_MAX)
     )
 }

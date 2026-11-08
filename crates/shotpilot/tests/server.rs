@@ -1379,3 +1379,98 @@ fn a_reference_teaser_is_borrowed_from_the_design_panel() {
     // editorial: nothing launched
     assert!(launches(&s.f.ws).is_empty());
 }
+
+/// D-105: the finished video is copied where the human picks in the app's save dialog, under the
+/// project's name; cancelling writes nothing, a page without the app's dialogs is told so, and
+/// nothing is taken or cut again. (Showing it in the file manager is the OS's and is not run here.)
+#[test]
+fn the_finished_video_is_saved_where_the_human_picks_and_nothing_is_taken_again() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    // no cut yet: the page is told how to make one
+    let plain = srv();
+    let (code, out) = jcall(&plain, "POST", "/api/cut/export", Some(json!({})));
+    assert_eq!(code, 400, "{out}");
+    assert!(out["error"].as_str().unwrap().contains("Cut"), "{out}");
+    let (code, _) = jcall(&plain, "POST", "/api/cut/reveal", Some(json!({})));
+    assert_eq!(code, 400);
+
+    let f = ws();
+    let target = f.dir.path().join("saved.mp4");
+    let offered = Arc::new(Mutex::new(String::new()));
+    let cancel = Arc::new(AtomicBool::new(false));
+    let (to, said, no) = (target.clone(), offered.clone(), cancel.clone());
+    let server = Server::bind(&f.path(), "127.0.0.1", 0).unwrap().with_picker(Box::new(move |pick| match pick {
+        shotpilot::server::Pick::SaveVideo { name, .. } => {
+            *said.lock().unwrap() = name;
+            (!no.load(Ordering::SeqCst)).then(|| to.clone())
+        }
+        _ => None,
+    }));
+    let port = server.port();
+    server.spawn();
+    let s = Srv { port, f };
+    render(&s, "previz");
+    let (code, info) = jcall(&s, "POST", "/api/cut", Some(json!({"quality": "best", "video": false})));
+    assert_eq!(code, 200, "{info}");
+    std::fs::write(s.f.ws.root.join("cut/best/cut.mp4"), b"the finished video").unwrap();
+    let before = launches(&s.f.ws).len();
+
+    cancel.store(true, Ordering::SeqCst);
+    let (code, out) = jcall(&s, "POST", "/api/cut/export", Some(json!({})));
+    assert_eq!((code, &out["cancelled"]), (200, &json!(true)), "{out}");
+    assert!(!target.exists(), "cancelling writes nothing");
+
+    cancel.store(false, Ordering::SeqCst);
+    let (code, out) = jcall(&s, "POST", "/api/cut/export", Some(json!({})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(std::fs::read(&target).unwrap(), b"the finished video");
+    assert!(offered.lock().unwrap().ends_with(".mp4"));
+    assert_eq!(launches(&s.f.ws).len(), before, "saving the video takes nothing again");
+    // the cut it copied is still the newest and still in date
+    let st = jcall(&s, "GET", "/api/status", None).1;
+    assert_eq!(st["cut"]["stale"], false, "{}", st["cut"]);
+}
+
+/// D-105: each cut's video, from its best take, gathered in cut order in cut/clips/; a new order
+/// renumbers the folder (no file under an old number is left), one cut can be made alone, and
+/// nothing renders. (The encodes need ffmpeg; without it only the refusal is checked.)
+#[test]
+fn each_cuts_video_is_gathered_in_cut_order_and_nothing_renders() {
+    let mut s = srv();
+    // nothing taken yet: the cut asked for is not there to show
+    let (code, out) = jcall(&s, "POST", "/api/clips", Some(json!({"shot": "s01_gate"})));
+    assert_eq!(code, 400, "{out}");
+    if shotpilot::cut::ffmpeg().is_none() {
+        return;
+    }
+    render(&s, "previz");
+    let before = launches(&s.f.ws).len();
+    let dir = s.f.ws.root.join("cut/clips");
+    let names = |d: &std::path::Path| {
+        let mut v: Vec<String> = std::fs::read_dir(d).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
+        v.sort();
+        v
+    };
+    let (code, out) = jcall(&s, "POST", "/api/clips", Some(json!({})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(names(&dir), ["01_s01_gate.mp4", "02_s02_well.mp4", "03_s03_window.mp4", "04_s04_lantern.mp4", "05_s05_door.mp4", "06_s06_title.mp4"]);
+    assert_eq!(out["missing"], json!([]));
+
+    // a new order renumbers them, and a hand-placed file in the folder is left alone
+    std::fs::write(dir.join("notes.txt"), b"mine").unwrap();
+    let order: Vec<String> = ["s06_title", "s01_gate", "s02_well", "s03_window", "s04_lantern", "s05_door"].map(String::from).to_vec();
+    s.f.ws.edit_definition(&[], Some(&order), "order", "").unwrap();
+    let (code, _) = jcall(&s, "POST", "/api/clips", Some(json!({})));
+    assert_eq!(code, 200);
+    assert_eq!(names(&dir), ["01_s06_title.mp4", "02_s01_gate.mp4", "03_s02_well.mp4", "04_s03_window.mp4", "05_s04_lantern.mp4", "06_s05_door.mp4", "notes.txt"]);
+
+    // one cut alone
+    std::fs::remove_file(dir.join("03_s02_well.mp4")).unwrap();
+    let (code, out) = jcall(&s, "POST", "/api/clips", Some(json!({"shot": "s02_well"})));
+    assert_eq!(code, 200, "{out}");
+    assert_eq!(out["made"].as_array().unwrap().len(), 1);
+    assert!(dir.join("03_s02_well.mp4").is_file());
+    assert_eq!(launches(&s.f.ws).len(), before, "gathering the videos takes nothing again");
+}

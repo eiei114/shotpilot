@@ -1221,14 +1221,22 @@ fn run(cli: Cli) -> Result<u8> {
             if let Some(words) = made {
                 let bank = shotpilot::forge::bank();
                 let found = bank.search(&words, usize::MAX);
+                let beds = bank.search_beds(&words, usize::MAX);
                 if json {
-                    let rows: Vec<Value> = found.iter().map(|m| json!({"id": format!("{}{}", shotpilot::forge::PREFIX, m.id),
+                    let rows: Vec<Value> = found.iter().chain(&beds).map(|m| json!({"id": format!("{}{}", shotpilot::forge::PREFIX, m.id),
                         "dur_s": m.dur_s, "kinds": m.kinds, "dur": m.dur_knob, "pitch": m.pitch.is_some(), "note": m.note})).collect();
                     println!("{}", serde_json::to_string_pretty(&rows)?);
                 } else {
                     println!("{} of {} sounds shotpilot can make ({})", found.len(), bank.sounds.len(), bank.version);
                     for m in found {
                         println!("  {:<28} {:>5.1}s  {:<22} {}", m.id, m.dur_s, m.kinds.join(","), m.note);
+                    }
+                    if !beds.is_empty() {
+                        println!("{} of {} music and air, for a teaser that makes every sound (audio.library: false; a three project's default)",
+                                 beds.len(), bank.beds.len());
+                        for m in beds {
+                            println!("  {:<28} {:>5.1}s  {:<22} {}", m.id, m.dur_s, m.kinds.join(","), m.note);
+                        }
                     }
                 }
                 return Ok(0);

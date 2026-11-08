@@ -107,6 +107,13 @@ fn picker(window: Arc<OnceLock<WebviewWindow>>) -> shotpilot::server::Picker {
                 }
                 d.pick_file()
             }
+            Pick::SaveVideo { start, name } => {
+                d = d.set_title("Shotpilot: 完成した映像の保存先").add_filter("MP4 動画", &["mp4"]).set_file_name(name);
+                if let Some(s) = start {
+                    d = d.set_directory(s);
+                }
+                d.save_file()
+            }
         }
     })
 }

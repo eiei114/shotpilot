@@ -119,6 +119,58 @@ fn best_cut_mixes_qualities() {
     assert_eq!(picks["s01_gate"], "previz");
 }
 
+/// D-105: a cut made before a render is out of date, names the shots taken since, and is fresh
+/// again once cut; nothing about judging it renders.
+#[test]
+fn a_cut_made_before_a_render_is_out_of_date_until_it_is_cut_again() {
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    f.ws.cut("best", false).unwrap();
+    let dir = f.ws.root.join("cut/best");
+    let fresh = f.ws.cut_freshness(&dir).unwrap();
+    assert_eq!(fresh["stale"], false);
+    assert_eq!(fresh["made_of"], json!({"previz": 6}));
+
+    f.ws.render(&ids(&["s02_well"]), "preview", false, None).unwrap();
+    let before = launches(&f.ws).len();
+    let fresh = f.ws.cut_freshness(&dir).unwrap();
+    assert_eq!(fresh["stale"], true);
+    assert_eq!(fresh["retaken"], json!(["s02_well"]));
+    assert_eq!(fresh["inputs"], false);
+    assert_eq!(launches(&f.ws).len(), before, "judging a cut never launches the engine");
+
+    f.ws.cut("best", false).unwrap();
+    let fresh = f.ws.cut_freshness(&dir).unwrap();
+    assert_eq!(fresh["stale"], false);
+    assert_eq!(fresh["made_of"], json!({"preview": 1, "previz": 5}));
+}
+
+/// D-105: an editorial edit (a hand-over here) reaches the cut, so the cut goes out of date, but
+/// the picture is unchanged and nothing is taken again; a new order does the same.
+#[test]
+fn an_editorial_edit_outdates_the_cut_and_rerenders_nothing() {
+    let mut f = ws();
+    f.ws.render(&[], "previz", false, None).unwrap();
+    f.ws.cut("best", false).unwrap();
+    let dir = f.ws.root.join("cut/best");
+
+    let rep = f.ws.set_fields("s03_window", &set(&[("transition", json!("dip"))])).unwrap();
+    assert!(rep.stale.is_empty());
+    let fresh = f.ws.cut_freshness(&dir).unwrap();
+    assert_eq!(fresh["stale"], true);
+    assert_eq!(fresh["inputs"], true);
+    assert_eq!(fresh["retaken"], json!([]));
+    assert_eq!(values(&actions(&f.ws.render(&[], "previz", false, None).unwrap())), one("reused"));
+
+    f.ws.cut("best", false).unwrap();
+    assert_eq!(f.ws.cut_freshness(&dir).unwrap()["stale"], false);
+    let order = ids(&["s06_title", "s01_gate", "s02_well", "s03_window", "s04_lantern", "s05_door"]);
+    f.ws.edit_definition(&[], Some(&order), "order", "").unwrap();
+    let fresh = f.ws.cut_freshness(&dir).unwrap();
+    assert_eq!(fresh["stale"], true);
+    assert_eq!(fresh["order"], true);
+}
+
 #[test]
 fn engine_builds_only_dirty_shots() {
     let mut f = ws();

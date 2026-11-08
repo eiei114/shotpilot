@@ -132,8 +132,10 @@ pub struct CutInfo {
     pub notes: Vec<String>,
 }
 
-/// Assemble the cut. With `mixed`, the video carries the mix as its soundtrack.
-pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool, mixed: Option<&Mixed>)
+/// Assemble the cut. With `mixed`, the video carries the mix as its soundtrack. `inputs` is the
+/// digest of the definition the cut was made from ([`crate::workspace::Workspace::cut_inputs`]),
+/// kept in the manifest so a later look can tell whether the cut is out of date (D-105).
+pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool, mixed: Option<&Mixed>, inputs: &str)
     -> Result<CutInfo> {
     std::fs::create_dir_all(out_dir)?;
     let fps = defn.teaser.fps;
@@ -162,7 +164,7 @@ pub fn write_cut(defn: &Definition, picks: &[Pick], out_dir: &Path, video: bool,
     let manifest = json!({
         "generated": now_iso(), "project": defn.project.name, "title": defn.teaser.title,
         "fps": fps, "total_frames": t, "total_seconds": total_seconds,
-        "target_seconds": defn.teaser.target_duration, "shots": rows,
+        "target_seconds": defn.teaser.target_duration, "shots": rows, "inputs": inputs,
         "audio": mixed.map(|m| json!({
             "mix": relpath(&m.wav, out_dir), "key": m.key,
             "verdict": m.check["verdict"], "summary": m.check["summary"],

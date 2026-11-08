@@ -322,6 +322,38 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 .dock-go.dock-said { background: var(--soft); color: var(--ink); border: 1px solid var(--line); cursor: default; font-weight: 600; }
 .dock-go.dock-said.done { color: var(--ok); }
 .dock-go.dock-said small { color: var(--muted); opacity: 1; }
+/* simple (D-107): ▶ is the one big button of the app. The accent colour, the next step in full (two lines), and the
+   road as a strip under it: what is done, and the steps this press goes through */
+body:not(.pro) #dock { margin-bottom: 6px; }
+.dock-go.hero { grid-template-columns: auto minmax(0, 1fr) auto; gap: 1px 10px; padding: 10px 12px 9px; border-radius: 12px;
+  background: var(--accent); color: var(--accent-ink); font-size: 15px; box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+.dock-go.hero:hover:not(:disabled) { filter: brightness(1.06); }
+.dock-go.hero:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.dock-go.hero:disabled { box-shadow: none; }
+.dock-go.hero .pl { grid-column: 1; grid-row: 1 / span 2; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-ink); display: grid; place-items: center; }
+.dock-go.hero .pl::before { content: ""; margin-left: 3px; border-style: solid; border-width: 7px 0 7px 11px; border-color: transparent transparent transparent var(--accent); }
+.dock-go.hero .lb { grid-column: 2; grid-row: 1; }
+.dock-go.hero kbd { grid-column: 3; grid-row: 1; align-self: center; }
+.dock-go.hero small, .dock-go.dock-said.hero-said small { grid-column: 2 / -1; grid-row: 2; font-size: 12px; opacity: .9; white-space: normal;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dock-go.dock-said.hero-said small { grid-column: 1 / -1; opacity: 1; }
+.dock-go.dock-said.yours { border-color: var(--stale); background: color-mix(in srgb, var(--stale) 12%, var(--card)); }
+.go-road { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.go-road .bars { flex: 1; display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; }
+.go-road .bars i { height: 4px; border-radius: 2px; background: color-mix(in srgb, currentColor 18%, transparent); }
+.go-road .bars i.done { background: currentColor; }
+.go-road .bars i.go { background: color-mix(in srgb, currentColor 50%, transparent); }
+.go-road .n { font: 400 10.5px var(--mono); opacity: .8; white-space: nowrap; }
+.dock-said .go-road .bars i { background: var(--line); }
+.dock-said .go-road .bars i.done { background: var(--accent); }
+.dock-said .go-road .bars i.yours { background: var(--stale); }
+.dock-said .go-road .n { color: var(--muted); }
+/* a new step to press (or a run just ended): ▶ calls for a moment, then rests */
+.dock-go.hero.nudge { animation: go-nudge 1.2s ease-out 3; }
+@keyframes go-nudge { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 75%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+@media (prefers-reduced-motion: reduce) { .dock-go.hero.nudge { animation: none; } }
+/* the road while ▶ is hovered: the steps the press goes through (a mark only; the road runs nothing) */
+#stages .road-btn.go { box-shadow: inset 0 0 0 1.5px var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); }
 /* while the machine works, ▶ turns into what it is doing (not a dimmed button) */
 .dock-go.dock-run { background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--ink); border: 1px solid var(--accent); cursor: default; gap: 3px 8px; }
 .dock-run .hd { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -563,6 +595,7 @@ table.assets input { width: 110px; border: 1px solid var(--line); border-radius:
 .cap th, .cap td { padding: 6px 8px; border-top: 1px solid var(--line); text-align: left; }
 .cap th { font-size: 11px; color: var(--muted); font-weight: 600; background: var(--soft); }
 .cap td.id { font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.cap .clip-btn { padding: 2px 8px; font-size: 13px; line-height: 1.4; }
 .qs { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
 .qs.fresh { background: color-mix(in srgb, var(--accent) 35%, var(--card)); } .qs.stale { background: var(--stale); color: #241900; } .qs.none { color: var(--faint); font-weight: 500; }
 .appr { font-size: 11.5px; font-weight: 700; }
@@ -1052,6 +1085,12 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .badge-q { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 600; color: #fff; background: rgb(0 0 0 / .55);
   padding: 3px 8px; border-radius: 6px; letter-spacing: .02em; }
 .badge-q.stale { background: var(--stale); color: #241900; }
+.cut-stale { position: absolute; top: 38px; left: 12px; max-width: min(560px, 70%); font-size: 12px; line-height: 1.5; color: #241900;
+  background: var(--stale); padding: 5px 9px; border-radius: 6px; }
+.cut-stale[hidden] { display: none; }
+.cut-actions { position: absolute; top: 10px; right: 12px; display: flex; gap: 8px; }
+.cut-actions .btn { background: rgb(0 0 0 / .6); color: #fff; border-color: rgb(255 255 255 / .25); }
+.cut-actions .btn:hover { background: rgb(0 0 0 / .78); }
 .board-bar { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; }
 #board.on { background: var(--accent); color: var(--accent-ink); }
 .scrub { display: flex; align-items: center; gap: 12px; padding: 8px 14px; color: #c9cfd2; font-size: 12px; font-variant-numeric: tabular-nums; background: #141617; }
@@ -1498,7 +1537,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <button class="icon" id="guides" title="ガイドを重ねる (G)：三分割の線・映っている場所・カメラが狙う点"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></button>
         <button class="btn pro-only" id="board" title="仮撮りの線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
-        <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
+        <button class="icon" id="open-ext" title="カットの一覧（HTML）をブラウザで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
     </div>
     <div id="next" hidden></div>
@@ -2226,10 +2265,18 @@ function drawTeaser() {
     view.innerHTML = `<div class="placeholder"><b>ティザーはまだありません</b>「Cut」で、いまある take をカット順につなぎます（レンダはしません）</div>`;
     return;
   }
+  // what the video is made of, and whether it is out of date (D-105); only text: cutting again is the dock's
+  const label = `${cutMadeOf(cut) || cut.quality} · cut.mp4`;
+  const note = cut.stale ? `この映像は古いままです。${cutWhy(cut)}。左の ▶ でつなぎ直せます` : "";
   const cur = view.querySelector("video");
-  if (cur && cur.dataset.src === cut.video_url + cut.stamp) return;
+  if (cur && cur.dataset.src === cut.video_url + cut.stamp) {
+    const b = view.querySelector(".badge-q"); if (b) { b.textContent = label; b.classList.toggle("stale", !!cut.stale); }
+    const n = view.querySelector(".cut-stale"); if (n) { n.textContent = note; n.hidden = !note; }
+    return;
+  }
   view.innerHTML = `<video controls preload="metadata" data-src="${esc(cut.video_url + cut.stamp)}" src="${esc(cut.video_url)}?v=${encodeURIComponent(cut.stamp || "")}"></video>
-    <span class="badge-q">${esc(cut.quality)} · cut.mp4</span>`;
+    <span class="badge-q${cut.stale ? " stale" : ""}">${esc(label)}</span><span class="cut-stale"${note ? "" : " hidden"}>${esc(note)}</span>
+    <div class="cut-actions"><button class="btn" data-cut-reveal title="この映像（cut.mp4）を、エクスプローラーで選んだ状態で開きます">📂 フォルダで開く</button><button class="btn" data-cut-export title="保存先とファイル名を選んで、この映像を写します（撮り直しもつなぎ直しも起きません）">⤓ 書き出す…</button><button class="btn" data-clips-all title="カットごとの動画を、いちばん良い take から 01_s01… の順に1つのフォルダへ集めて開きます（撮り直しは起きません）">🎞 カットごとの動画</button></div>`;
   // the timeline's playhead follows the video, and its ▶ shows whether it plays
   const v = view.querySelector("video");
   const follow = () => { placePlayhead(); if (!v.paused && v.isConnected) requestAnimationFrame(follow); };
@@ -2416,7 +2463,8 @@ function roadState() {
     review: !n ? "" : approved === n && scriptOk && !p0 ? "done" : "yours",
     sound: done(sound),
     capture: done(n && shots.every((s) => s.qualities.final === "fresh")),
-    cut: done(st.cut),
+    // a cut made before the last take or edit is out of date: the human's turn to cut again (D-105)
+    cut: !st.cut ? "" : st.cut.stale ? "yours" : "done",
     // this project's own video: the human's turn once it is cut, done when its checklist is ticked
     publish: !st.cut ? "" : unpublished() ? "yours" : "done",
   };
@@ -3627,6 +3675,23 @@ const skipKey = (k) => `sp-skip:${ui.status?.path || ""}:${k}`;
 const skipped = (k) => localStorage.getItem(skipKey(k)) === "1";
 
 /** The one step to take next, from the state of the project (the human presses it). */
+/** Why the newest cut is out of date (D-105), as one sentence. */
+function cutWhy(c) {
+  const r = c.retaken || [];
+  if (r.length) return `撮り直した ${r.slice(0, 3).join(", ")}${r.length > 3 ? ` ほか ${r.length - 3} カット` : ""} が、まだ Cut に入っていません`;
+  if (c.order) return "カットの並びが変わったあとの Cut ではありません";
+  if (c.inputs) return "音・文字・つなぎの変更が、まだ Cut に入っていません（撮り直しは起きません）";
+  return "いまの take とずれています";
+}
+
+const CUT_QUALITY_ORDER = ["final", "preview", "still", "previz"];
+/** What the cut is made of, e.g. "final 7本" or "final 4本 · 仮撮り 3本" (D-105). */
+function cutMadeOf(c) {
+  return Object.entries(c.made_of || {})
+    .sort((a, b) => CUT_QUALITY_ORDER.indexOf(a[0]) - CUT_QUALITY_ORDER.indexOf(b[0]))
+    .map(([q, n]) => `${q === "previz" ? "仮撮り" : q} ${n}本`).join(" · ");
+}
+
 function nextStep() {
   const st = ui.status; if (!st) return null;
   const ai = st.ai || {};
@@ -3658,7 +3723,7 @@ function nextStep() {
       return { stage: "structure", what: st.script_approval === "outdated" ? "変わった台本を確かめて承認し直す" : "台本を確かめて承認する",
         why: "カット表で文字・秒数・見せるものを直せます。カメラだけ組み直すこともできます", act: "approve-script" };
     }
-    return { stage: "structure", what: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", act: "resume" };
+    return { stage: "structure", what: "音 → 撮影 → Cut", why: "承認した台本で音を設計し、撮ってつなぎます", act: "resume" };
   }
   const changedShots = shots.filter((x) => gameChanged(x));
   if (changedShots.length) {
@@ -3672,6 +3737,8 @@ function nextStep() {
   const finalStale = approved.filter((x) => x.qualities.final !== "fresh");
   if (finalStale.length) return { stage: "capture", what: `承認済みを final で撮る（${finalStale.length} 本）`, why: "変わったカットだけを撮り、ほかは前の take を使います", act: "final" };
   if (!st.cut) return { stage: "finish", what: "Cut でつなぐ", why: "take をカット順につなぎ、BGM と SE があれば載せます", act: "cut" };
+  // the video is cut again before it is published when a take or an edit came after it (D-105)
+  if (st.cut.stale && !(st.cut.missing || []).length) return { stage: "finish", what: "Cut をつなぎ直す", why: cutWhy(st.cut), act: "cut" };
   // once cut, the road goes on to publishing this video (the finish can still be fixed and cut again from the dock)
   if (unpublished()) return { stage: "publish", what: "公開前の確認をして出す", why: "音なしで伝わるか・最初の数秒・エンドカードの事実を確かめ、ストアや SNS に出したらチェックを付けます", act: "goto" };
   return { stage: "publish", what: "このティザーは公開済みです", why: "次の動画は、公開の画面の発信計画から隣のプロジェクトとして作れます", act: "done" };
@@ -3706,15 +3773,44 @@ function togglePin(k) {
 }
 /** Where a pass stops before the review, for the server (produce's `stop`). */
 const passStops = () => { const p = pinsOf(); return [p.has("plan") && "discover", p.has("scout") && "scout"].filter(Boolean); };
-/** What the next press of ▶ runs in a first pass: the parts not done yet, up to the next 📍. */
-function passWhat() {
+/** The parts of a first pass not done yet, up to the next 📍: {parts: [[pin, label, done, road steps]], stops}. */
+function passParts() {
   const st = ui.status, b = st.brief || {}, pins = pinsOf();
   const photos = Object.keys(st.scout || {}).length;
-  const seq = [["plan", "企画", !!(b.plan || "").trim()], ["scout", "ロケハン", photos > 0 && !!st.stage?.summary], ["review", "台本と構成 → 仮撮り", false]];
+  const seq = [["plan", "企画", !!(b.plan || "").trim(), ["plan"]], ["scout", "ロケハン", photos > 0 && !!st.stage?.summary, ["scout"]],
+    ["review", "台本と構成 → 仮撮り", false, ["script", "blocking", "review"]]];
   const todo = seq.filter(([, , done]) => !done);
   const stop = todo.findIndex(([k]) => pins.has(k));
-  const parts = (stop < 0 ? todo : todo.slice(0, stop + 1)).map(([, l]) => l);
-  return stop < 0 ? [...parts, "音 → 撮影 → Cut"].join(" → ") : `${parts.join(" → ")}（📍 で止まる）`;
+  return { parts: stop < 0 ? todo : todo.slice(0, stop + 1), stops: stop >= 0 };
+}
+/** What the next press of ▶ runs in a first pass: the parts not done yet, up to the next 📍. */
+function passWhat() {
+  const { parts: todo, stops } = passParts(), parts = todo.map(([, l]) => l);
+  return !stops ? [...parts, "音 → 撮影 → Cut"].join(" → ") : `${parts.join(" → ")}（📍 で止まる）`;
+}
+
+const ROAD_ORDER = Object.keys(ROAD_TAB);
+/** The steps of the road the next press of ▶ goes through (lit on the road while ▶ is hovered, and in its strip). */
+function nextRoad(n) {
+  if (!n || n.act === "done") return [];
+  if (n.act === "produce") { const { parts, stops } = passParts(); return [...parts.flatMap((p) => p[3]), ...(stops ? [] : ["sound", "capture", "cut"])]; }
+  if (n.act === "resume") return ["sound", "capture", "cut"];
+  if (n.act === "approve-script" || (n.act === "render" && n.quality === "previz")) return ["review"];
+  const road = { brief: "plan", scout: "scout", structure: "script", framing: "review", capture: "capture", finish: "cut", publish: "publish" }[n.stage];
+  return road ? [road] : [];
+}
+/** The road as a strip under ▶ (simple): what is done, the human's, and what this press goes through. */
+function roadStrip(n) {
+  const rs = roadState(), cover = new Set(nextRoad(n));
+  const done = ROAD_ORDER.filter((k) => rs[k] === "done").length;
+  // a step can be both the human's and where this press goes: ▶ shows it as gone through, "your turn" as the human's
+  const bars = ROAD_ORDER.map((k) => `<i class="${rs[k] === "done" ? "done" : [cover.has(k) && "go", rs[k] === "yours" && "yours"].filter(Boolean).join(" ")}"></i>`).join("");
+  return `<span class="go-road" title="道のうち、済んだ段（濃い）と、押すと進む段（中くらい）"><span class="bars">${bars}</span><span class="n">済み ${done} / ${ROAD_ORDER.length}</span></span>`;
+}
+/** Lights the steps of the road that ▶ goes through while it is hovered (a mark only). */
+function roadGo(on) {
+  const cover = new Set(on ? nextRoad(nextStep()) : []);
+  for (const b of document.querySelectorAll(".road-btn")) b.classList.toggle("go", cover.has(b.dataset.road));
 }
 
 /** What can be asked about what the canvas shows now: [{k, label, tip, off}]. */
@@ -3771,7 +3867,8 @@ function dockActions() {
   // filming and cutting are the machine's work too: once there are cuts they are always here
   if ((st.shots || []).length) {
     add("render", `● 撮り直す（${ui.quality || st.qualities[0]}）`, "古くなったカットだけを撮ります。ほかは前の take を使います");
-    add("cut", "✂ Cut でつなぐ", "撮った take をカット順につなぎ、仕上げと音を焼き込みます");
+    if (st.cut?.stale) add("cut", "✂ Cut をつなぎ直す", `${cutWhy(st.cut)}。撮った take をカット順につなぎ直します`);
+    else add("cut", "✂ Cut でつなぐ", "撮った take をカット順につなぎ、仕上げと音を焼き込みます");
   }
   return out;
 }
@@ -3843,11 +3940,13 @@ function drawDock() {
   if (run && !drawDock.timer) drawDock.timer = setInterval(dockClock, 1000);
   if (!run && drawDock.timer) { clearInterval(drawDock.timer); drawDock.timer = null; }
   const n = nextStep(), acts = dockActions(), here = nextIsHere(n);
+  const pro = uiPro();
   const key = JSON.stringify([n && [n.what, n.act, n.need, n.why, n.skip], here, acts.map((a) => [a.k, a.label, a.off, a.tip]), !!ui.busy, run, [...pinsOf()].sort(), dockScope(),
-    ui.line.map((x) => [x.id, x.err]), !!st.ai?.ready]);
+    ui.line.map((x) => [x.id, x.err]), !!st.ai?.ready, pro, !pro && roadState()]);
   if (drawDock.key === key && el.childElementCount) return;
   drawDock.key = key;
   if (run) {
+    drawDock.goWas = "run";
     // ▶ becomes what is running; what is asked meanwhile waits in line under it (D-94), and the canvas can still be looked around
     const bar = run.part == null ? `<span class="dock-bar wait"><i></i></span>` : `<span class="dock-bar"><i style="width:${Math.round(run.part * 100)}%"></i></span>`;
     const later = acts.filter((a) => !a.off && lineAct(a.k));
@@ -3859,11 +3958,20 @@ function drawDock() {
     return;
   }
   const busy = !!ui.busy;
+  const said = n && (n.act === "done" || here);
+  // simple: ▶ calls for a moment when there is a new step to press, or a run has just ended (not on each approval's count)
+  const goKey = n ? JSON.stringify([n.act, n.stage]) : "";
+  const nudge = !pro && n && !said && drawDock.goWas !== goKey;
+  drawDock.goWas = goKey;
+  const strip = pro || !n ? "" : roadStrip(n);
+  const label = n?.act === "goto" ? "そこへ行く" : "続ける";
   // nothing to press when the step is done, or is the human's on this very screen: say so instead of a ▶ that goes nowhere
-  const go = !n ? "" : n.act === "done" || here
-    ? `<div class="dock-go dock-said${n.act === "done" ? " done" : ""}" title="${esc(n.why || "")}">${n.act === "done" ? `✓ ${esc(n.what)}` : `あなたの番: ${esc(n.what)}`}<small>${esc(n.why || "")}</small></div>`
-    : `<button type="button" class="dock-go" data-dock-go${busy || n.need ? " disabled" : ""} title="${esc(n.why || "")}">▶ ${n.act === "goto" ? "そこへ行く" : "続ける"}<kbd>Ctrl+Enter</kbd><small>次: ${esc(n.what)}</small></button>
-    ${n.need || n.skip ? `<div class="dock-row">${n.need ? `<span class="need">${esc(n.need)}</span>` : ""}${n.skip ? `<button type="button" data-dock-skip="${esc(n.skip)}">飛ばす</button>` : ""}</div>` : ""}`;
+  const go = !n ? "" : said
+    ? `<div class="dock-go dock-said${n.act === "done" ? " done" : pro ? "" : " yours"}${pro ? "" : " hero-said"}" title="${esc(n.why || "")}">${n.act === "done" ? `✓ ${esc(n.what)}` : `あなたの番: ${esc(n.what)}`}<small>${esc(n.why || "")}</small>${strip}</div>`
+    : (pro
+      ? `<button type="button" class="dock-go" data-dock-go${busy || n.need ? " disabled" : ""} title="${esc(n.why || "")}">▶ ${label}<kbd>Ctrl+Enter</kbd><small>次: ${esc(n.what)}</small></button>`
+      : `<button type="button" class="dock-go hero${nudge ? " nudge" : ""}" data-dock-go${busy || n.need ? " disabled" : ""} title="${esc(n.why || "")}"><span class="pl" aria-hidden="true"></span><span class="lb">${label}</span><kbd>Ctrl+Enter</kbd><small>${esc(n.what)}</small>${strip}</button>`)
+    + (n.need || n.skip ? `<div class="dock-row">${n.need ? `<span class="need">${esc(n.need)}</span>` : ""}${n.skip ? `<button type="button" data-dock-skip="${esc(n.skip)}">飛ばす</button>` : ""}</div>` : "");
   const list = acts.length ? `<div class="dock-hd">${esc(dockScope())}</div>
     <div class="dock-acts">${acts.map((a) => `<button type="button" data-dock-act="${esc(a.k)}"${busy || a.off ? " disabled" : ""} title="${esc(a.tip || "")}">${esc(a.label)}</button>`).join("")}</div>` : "";
   // what still waits (about to go, or stopped at one that failed) stays above ▶
@@ -6374,15 +6482,17 @@ function drawCapture() {
   const qh = st.qualities.map((q) => `<th>${esc(q)}</th>`).join("");
   const rows = st.shots.map((s) => `<tr><td>${s.index + 1}</td><td class="id" data-open="${esc(s.id)}">${esc(s.id)}</td><td>${esc(s.beat || "-")}</td>
     <td><span class="appr ${esc(s.approval)}">${esc(APPROVAL_JA[s.approval])}</span></td>
-    ${st.qualities.map((q) => `<td><span class="qs ${esc(s.qualities[q])}"${s.changed?.[q] ? ` title="${esc(s.changed[q].join(", "))}"` : ""}>${esc(s.changed?.[q] ? "ゲーム変更" : { fresh: "済", stale: "古い", none: "-" }[s.qualities[q]] || s.qualities[q])}</span></td>`).join("")}</tr>`).join("");
+    ${st.qualities.map((q) => `<td><span class="qs ${esc(s.qualities[q])}"${s.changed?.[q] ? ` title="${esc(s.changed[q].join(", "))}"` : ""}>${esc(s.changed?.[q] ? "ゲーム変更" : { fresh: "済", stale: "古い", none: "-" }[s.qualities[q]] || s.qualities[q])}</span></td>`).join("")}
+    <td>${st.qualities.some((q) => s.qualities[q] === "fresh") ? `<button class="btn clip-btn" data-clip="${esc(s.id)}" title="このカットの動画を、いちばん良い take から作ってフォルダで開きます（撮り直しは起きません）">📂</button>` : ""}</td></tr>`).join("");
   // shooting is the engine's work: it is asked for in the dock on the left (D-84); here is what will be shot
   $("capturepanel").innerHTML = `<h3>撮影</h3>
     ${tabLead("変わったカットだけ撮る", "構図を承認したカットを、本番の品質で撮ります。撮るのは定義が変わったカットだけで、ほかは前の take を使い回します。未承認のカットは、構図の段階（仮撮り / still）で確かめてから進めます。")}
     <div class="capbar">
       <span class="sp-hint">撮るのは左の「● 承認済み ${approved.length} 本を … で撮る」から · ${unapproved ? `未承認 ${unapproved} 本は撮りません` : "全カット承認済み"}</span>
     </div>
-    <table class="cap"><thead><tr><th>#</th><th>カット</th><th>ビート</th><th>構図</th>${qh}</tr></thead><tbody>${rows}</tbody></table>`;
+    <table class="cap"><thead><tr><th>#</th><th>カット</th><th>ビート</th><th>構図</th>${qh}<th>動画</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+$("capturepanel").addEventListener("click", (e) => { const b = e.target.closest("[data-clip]"); if (b) openClips(b.dataset.clip); });
 
 // ------------------------------------------------------------------ publish: the release plan as checklists (D-47)
 
@@ -8053,6 +8163,7 @@ async function render(quality = ui.quality, shots = [], opts = {}) {
   ui.busy = "render"; ui.renderQ = quality; ui.renderIds = null; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
   if (quality !== ui.quality && !opts.keep) ui.quality = quality;
   draw();
+  let finished = null; // the render's "done" event
   try {
     const r = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quality, shots }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
@@ -8074,6 +8185,7 @@ async function render(quality = ui.quality, shots = [], opts = {}) {
           ui.outcome[d.shot_id] = { action: d.action, seconds: d.seconds || 0 };
           if (d.action === "failed") toast(`${d.shot_id}: ${d.detail}`, true);
         } else if (ev === "done") {
+          finished = d;
           ui.summary = `<b>撮った ${d.rendered}</b> · 使い回し ${d.reused}${d.failed ? ` · <span style="color:var(--err)">失敗 ${d.failed}</span>` : ""}`;
         } else if (ev === "error") toast(d.error, true);
         draw();
@@ -8081,15 +8193,21 @@ async function render(quality = ui.quality, shots = [], opts = {}) {
     }
   } catch (e) { toast(e.message, true); }
   finally { ui.busy = null; await refresh(); }
+  // takes at final are for the video: when they all came out, cut it right away and open it (D-105).
+  // A take at a cheaper quality only marks the cut out of date (the road and ▶ say so).
+  const c = ui.status?.cut;
+  if (quality === "final" && finished && !finished.failed && (!c || (c.stale && !(c.missing || []).length))) {
+    await cut({ after: ui.summary });
+  }
 }
 
-async function cut() {
+async function cut(opts = {}) {
   if (ui.busy) return;
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
-  ui.busy = "cut"; ui.summary = "つないでいます…"; draw();
+  ui.busy = "cut"; ui.summary = `${opts.after ? `${opts.after} → ` : ""}つないでいます…`; draw();
   try {
     const info = await api("POST", "/api/cut", { quality: "best" });
-    ui.summary = `${info.shots} shots / ${info.seconds}s をつないだ（レンダなし）${info.sound ? ` · 音: ${esc(info.sound.verdict_ja)}` : ""}`;
+    ui.summary = `${opts.after ? `${opts.after} → ` : ""}${info.shots} カット / ${info.seconds} 秒をつないだ（撮り直しなし）${info.sound ? ` · 音: ${esc(info.sound.verdict_ja)}` : ""}`;
     // the notes stay on the left with the findings (D-95); a toast only says they are there
     if ((info.notes || []).length) toast(`Cut の注記 ${info.notes.length} 件（右の「指摘」に残しています）`);
     ui.tab = ui.fin = "teaser";
@@ -8549,8 +8667,11 @@ $("inbox").addEventListener("mousedown", (e) => {
   if (e.target !== e.currentTarget && !e.target.matches?.(".comp-row")) return;
   e.preventDefault(); $("note").focus();
 });
+// while ▶ is hovered, the road lights the steps it goes through
+$("dock").addEventListener("pointerover", (e) => roadGo(!!e.target.closest("[data-dock-go]:not(:disabled)")));
+$("dock").addEventListener("pointerleave", () => roadGo(false));
 $("dock").addEventListener("click", (e) => {
-  if (e.target.closest("[data-dock-go]")) { runNext(); return; }
+  if (e.target.closest("[data-dock-go]")) { roadGo(false); runNext(); return; }
   const lr = e.target.closest("[data-line-rm]"); if (lr) { lineDrop(Number(lr.dataset.lineRm)); return; }
   const lt = e.target.closest("[data-line-retry]"); if (lt) { lineRetry(Number(lt.dataset.lineRetry)); return; }
   const sk = e.target.closest("[data-dock-skip]");
@@ -8631,6 +8752,26 @@ $("briefpanel").addEventListener("input", (e) => { const el = e.target.closest("
 
 // drag on the frame to mark what the note is about
 let drag = null;
+// the finished video: shown in the file manager, or copied where the human picks (D-105)
+$("view").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-cut-reveal]")) {
+    try { await api("POST", "/api/cut/reveal", {}); } catch (err) { toast(err.message, true); }
+  } else if (e.target.closest("[data-cut-export]")) {
+    try {
+      const r = await api("POST", "/api/cut/export", { reveal: true });
+      if (!r.cancelled) toast(`書き出しました: ${r.saved}`);
+    } catch (err) { toast(err.message, true); }
+  } else if (e.target.closest("[data-clips-all]")) openClips();
+});
+
+/** Each cut's own video from its best take, opened in the file manager: one cut, or all of them in a folder (D-105). */
+async function openClips(shot = "") {
+  toast(shot ? `${shot} の動画を用意しています…` : "カットごとの動画を用意しています…");
+  try {
+    const r = await api("POST", "/api/clips", { shot, reveal: true });
+    if (!shot && r.missing?.length) toast(`まだ撮っていないカットは入っていません: ${r.missing.join(", ")}`);
+  } catch (err) { toast(err.message, true); }
+}
 $("view").addEventListener("click", (e) => {
   const t = e.target.closest("[data-board-gen],[data-board-all],[data-mood-key]");
   if (!t) return;

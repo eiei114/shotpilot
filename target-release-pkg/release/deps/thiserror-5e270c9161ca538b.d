@@ -1,0 +1,14 @@
+C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\deps\thiserror-5e270c9161ca538b.d: C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\lib.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\aserror.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\display.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\var.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\private.rs C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\build\thiserror-fee864310a1b7a19\out/private.rs
+
+C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\deps\libthiserror-5e270c9161ca538b.rlib: C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\lib.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\aserror.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\display.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\var.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\private.rs C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\build\thiserror-fee864310a1b7a19\out/private.rs
+
+C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\deps\libthiserror-5e270c9161ca538b.rmeta: C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\lib.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\aserror.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\display.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\var.rs C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\private.rs C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\build\thiserror-fee864310a1b7a19\out/private.rs
+
+C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\lib.rs:
+C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\aserror.rs:
+C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\display.rs:
+C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\var.rs:
+C:\Users\Keisu\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.21\src\private.rs:
+C:/Users/Keisu/Projects/shotpilot/target-release-pkg\release\build\thiserror-fee864310a1b7a19\out/private.rs:
+
+# env-dep:OUT_DIR=C:/Users/Keisu/Projects/shotpilot/target-release-pkg\\release\\build\\thiserror-fee864310a1b7a19\\out

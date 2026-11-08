@@ -73,6 +73,8 @@ pub enum Pick {
     Image { start: Option<PathBuf> },
     /// A video (a reference teaser to measure, D-71).
     Video { start: Option<PathBuf> },
+    /// Where to save the finished video (a save dialog with `name` filled in, D-105).
+    SaveVideo { start: Option<PathBuf>, name: String },
 }
 
 /// Shows a native file dialog. Only the desktop app has one; without it the home asks
@@ -715,7 +717,7 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
         "vocab": vocab_json(),
         "shots": shots,
         "audio": ws.defn.audio,
-        "cut": latest_cut(&ws.root),
+        "cut": latest_cut(ws),
         "promo": crate::promo::summary(ws, crate::promo::today()),
     }))
 }
@@ -884,8 +886,9 @@ pub fn sound_payload(ws: &Workspace) -> Result<Value> {
 }
 
 /// The most recently written cut/<quality>/ folder that has a video or a storyboard.
-fn latest_cut(root: &Path) -> Value {
-    let Ok(dirs) = std::fs::read_dir(root.join("cut")) else { return Value::Null };
+/// The newest `cut/<quality>/` folder and when it was made (its video, else its storyboard).
+fn newest_cut_dir(root: &Path) -> Option<(std::time::SystemTime, PathBuf)> {
+    let dirs = std::fs::read_dir(root.join("cut")).ok()?;
     let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
     for d in dirs.flatten() {
         let dir = d.path();
@@ -896,14 +899,48 @@ fn latest_cut(root: &Path) -> Value {
             }
         }
     }
-    let Some((when, dir)) = best else { return Value::Null };
+    best
+}
+
+/// The newest cut's video, or a user error that says how to make one.
+fn newest_cut_video(root: &Path) -> Result<PathBuf> {
+    match newest_cut_dir(root).map(|(_, d)| d.join("cut.mp4")) {
+        Some(v) if v.is_file() => Ok(v),
+        _ => bail!("まだ Cut の映像がありません。左の「✂ Cut でつなぐ」でつないでください"),
+    }
+}
+
+/// The file name the finished video is offered under: the project's name, safe for a file system.
+fn video_file_name(ws: &Workspace) -> String {
+    let name = if ws.defn.project.name.trim().is_empty() {
+        ws.root.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "teaser".into())
+    } else {
+        ws.defn.project.name.clone()
+    };
+    let safe: String = name.chars().map(|c| if r#"\/:*?"<>|"#.contains(c) || c.is_control() { '_' } else { c }).collect();
+    format!("{}.mp4", safe.trim().trim_end_matches('.'))
+}
+
+/// The newest cut, and whether it is still what cutting again would make (D-105): a render, an
+/// edit to the sound, the words or the hand-overs, or a new order leaves it out of date.
+fn latest_cut(ws: &Workspace) -> Value {
+    let root = &ws.root;
+    let Some((when, dir)) = newest_cut_dir(root) else { return Value::Null };
     let stamp = when.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let video = dir.join("cut.mp4");
+    // a cut whose manifest cannot be read says nothing about being out of date
+    let fresh = ws.cut_freshness(&dir).unwrap_or(Value::Null);
     json!({
         "quality": dir.file_name().map(|n| n.to_string_lossy().to_string()),
         "video_url": if video.is_file() { file_url(root, &video) } else { None },
         "storyboard": file_url(root, &dir.join("index.html")),
         "stamp": stamp.to_string(),
+        "stale": fresh["stale"].as_bool().unwrap_or(false),
+        "retaken": fresh["retaken"],
+        "missing": fresh["missing"],
+        "order": fresh["order"],
+        "inputs": fresh["inputs"],
+        "made_of": fresh["made_of"],
     })
 }
 
@@ -1148,6 +1185,61 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             };
             open_with_os(&file)?;
             send_json(stream, false, 200, &json!({"opened": file.display().to_string()})).map_err(io)
+        }
+        ("POST", "/api/cut/reveal") => {
+            // the newest cut's video, shown selected in the file manager (D-105); nothing is written
+            let video = newest_cut_video(&app.ws()?.root)?;
+            reveal_with_os(&video)?;
+            send_json(stream, false, 200, &json!({"shown": video.display().to_string()})).map_err(io)
+        }
+        ("POST", "/api/clips") => {
+            // each cut's own video from its best take, gathered in cut/clips/ in cut order (D-105);
+            // {shot: id} makes that one. {reveal: true} then shows it (or the folder) in the file
+            // manager. Encodes from the takes' frames when needed; nothing renders
+            let body = req.json()?;
+            let only = body.get("shot").and_then(Value::as_str).filter(|s| !s.is_empty());
+            let _guard = app.mutate()?;
+            let clips = app.ws()?.write_clips(only)?;
+            if let (Some(id), true) = (only, clips.made.is_empty()) {
+                bail!("{id} はまだ撮っていません。仮撮りか撮影をしてから開いてください");
+            }
+            if body.get("reveal").and_then(Value::as_bool) == Some(true) {
+                match (only, clips.made.first()) {
+                    (Some(_), Some((_, clip))) => reveal_with_os(clip)?,
+                    _ => open_with_os(&clips.dir)?,
+                }
+            }
+            send_json(stream, false, 200, &json!({
+                "dir": clips.dir.display().to_string(),
+                "made": clips.made.iter().map(|(id, p)| json!({"shot": id, "file": p.display().to_string()})).collect::<Vec<_>>(),
+                "missing": clips.missing,
+            }))
+            .map_err(io)
+        }
+        ("POST", "/api/cut/export") => {
+            // the newest cut's video, copied where the human picks in the app's save dialog (D-105).
+            // {reveal: true} then shows the copy in the file manager. Nothing re-renders or re-cuts
+            let body = req.json()?;
+            let ws = app.ws()?;
+            let video = newest_cut_video(&ws.root)?;
+            let Some(picker) = &app.picker else {
+                bail!("この画面では保存先を選べません。「フォルダで開く」から写してください");
+            };
+            let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from);
+            let start = home.map(|h| h.join("Downloads")).filter(|d| d.is_dir()).or_else(|| Some(ws.root.clone()));
+            let Some(mut to) = picker(Pick::SaveVideo { start, name: video_file_name(&ws) }) else {
+                return send_json(stream, false, 200, &json!({"cancelled": true})).map_err(io);
+            };
+            if to.extension().is_none() {
+                to.set_extension("mp4");
+            }
+            if std::path::absolute(&to).ok() != std::path::absolute(&video).ok() {
+                std::fs::copy(&video, &to).map_err(|e| Error::user(format!("could not save {}: {e}", to.display())))?;
+            }
+            if body.get("reveal").and_then(Value::as_bool) == Some(true) {
+                reveal_with_os(&to)?;
+            }
+            send_json(stream, false, 200, &json!({"saved": to.display().to_string()})).map_err(io)
         }
         ("POST", "/api/render") => render_stream(stream, app, req),
         ("POST", "/api/produce") => produce_stream(stream, app, req),
@@ -2112,6 +2204,24 @@ fn game_json(p: &Path) -> Result<Value> {
         "name": projects::game_name(&dir),
         "projects": projects::find_projects(&dir).iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
     }))
+}
+
+/// Show a file selected in the OS file manager (Explorer's /select, Finder's reveal; elsewhere
+/// its folder opens).
+pub fn reveal_with_os(path: &Path) -> Result<()> {
+    let path = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    #[cfg(windows)]
+    let r = {
+        use std::os::windows::process::CommandExt;
+        // Explorer reads `/select,"<path>"` itself and wants backslashes
+        let shown = path.to_string_lossy().replace('/', "\\");
+        std::process::Command::new("explorer").raw_arg(format!("/select,\"{shown}\"")).spawn()
+    };
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open").arg("-R").arg(&path).spawn();
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let r = std::process::Command::new("xdg-open").arg(path.parent().unwrap_or(&path)).spawn();
+    r.map(|_| ()).map_err(|e| Error::user(format!("could not show {}: {e}", path.display())))
 }
 
 /// Open a file with the OS default application (video player, browser for HTML).

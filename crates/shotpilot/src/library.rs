@@ -12,7 +12,8 @@
 //! on a machine without the library.
 //!
 //! Next to it sit the sounds shotpilot makes in code (`made`, D-103): an effect the library
-//! lacks is synthesized into the project's `audio/made/` instead of copied.
+//! lacks is synthesized into the project's `audio/made/` instead of copied. A teaser that takes
+//! no library sound (`audio.library: false`, D-106) sees only those (`for_project`).
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -139,6 +140,16 @@ impl Library {
     /// Whether there is anything to pick a sound from: the library, or the sounds made in code.
     pub fn has_any(&self) -> bool {
         !self.sounds.is_empty() || self.made.is_some()
+    }
+
+    /// The library as one teaser sees it (D-106): a teaser that takes no library sound
+    /// (`audio.library: false`, the Three.js sample's default) sees only the sounds made in code.
+    pub fn for_project(&self, defn: &crate::model::Definition) -> std::borrow::Cow<'_, Library> {
+        if crate::sound::uses_library(defn) {
+            std::borrow::Cow::Borrowed(self)
+        } else {
+            std::borrow::Cow::Owned(Library { dir: None, sounds: Vec::new(), made: self.made.clone() })
+        }
     }
 
     pub fn get(&self, id: &str) -> Option<&Sound> {

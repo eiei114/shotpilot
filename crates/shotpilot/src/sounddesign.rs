@@ -1,8 +1,10 @@
 //! Sound design for a planned cut: Claude picks music cues and hits from the sound library
 //! against the cut's pieces (shots, script cards, captions), code imports the files and
 //! writes them to shots.yaml (`audio.music`, shot `sfx`, script line `sfx`). An effect the
-//! library lacks may be made in code (forge.rs, D-103). One pass, no self-review
-//! (D-22); the sound check (soundcheck.rs) measures the mix afterwards.
+//! library lacks may be made in code (forge.rs, D-103); a teaser that takes no library sound
+//! (`audio.library: false`, the Three.js sample's default, D-106) gets every sound from there,
+//! its music and air included. One pass, no self-review (D-22); the sound check (soundcheck.rs)
+//! measures the mix afterwards.
 
 use std::collections::HashMap;
 
@@ -25,7 +27,7 @@ pub fn schema() -> Value {
             "music": {"type": "array", "items": {
                 "type": "object",
                 "properties": {
-                    "lib": {"type": "string", "description": "library sound id"},
+                    "lib": {"type": "string", "description": "library sound id, or make:music/<id> where music made in code is offered"},
                     "from": {"type": "string", "description": "id of the piece the cue starts on, or start"},
                     "until": {"type": "string", "description": "id of the piece it runs to the end of, or end"},
                     "at": {"type": "number", "description": "seconds after the start of `from`"},
@@ -53,7 +55,7 @@ pub fn schema() -> Value {
                 "type": "object",
                 "properties": {
                     "place": {"type": "string", "description": "one of the places listed with the cut"},
-                    "lib": {"type": "string", "description": "library sound id (a loop or a long bed)"},
+                    "lib": {"type": "string", "description": "library sound id (a loop or a long bed), or make:air/<id> where air made in code is offered"},
                     "gain": {"type": "number"},
                     "label": {"type": "string"},
                 },
@@ -147,17 +149,34 @@ fn cut_text(ws: &Workspace) -> Result<String> {
 
 /// Ask Claude for the sound of the cut, and import (or make) what it chose.
 pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Design> {
+    // a teaser that takes no library sound sees only what is made in code, music and air
+    // included (D-106)
+    let all_made = !crate::sound::uses_library(&ws.defn);
+    let view = lib.for_project(&ws.defn);
+    let lib: &Library = &view;
     if !lib.has_any() {
         bail!("the sound library is empty or missing (see D-26), and no sounds made in code are offered (D-103)");
     }
     // the same brief, direction and look the cut was written from (D-48), with the look's sound
-    let (list, hidden) = if lib.sounds.is_empty() {
+    let (list, hidden) = if all_made {
+        ("(none: this teaser takes no sound from the library; its music, the air of its places and its effects are \
+          all made in code, listed below)".to_string(), 0)
+    } else if lib.sounds.is_empty() {
         ("(none: the music and the air already in the project stay; leave `music` and `ambience` empty, and name what           the cut wants in `missing`)".to_string(), 0)
     } else {
         lib.prompt_list_for(LIST_MAX, Some(&ws.root))
     };
     let made = lib.made.as_deref();
-    let made_list = made.map(|b| format!("\n\n{}\n{}", forge::guide(), b.prompt_list())).unwrap_or_default();
+    let made_list = made
+        .map(|b| {
+            let beds = if all_made {
+                format!("\n\nMusic and air made in code (id, own length, kinds):\n{}", b.prompt_list_beds())
+            } else {
+                String::new()
+            };
+            format!("\n\n{}\nEffects made in code:\n{}{beds}", forge::guide(all_made), b.prompt_list())
+        })
+        .unwrap_or_default();
     let user = format!(
         "{}\n\n{}\n\n{}\n\n{CRAFT}\n\nLibrary sounds (id, kind, length, tags; bgm = a loop long enough for music):\n{}{made_list}\n\n\
          Write `rationale` in the pitch's language: {}",
@@ -204,13 +223,52 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
             _ => id,
         }
     };
-    // made sounds are effects: music and the air of a place come from the library
-    let only_effects = |id: &str, notes: &mut Vec<String>| -> bool {
-        let made = id.starts_with(forge::PREFIX);
-        if made {
-            notes.push(format!("left out `{id}`: sounds made in code are effects, not music or the air of a place"));
+    // a made sound in the place it serves: an effect on a cut, music in a cue, air for a place;
+    // music and air are made only for a teaser that makes every sound (D-106)
+    let fits = |id: &str, wants: forge::Use, notes: &mut Vec<String>| -> bool {
+        let found = forge::use_of(id);
+        let ok = found == wants && (wants == forge::Use::Effect || all_made);
+        if !ok {
+            notes.push(match (wants, all_made) {
+                (forge::Use::Effect, _) => format!("left out `{id}`: music and air go in a music cue or a place, not on a cut"),
+                (_, false) => format!("left out `{id}`: sounds made in code are effects, not music or the air of a place"),
+                (forge::Use::Music, true) => format!("left out `{id}`: a music cue takes a make:music/ sound"),
+                (forge::Use::Air, true) => format!("left out `{id}`: a place takes a make:air/ sound"),
+            });
         }
-        made
+        ok
+    };
+    let made_ref = |v: &Value| Some(str_of(v)).filter(|r| r.starts_with(forge::PREFIX));
+    // every sound made in code at once, a few at a time: effects on the cuts, and the music and
+    // air of a teaser that makes every sound
+    let lands = |h: &Value| {
+        let on = piece(str_of(&h["on"]));
+        shot_ids.contains(&on) || ws.defn.script.iter().any(|l| l.id == on)
+    };
+    let mut refs: Vec<String> = out["hits"].as_array().into_iter().flatten().filter(|h| lands(h))
+        .filter_map(|h| made_ref(&h["lib"])).filter(|r| forge::use_of(r) == forge::Use::Effect).collect();
+    if all_made {
+        refs.extend(out["music"].as_array().into_iter().flatten().filter_map(|c| made_ref(&c["lib"]))
+            .filter(|r| forge::use_of(r) == forge::Use::Music));
+        refs.extend(out["ambience"].as_array().into_iter().flatten().filter_map(|a| made_ref(&a["lib"]))
+            .filter(|r| forge::use_of(r) == forge::Use::Air));
+    }
+    let made_files = match made {
+        Some(b) if !refs.is_empty() => b.make_all(&refs, &ws.root),
+        _ => HashMap::new(),
+    };
+    let made_file = |r: &str, notes: &mut Vec<String>| -> Option<String> {
+        match made_files.get(r) {
+            Some(Ok(p)) => Some(p.file.clone()),
+            Some(Err(e)) => {
+                notes.push(format!("left out made sound `{r}`: {e}"));
+                None
+            }
+            None => {
+                notes.push(format!("left out `{r}`: no sounds made in code are offered here"));
+                None
+            }
+        }
     };
     let mut music = Vec::new();
     for c in out["music"].as_array().into_iter().flatten() {
@@ -220,10 +278,17 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
             notes.push(format!("left out a music cue: `{from}` is not in the cut"));
             continue;
         }
-        if only_effects(&str_of(&c["lib"]), &mut notes) {
-            continue;
-        }
-        let Some(file) = take(&str_of(&c["lib"]), &mut notes) else { continue };
+        let wanted = str_of(&c["lib"]);
+        let file = if wanted.starts_with(forge::PREFIX) {
+            if !fits(&wanted, forge::Use::Music, &mut notes) {
+                continue;
+            }
+            let Some(file) = made_file(&wanted, &mut notes) else { continue };
+            file
+        } else {
+            let Some(file) = take(&wanted, &mut notes) else { continue };
+            file
+        };
         let mut m = Map::new();
         m.insert("file".into(), json!(file));
         m.insert("from".into(), json!(from));
@@ -254,16 +319,13 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
         }
         hits.push((h, on, is_shot));
     }
-    // the effects made in code, a few at a time
-    let refs: Vec<String> = hits.iter().map(|(h, _, _)| str_of(&h["lib"])).filter(|r| r.starts_with(forge::PREFIX)).collect();
-    let made_files = match made {
-        Some(b) if !refs.is_empty() => b.make_all(&refs, &ws.root),
-        _ => HashMap::new(),
-    };
     for (h, on, is_shot) in hits {
         let wanted = str_of(&h["lib"]);
         // a made sound is placed by its moment: its file starts that much earlier
         let (file, moment) = if wanted.starts_with(forge::PREFIX) {
+            if !fits(&wanted, forge::Use::Effect, &mut notes) {
+                continue;
+            }
             match made_files.get(&wanted) {
                 Some(Ok(p)) => (p.file.clone(), p.moment_s),
                 Some(Err(e)) => {
@@ -310,7 +372,17 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
             notes.push(format!("left out the air of `{place}`: no shot films that place"));
             continue;
         }
-        let Some(file) = take(&str_of(&a["lib"]), &mut notes) else { continue };
+        let wanted = str_of(&a["lib"]);
+        let file = if wanted.starts_with(forge::PREFIX) {
+            if !fits(&wanted, forge::Use::Air, &mut notes) {
+                continue;
+            }
+            let Some(file) = made_file(&wanted, &mut notes) else { continue };
+            file
+        } else {
+            let Some(file) = take(&wanted, &mut notes) else { continue };
+            file
+        };
         let mut m = Map::new();
         m.insert("file".into(), json!(file));
         if let Some(g) = num(&a["gain"]).filter(|g| *g != 0.0) {
@@ -347,7 +419,14 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
     let missing: Vec<String> = out["missing"].as_array().into_iter().flatten().filter_map(Value::as_str)
         .map(str::trim).filter(|m| !m.is_empty()).map(str::to_string).collect();
     if !missing.is_empty() {
-        notes.push(format!("ライブラリに無い音（探すなら）: {}", missing.join(" / ")));
+        if all_made {
+            notes.push(format!("コードで作れる音に無い音: {}", missing.join(" / ")));
+        } else {
+            notes.push(format!("ライブラリに無い音（探すなら）: {}", missing.join(" / ")));
+        }
+    }
+    if all_made {
+        notes.insert(0, "音源ライブラリは使わず、音はすべてコードで作りました（audio.library: false）".to_string());
     }
     Ok(Design {
         rationale: out["rationale"].as_str().unwrap_or("").to_string(),
@@ -357,7 +436,7 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
         line_sfx: line_sfx.into_iter().collect(),
         notes,
         missing,
-        keep_music: lib.sounds.is_empty(),
+        keep_music: lib.sounds.is_empty() && !all_made,
     })
 }
 

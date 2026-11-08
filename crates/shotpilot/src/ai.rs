@@ -1373,14 +1373,26 @@ const LIBRARY_PROMPT_MAX: usize = 300;
 /// Replace `lib:<id>` files in the shots' and script lines' `sfx`, the BGM and the music
 /// cues with copies in `audio/lib/`, and `make:<id>` effects with takes made into
 /// `audio/made/` (D-103). A made effect's `at` names where its moment lands; its file starts
-/// that much earlier.
+/// that much earlier. In a teaser that takes no library sound (`all_made`, D-106) no `lib:`
+/// is taken, and the music and the air of places may be made too (`make:music/`, `make:air/`);
+/// elsewhere a made sound is an effect only.
 fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)], audio: Option<&mut Map<String, Value>>,
-                     lib: Option<&Library>, root: &std::path::Path) -> Result<()> {
-    let fix = |f: &mut Value| -> Result<()> {
+                     lib: Option<&Library>, root: &std::path::Path, all_made: bool) -> Result<()> {
+    use crate::forge::Use;
+    let fix = |f: &mut Value, wants: Use| -> Result<()> {
         let Some(name) = f.as_str() else { return Ok(()) };
         let id = match name.strip_prefix("lib:") {
+            Some(id) if all_made => {
+                bail!("this teaser takes no library sound (audio.library: false), so '{id}' cannot be used; nothing applied")
+            }
             Some(id) => id.to_string(),
-            None if name.starts_with(crate::forge::PREFIX) => name.to_string(),
+            None if name.starts_with(crate::forge::PREFIX) => {
+                if !all_made || crate::forge::use_of(name) != wants {
+                    let place = if wants == Use::Air { "the air of a place" } else { "music" };
+                    bail!("Claude asked for '{name}' as {place}, which no sound made in code here can be; nothing applied");
+                }
+                name.to_string()
+            }
             None => return Ok(()),
         };
         let Some(lib) = lib else { bail!("Claude used library sound '{id}' but no library is open; nothing applied") };
@@ -1395,6 +1407,9 @@ fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)
                 let Some(bank) = lib.and_then(|l| l.made.as_deref()) else {
                     bail!("Claude asked for a sound made in code ('{r}') but none are offered here; nothing applied")
                 };
+                if crate::forge::use_of(&r) != Use::Effect {
+                    bail!("Claude put '{r}' on a cut, but music and air go in audio.music and audio.ambience; nothing applied");
+                }
                 let p = bank.make(&r, root)?;
                 let lands = it.get("at").and_then(num).unwrap_or(0.0);
                 if let Some(m) = it.as_object_mut() {
@@ -1405,25 +1420,25 @@ fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)
                     }
                 }
             } else if let Some(f) = it.get_mut("file") {
-                fix(f)?;
+                fix(f, Use::Effect)?;
             }
         }
     }
     if let Some(a) = audio {
         if let Some(f) = a.get_mut("bgm").and_then(|b| b.get_mut("file")) {
-            fix(f)?;
+            fix(f, Use::Music)?;
         }
         for c in a.get_mut("music").and_then(Value::as_array_mut).into_iter().flatten() {
             if let Some(f) = c.get_mut("file") {
-                fix(f)?;
+                fix(f, Use::Music)?;
             }
         }
         // a place's air is its file, or a mapping with one
         for v in a.get_mut("ambience").and_then(Value::as_object_mut).into_iter().flat_map(|m| m.values_mut()) {
             if v.is_string() {
-                fix(v)?;
+                fix(v, Use::Air)?;
             } else if let Some(f) = v.get_mut("file") {
-                fix(f)?;
+                fix(f, Use::Air)?;
             }
         }
     }
@@ -1703,7 +1718,10 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
     } else {
         files.join(", ")
     };
-    if let Some(lib) = pointer.library.as_ref().filter(|l| pointer.sound && !l.sounds.is_empty()) {
+    // a teaser that takes no library sound sees only the sounds made in code (D-106)
+    let all_made = !sound::uses_library(defn);
+    let library = pointer.library.as_ref().map(|l| l.for_project(defn));
+    if let Some(lib) = library.as_deref().filter(|l| pointer.sound && !l.sounds.is_empty()) {
         let (list, hidden) = lib.prompt_list_for(LIBRARY_PROMPT_MAX, Some(&defn.root()));
         let more = if hidden > 0 { format!("\n({hidden} more library sounds are not listed.)") } else { String::new() };
         files_line.push_str(&format!(
@@ -1712,12 +1730,21 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
              belongs to another game; take it only when nothing else fits the note.\n{list}{more}"
         ));
     }
-    if let Some(bank) = pointer.library.as_ref().filter(|_| pointer.sound).and_then(|l| l.made.as_deref()) {
+    if let Some(bank) = library.as_deref().filter(|_| pointer.sound).and_then(|l| l.made.as_deref()) {
+        // music and air are made here only where the note may change the teaser's audio
+        let beds = all_made && audio_allowed;
         files_line.push_str(&format!(
             "\n\n{} Write it as `file: make:<id>` in an effect; it is made into the project.\n{}",
-            crate::forge::guide(),
+            crate::forge::guide(beds),
             bank.prompt_list()
         ));
+        if beds {
+            files_line.push_str(&format!(
+                "\n\nMusic and air made in code: write `file: make:music/<id>?dur=<seconds>` in a cue of \
+                 `audio.music`, `file: make:air/<id>` for a place in `audio.ambience`.\n{}",
+                bank.prompt_list_beds()
+            ));
+        }
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));
     // every edit is made against the spec the cut was planned from (D-48); how much of it
@@ -1885,11 +1912,20 @@ Where the director is pointing: {c}")).unwrap_or_default();
     let audio_yaml = out["audio"].as_str().unwrap_or("").trim();
     let mut audio: Option<Map<String, Value>> = None;
     if !audio_yaml.is_empty() {
-        let parsed = match yamlio::parse_str(audio_yaml, "Claude's audio")? {
+        let mut parsed = match yamlio::parse_str(audio_yaml, "Claude's audio")? {
             Value::Null => Map::new(),
             Value::Object(m) => m,
             _ => bail!("Claude's audio is not a mapping"),
         };
+        // whether the teaser takes library sounds is the human's to say (D-106)
+        match defn.audio.get("library") {
+            Some(v) => {
+                parsed.insert("library".into(), v.clone());
+            }
+            None => {
+                parsed.remove("library");
+            }
+        }
         if parsed != defn.audio {
             if !audio_allowed {
                 bail!("Claude tried to change the background music while scoped to {scope:?}; nothing applied");
@@ -1936,7 +1972,7 @@ Where the director is pointing: {c}")).unwrap_or_default();
             }
         }
     }
-    take_from_library(&mut edits, &mut line_edits, audio.as_mut(), pointer.library.as_ref(), &defn.root())?;
+    take_from_library(&mut edits, &mut line_edits, audio.as_mut(), library.as_deref(), &defn.root(), all_made)?;
     let trial: Vec<Value> = defn
         .shots
         .iter()

@@ -175,3 +175,138 @@ fn a_sound_note_may_make_a_sound_in_code() {
     assert!(e.msg.contains("none are offered"), "{}", e.msg);
     assert!(!c.asked.borrow()[0].contains("make:<id>"), "none offered, none listed");
 }
+
+/// The project's sound so far: every file its audio and its effects name.
+fn sound_files(ws: &shotpilot::Workspace) -> Vec<String> {
+    let mut files: Vec<String> = Vec::new();
+    for c in ws.defn.audio.get("music").and_then(Value::as_array).into_iter().flatten() {
+        files.push(c["file"].as_str().unwrap_or("").to_string());
+    }
+    for v in ws.defn.audio.get("ambience").and_then(Value::as_object).into_iter().flat_map(|m| m.values()) {
+        files.push(v.as_str().or_else(|| v["file"].as_str()).unwrap_or("").to_string());
+    }
+    for s in &ws.defn.shots {
+        for e in s.get("sfx").and_then(Value::as_array).into_iter().flatten() {
+            files.push(e["file"].as_str().unwrap_or("").to_string());
+        }
+    }
+    files
+}
+
+#[test]
+fn a_sample_teaser_takes_no_library_sound_and_makes_its_music_and_air() {
+    // a three project films the sample game, which anyone can fetch and film again: it takes no
+    // library sound unless it says so; any other project may say so too
+    let home = tempfile::tempdir().unwrap();
+    let three = shotpilot::projects::create(&shotpilot::projects::NewProject {
+        location: home.path().to_path_buf(),
+        name: "村".into(),
+        engine: "three".into(),
+        pitch: "丘の上の村を歩くように見せたい".into(),
+        kind: "teaser".into(),
+        ..Default::default()
+    })
+    .unwrap();
+    assert!(!sound::uses_library(&shotpilot::Workspace::open(&three).unwrap().defn));
+    let mut f = ws();
+    assert!(sound::uses_library(&f.ws.defn), "a UE or mock project picks from the library");
+    let text = f.text().replacen("audio:\n  gain: 0\n", "audio:\n  library: false\n  gain: 0\n", 1);
+    assert!(text.contains("library: false"));
+    f.write(&text);
+    f.ws.reload().unwrap();
+    assert!(!sound::uses_library(&f.ws.defn));
+    sound::write_demo_audio(&f.ws.root).unwrap(); // the template's own bgm file
+    f.ws.render(&[], "previz", false, None).unwrap();
+    let before = launches(&f.ws).len();
+
+    // the one-go sound design: the library is not shown, the music and air made in code are
+    let libdir = tempfile::tempdir().unwrap();
+    let lib = library(libdir.path());
+    let d = Designer {
+        reply: json!({"rationale": "r",
+            "music": [{"lib": "make:music/musicbox?dur=20", "from": "start", "until": "end", "at": 0, "gain": -12, "fade_in": 0.5, "fade_out": 1, "label": "box"},
+                      {"lib": "x:drone", "from": "start", "until": "end", "at": 0, "gain": -12, "fade_in": 0, "fade_out": 0, "label": "from the library"},
+                      {"lib": "make:impact/deep", "from": "start", "until": "end", "at": 0, "gain": -12, "fade_in": 0, "fade_out": 0, "label": "a hit as music"}],
+            "hits": [{"lib": "make:impact/deep", "on": "s03_window", "at": 0, "gain": -4, "label": "boom"},
+                     {"lib": "make:air/breeze", "on": "s02_well", "at": 0, "gain": -4, "label": "air on a cut"},
+                     {"lib": "x:drone", "on": "s04_lantern", "at": 0, "gain": -4, "label": "from the library"}],
+            "ambience": [{"place": "gate", "lib": "make:air/breeze", "gain": -10, "label": "breeze"},
+                         {"place": "well", "lib": "x:drone", "gain": -10, "label": "from the library"},
+                         {"place": "window", "lib": "make:music/pad", "gain": -10, "label": "music as air"}],
+            "missing": []}),
+        asked: RefCell::new(vec![]),
+    };
+    let design = shotpilot::sounddesign::design(&f.ws, &lib, &d).unwrap();
+    let prompt = d.asked.borrow()[0].clone();
+    assert!(!prompt.contains("x:drone"), "the library is not offered: {prompt}");
+    assert!(prompt.contains("- make:music/musicbox 48s [bgm, music] knobs: dur:"), "{prompt}");
+    assert!(prompt.contains("make:air/breeze") && prompt.contains("make:impact/deep"), "{prompt}");
+    assert!(prompt.contains("This teaser takes no sound from the library"), "{prompt}");
+    assert!(shotpilot::craft::self_review_words(&prompt).is_empty());
+    assert_eq!(design.notes[0], "音源ライブラリは使わず、音はすべてコードで作りました（audio.library: false）");
+    for left in ["x:drone", "a music cue takes a make:music/", "not on a cut", "a place takes a make:air/"] {
+        assert!(design.notes.iter().any(|n| n.contains(left)), "{left}: {:?}", design.notes);
+    }
+    assert!(!design.keep_music, "the music is made, not kept");
+    shotpilot::sounddesign::apply(&mut f.ws, &design).unwrap();
+    assert_eq!(f.ws.defn.audio.get("library"), Some(&json!(false)), "the human's choice stays");
+    assert!(!f.ws.root.join(shotpilot::library::IMPORT_DIR).exists(), "nothing was copied from the library");
+    let files = sound_files(&f.ws);
+    assert!(!files.is_empty() && files.iter().all(|p| p.starts_with("audio/made/")), "{files:?}");
+    let music = f.ws.defn.audio["music"][0]["file"].as_str().unwrap().to_string();
+    assert!(music.starts_with("audio/made/music-musicbox-d20-s"), "{music}");
+    let len = sound::decode(&f.ws.root.join(&music)).unwrap().len() as f64 / sound::SR as f64;
+    assert!((len - 20.0).abs() < 0.01, "the cue is as long as asked: {len}");
+    let air = f.ws.defn.audio["ambience"]["gate"]["file"].as_str().unwrap();
+    assert!(air.starts_with("audio/made/air-breeze-s"), "{air}");
+    assert_eq!(f.ws.defn.audio["ambience"].as_object().unwrap().len(), 1);
+    assert!(f.ws.defn.find("s03_window").unwrap()["sfx"][0]["file"].as_str().unwrap().starts_with("audio/made/impact-deep-s"));
+    let well = f.ws.defn.find("s02_well").unwrap();
+    assert!(well.get("sfx").and_then(Value::as_array).is_none_or(|a| a.is_empty()), "{well}");
+    // it mixes, and sound never renders a shot
+    assert!(f.ws.mix().unwrap().is_some());
+    assert_eq!(launches(&f.ws).len(), before);
+    assert!(f.ws.status().unwrap().iter().all(|s| s.qualities.iter().any(|(k, v)| k == "previz" && v == "fresh")));
+
+    // a sound note: made music and air go in, a library sound does not, and Claude cannot turn
+    // the library back on
+    let pointer = Pointer { sound: true, library: Some(library(libdir.path())), ..Default::default() };
+    let reply = |audio: &str| json!({"summary": "x", "edits": [], "order": [], "audio": audio});
+    let c = Designer {
+        reply: reply("library: true\ngain: 0\nmusic: [{file: 'make:music/pad?dur=12', from: start, gain: -12}]\nambience: {gate: 'make:air/wind'}"),
+        asked: RefCell::new(vec![]),
+    };
+    let rev = ai::revise_at(&f.ws.defn, "曲をもっと穏やかに", None, &pointer, &c).unwrap();
+    let req = c.asked.borrow()[0].clone();
+    assert!(!req.contains("x:drone") && req.contains("make:music/pad") && req.contains("make:air/wind"), "{req}");
+    let audio = rev.audio.clone().unwrap();
+    assert_eq!(audio["library"], json!(false));
+    assert!(audio["music"][0]["file"].as_str().unwrap().starts_with("audio/made/music-pad-d12-s"), "{audio:?}");
+    assert!(audio["ambience"]["gate"].as_str().unwrap().starts_with("audio/made/air-wind-s"), "{audio:?}");
+    for bad in ["music: [{file: 'lib:x:drone', from: start}]", "music: [{file: 'make:impact/deep', from: start}]",
+                "ambience: {gate: 'make:music/pad'}"] {
+        let c = Designer { reply: reply(&format!("library: false\ngain: 0\n{bad}")), asked: RefCell::new(vec![]) };
+        let e = ai::revise_at(&f.ws.defn, "曲を替えて", None, &pointer, &c).unwrap_err();
+        assert!(e.msg.contains("nothing applied"), "{bad}: {}", e.msg);
+    }
+    f.ws.edit_definition_with(&rev.edits, None, rev.audio.as_ref(), "revise", "n").unwrap();
+    assert_eq!(launches(&f.ws).len(), before, "made music never renders a shot");
+
+    // a teaser that picks from the library is offered no made music, and cannot slip one in
+    let mut g = ws();
+    let c = Designer { reply: reply("gain: 0\nmusic: [{file: 'make:music/pad', from: start}]"), asked: RefCell::new(vec![]) };
+    let e = ai::revise_at(&g.ws.defn, "曲を替えて", None, &pointer, &c).unwrap_err();
+    assert!(e.msg.contains("make:music/pad"), "{}", e.msg);
+    assert!(!c.asked.borrow()[0].contains("make:music/"), "no made music listed");
+    let d = Designer {
+        reply: json!({"rationale": "r", "hits": [], "missing": [],
+            "music": [{"lib": "make:music/pad", "from": "start", "until": "end", "at": 0, "gain": -12, "fade_in": 0, "fade_out": 0, "label": "m"}],
+            "ambience": [{"place": "gate", "lib": "make:air/breeze", "gain": -10, "label": "a"}]}),
+        asked: RefCell::new(vec![]),
+    };
+    let design = shotpilot::sounddesign::design(&g.ws, &lib, &d).unwrap();
+    assert!(!d.asked.borrow()[0].contains("make:music/"));
+    assert!(design.music.is_empty() && design.ambience.is_empty(), "{:?}", design.notes);
+    shotpilot::sounddesign::apply(&mut g.ws, &design).unwrap();
+    assert!(!g.ws.root.join(forge::MADE_DIR).exists());
+}

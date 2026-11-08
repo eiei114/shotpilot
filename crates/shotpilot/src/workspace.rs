@@ -152,6 +152,17 @@ impl EditReport {
     }
 }
 
+/// Each cut's own video, gathered for the file manager ([`Workspace::write_clips`]).
+#[derive(Debug, Clone)]
+pub struct Clips {
+    /// `cut/clips/`.
+    pub dir: PathBuf,
+    /// (shot id, its clip), in cut order.
+    pub made: Vec<(String, PathBuf)>,
+    /// Cuts with no fresh take to make a video from.
+    pub missing: Vec<String>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ScanReport {
     pub added: Vec<String>,
@@ -872,7 +883,8 @@ impl Workspace {
                 None
             }
         };
-        let mut info = cut::write_cut(&self.defn, &picks, &out_dir, video, mixed.as_ref())?;
+        let inputs = self.cut_inputs()?;
+        let mut info = cut::write_cut(&self.defn, &picks, &out_dir, video, mixed.as_ref(), &inputs)?;
         info.notes.extend(notes);
         let takes: Map<String, Value> = picks
             .iter()
@@ -886,6 +898,108 @@ impl Workspace {
         }));
         self.state.save()?;
         Ok(info)
+    }
+
+    /// Each cut's own video from its best take (D-105), gathered as `cut/clips/<NN>_<shot>.mp4` in
+    /// cut order, so a human can open them in the file manager. Each is encoded from the take's
+    /// frames the way a cut does it (and cached in the take, as a cut caches it); nothing renders,
+    /// and a cut with no fresh take is listed as missing. `only` makes one cut's video. Clips this
+    /// wrote before under another number (the order changed) or for a cut that is gone are taken
+    /// away, so the folder always reads as the cuts in order.
+    pub fn write_clips(&self, only: Option<&str>) -> Result<Clips> {
+        if cut::ffmpeg().is_none() {
+            bail!("ffmpeg が見つかりません（カットごとの動画を作るのに使います）");
+        }
+        let picks = self.pick_takes("best")?;
+        if let Some(id) = only {
+            if !picks.iter().any(|(s, _, _)| s.id == id) {
+                bail!("unknown shot: {id}");
+            }
+        }
+        let dir = self.root.join("cut").join("clips");
+        std::fs::create_dir_all(&dir)?;
+        let mut out = Clips { dir: dir.clone(), made: Vec::new(), missing: Vec::new() };
+        let mut keep: Vec<String> = Vec::new();
+        for (i, (s, take, q)) in picks.iter().enumerate() {
+            let name = format!("{:02}_{}.mp4", i + 1, s.id);
+            if only.is_some_and(|o| o != s.id) {
+                keep.push(name);
+                continue;
+            }
+            let (Some(take), Some(q)) = (take, q) else {
+                out.missing.push(s.id.clone());
+                continue;
+            };
+            let (w, h) = fp::resolution(&self.defn, &fp::quality(&self.defn, q)?);
+            let seg = cut::segment(take, w, h, self.defn.teaser.fps)?;
+            let to = dir.join(&name);
+            std::fs::copy(&seg, &to)?;
+            keep.push(name);
+            out.made.push((s.id.clone(), to));
+        }
+        // only the files this wrote (two digits, an underscore, a cut's id) are ever taken away
+        let ours = |n: &str| n.len() > 4 && n.as_bytes()[..2].iter().all(u8::is_ascii_digit) && n.as_bytes()[2] == b'_' && n.ends_with(".mp4");
+        for e in std::fs::read_dir(&dir)?.flatten() {
+            let n = e.file_name().to_string_lossy().to_string();
+            let mine = match only {
+                None => true,
+                Some(o) => n.ends_with(&format!("_{o}.mp4")),
+            };
+            if ours(&n) && mine && !keep.contains(&n) {
+                std::fs::remove_file(e.path())?;
+            }
+        }
+        Ok(out)
+    }
+
+    /// The digest of what reaches a cut besides the takes (D-105): the shots as written (captions,
+    /// hand-overs, effects, sound, and the purpose and notes the storyboard shows), the script,
+    /// `audio:`, `finish:` and the teaser's own settings. The brief and the stage never reach it.
+    pub fn cut_inputs(&self) -> Result<String> {
+        let v = Doc::load(&self.path)?.value()?;
+        let parts: Map<String, Value> =
+            ["teaser", "shots", "script", "audio", "finish"].iter().map(|k| (k.to_string(), v[*k].clone())).collect();
+        Ok(fp::digest(&Value::Object(parts)))
+    }
+
+    /// Whether the cut in `dir` (`cut/<quality>/`) is what cutting the same quality would make now
+    /// (D-105): the same shots in the same order, each with the same take, and the same definition.
+    /// It reads only; nothing renders and nothing is written. A cut made before the definition was
+    /// recorded in its manifest is judged by its takes alone.
+    pub fn cut_freshness(&self, dir: &Path) -> Result<Value> {
+        let m: Value = serde_json::from_str(&std::fs::read_to_string(dir.join("manifest.json"))?)?;
+        let made = m["shots"].as_array().cloned().unwrap_or_default();
+        let mut made_of: Map<String, Value> = Map::new();
+        for s in &made {
+            let q = s["quality"].as_str().unwrap_or("?").to_string();
+            let n = made_of.get(&q).and_then(Value::as_u64).unwrap_or(0) + 1;
+            made_of.insert(q, json!(n));
+        }
+        let quality = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "best".into());
+        let picks = self.pick_takes(&quality)?;
+        let order = made.len() != picks.len() || made.iter().zip(&picks).any(|(a, (s, _, _))| a["id"] != s.id.as_str());
+        let last = |p: &str| p.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or("").to_string();
+        let (mut retaken, mut missing) = (Vec::new(), Vec::new());
+        for (s, take, q) in &picks {
+            let Some(take) = take else {
+                missing.push(s.id.clone());
+                continue;
+            };
+            let same = made.iter().find(|a| a["id"] == s.id.as_str()).is_some_and(|a| {
+                a["quality"].as_str() == q.as_deref()
+                    && a["fingerprint"].as_str() == Some(take.fingerprint())
+                    && last(a["take_dir"].as_str().unwrap_or("")) == last(&take.dir.to_string_lossy())
+            });
+            if !same {
+                retaken.push(s.id.clone());
+            }
+        }
+        let inputs = match m["inputs"].as_str() {
+            Some(was) => was != self.cut_inputs()?,
+            None => false,
+        };
+        let stale = order || inputs || !retaken.is_empty() || !missing.is_empty();
+        Ok(json!({"stale": stale, "order": order, "inputs": inputs, "retaken": retaken, "missing": missing, "made_of": made_of}))
     }
 
     // ------------------------------------------------------------------ definition edits

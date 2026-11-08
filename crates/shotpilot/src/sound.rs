@@ -40,7 +40,7 @@ pub const LEAD_MAX: f64 = 3.0;
 /// Peaks per second in the lanes the app draws.
 pub const PEAKS_PER_S: f64 = 50.0;
 
-const AUDIO_KEYS: &[&str] = &["gain", "bgm", "music", "loudness", "ambience"];
+const AUDIO_KEYS: &[&str] = &["gain", "bgm", "music", "loudness", "ambience", "library"];
 /// Keys of one place's air under `audio.ambience` (or just its file as a string).
 const AMBIENCE_KEYS: &[&str] = &["file", "gain", "high_cut", "low_cut", "label"];
 /// How early the next place's air comes in across a card between two places (a J-cut, D-79).
@@ -129,6 +129,9 @@ pub fn validate(top: &Map<String, Value>, shots: &[Value], errs: &mut Vec<String
             check_keys(a, AUDIO_KEYS, "audio", errs);
             check_num(a, "gain", -30.0, 12.0, "audio", errs);
             check_num(a, "loudness", -30.0, -8.0, "audio", errs);
+            if a.get("library").is_some_and(|v| !v.is_boolean() && !v.is_null()) {
+                errs.push("audio.library: true (pick sounds from the library) or false (make every sound in code)".into());
+            }
             match a.get("music") {
                 None | Some(Value::Null) => {}
                 Some(Value::Array(items)) => {
@@ -393,6 +396,17 @@ pub fn orphans(defn: &Definition, shots: &[ResolvedShot]) -> Vec<Orphan> {
         }
     }
     out
+}
+
+/// Whether Claude picks from the sound library for this teaser (D-106). With
+/// `audio.library: false` every sound is made in code (forge.rs): music, the air of places and
+/// effects. A three project films the sample game, which anyone can download and film again, so
+/// it takes no library sound unless it says `library: true`.
+pub fn uses_library(defn: &Definition) -> bool {
+    match defn.audio.get("library") {
+        Some(Value::Bool(b)) => *b,
+        _ => defn.project.engine != "three",
+    }
 }
 
 /// Integrated loudness the cut is brought to (`audio.loudness`, LUFS).
