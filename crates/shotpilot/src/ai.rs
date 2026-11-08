@@ -1293,7 +1293,8 @@ pub struct Pointer {
     /// teaser's `audio` may change. Anything else Claude returns is dropped.
     pub sound: bool,
     /// The global sound library. With a sound note, Claude may pick from it by writing
-    /// `file: lib:<id>`; the file is copied into the project before the edit is checked.
+    /// `file: lib:<id>`; the file is copied into the project before the edit is checked. Its
+    /// sounds made in code (`file: make:<id>`, D-103) are rendered into the project the same way.
     pub library: Option<Library>,
     /// A sound note about one script line's effects: only that line's `sfx` may change.
     pub line: Option<String>,
@@ -1370,11 +1371,18 @@ pub(crate) fn stage_section(defn: &Definition) -> String {
 const LIBRARY_PROMPT_MAX: usize = 300;
 
 /// Replace `lib:<id>` files in the shots' and script lines' `sfx`, the BGM and the music
-/// cues with copies in `audio/lib/`.
+/// cues with copies in `audio/lib/`, and `make:<id>` effects with takes made into
+/// `audio/made/` (D-103). A made effect's `at` names where its moment lands; its file starts
+/// that much earlier.
 fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)], audio: Option<&mut Map<String, Value>>,
                      lib: Option<&Library>, root: &std::path::Path) -> Result<()> {
     let fix = |f: &mut Value| -> Result<()> {
-        let Some(id) = f.as_str().and_then(|s| s.strip_prefix("lib:")).map(str::to_string) else { return Ok(()) };
+        let Some(name) = f.as_str() else { return Ok(()) };
+        let id = match name.strip_prefix("lib:") {
+            Some(id) => id.to_string(),
+            None if name.starts_with(crate::forge::PREFIX) => name.to_string(),
+            None => return Ok(()),
+        };
         let Some(lib) = lib else { bail!("Claude used library sound '{id}' but no library is open; nothing applied") };
         *f = json!(lib.import(&id, root)?);
         Ok(())
@@ -1382,7 +1390,21 @@ fn take_from_library(edits: &mut [(String, Value)], lines: &mut [(String, Value)
     let lists = edits.iter_mut().filter_map(|(_, shot)| shot.get_mut("sfx")).chain(lines.iter_mut().map(|(_, l)| l));
     for list in lists {
         for it in list.as_array_mut().into_iter().flatten() {
-            if let Some(f) = it.get_mut("file") {
+            let made = it.get("file").and_then(Value::as_str).filter(|f| f.starts_with(crate::forge::PREFIX)).map(str::to_string);
+            if let Some(r) = made {
+                let Some(bank) = lib.and_then(|l| l.made.as_deref()) else {
+                    bail!("Claude asked for a sound made in code ('{r}') but none are offered here; nothing applied")
+                };
+                let p = bank.make(&r, root)?;
+                let lands = it.get("at").and_then(num).unwrap_or(0.0);
+                if let Some(m) = it.as_object_mut() {
+                    m.insert("file".into(), json!(p.file));
+                    let at = crate::geometry::round_to((lands - p.moment_s).max(-sound::LEAD_MAX), 2);
+                    if at != 0.0 || m.contains_key("at") {
+                        m.insert("at".into(), json!(at));
+                    }
+                }
+            } else if let Some(f) = it.get_mut("file") {
                 fix(f)?;
             }
         }
@@ -1688,6 +1710,13 @@ pub fn revise_at(defn: &Definition, instruction: &str, scope: Option<&[String]>,
             "\n\nLibrary sounds you may also use: write `file: lib:<id>` and it is copied into the project \
              (bgm = a loop long enough for background music). A sound marked `used in N other teasers` already \
              belongs to another game; take it only when nothing else fits the note.\n{list}{more}"
+        ));
+    }
+    if let Some(bank) = pointer.library.as_ref().filter(|_| pointer.sound).and_then(|l| l.made.as_deref()) {
+        files_line.push_str(&format!(
+            "\n\n{} Write it as `file: make:<id>` in an effect; it is made into the project.\n{}",
+            crate::forge::guide(),
+            bank.prompt_list()
         ));
     }
     let anchors = format!("{anchors}\n\nProps that can appear (shot `appear` list):\n{}", props_list(defn));

@@ -225,6 +225,26 @@ pub fn find_uproject(p: &Path) -> Option<PathBuf> {
     found.into_iter().next()
 }
 
+/// The three game a path points at (D-72): the folder itself, its scene.json, or a project folder
+/// with the game in its game/.
+pub fn find_game(p: &Path) -> Option<PathBuf> {
+    let scene = crate::three::SCENE_FILE;
+    if p.is_file() {
+        return (p.file_name().is_some_and(|n| n == scene)).then(|| p.parent().map(Path::to_path_buf)).flatten();
+    }
+    [p.to_path_buf(), p.join("game")].into_iter().find(|d| d.join(scene).is_file())
+}
+
+/// A three game's name: the one its scene.json gives, else its folder's.
+pub fn game_name(dir: &Path) -> String {
+    std::fs::read_to_string(dir.join(crate::three::SCENE_FILE))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .and_then(|v| v.get("name").and_then(serde_json::Value::as_str).map(str::to_string))
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default())
+}
+
 /// Levels under the project's Content folder, as /Game/... paths. Found on disk, so it
 /// needs no engine start; World Partition's external actor folders are skipped.
 pub fn list_maps(uproject: &Path) -> Vec<String> {
@@ -269,6 +289,10 @@ pub struct NewProject {
     pub uproject: Option<PathBuf>,
     /// e.g. /Game/Maps/Courtyard (ue5 only)
     pub map: Option<String>,
+    /// three only: the game to film, a folder with scene.json. The project folder goes inside
+    /// it, as a UE project's goes next to its .uproject. None: the bundled village is written
+    /// into the project's own game/.
+    pub game: Option<PathBuf>,
     /// The prompt typed on the home, kept as the teaser's pitch.
     pub pitch: String,
     /// teaser | gameplay
@@ -309,7 +333,16 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
     if name.is_empty() {
         bail!("プロジェクト名を入れてください");
     }
+    // a three game picked on the home: the project folder goes inside it (the sample keeps its own)
+    let game = match (p.engine.as_str(), p.game.as_deref(), p.sample) {
+        ("three", Some(g), false) => match find_game(g) {
+            Some(dir) => Some(dir),
+            None => bail!("{} に scene.json がありません（Three.js のゲームのフォルダを選んでください）", g.display()),
+        },
+        _ => None,
+    };
     let (parent, uproject_yaml, map_yaml) = match p.engine.as_str() {
+        "three" if game.is_some() => (game.clone().unwrap_or_default(), "null".to_string(), "null".to_string()),
         "mock" | "three" => (p.location.clone(), "null".to_string(), "null".to_string()),
         "ue5" => {
             let Some(up) = p.uproject.as_deref().and_then(find_uproject) else {
@@ -339,9 +372,15 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
         let extra = templates::Extra { title: "", pitch: &p.pitch, kind: &p.kind, genre: &p.genre };
         let text = templates::render_with(templates::EMPTY, &name, &p.engine, &uproject_yaml, &map_yaml, &extra);
         // "…30秒。" in the prompt is the length the person asked for
-        match seconds_in(&p.pitch) {
+        let text = match seconds_in(&p.pitch) {
             Some(s) => text.replacen("target_duration: 45", &format!("target_duration: {s}"), 1),
             None => text,
+        };
+        // the game it films is the folder the project sits in
+        if game.is_some() {
+            text.replacen("  engine: three\n", "  engine: three\n  game: ..      # the game this teaser films (the folder it sits in)\n", 1)
+        } else {
+            text
         }
     };
     std::fs::write(&shots, text)?;
@@ -352,7 +391,7 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
             crate::sound::write_demo_audio(&dir)?;
         }
     }
-    if p.engine == "three" {
+    if p.engine == "three" && game.is_none() {
         // the game it films (D-72, D-101): the sample village, which people then edit as their own
         crate::threegame::write(&dir.join("game"))?;
     }

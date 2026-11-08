@@ -1195,7 +1195,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let limit = arg("limit").parse().unwrap_or(200).min(1000);
             let root = app.root();
             let worn = lib.worn(&root);
-            let items: Vec<Value> = lib.search(&arg("q"), &arg("kind"), limit).into_iter().map(|s| {
+            let mut items: Vec<Value> = lib.search(&arg("q"), &arg("kind"), limit).into_iter().map(|s| {
                 let mut v = s.to_json();
                 v["url"] = json!(format!("/library/{}", percent_encode(&s.id)));
                 v["imported"] = json!(lib.imported(s, &root));
@@ -1203,11 +1203,21 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                 v["others"] = json!(worn.get(&s.id).copied().unwrap_or(0));
                 v
             }).collect();
+            // the effects shotpilot makes in code (D-103): one-shots, never music
+            if let Some(bank) = lib.made.as_deref().filter(|_| !matches!(arg("kind").as_str(), "bgm" | "loop")) {
+                items.extend(bank.search(&arg("q"), limit).into_iter().map(|m| {
+                    let id = format!("{}{}", crate::forge::PREFIX, m.id);
+                    json!({"id": id, "name": m.id, "kind": "oneshot", "bgm": false, "duration_s": m.dur_s,
+                           "tags": m.kinds, "pack": "shotpilot", "made": true, "url": format!("/library/{}", percent_encode(&id)),
+                           "imported": bank.made_here(m, &root), "others": 0})
+                }));
+            }
             let out = json!({
                 "available": lib.dir.is_some(),
                 "dir": lib.dir.as_ref().map(|d| d.display().to_string()),
                 "total": lib.sounds.len(),
                 "bgm": lib.sounds.iter().filter(|s| s.is_bgm()).count(),
+                "made": lib.made.as_ref().map_or(0, |b| b.sounds.len()),
                 "items": items,
             });
             send_json(stream, head, 200, &out).map_err(io)
@@ -1215,6 +1225,14 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
         ("GET" | "HEAD", p) if p.starts_with("/library/") => {
             let lib = app.library()?;
             let id = percent_decode(&p["/library/".len()..]);
+            // a sound made in code is heard from a preview take (its own seed and length)
+            if let Some(made) = id.strip_prefix(crate::forge::PREFIX) {
+                let Some(bank) = lib.made.as_deref() else {
+                    return send_json(stream, head, 404, &json!({"error": "no sounds made in code here"})).map_err(io);
+                };
+                let file = bank.preview(made)?;
+                return send_file(stream, req, &file, "max-age=3600").map_err(io);
+            }
             match lib.get(&id).and_then(|s| lib.file(s)) {
                 None => send_json(stream, head, 404, &json!({"error": "not found"})).map_err(io),
                 Some(file) => send_file(stream, req, &file, "max-age=3600").map_err(io),
@@ -1224,9 +1242,17 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
             let body = req.json()?;
             let Some(id) = body.get("id").and_then(Value::as_str) else { bail!("id: the library sound to use") };
             let _guard = app.mutate()?;
-            let file = app.library()?.import(id, &app.root())?;
+            let lib = app.library()?;
+            // a sound made in code also says where its moment is, so it can land on the cut (D-103)
+            let (file, moment) = match lib.made.as_deref().filter(|_| id.starts_with(crate::forge::PREFIX)) {
+                Some(bank) => {
+                    let p = bank.make(id, &app.root())?;
+                    (p.file, p.moment_s)
+                }
+                None => (lib.import(id, &app.root())?, 0.0),
+            };
             let ws = app.ws()?;
-            send_json(stream, false, 200, &json!({"file": file, "sound": sound_payload(&ws)?})).map_err(io)
+            send_json(stream, false, 200, &json!({"file": file, "moment": moment, "sound": sound_payload(&ws)?})).map_err(io)
         }
         ("POST", "/api/audio-folder") => {
             let _guard = app.mutate()?;
@@ -1998,6 +2024,7 @@ fn projects_route(stream: &mut TcpStream, app: &App, action: &str, req: &Request
                 engine,
                 uproject: Some(text("uproject")).filter(|s| !s.is_empty()).map(PathBuf::from),
                 map: Some(text("map")).filter(|s| !s.is_empty()),
+                game: Some(text("game")).filter(|s| !s.is_empty()).map(PathBuf::from),
                 pitch: text("pitch"),
                 kind: text("kind"),
                 genre: text("genre"),
@@ -2042,12 +2069,20 @@ fn projects_route(stream: &mut TcpStream, app: &App, action: &str, req: &Request
                     None => json!({"cancelled": true}),
                     Some(up) => uproject_json(&up)?,
                 },
-                other => bail!("kind must be open, location or uproject (got '{other}')"),
+                "game" => match picker(Pick::Folder { title: "Shotpilot: Three.js のゲームのフォルダ（scene.json のあるフォルダ）を選ぶ".into(), start }) {
+                    None => json!({"cancelled": true}),
+                    Some(d) => game_json(&d)?,
+                },
+                other => bail!("kind must be open, location, uproject or game (got '{other}')"),
             }
         }
         "maps" => {
             let Some(p) = path_arg() else { bail!("path is required") };
             uproject_json(&p)?
+        }
+        "game" => {
+            let Some(p) = path_arg() else { bail!("path is required") };
+            game_json(&p)?
         }
         other => bail!("unknown action: {other}"),
     };
@@ -2064,6 +2099,18 @@ fn uproject_json(p: &Path) -> Result<Value> {
         "name": up.file_stem().map(|s| s.to_string_lossy().to_string()),
         "maps": projects::list_maps(&up),
         "projects": up.parent().map(projects::find_projects).unwrap_or_default().iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
+    }))
+}
+
+/// A three game folder (D-72) with the teasers already made in it, for the new-project form.
+fn game_json(p: &Path) -> Result<Value> {
+    let Some(dir) = projects::find_game(p) else {
+        bail!("{} に scene.json がありません（Three.js のゲームのフォルダを選んでください）", p.display());
+    };
+    Ok(json!({
+        "path": dir.display().to_string(),
+        "name": projects::game_name(&dir),
+        "projects": projects::find_projects(&dir).iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
     }))
 }
 

@@ -285,6 +285,12 @@ enum Cmd {
         /// design the music and effects afresh from the sound library (Claude), then mix
         #[arg(long)]
         design: bool,
+        /// list the effects shotpilot makes in code (D-103), or those matching some words
+        #[arg(long, num_args = 0..=1, default_missing_value = "", value_name = "WORDS")]
+        made: Option<String>,
+        /// make one effect in code into audio/made/ and print its path, e.g. --make 'impact/deep?dur=2'
+        #[arg(long, value_name = "ID")]
+        make: Option<String>,
     },
     /// the release plan (D-47): promo  |  promo post <shot> [--clip]  |  promo derive <video> [--shots]
     ///  |  promo update [version]  (an update trailer made from these shots; only changed cuts re-render)
@@ -1211,8 +1217,35 @@ fn run(cli: Cli) -> Result<u8> {
             }
             print_edit_report(&ws.apply_revision(&rev, "revise", &note)?);
         }
-        Cmd::Sound { assignments, json, design } => {
+        Cmd::Sound { assignments, json, design, made, make } => {
+            if let Some(words) = made {
+                let bank = shotpilot::forge::bank();
+                let found = bank.search(&words, usize::MAX);
+                if json {
+                    let rows: Vec<Value> = found.iter().map(|m| json!({"id": format!("{}{}", shotpilot::forge::PREFIX, m.id),
+                        "dur_s": m.dur_s, "kinds": m.kinds, "dur": m.dur_knob, "pitch": m.pitch.is_some(), "note": m.note})).collect();
+                    println!("{}", serde_json::to_string_pretty(&rows)?);
+                } else {
+                    println!("{} of {} sounds shotpilot can make ({})", found.len(), bank.sounds.len(), bank.version);
+                    for m in found {
+                        println!("  {:<28} {:>5.1}s  {:<22} {}", m.id, m.dur_s, m.kinds.join(","), m.note);
+                    }
+                }
+                return Ok(0);
+            }
             let mut ws = ws(file)?;
+            if let Some(r) = make {
+                let bank = shotpilot::forge::bank();
+                let r = if r.starts_with(shotpilot::forge::PREFIX) { r } else { format!("{}{r}", shotpilot::forge::PREFIX) };
+                let p = bank.make(&r, &ws.root)?;
+                for n in &p.notes {
+                    println!("note: {n}");
+                }
+                println!("{}", p.file);
+                println!("its moment is {:.2}s into the file: to land it at the start of s03, `shotpilot set s03 'sfx=[{{file: {}, at: {}}}]'`",
+                         p.moment_s, p.file, fmt_g(shotpilot::geometry::round_to(-p.moment_s.min(sound::LEAD_MAX), 2)));
+                return Ok(0);
+            }
             if design {
                 let lib = shotpilot::library::Library::open(shotpilot::library::default_root().as_deref())?;
                 let claude = connect::make_claude(&Settings::load(Settings::default_path().as_deref()))?;

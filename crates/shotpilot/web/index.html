@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/i18n.js"></script>
+<script>
+// The theme: light, dark or the system's, a per-viewer choice kept in this browser (home.html carries the same lines).
+// It runs before the style so the page never paints in the other theme; the CSS reads only data-theme.
+(() => {
+  const KEY = "shotpilot.theme", mq = matchMedia("(prefers-color-scheme: dark)");
+  const get = () => { try { const v = localStorage.getItem(KEY); return v === "light" || v === "dark" ? v : "system"; } catch { return "system"; } };
+  const apply = () => { const p = get(); document.documentElement.dataset.theme = p === "dark" || (p === "system" && mq.matches) ? "dark" : "light"; };
+  apply();
+  mq.addEventListener("change", apply);
+  addEventListener("storage", (e) => { if (e.key === KEY) apply(); });
+  window.SP_THEME = { get, set: (v) => { try { localStorage.setItem(KEY, v); } catch { /* private window: this page only */ } apply(); } };
+})();
+</script>
 <title>shotpilot</title>
 <style>
 :root {
@@ -16,15 +29,14 @@
   --sel: var(--ink); --primary: var(--ink); --err-fg: var(--err); --ok: #2e7d32; --warn: #b26a00;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
-    --scroll: #34393c; --scroll-hover: #4b5155;
-    --soft: #202325; --stage: #050505; --bubble: #ecefef; --bubble-ink: #111312; --shadow: none;
-    --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
-  }
+:root[data-theme="dark"] {
+  --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
+  --scroll: #34393c; --scroll-hover: #4b5155;
+  --soft: #202325; --stage: #050505; --bubble: #ecefef; --bubble-ink: #111312; --shadow: none;
+  --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
 }
-:root { color-scheme: light dark; }
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -118,6 +130,14 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .home-btn:hover { background: var(--soft); }
 .proj .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+/* the theme switch at the end of the project row: a per-viewer choice, it writes nothing to the project */
+.theme-wrap { position: relative; flex: none; margin-left: auto; }
+.theme-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; min-width: 190px; display: grid; gap: 2px; padding: 5px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 34px rgb(16 24 40 / .18); }
+.theme-menu button { display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 7px 10px; border-radius: 8px; color: var(--ink);
+  text-align: left; font-size: 12.5px; }
+.theme-menu button:hover { background: var(--soft); }
+.theme-menu .ck { width: 12px; color: var(--muted); font-weight: 700; }
 #log { overflow-y: auto; padding: 4px 8px 16px; display: flex; flex-direction: column; gap: 18px; min-height: 0; }
 .empty-chat { color: var(--muted); padding: 24px 6px; }
 .empty-chat b { color: var(--ink); display: block; font-size: 15px; margin-bottom: 6px; }
@@ -1147,10 +1167,8 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .sp-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
 .sp-box audio { width: 100%; height: 34px; }
 /* Chromium keeps a white panel behind its audio controls even under a dark color-scheme; paint it ourselves */
-@media (prefers-color-scheme: dark) {
-  .sp-box audio::-webkit-media-controls-enclosure, .sp-box audio::-webkit-media-controls-panel { background: var(--soft); border-radius: 999px; }
-  .sp-box audio::-webkit-media-controls-current-time-display, .sp-box audio::-webkit-media-controls-time-remaining-display { color: var(--ink); }
-}
+:root[data-theme="dark"] .sp-box audio::-webkit-media-controls-enclosure, :root[data-theme="dark"] .sp-box audio::-webkit-media-controls-panel { background: var(--soft); border-radius: 999px; }
+:root[data-theme="dark"] .sp-box audio::-webkit-media-controls-current-time-display, :root[data-theme="dark"] .sp-box audio::-webkit-media-controls-time-remaining-display { color: var(--ink); }
 .sp-hint { color: var(--muted); font-size: 12px; }
 .sp-hint.warn { color: var(--stale); margin-top: 6px; }
 .fields { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 12px; }
@@ -1401,6 +1419,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div class="proj">
       <a class="home-btn" href="/home" title="ホーム（ほかのプロジェクト・新しく作る）"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></a>
       <div style="min-width:0"><div class="name" id="title">shotpilot</div><div class="meta" id="subtitle"></div></div>
+      <span class="theme-wrap"><button class="icon" id="theme-btn" title="見た目（ライト・ダーク・システムに合わせる）"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button><div class="theme-menu" id="theme-menu" hidden></div></span>
     </div>
     <div id="log"></div>
     <div class="composer">
@@ -6997,22 +7016,24 @@ function drawLibrary() {
   }
   const s = shot();
   drawLibTags();
-  $("lib-target").textContent = `使うとプロジェクトの audio/lib/ にコピーされます。SE の追加先: ${s ? s.id : "（カットを選んでください）"}`;
+  $("lib-target").textContent = ui.lib?.made
+    ? `使うとプロジェクトの audio/lib/ にコピーされます。「コードで作る」音は audio/made/ に書き出します。SE の追加先: ${s ? s.id : "（カットを選んでください）"}`
+    : `使うとプロジェクトの audio/lib/ にコピーされます。SE の追加先: ${s ? s.id : "（カットを選んでください）"}`;
 }
 
 function drawLibList() {
   const L = ui.lib, list = $("lib-list"); if (!list) return;
   if (L?.error) { list.innerHTML = `<div class="err-box">${esc(L.error)}</div>`; return; }
-  if (!L.available || !L.total) {
+  if ((!L.available || !L.total) && !L.made) {
     $("lib-count").textContent = "";
     list.innerHTML = `<div class="sp-hint" style="padding:0 6px">ライブラリがありません。<b>Documents/ShotpilotLibrary/sounds/library.json</b> を置くと、ここから BGM と SE を選べます。</div>`;
     return;
   }
-  $("lib-count").textContent = `${L.total} 本（BGM 向き ${L.bgm}）`;
+  $("lib-count").textContent = [L.total ? `${L.total} 本（BGM 向き ${L.bgm}）` : "", L.made ? `コードで作れる SE ${L.made} 本` : ""].filter(Boolean).join(" · ");
   if (!L.items.length) { list.innerHTML = `<div class="sp-hint" style="padding:0 6px">見つかりません。</div>`; return; }
   list.innerHTML = L.items.map((it) => {
     const dur = it.duration_s == null ? "" : `${it.duration_s < 10 ? it.duration_s.toFixed(1) : Math.round(it.duration_s)}s`;
-    const meta = [it.bgm ? "<b>BGM</b>" : "", esc(dur), it.bpm ? `${esc(it.bpm)} BPM` : "", esc(it.tags.slice(0, 4).join(", ")), esc(it.pack || ""), it.imported ? "取り込み済み" : "", it.others ? `<b class="worn">ほかのティザー ${it.others} 本で使用中</b>` : ""]
+    const meta = [it.bgm ? "<b>BGM</b>" : "", it.made ? `<b title="このプロジェクトのためにコードで合成します（ほかのティザーとは別の音になります）">コードで作る</b>` : "", esc(dur), it.bpm ? `${esc(it.bpm)} BPM` : "", esc(it.tags.slice(0, 4).join(", ")), esc(it.pack || ""), it.imported ? (it.made ? "作成済み" : "取り込み済み") : "", it.others ? `<b class="worn">ほかのティザー ${it.others} 本で使用中</b>` : ""]
       .filter(Boolean).join(" · ");
     return `<div class="lib-row"><button class="play${libPlaying === it.url ? " on" : ""}" data-lplay="${esc(it.url)}" title="試聴">${libPlaying === it.url ? "■" : "▶"}</button>
       <div style="min-width:0"><div class="nm" title="${esc(it.name)}">${esc(it.name)}</div><div class="meta">${meta}</div></div>
@@ -7024,8 +7045,8 @@ async function useLibrary(id, as) {
   if (ui.busy) return;
   const target = shot();
   if (as === "sfx" && !target) { toast("SE を足すカットを選んでください"); return; }
-  let file;
-  try { file = (await api("POST", "/api/library/import", { id })).file; } catch (e) { toast(e.message, true); return; }
+  let file, moment = 0;
+  try { ({ file, moment = 0 } = await api("POST", "/api/library/import", { id })); } catch (e) { toast(e.message, true); return; }
   const it = ui.lib?.items?.find((x) => x.id === id); if (it) it.imported = true;
   drawLibList();
   if (as === "bgm") {
@@ -7033,7 +7054,8 @@ async function useLibrary(id, as) {
     a.bgm = { ...(a.bgm || { gain: -8 }), file };
     postSound({ audio: a, note: `BGM ${file}` }, () => (ui.snd = { kind: "bgm" }));
   } else {
-    const list = sfxList(target.id); list.push({ file, at: 0 });
+    // a sound made in code lands its moment (the hit, the top of a riser) on the cut's head
+    const list = sfxList(target.id); list.push({ file, at: moment ? -Math.round(Math.min(moment, 3) * 100) / 100 : 0 });
     postSound({ sfx: { [target.id]: list }, note: `SE を足す @ ${target.id}` }, () => (ui.snd = { kind: "sfx", shot: target.id, index: list.length - 1 }));
   }
 }
@@ -8378,6 +8400,19 @@ async function saveConn() {
   } catch (e) { $("conn-st").textContent = e.message; }
 }
 $("model-btn").addEventListener("click", () => ($("conn").hidden ? openConn() : ($("conn").hidden = true)));
+
+// the theme menu: the head script keeps the choice and applies it
+const THEMES = [["system", "システムに合わせる"], ["light", "ライト"], ["dark", "ダーク"]];
+$("theme-btn").addEventListener("click", () => {
+  const m = $("theme-menu"), cur = window.SP_THEME?.get() || "system";
+  if (m.hidden) m.innerHTML = THEMES.map(([k, label]) => `<button type="button" data-theme-pick="${k}"><span class="ck">${k === cur ? "✓" : ""}</span>${label}</button>`).join("");
+  m.hidden = !m.hidden;
+});
+$("theme-menu").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-theme-pick]");
+  if (b) { window.SP_THEME?.set(b.dataset.themePick); $("theme-menu").hidden = true; }
+});
+document.addEventListener("click", (e) => { if (!e.target.closest(".theme-wrap")) $("theme-menu").hidden = true; });
 $("ai-open").addEventListener("click", openConn);
 $("conn-close").addEventListener("click", () => ($("conn").hidden = true));
 $("conn-save").addEventListener("click", saveConn);

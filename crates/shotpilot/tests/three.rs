@@ -402,4 +402,26 @@ fn the_home_makes_a_three_project_with_the_village_to_film() {
     let ws = Workspace::open(&shots).unwrap();
     assert_eq!((ws.defn.project.engine.as_str(), ws.defn.shots.len()), ("three", 0));
     assert!(ws.root.join("game").join("objects").join("market_stall.json").is_file());
+
+    // a game folder picked on the home: the project goes inside it, films it, and writes no game
+    // of its own (as a UE project's folder sits next to its .uproject)
+    let game = dir.path().join("KettleHill-three");
+    assert!(threegame::write(&game).unwrap());
+    assert_eq!(shotpilot::projects::find_game(&game.join("scene.json")), Some(game.clone()));
+    assert_eq!(shotpilot::projects::game_name(&game), "KettleHill");
+    let picked = shotpilot::projects::NewProject { game: Some(game.clone()), ..new("村のティザー", false) };
+    let shots = shotpilot::projects::create(&picked).unwrap();
+    assert_eq!(shots.parent().unwrap().parent().unwrap(), game.as_path());
+    let mut ws = Workspace::open(&shots).unwrap();
+    assert_eq!(ws.defn.project.game.as_deref(), Some(".."));
+    assert!(!ws.root.join("game").exists(), "the picked game is filmed, not a copy");
+    assert_eq!(shotpilot::projects::find_projects(&game), vec![shots.clone()]);
+    ws.scout(&[], None).unwrap();
+    ws.reload().unwrap();
+    assert_eq!(ws.defn.anchors.len(), 5, "the first scout reads the game's tagged places");
+    // a folder that is not a game is refused with the reason
+    let not_a_game = dir.path().join("not-a-game");
+    std::fs::create_dir_all(&not_a_game).unwrap();
+    let err = shotpilot::projects::create(&shotpilot::projects::NewProject { game: Some(not_a_game), ..new("x", false) }).unwrap_err();
+    assert!(err.msg.contains("scene.json"), "{}", err.msg);
 }

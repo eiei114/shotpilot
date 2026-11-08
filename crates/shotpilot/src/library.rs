@@ -10,14 +10,19 @@
 //! A project never points into the library. Using a sound copies it into the project's
 //! `audio/lib/`, so shots.yaml stays the single source of truth and the project still mixes
 //! on a machine without the library.
+//!
+//! Next to it sit the sounds shotpilot makes in code (`made`, D-103): an effect the library
+//! lacks is synthesized into the project's `audio/made/` instead of copied.
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde_json::{json, Value};
 
 use crate::bail;
 use crate::error::Result;
+use crate::forge::{self, Bank};
 use crate::sound::AUDIO_EXTS;
 
 /// Where imported sounds land inside a project.
@@ -68,6 +73,9 @@ pub struct Library {
     /// The `sounds/` folder. `None` when there is no library on this machine.
     pub dir: Option<PathBuf>,
     pub sounds: Vec<Sound>,
+    /// The sounds shotpilot makes in code (D-103). `Library::open` always offers them; `None`
+    /// only in a library built by hand (tests).
+    pub made: Option<Arc<Bank>>,
 }
 
 /// `$SHOTPILOT_LIBRARY`, else `~/Documents/ShotpilotLibrary`.
@@ -91,12 +99,13 @@ fn safe_rel(p: &str) -> bool {
 }
 
 impl Library {
-    /// Open the library under `root`. A missing library is empty, not an error: the app
-    /// works without one.
+    /// Open the library under `root`, with the sounds shotpilot makes in code. A missing
+    /// library is empty, not an error: the app works without one.
     pub fn open(root: Option<&Path>) -> Result<Library> {
-        let Some(dir) = root.map(|r| r.join("sounds")) else { return Ok(Library::default()) };
+        let made = Some(forge::bank());
+        let Some(dir) = root.map(|r| r.join("sounds")) else { return Ok(Library { made, ..Library::default() }) };
         let index = dir.join("library.json");
-        let Ok(text) = std::fs::read_to_string(&index) else { return Ok(Library::default()) };
+        let Ok(text) = std::fs::read_to_string(&index) else { return Ok(Library { made, ..Library::default() }) };
         let v: Value = match serde_json::from_str(&text) {
             Ok(v) => v,
             Err(e) => bail!("{}: not valid JSON ({e})", index.display()),
@@ -124,7 +133,12 @@ impl Library {
                 path,
             });
         }
-        Ok(Library { dir: Some(dir), sounds })
+        Ok(Library { dir: Some(dir), sounds, made })
+    }
+
+    /// Whether there is anything to pick a sound from: the library, or the sounds made in code.
+    pub fn has_any(&self) -> bool {
+        !self.sounds.is_empty() || self.made.is_some()
     }
 
     pub fn get(&self, id: &str) -> Option<&Sound> {
@@ -165,8 +179,13 @@ impl Library {
 
     /// Copy a sound into `<project>/audio/lib/` and return its project path
     /// (`audio/lib/<file>`) for shots.yaml. Importing twice reuses the copy; a different
-    /// file with the same name gets the id's tail appended.
+    /// file with the same name gets the id's tail appended. A sound made in code
+    /// (`make:<id>`) is rendered into `audio/made/` instead.
     pub fn import(&self, id: &str, project_root: &Path) -> Result<String> {
+        if id.starts_with(forge::PREFIX) {
+            let Some(bank) = &self.made else { bail!("'{id}' is made in code, and no sounds made in code are offered here") };
+            return Ok(bank.make(id, project_root)?.file);
+        }
         let Some(s) = self.get(id) else { bail!("no sound '{id}' in the library") };
         let Some(src) = self.file(s) else { bail!("'{}' is in the catalogue but its file is missing", s.name) };
         let [file, renamed] = copy_names(s);

@@ -17,11 +17,17 @@ use rfd::{MessageDialog, MessageLevel};
 use shotpilot::server::{Pick, Server};
 use tauri::{WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
+/// The pages keep the viewer's choices (theme, simple or pro, the road's stops) in the
+/// browser's storage, which belongs to an origin, port included. A steady port keeps them
+/// across launches; when it is taken (a second window), any free port still works.
+const HOME_PORT: u16 = 47215;
+
 fn main() {
     // the look's typefaces are fetched from Google Fonts the first time a cut needs them
     shotpilot::fonts::allow_fetch(true);
     let window: Arc<OnceLock<WebviewWindow>> = Arc::new(OnceLock::new());
-    let server = match Server::bind_home("127.0.0.1", 0) {
+    let bound = Server::bind_home("127.0.0.1", HOME_PORT).or_else(|_| Server::bind_home("127.0.0.1", 0));
+    let server = match bound {
         Ok(s) => s.with_picker(picker(Arc::clone(&window))),
         Err(e) => return fail(&e.msg),
     };

@@ -1,7 +1,8 @@
 //! Sound design for a planned cut: Claude picks music cues and hits from the sound library
 //! against the cut's pieces (shots, script cards, captions), code imports the files and
-//! writes them to shots.yaml (`audio.music`, shot `sfx`, script line `sfx`). One pass, no
-//! self-review (D-22); the sound check (soundcheck.rs) measures the mix afterwards.
+//! writes them to shots.yaml (`audio.music`, shot `sfx`, script line `sfx`). An effect the
+//! library lacks may be made in code (forge.rs, D-103). One pass, no self-review
+//! (D-22); the sound check (soundcheck.rs) measures the mix afterwards.
 
 use std::collections::HashMap;
 
@@ -10,6 +11,7 @@ use serde_json::{json, Map, Value};
 use crate::ai::{self, Claude};
 use crate::bail;
 use crate::error::Result;
+use crate::forge;
 use crate::library::Library;
 use crate::model::{fmt_g, num, str_of};
 use crate::workspace::Workspace;
@@ -38,9 +40,9 @@ pub fn schema() -> Value {
             "hits": {"type": "array", "items": {
                 "type": "object",
                 "properties": {
-                    "lib": {"type": "string"},
+                    "lib": {"type": "string", "description": "library sound id, or make:<id> for a sound made in code"},
                     "on": {"type": "string", "description": "id of the shot or script line it belongs to"},
-                    "at": {"type": "number", "description": "seconds from the start of `on` (negative leads into it)"},
+                    "at": {"type": "number", "description": "seconds from the start of `on` (negative leads into it); for a made sound, where its moment lands"},
                     "gain": {"type": "number"},
                     "label": {"type": "string"},
                 },
@@ -82,7 +84,7 @@ small sound on every cut (a shutter, a click).
 - A riser builds into the reveal; a stinger stops it dead before a black gap; the title arrives on a deep boom; the \
 last message gets one small real sound (a knock, a phone buzz).
 - Levels: music -9 to -14 dB, ambience -6 to -12 dB, hits -1 to -8 dB, small repeated sounds -4 to -8 dB.
-- Use only sounds from the library list, by id. Fewer, deliberate sounds beat many.";
+- Use only sounds from the lists below, by id. Fewer, deliberate sounds beat many.";
 
 const SYSTEM: &str = "You are the sound designer on a game teaser. You place music and sound effects on a finished \
                       edit, by section and on the text cards, so the cut is felt with the sound on and read with it off.";
@@ -101,6 +103,8 @@ pub struct Design {
     pub notes: Vec<String>,
     /// What the look asked for that the library lacks (search words), for the human to fetch.
     pub missing: Vec<String>,
+    /// There was no library to pick music and air from: the project's own stay as they are.
+    pub keep_music: bool,
 }
 
 /// The places the cut films, each with the shots that film it (where its air will be laid).
@@ -141,15 +145,21 @@ fn cut_text(ws: &Workspace) -> Result<String> {
                rows.into_iter().map(|(_, r)| r).collect::<Vec<_>>().join("\n")))
 }
 
-/// Ask Claude for the sound of the cut, and import what it chose.
+/// Ask Claude for the sound of the cut, and import (or make) what it chose.
 pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Design> {
-    if lib.sounds.is_empty() {
-        bail!("the sound library is empty or missing (see D-26)");
+    if !lib.has_any() {
+        bail!("the sound library is empty or missing (see D-26), and no sounds made in code are offered (D-103)");
     }
     // the same brief, direction and look the cut was written from (D-48), with the look's sound
-    let (list, hidden) = lib.prompt_list_for(LIST_MAX, Some(&ws.root));
+    let (list, hidden) = if lib.sounds.is_empty() {
+        ("(none: the music and the air already in the project stay; leave `music` and `ambience` empty, and name what           the cut wants in `missing`)".to_string(), 0)
+    } else {
+        lib.prompt_list_for(LIST_MAX, Some(&ws.root))
+    };
+    let made = lib.made.as_deref();
+    let made_list = made.map(|b| format!("\n\n{}\n{}", forge::guide(), b.prompt_list())).unwrap_or_default();
     let user = format!(
-        "{}\n\n{}\n\n{}\n\n{CRAFT}\n\nLibrary sounds (id, kind, length, tags; bgm = a loop long enough for music):\n{}\n\n\
+        "{}\n\n{}\n\n{}\n\n{CRAFT}\n\nLibrary sounds (id, kind, length, tags; bgm = a loop long enough for music):\n{}{made_list}\n\n\
          Write `rationale` in the pitch's language: {}",
         crate::craft::edit_spec(&ws.defn, crate::craft::Reach::Sound),
         cut_text(ws)?,
@@ -194,12 +204,23 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
             _ => id,
         }
     };
+    // made sounds are effects: music and the air of a place come from the library
+    let only_effects = |id: &str, notes: &mut Vec<String>| -> bool {
+        let made = id.starts_with(forge::PREFIX);
+        if made {
+            notes.push(format!("left out `{id}`: sounds made in code are effects, not music or the air of a place"));
+        }
+        made
+    };
     let mut music = Vec::new();
     for c in out["music"].as_array().into_iter().flatten() {
         let from = piece(str_of(&c["from"]));
         let until = piece(str_of(&c["until"]));
         if from != "start" && !spans.contains_key(&from) {
             notes.push(format!("left out a music cue: `{from}` is not in the cut"));
+            continue;
+        }
+        if only_effects(&str_of(&c["lib"]), &mut notes) {
             continue;
         }
         let Some(file) = take(&str_of(&c["lib"]), &mut notes) else { continue };
@@ -221,6 +242,8 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
     }
     let mut shot_sfx: HashMap<String, Vec<Value>> = HashMap::new();
     let mut line_sfx: HashMap<String, Vec<Value>> = HashMap::new();
+    // the hits that land on a piece of the cut, with that piece
+    let mut hits: Vec<(&Value, String, bool)> = Vec::new();
     for h in out["hits"].as_array().into_iter().flatten() {
         let on = piece(str_of(&h["on"]));
         let is_shot = shot_ids.contains(&on);
@@ -229,8 +252,42 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
             notes.push(format!("left out a hit: `{on}` is not a shot or a script line"));
             continue;
         }
-        let Some(file) = take(&str_of(&h["lib"]), &mut notes) else { continue };
-        let at = num(&h["at"]).unwrap_or(0.0).max(-crate::sound::LEAD_MAX);
+        hits.push((h, on, is_shot));
+    }
+    // the effects made in code, a few at a time
+    let refs: Vec<String> = hits.iter().map(|(h, _, _)| str_of(&h["lib"])).filter(|r| r.starts_with(forge::PREFIX)).collect();
+    let made_files = match made {
+        Some(b) if !refs.is_empty() => b.make_all(&refs, &ws.root),
+        _ => HashMap::new(),
+    };
+    for (h, on, is_shot) in hits {
+        let wanted = str_of(&h["lib"]);
+        // a made sound is placed by its moment: its file starts that much earlier
+        let (file, moment) = if wanted.starts_with(forge::PREFIX) {
+            match made_files.get(&wanted) {
+                Some(Ok(p)) => (p.file.clone(), p.moment_s),
+                Some(Err(e)) => {
+                    notes.push(format!("left out made sound `{wanted}`: {e}"));
+                    continue;
+                }
+                None => {
+                    notes.push(format!("left out `{wanted}`: no sounds made in code are offered here"));
+                    continue;
+                }
+            }
+        } else {
+            let Some(file) = take(&wanted, &mut notes) else { continue };
+            (file, 0.0)
+        };
+        let start = num(&h["at"]).unwrap_or(0.0) - moment;
+        let at = start.max(-crate::sound::LEAD_MAX);
+        if start < -crate::sound::LEAD_MAX - 0.01 {
+            notes.push(format!(
+                "`{wanted}` starts {}s before `{on}` (the most a sound may lead), so its moment lands {:.2}s late",
+                fmt_g(crate::sound::LEAD_MAX),
+                at - start
+            ));
+        }
         let at = if is_shot { at.min(spans[&on].1 - spans[&on].0 - 0.05) } else { at };
         let mut m = Map::new();
         m.insert("file".into(), json!(file));
@@ -275,6 +332,18 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
     if !shared.is_empty() {
         notes.push(format!("ほかのティザーと同じ音: {}", shared.join(" / ")));
     }
+    // what was made in code, and the knobs it could not take
+    let made_ok: Vec<&forge::Placed> = made_files.values().filter_map(|p| p.as_ref().ok()).collect();
+    let mut made_ids: Vec<&str> = made_ok.iter().map(|p| p.id.as_str()).collect();
+    made_ids.sort();
+    made_ids.dedup();
+    if !made_ids.is_empty() {
+        notes.push(format!("コードで作った音: {}", made_ids.join(" / ")));
+    }
+    let mut made_notes: Vec<String> = made_ok.iter().flat_map(|p| p.notes.clone()).collect();
+    made_notes.sort();
+    made_notes.dedup();
+    notes.extend(made_notes);
     let missing: Vec<String> = out["missing"].as_array().into_iter().flatten().filter_map(Value::as_str)
         .map(str::trim).filter(|m| !m.is_empty()).map(str::to_string).collect();
     if !missing.is_empty() {
@@ -288,6 +357,7 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
         line_sfx: line_sfx.into_iter().collect(),
         notes,
         missing,
+        keep_music: lib.sounds.is_empty(),
     })
 }
 
@@ -295,8 +365,10 @@ pub fn design(ws: &Workspace, lib: &Library, claude: &dyn Claude) -> Result<Desi
 /// Shots and lines the design does not mention lose their effects (it is a fresh design).
 pub fn apply(ws: &mut Workspace, d: &Design) -> Result<()> {
     let mut audio = ws.defn.audio.clone();
-    audio.insert("music".into(), if d.music.is_empty() { Value::Null } else { Value::Array(d.music.clone()) });
-    audio.insert("ambience".into(), if d.ambience.is_empty() { Value::Null } else { Value::Object(d.ambience.clone()) });
+    if !d.keep_music {
+        audio.insert("music".into(), if d.music.is_empty() { Value::Null } else { Value::Array(d.music.clone()) });
+        audio.insert("ambience".into(), if d.ambience.is_empty() { Value::Null } else { Value::Object(d.ambience.clone()) });
+    }
     if !audio.contains_key("loudness") {
         audio.insert("loudness".into(), json!(crate::sound::DEFAULT_LOUDNESS));
     }

@@ -2,11 +2,16 @@
 
 Shotpilot itself is MIT-licensed (`LICENSE`). It ports, bundles or adapts the following works.
 
-## earshot — MIT
+## Sound analysis and synthesis code — MIT
 
-`crates/shotpilot/src/soundcheck.rs` is a Rust port of the model-free half of earshot's
-`critique.py`, `profile.py` and `features.py` (<https://github.com/Leonxlnx/earshot>), including
-its bundled reference profile, weights, tolerances and verdict bands.
+`crates/shotpilot/src/soundcheck.rs` is a Rust port of the model-free half of an MIT-licensed
+sound analysis library (Copyright (c) 2026 Leon Lin), including its reference profile of launch
+films, weights, tolerances and verdict bands.
+
+`crates/shotpilot/src/forge/` adapts the synthesis building blocks of the same work (damped modes,
+a time-varying state-variable filter, PolyBLEP oscillators, the Shepard glissando, a noise-tail
+room), its sub-drop, reverse-cymbal and struck-body models with their preset parameters, and the
+layer designs of its impact, riser and whoosh recipes, rebuilt in Rust.
 
 ```
 MIT License

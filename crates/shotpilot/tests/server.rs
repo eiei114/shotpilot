@@ -1104,6 +1104,20 @@ fn every_page_draws_its_own_scrollbars() {
 }
 
 #[test]
+fn every_page_follows_the_chosen_theme() {
+    // the theme (light, dark or the system's) is the viewer's choice: a script in the head applies it as
+    // data-theme before the page paints, and the dark colours key on that alone. A dark rule under
+    // @media (prefers-color-scheme) would follow the OS and ignore the choice
+    for (name, html) in [("index", shotpilot::server::INDEX_HTML), ("home", shotpilot::server::HOME_HTML)] {
+        let head = &html[..html.find("<style>").unwrap_or(0)];
+        assert!(head.contains(r#"KEY = "shotpilot.theme""#) && head.contains("window.SP_THEME"), "{name} lacks the theme script before its style");
+        assert!(html.contains(r#":root[data-theme="dark"] {"#), "{name} has no dark colours keyed on data-theme");
+        assert!(!html.contains("@media (prefers-color-scheme"), "{name} follows the OS in its CSS");
+        assert!(html.contains("data-theme-pick="), "{name} offers no way to pick the theme");
+    }
+}
+
+#[test]
 fn the_pages_switch_to_english_with_a_dictionary() {
     // the pages load the English mode; it decides from the PC's language and keeps Japanese on a Japanese PC
     let s = srv();

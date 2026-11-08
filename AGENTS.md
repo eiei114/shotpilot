@@ -47,7 +47,9 @@ shotpilot scout                   # 工程0: 各アンカーを4方向から撮�
 shotpilot assets --scan           # 工程0: mesh を寸法付きで棚卸し → prop add <name> <asset>
 shotpilot cut                     # 既存 take を連結する（レンダはしない。BGM・SE があれば載せる）
 shotpilot sound                   # BGM と SE をミックスし、ローンチ映像7本と比べて採点する
-shotpilot sound --design          # 音の設計をやり直す（ルックの音の性格に沿い、ほかのティザーで使用中の音は避ける。足りない音は検索語で出す）
+shotpilot sound --design          # 音の設計をやり直す（ルックの音の性格に沿い、ほかのティザーで使用中の音は避ける。ライブラリに無い効果音はコードで作り、それでも足りない曲と環境音は検索語で出す）
+shotpilot sound --made [語]        # コードで作れる効果音の一覧（D-103。衝撃・サブドロップ・ライザー・リバーススウェル・ウーッシュ・ノックなど 38 音）
+shotpilot sound --make 'riser/tension?dur=2'   # 効果音を1つコードで作り、audio/made/ に書き出す
 shotpilot promo                   # 発信計画（D-47）: 公開後の動画ごとのチェックシートと、定期発信の予定
 shotpilot promo update v1.1       # このカットを引き継いだアップデートトレーラーを隣に作る（ゲームが変わったカットだけ撮り直し）
 shotpilot promo post s03 [--clip] # take をそのまま静止画か1カットの動画で promo/posts/ に書き出す
@@ -61,7 +63,7 @@ shotpilot claude install          # ゲームのフォルダに Claude Code の 
 shotpilot hook session-start      # Claude Code が呼ぶフック（post-tool も）。何も書き換えず、常に終了コード 0
 ```
 
-`cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は、ログイン済みの Claude Code（`claude` コマンド）か API キー（アプリの設定、または `ANTHROPIC_API_KEY`）で Claude を呼ぶ（モデルは `SHOTPILOT_MODEL` で上書きできる。effort は `low`〜`max` をアプリの接続設定か `SHOTPILOT_EFFORT` で変えられ、既定は `medium`。Claude Code 経由でも API 経由でも同じ値が効く）。OpenAI 互換のサーバー（vLLM・Ollama・llama.cpp・OpenRouter など）は `SHOTPILOT_PROVIDER=openai` と `SHOTPILOT_OPENAI_BASE_URL`（キーは `SHOTPILOT_OPENAI_KEY`）で使える。`SHOTPILOT_CANDIDATES=3` で plan を3案書かせ、コードの採点で1つを選ぶ（D-68）。測り方は `eval/README.md`。
+`cut` の動画書き出しは ffmpeg を使う（無ければ storyboard と spec だけを出す）。`plan` と `revise` は、ログイン済みの Claude Code（`claude` コマンド）か API キー（アプリの設定、または `ANTHROPIC_API_KEY`）で Claude を呼ぶ（モデルは `SHOTPILOT_MODEL` で上書きできる。effort は `low`〜`max` をアプリの接続設定か `SHOTPILOT_EFFORT` で変えられ、既定は `medium`。Claude Code 経由でも API 経由でも同じ値が効く）。OpenAI 互換のサーバー（vLLM・Ollama・llama.cpp・OpenRouter など）は `SHOTPILOT_PROVIDER=openai` と `SHOTPILOT_OPENAI_BASE_URL`（キーは `SHOTPILOT_OPENAI_KEY`）で使える。`SHOTPILOT_CANDIDATES=3` で plan を3案書かせ、コードの採点で1つを選ぶ（D-68）。測り方は `eval/README.md`。ライブラリに無い効果音は、shotpilot がコードで合成して作る（D-103。外部の道具・モデル・ネットは使わない）。
 
 ## 構成
 
@@ -102,6 +104,8 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/sound.rs        BGM・SE・環境音（`audio:`、各ショットの `sfx:`、場所ごとの `audio.ambience`）の検証・配置・ミックス。cut/sound/ にキャッシュする
   src/soundcheck.rs   ミックスの検証。プロのローンチ映像7本と比べる（モデルを使わない）
   src/library.rs      音源ライブラリ（プロジェクト外、D-26）の検索と、プロジェクトの audio/lib/ への取り込み
+  src/forge.rs        コードで作る効果音（D-103）。作れる音の一覧と、選ばれた音をプロジェクトの audio/made/ に書き出すこと（シードはプロジェクトから、山の位置で置く）
+  src/forge/          その部品。dsp（モード共振・ノイズ・可変フィルタ・発振器・FFT の畳み込み・残響）と recipes（38 音の合成とプリセット）
   src/ai.rs           Claude によるショットリスト作成（plan）と部分修正（revise）。Messages API を直接呼ぶ
   src/connect.rs      Claude への接続。既定はログイン済みの Claude Code（`claude -p`）、ほかに API キーと OpenAI 互換のサーバー
   src/eval.rs         評価（D-68）。plan の出力を実測の型（refs::beats と tokens）と比べてコードで採点し、題材 × モデル × 回数で回して応答を残す
@@ -111,7 +115,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   src/yamlio.rs       コメントを保持する YAML 編集（行単位の差し替え + 再パースで検証）
   src/templates.rs    shots.yaml の雛形
   src/main.rs         clap の CLI
-  src/projects.rs     ホーム画面の裏側（D-30）。最近のプロジェクトの一覧、プロジェクトのカード、新規作成（mock / UE5）
+  src/projects.rs     ホーム画面の裏側（D-30）。最近のプロジェクトの一覧、プロジェクトのカード、新規作成（mock / UE5 / three。three は撮るゲームのフォルダを選べ、選ばなければ同梱の村を入れる、D-104）
   src/promo.rs        発信計画（D-47）。公開後の動画（発表・デモ・ローンチ・アップデート・セール）のチェックシート、隣への派生プロジェクト、定期発信の書き出し
   src/server.rs       アプリの裏側。Workspace の上に載る薄い HTTP + SSE 層（loopback 限定）
   web/index.html      アプリの studio 画面（ビルドなし、依存なし。バイナリに埋め込む）
@@ -150,6 +154,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 - **構成の段には、カット表と切り替えられるキャンバスを置く（D-63）。** カットとカードを流れの順に並べ、上にロケハンの場所、下に雰囲気のノードを置いて線でつなぐ。つなぐのは「積む」と同じで、雰囲気はそのカットの「このカット」、場所は「カメラだけ」のスタックにチップとして積まれ、送るまで何も変わらない。1つの雰囲気をつないだ複数カットへまとめて送るときは `/api/revise` の `shots`（カットの一覧）で送り、範囲はコードで強制する（つないでいないカットは変わらない）。盤面の配置・雰囲気のノード・線・表示位置は閲覧者のもの（ブラウザの保存領域）で、shots.yaml にも state.json にも入れない。 守るテスト: `a_mood_wired_to_some_cuts_changes_only_those_cuts`、`chat_scope_is_enforced_over_http`。 人間が守る: 盤面でつなぐ・積む操作が、送るまで何も変えないこと（画面の JS）。
 - 仕様は、ショットを書かせる全経路に同じものを届ける（D-48）。revise は `craft::edit_spec` を通し、画が変わりうる指示（自由な指示・カメラ・光）には plan と同じ部品（ブリーフ・方向・ルック・スキル・規則・基準値・文字の書き方・ステージ・距離表と、そのカットのロケハン写真）、文字の指示にはルックと基準値と文字の書き方とタイトル用の書体の一覧とステージ（カメラ効果とタイトルの書体は場所から決まるため）、音の指示と一気に作るときの音の設計（`sounddesign.rs`）にはブリーフと方向とルックの音の性格を渡す。文字の書き方は `references/craft/TEASER-TYPE.md` の 10 節だけを `refs::type_text` で、動きの書き方は `references/motion/MOTION.md` の 6 節と、つなぎの書き方は `references/motion/TRANSITIONS.md` の 8 節だけを `refs::motion_text` で、参照のティザーの測った回数と置き場所は `reference::planner_text` で渡し、書体・大きさ・動きの秒数はコードが決める（D-52、D-53）。どの経路に何が届くかは `every_path_that_writes_shots_gets_the_frozen_spec` が固定している。経路を足したら、この表にも足す。Claude を呼ぶ関数は `tests/ai.rs` の `CLAUDE_CALLS` に全部載せ、表の行の名前か、仕様を渡さない理由を書く（`every_call_to_claude_is_in_the_spec_table_or_says_why_not` がソースから拾って照らし合わせる）。 守るテスト: `every_path_that_writes_shots_gets_the_frozen_spec`、`every_call_to_claude_is_in_the_spec_table_or_says_why_not`。
 - **音は作品ごとに変える（D-64）。** 音の設計（`sounddesign.rs`）の決まりごとは汎用のものだけにし、ジャンルの語を書かない（ジャンルとルックの音は DESIGN.md 7 節とブリーフから渡す。`the_designers_own_rules_belong_to_no_genre` が守る）。ライブラリは取り込んだプロジェクトを `sounds/usage.json` に覚え、ほかのゲームのティザーが今も使う音に印を付けて一覧の後ろに回す（自分と、発信計画で同じ計画につながる同じゲームの動画は数えない）。Claude に渡す一覧は `Library::prompt_list_for` の1か所で作り、切るときはパックを順に回して、切った件数を注記に出す。ほかのティザーと重なった音は注記とアプリの音源ライブラリで人間に見せる。 守るテスト: `a_sound_note_marks_library_sounds_another_teaser_already_uses`、`the_designers_own_rules_belong_to_no_genre`、`the_next_teaser_is_told_which_sounds_another_game_took`、`the_library_remembers_which_teasers_use_a_sound_and_lists_the_worn_ones_last`。
+- **ライブラリに無い効果音はコードで合成し、作るのはコードにする（D-103）。** Claude が書けるのは `make:<id>`（`forge::bank()` の一覧にある id）と、その音が持つつまみ（`dur`・`pitch`）だけで、知らない id は外し、持たないつまみと範囲の外の値はコードが外して注記に出す。作るのは効果音だけで、曲と環境音はライブラリから取る（ライブラリが無いときは、プロジェクトにある曲と環境音をそのまま残す）。合成は Rust の中（`forge/`）だけで行い、外部の道具・モデル・ネット・録音を使わない。書き出した take はプロジェクトの `audio/made/` に置いて shots.yaml には相対パスで書く。合成は決定的で、同じ定義からは同じファイルを使い回し、シードはプロジェクトから決める（ほかのゲームのティザーと同じ take にしない）。作った音の `at` はその音の山（衝撃の立ち上がり、ライザー・スウェル・ウーッシュの頂点）が落ちる位置で、コードがファイルの頭をずらす（`sound::LEAD_MAX` まで）。音なので fingerprint に入れず、撮り直しは起きない。 守るテスト: `a_hit_the_library_lacks_is_made_in_code_and_lands_on_its_moment`、`a_made_sound_is_made_once_per_project_and_each_game_gets_its_own_take`、`a_sound_note_may_make_a_sound_in_code`、`every_sound_in_the_catalogue_renders_clean_at_its_length_and_its_knobs`、`editing_sound_never_rerenders`。
 - 文字の読み時間は `script::reading_secs` の1か所に置く（D-49）。plan と文字の修正で書く行はコードで読める長さに延ばし、人間が書いた行は書き換えずに `text.hold` で示す。 守るテスト: `revised_card_words_are_held_for_their_reading_time`、`reading_time_is_computed_in_one_place`、`text_stays_long_enough_to_read`。
 - 撮影後の確認は、produce の初回のエンジンでの撮影の直後に1回だけ（D-50。D-22 の唯一の例外）。聞くのは「被写体が写っているか、何が遮っているか」という事実だけで、点数や好みは聞かない。写っていないカットだけカメラを1回直して撮り直し、そのカットだけを見直す。2周目はしない。結果は state.json に見た take と一緒に残し、そのカットを撮り直すと消える。previz と普段の render では走らせない。 守るテスト: `after_the_first_shoot_only_a_shot_whose_subject_is_hidden_is_fixed_once`、`previz_and_clear_frames_need_no_repair`。
 - 企画（`ai::discover`、D-45）は計画ターンとして動く。質問は欠けがあるときだけ（5問まで、推奨の既定値つき）、そうでなければ方向を1文で言い切った企画を書き、承認を待たずに制作へ進む。人間の確認は previz の段（D-38）。ルックとスキルの id はコードで実在を確かめ、知らない id は捨てる。発売日・機種などの事実は作らせない。 守るテスト: `the_planning_turn_is_told_never_to_invent_facts`、`a_question_comes_back_as_a_form_and_writes_nothing`、`without_questions_it_always_plans`、`the_plan_keeps_only_known_ids_and_lands_in_the_brief`。
@@ -196,6 +201,7 @@ crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組
 
 - Rust（edition 2021）。Python は `ue/sp_entry.py` だけに留める（Unreal 同梱の Python で動かす必要があるため）。例外は `tools/ue_sample/`（入口の `build_graybox.py` と、組み立ての `graybox/` パッケージ）で、サンプルのゲーム（D-54）のマップをエディタの中で組む道具。製品には入らず、バイナリにも埋め込まない。
 - コード中のコメントと doc コメントは英語。ユーザー向けの CLI 出力は英語でもよい。サンプルの `shots.yaml` の中身は日本語でよい。
-- 依存クレートを増やさない（現状: serde_json, yaml-rust2, sha2, miniz_oxide, chrono, ureq, clap。アプリは tauri, rfd）。three の描画は同梱の Three.js（`three/three.module.min.js`）と、PC にある Edge か Chrome で行う。
+- 依存クレートを増やさない（現状: serde_json, yaml-rust2, sha2, miniz_oxide, chrono, ureq, clap。アプリは tauri, rfd）。three の描画は同梱の Three.js（`three/three.module.min.js`）と、PC にある Edge か Chrome で行う。コードで作る効果音は Rust の合成だけで作り、外部の道具を呼ばない。
 - 画面のスクロールバーと範囲スライダーは、各ページ冒頭の共通 CSS（`::-webkit-scrollbar` と `::-webkit-slider-*`、色は `--scroll` / `--scroll-hover`、スライダーのつまみの色は `--range`）で描く。OS 既定のバー（矢印・白いトラック）を出さない。`scrollbar-color` と `scrollbar-width` は使わない（Chromium ではその要素だけ OS のバーに戻る）。ページを足したら同じ CSS を入れる（`every_page_draws_its_own_scrollbars` が守る）。
+- 画面の色のテーマ（ライト・ダーク・システムに合わせる）は閲覧者の選択で、各ページの `<head>` の先頭のスクリプトが描く前に `data-theme` を付ける。暗い色は `:root[data-theme="dark"]` に書き、`@media (prefers-color-scheme)` は使わない（設定のテーマが効かなくなる）。ページを足したら同じスクリプトを入れる（`every_page_follows_the_chosen_theme` が守る）。
 - コミットは小さく分ける。push は人間の確認を取ってから行う。

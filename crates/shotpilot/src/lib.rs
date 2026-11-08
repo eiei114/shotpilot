@@ -15,6 +15,7 @@ pub mod error;
 pub mod eval;
 pub mod finish;
 pub mod fonts;
+pub mod forge;
 pub mod fx;
 pub mod fingerprint;
 pub mod geometry;

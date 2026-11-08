@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/i18n.js"></script>
+<script>
+// The theme: light, dark or the system's, a per-viewer choice kept in this browser (index.html carries the same lines).
+// It runs before the style so the page never paints in the other theme; the CSS reads only data-theme.
+(() => {
+  const KEY = "shotpilot.theme", mq = matchMedia("(prefers-color-scheme: dark)");
+  const get = () => { try { const v = localStorage.getItem(KEY); return v === "light" || v === "dark" ? v : "system"; } catch { return "system"; } };
+  const apply = () => { const p = get(); document.documentElement.dataset.theme = p === "dark" || (p === "system" && mq.matches) ? "dark" : "light"; };
+  apply();
+  mq.addEventListener("change", apply);
+  addEventListener("storage", (e) => { if (e.key === KEY) apply(); });
+  window.SP_THEME = { get, set: (v) => { try { localStorage.setItem(KEY, v); } catch { /* private window: this page only */ } apply(); } };
+})();
+</script>
 <title>Shotpilot</title>
 <style>
 :root {
@@ -16,15 +29,14 @@
   --sel: var(--ink); --primary: var(--ink); --err-fg: var(--err); --ok: #2e7d32; --warn: #b26a00;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
-    --scroll: #34393c; --scroll-hover: #4b5155;
-    --soft: #202325; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
-    --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
-  }
+:root[data-theme="dark"] {
+  --app: #0f1112; --card: #181a1b; --ink: #ecefef; --muted: #9aa1a5; --faint: #80878b; --line: #373c3f;
+  --scroll: #34393c; --scroll-hover: #4b5155;
+  --soft: #202325; --shadow: none; --pop: 0 10px 34px rgb(0 0 0 / .5);
+  --sel: #8b9397; --primary: #d3d8da; --err-fg: #f97066; --ok: #4cc254; --warn: #d99a00;
 }
-:root { color-scheme: light dark; }
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -116,7 +128,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .cell svg.i { width: 15px; height: 15px; }
 .cell .chev { width: 12px; height: 12px; opacity: .55; margin-left: auto; }
 .cell.accent .v { color: var(--accent-ink); }
-@media (prefers-color-scheme: dark) { .cell.accent .v { color: var(--accent); } }
+:root[data-theme="dark"] .cell.accent .v { color: var(--accent); }
 #model-btn .txt { font-weight: 500; color: var(--muted); }
 #model-btn:hover .txt { color: var(--ink); }
 .slate-body { display: grid; gap: 10px; padding: 16px 18px 12px; }
@@ -138,16 +150,22 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
   background: color-mix(in srgb, var(--card) 16%, transparent); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; flex: none; }
 .dot.bad { background: var(--err); } .dot.warn { background: var(--stale); }
-.tray { display: flex; align-items: center; gap: 2px 6px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; min-width: 0; }
-.tray .slot { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 5px 8px; border-radius: 7px; color: var(--muted);
-  max-width: 100%; min-width: 0; }
-.tray button.slot:hover { color: var(--ink); background: var(--card); }
-.tray .slot .v { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
-.tray .slot input { border: 0; outline: 0; background: transparent; color: var(--ink); width: 170px; padding: 0; }
-.tray .slot input::placeholder { color: var(--faint); }
-.tray select { border: 0; background: transparent; color: var(--ink); max-width: 260px; padding: 2px 0; outline: 0; }
+/* the foot's choices are controls like the flow button: a frame on the card, the value in full ink */
+.tray { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; min-width: 0; }
+.tray .slot { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); max-width: 100%; min-width: 0; }
+.tray button.slot:hover, .tray .slot:focus-within { border-color: var(--sel); }
+.tray .slot .v { color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+.tray .slot input { border: 0; outline: 0; background: transparent; color: var(--ink); font-weight: 600; width: 160px; padding: 0; }
+.tray .slot input::placeholder { color: var(--muted); font-weight: 400; }
+.tray select { border: 0; background: transparent; color: var(--ink); font-weight: 600; max-width: 240px; padding: 2px 0; outline: 0; }
 .tray .slot svg.i { width: 15px; height: 15px; }
-.tray .sep { width: 1px; height: 16px; background: var(--line); }
+.tray .slot .chev { width: 12px; height: 12px; opacity: .55; }
+/* a choice the project cannot be made without, still unpicked */
+.tray .slot.need { border-color: color-mix(in srgb, var(--stale) 70%, var(--line)); background: color-mix(in srgb, var(--stale) 8%, var(--card)); }
+.tray .slot.need .v, .tray .slot.need select { color: var(--warn); }
+.tray .slot.plain { border-color: transparent; background: none; }
+.tray .slot.plain:hover { border-color: transparent; color: var(--ink); }
 @container (max-width: 640px) { .slate-head { grid-template-columns: 1fr 1fr; } }
 .hint { margin-top: 10px; font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; padding: 0 2px; }
 .hint button { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 600; text-decoration: underline; }
@@ -157,7 +175,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
   padding: 8px 10px; border-radius: 9px; color: var(--ink); }
 .menu button:hover { background: var(--soft); }
 .menu .ck { grid-row: span 2; color: var(--accent-ink); font-weight: 700; }
-@media (prefers-color-scheme: dark) { .menu .ck { color: var(--accent); } }
+:root[data-theme="dark"] .menu .ck { color: var(--accent); }
 .menu .t { font-weight: 600; font-size: 13px; }
 .menu .d { grid-column: 2; color: var(--muted); font-size: 12px; white-space: normal; }
 .menu.right { left: auto; right: 0; }
@@ -369,6 +387,11 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
       <h1>設定</h1>
       <div class="form">
         <div class="sec">
+          <h2>見た目</h2>
+          <div><div class="seg" id="s-theme"><button type="button" data-theme-pick="system">システムに合わせる</button><button type="button" data-theme-pick="light">ライト</button><button type="button" data-theme-pick="dark">ダーク</button></div></div>
+          <p class="note">選ぶとすぐ切り替わります（保存は要りません）。このパソコンのこのアプリにだけ覚えます。プロジェクトの画面でも、左上の ◐ から切り替えられます。</p>
+        </div>
+        <div class="sec">
           <h2>Claude への接続</h2>
           <p>構成を組む（plan）と、直す指示（revise）に使います。</p>
           <label class="opt" data-p="claude-code"><input type="radio" name="prov" value="claude-code"><span class="t">Claude Code</span>
@@ -414,7 +437,7 @@ const KINDS = {
 const ENGINES = {
   mock: { label: "UE なしで試す", d: "エンジンを起動せず、グレーボックス（仮撮り）で確かめる" },
   ue5: { label: "Unreal Engine 5", d: "UE プロジェクトのレベルから撮る。Sequencer と Movie Render Queue を使う" },
-  three: { label: "Three.js のサンプルゲーム", d: "同梱の丘の上の村（KettleHill）を Edge か Chrome で撮る。UE は要らない" },
+  three: { label: "Three.js", d: "Three.js のゲーム（scene.json のあるフォルダ）を Edge か Chrome で撮る。選ばなければ同梱の丘の上の村（KettleHill）。UE は要らない" },
 };
 // What a send runs once the project is made (D-98): the stops it sets on the road (D-84)
 const FLOWS = {
@@ -449,6 +472,7 @@ const ui = {
   name: "",
   uproject: null,        // {path, name, maps, projects}
   map: "",
+  game: null,            // the three game to film: {path, name, projects}; null = the bundled village
   railOpen: true,
   menu: null,            // open card menu path
   filter: "",
@@ -487,12 +511,13 @@ function loadPrefs() {
     if (p.location) ui.location = p.location;
     if (p.uproject) ui.uproject = { path: p.uproject, name: baseName(p.uproject).replace(/\.uproject$/i, ""), maps: [], projects: [] };
     if (p.map) ui.map = p.map;
+    if (p.game) ui.game = { path: p.game, name: baseName(p.game), projects: [] };
     if (p.railOpen === false) ui.railOpen = false;
   } catch { /* first run */ }
 }
 function savePrefs() {
   localStorage.setItem(STORE, JSON.stringify({ kind: ui.kind, genre: ui.genre, engine: ui.engine, flow: ui.flow, location: ui.location,
-    uproject: ui.uproject?.path || "", map: ui.map, railOpen: ui.railOpen }));
+    uproject: ui.uproject?.path || "", map: ui.map, game: ui.game?.path || "", railOpen: ui.railOpen }));
 }
 
 async function refresh() {
@@ -697,13 +722,24 @@ function drawTray() {
     const mapOpts = [...new Set([...(ui.map ? [ui.map] : []), ...maps, "/Engine/Maps/Entry"])]
       .map((m) => `<option value="${esc(m)}"${m === ui.map ? " selected" : ""}>${esc(m)}${m === "/Engine/Maps/Entry" ? "（空のマップ）" : ""}</option>`).join("");
     const others = (up?.projects || []).length;
-    tray.innerHTML = `<button class="slot" id="pick-up" title="${esc(up?.path || "")}">${ICON.cube}UE プロジェクト <span class="v">${esc(up ? up.name + ".uproject" : "選ぶ…")}</span>${ICON.chev}</button>
-      ${up ? `<span class="sep"></span><label class="slot">${ICON.map}マップ <select id="map-sel"><option value="">選ぶ…</option>${mapOpts}</select></label>` : ""}
-      <span class="sep"></span>${nm}
-      ${others ? `<button class="slot" id="up-existing">このプロジェクトに ${others} 本あります <span class="v" style="text-decoration:underline">開く</span></button>` : ""}`;
+    // the project and its map are needed before a send: unpicked, they are marked
+    tray.innerHTML = `<button class="slot${up ? "" : " need"}" id="pick-up" title="${esc(up?.path || "")}">${ICON.cube}UE プロジェクト <span class="v">${esc(up ? up.name + ".uproject" : "選ぶ…")}</span>${ICON.chev}</button>
+      ${up ? `<label class="slot${ui.map ? "" : " need"}">${ICON.map}マップ <select id="map-sel"><option value="">選ぶ…</option>${mapOpts}</select></label>` : ""}
+      ${nm}
+      ${others ? `<button class="slot plain" id="up-existing">このプロジェクトに ${others} 本あります <span class="v" style="text-decoration:underline">開く</span></button>` : ""}`;
+  } else if (ui.engine === "three") {
+    // the game to film: a picked folder holds the project (as a .uproject's folder does);
+    // unpicked, the bundled village goes into a new project at the save location
+    const g = ui.game;
+    const others = (g?.projects || []).length;
+    tray.innerHTML = `<button class="slot" id="pick-game" title="${esc(g?.path || "")}">${ICON.cube}ゲーム <span class="v">${esc(g ? g.name : "同梱の村（KettleHill）")}</span>${ICON.chev}</button>
+      ${g ? `<button class="slot plain" id="game-clear" title="同梱の村に戻す">✕</button>`
+          : `<button class="slot${ui.location ? "" : " need"}" id="pick-loc" title="${esc(ui.location)}">${ICON.folder}保存先 <span class="v">${esc(shortPath(ui.location) || "選ぶ…")}</span>${ICON.chev}</button>`}
+      ${nm}
+      ${others ? `<button class="slot plain" id="game-existing">このゲームに ${others} 本あります <span class="v" style="text-decoration:underline">開く</span></button>` : ""}`;
   } else {
-    tray.innerHTML = `<button class="slot" id="pick-loc" title="${esc(ui.location)}">${ICON.folder}保存先 <span class="v">${esc(shortPath(ui.location) || "選ぶ…")}</span>${ICON.chev}</button>
-      <span class="sep"></span>${nm}`;
+    tray.innerHTML = `<button class="slot${ui.location ? "" : " need"}" id="pick-loc" title="${esc(ui.location)}">${ICON.folder}保存先 <span class="v">${esc(shortPath(ui.location) || "選ぶ…")}</span>${ICON.chev}</button>
+      ${nm}`;
   }
   if (keep) { const el = $("name-in"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
@@ -749,7 +785,14 @@ function card(p) {
 
 // ------------------------------------------------------------------ settings
 
+/** The theme row: the head script keeps the choice and applies it. */
+function drawTheme() {
+  const cur = window.SP_THEME?.get() || "system";
+  for (const b of $("s-theme").children) b.classList.toggle("on", b.dataset.themePick === cur);
+}
+
 function drawSettings() {
+  drawTheme();
   const ai = ui.home?.ai || {};
   const pick = ai.provider || "auto";
   for (const r of document.querySelectorAll("input[name=prov]")) r.checked = r.value === pick;
@@ -847,6 +890,23 @@ async function pickUproject() {
   } catch (e) { toast(e.message, true); }
 }
 
+async function pickGame() {
+  try {
+    let out = await pick("game", ui.game?.path || "", "Three.js のゲームのフォルダ（scene.json のあるフォルダ）のパス");
+    if (!out) return;
+    if (!out.name) out = await api("POST", "/api/projects/game", { path: out.path });
+    ui.game = out;
+    savePrefs(); drawTray();
+  } catch (e) { toast(e.message, true); }
+}
+
+/** Reload the saved three game's name and teasers once (prefs keep only its path). */
+async function hydrateGame() {
+  if (!ui.game?.path || ui.game.loaded) return;
+  try { ui.game = { ...(await api("POST", "/api/projects/game", { path: ui.game.path })), loaded: true }; drawTray(); }
+  catch { ui.game = null; savePrefs(); drawTray(); }
+}
+
 /** Reload the saved .uproject's levels once (prefs keep only its path). */
 async function hydrateUproject() {
   if (!ui.uproject?.path || ui.uproject.maps.length) return;
@@ -869,6 +929,7 @@ async function create(sample = false, sampleEngine = "mock") {
     if (!ui.map) { toast("撮るマップを選んでください"); $("map-sel")?.focus(); return; }
     body.uproject = ui.uproject.path; body.map = ui.map;
   }
+  if (!sample && ui.engine === "three" && ui.game?.path) body.game = ui.game.path;
   ui.busy = true; $("send").disabled = true;
   try {
     await api("POST", "/api/projects/create", body);
@@ -907,7 +968,7 @@ document.addEventListener("click", (e) => {
   if (fl) { ui.flow = fl.dataset.flow; savePrefs(); closeMenus(); drawHome(); return; }
   if (t.closest("#flow-btn")) { const m = $("flow-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   const en = t.closest("[data-engine]");
-  if (en) { ui.engine = en.dataset.engine; savePrefs(); closeMenus(); drawHome(); hydrateUproject(); return; }
+  if (en) { ui.engine = en.dataset.engine; savePrefs(); closeMenus(); drawHome(); hydrateUproject(); hydrateGame(); return; }
   if (t.closest("#kind-btn")) { const m = $("kind-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   if (t.closest("#engine-btn")) { const m = $("engine-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   if (!t.closest(".menu")) closeMenus();
@@ -925,6 +986,9 @@ document.addEventListener("click", (e) => {
   if (t.closest("#pick-loc")) { pickLocation(); return; }
   if (t.closest("#pick-up")) { pickUproject(); return; }
   if (t.closest("#up-existing")) { chooser("この UE プロジェクトのティザー", ui.uproject.projects); return; }
+  if (t.closest("#pick-game")) { pickGame(); return; }
+  if (t.closest("#game-clear")) { ui.game = null; savePrefs(); drawTray(); return; }
+  if (t.closest("#game-existing")) { chooser("このゲームのティザー", ui.game.projects); return; }
   if (t.id === "modal-close" || t.id === "modal") { $("modal").hidden = true; }
 });
 $("send").addEventListener("click", () => create(false));
@@ -946,7 +1010,7 @@ $("prompt").addEventListener("input", () => {
   vpredictSoon(1200); // predict once the typing pauses
 });
 $("tray").addEventListener("input", (e) => { if (e.target.id === "name-in") ui.name = e.target.value; });
-$("tray").addEventListener("change", (e) => { if (e.target.id === "map-sel") { ui.map = e.target.value; savePrefs(); } });
+$("tray").addEventListener("change", (e) => { if (e.target.id === "map-sel") { ui.map = e.target.value; savePrefs(); drawTray(); } });
 $("search").addEventListener("input", (e) => { ui.filter = e.target.value; drawGrid(); });
 $("s-save").addEventListener("click", saveSettings);
 $("v-settings").addEventListener("change", markOpt);
@@ -955,6 +1019,10 @@ $("s-effort").addEventListener("click", (e) => {
   const b = e.target.closest("[data-effort]"); if (!b) return;
   $("s-effort").dataset.value = b.dataset.effort;
   for (const x of $("s-effort").children) x.classList.toggle("on", x === b);
+});
+$("s-theme").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-theme-pick]"); if (!b) return;
+  window.SP_THEME?.set(b.dataset.themePick); drawTheme();
 });
 $("s-image").addEventListener("click", (e) => {
   const b = e.target.closest("[data-img]"); if (!b) return;
@@ -975,7 +1043,7 @@ setPh(); setInterval(() => { if (!$("prompt").value) setPh(); }, 6000);
 loadPrefs();
 ui.view = ["projects", "settings"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "home";
 draw();
-refresh().then(() => { if (ui.view === "settings") drawSettings(); hydrateUproject(); });
+refresh().then(() => { if (ui.view === "settings") drawSettings(); hydrateUproject(); hydrateGame(); });
 $("prompt").focus();
 </script>
 </body>

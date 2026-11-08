@@ -126,7 +126,8 @@ fn without_review_the_pass_goes_all_the_way_as_before() {
     let mut events = Vec::new();
     let mut on = |e: &str, d: &Value| events.push((e.to_string(), d.clone()));
     produce::produce(&mut f.ws, &claude, None, &ProduceOpts { mood: false, ..Default::default() }, &mut on).unwrap();
-    assert_eq!(steps(&events), ["discover:done", "scout:done", "stage:done", "mood:skipped", "plan:done", "sound:skipped", "render:done", "cut:done"]);
+    // the sound runs without a library too: effects can be made in code (D-103)
+    assert_eq!(steps(&events), ["discover:done", "scout:done", "stage:done", "mood:skipped", "plan:done", "sound:done", "render:done", "cut:done"]);
     let mut f2 = ws();
     let err = produce::resume(&mut f2.ws, &claude, &ProduceOpts::default(), &mut |_, _| {});
     assert!(err.is_ok(), "the demo project has shots, so it can continue");

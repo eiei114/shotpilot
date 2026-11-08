@@ -359,10 +359,10 @@ fn finish(ws: &mut Workspace, claude: &dyn Claude, opts: &ProduceOpts, emit: &mu
         }
     };
 
-    // 5. sound, from the library, against the cut's pieces (skipped without a library, and
+    // 5. sound, from the library (and made in code, D-103), against the cut's pieces (skipped
     // after a review when the human already placed sound)
     let lib = crate::library::Library::open(opts.library.as_deref()).unwrap_or_default();
-    if lib.sounds.is_empty() {
+    if !lib.has_any() {
         step("sound", "skipped", "音源ライブラリが無い".into(), emit, &mut steps);
     } else if entry.contains_key("resumed") && has_sound(ws) {
         step("sound", "skipped", "設計済み".into(), emit, &mut steps);

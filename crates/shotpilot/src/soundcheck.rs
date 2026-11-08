@@ -9,7 +9,7 @@
 //! follow librosa's spectral-flux recipe on a 24 kHz copy. Picture events are the shot
 //! boundaries themselves, which makes sound-on-cut exact.
 //!
-//! Ported from earshot (MIT, Copyright (c) 2026 Leon Lin); the full notice is in
+//! Adapted from MIT-licensed code (Copyright (c) 2026 Leon Lin); the full notice is in
 //! THIRD_PARTY_NOTICES.md.
 
 use serde_json::{json, Map, Value};

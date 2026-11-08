@@ -900,6 +900,12 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
                 return Ok(json!({"summary": "中庭", "anchors": [{"name": "well", "description": "井戸"}],
                                  "mood": {"place": "gate", "detail": "lantern", "threat": "window", "title": "well"}}).to_string());
             }
+            if props.get("hits").is_some() {
+                // no library here, so the title's boom is made in code (D-103)
+                self.0.borrow_mut().push("sound".into());
+                return Ok(json!({"rationale": "r", "music": [], "ambience": [], "missing": ["low strings"],
+                                 "hits": [{"lib": "make:impact/deep", "on": "t", "at": 0, "gain": -3, "label": "title boom"}]}).to_string());
+            }
             self.0.borrow_mut().push("plan".into());
             let user = request["messages"][0]["content"].to_string();
             assert!(user.contains("## Script") && user.contains("## Stage") && user.contains("Location scout"), "{user}");
@@ -925,11 +931,14 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     let mut on = |e: &str, d: &serde_json::Value| events.push((e.to_string(), d.clone()));
     let out = shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on).unwrap();
 
-    assert_eq!(*claude.0.borrow(), ids(&["discover", "stage", "plan"])); // one call each, no self-review rounds
+    assert_eq!(*claude.0.borrow(), ids(&["discover", "stage", "plan", "sound"])); // one call each, no self-review rounds
     let done: Vec<String> = events.iter().filter(|(e, d)| e == "step" && d["status"] != "start")
         .map(|(_, d)| format!("{}:{}", d["key"].as_str().unwrap(), d["status"].as_str().unwrap())).collect();
-    assert_eq!(done, ["discover:done", "scout:done", "stage:done", "mood:done", "plan:done", "sound:skipped", "render:done", "cut:done"]);
+    assert_eq!(done, ["discover:done", "scout:done", "stage:done", "mood:done", "plan:done", "sound:done", "render:done", "cut:done"]);
     assert_eq!(f.ws.defn.shot_ids(), ids(&["h", "e", "x", "x2", "t"]));
+    // with no library, the effect was made in code into the project
+    let boom = f.ws.defn.find("t").unwrap()["sfx"][0]["file"].as_str().unwrap().to_string();
+    assert!(boom.starts_with("audio/made/impact-deep-s") && f.ws.root.join(&boom).is_file(), "{boom}");
     assert_eq!(f.ws.defn.brief.images.len(), 4);
     // the script came with the shots: cards between them, a line over one, a broken line left out
     let script: Vec<(&str, &str)> = f.ws.defn.script.iter().map(|l| (l.id.as_str(), l.kind.as_str())).collect();
@@ -953,7 +962,7 @@ fn the_first_pass_goes_all_the_way_in_one_go() {
     shotpilot::produce::produce(&mut f.ws, &claude, Some(&gen), &shotpilot::produce::ProduceOpts::default(), &mut on2).unwrap();
     let skipped: Vec<String> = events2.iter().filter(|(e, d)| e == "step" && d["status"] == "skipped")
         .map(|(_, d)| d["key"].as_str().unwrap().to_string()).collect();
-    assert_eq!(skipped, ["discover", "scout", "stage", "mood", "sound"]);
+    assert_eq!(skipped, ["discover", "scout", "stage", "mood"]);
 }
 
 #[test]
