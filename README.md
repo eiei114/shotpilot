@@ -36,22 +36,22 @@ shotpilot status                                # 各カットの状態（fresh 
 
 ## UE なしで本物の画を撮る（Three.js のサンプルゲーム、D-72）
 
-mock の previz は灰色の立体なので、光や人影まで見たいときは `engine: three` を使う（previz もゲームの灯りと人形で描かれる）。同梱の病棟（UE のサンプル `Lanternless` と同じ間取りとアンカーに、手すり・扉・ベッド・カーテン・自販機・砂嵐のテレビ・ガウンの患者を置いたもの）を、Windows に入っている Edge（無ければ Chrome）を画面に出さずに起動して撮る。UE も API キーも要らない。
+mock の previz は灰色の立体なので、光や人まで見たいときは `engine: three` を使う（previz もゲームの光と人形で描かれる）。同梱のサンプルは、晴れた午後の丘の上の村 `KettleHill`（コージー）。白い風車（羽根が回る）、赤とクリームの日よけの屋台、提灯の下がる茶屋、子どもたちが周りを走る大きな樫の木、ひまわりの並ぶ畑の5か所に、色の違う屋根の家・井戸・道と、お茶を注ぐ・手を振る・水をやる・掃く・歩く村人を置いた。場所ごとに色と形が違うので、カメラを動かしたときに何が写ったかがひと目で分かる。Windows に入っている Edge（無ければ Chrome）を画面に出さずに起動して撮る。UE も API キーも要らない。
 
 ```bash
-mkdir ward && cd ward
-shotpilot init --engine three                   # Lanternless のティザー（10 カット）と、病棟のゲーム（game/）
+mkdir village && cd village
+shotpilot init --engine three                   # KettleHill のティザー（10 カット）と、村のゲーム（game/）
 shotpilot render still                          # 10 カット × 3 コマを Edge で描く（数秒）
-shotpilot set s07_figure_mid camera.lens.focal_length=50
+shotpilot set s04_market camera.lens.focal_length=50
 shotpilot render still                          # → still: 1 rendered, 9 reused
-# ゲームのほうを直す: ストレッチャーの色を変える
-#   game/objects/stretcher.json の最初の部品（マットレス）の "color" を "#2f5f8f" に変える
-shotpilot status                                # ストレッチャーが写っていたカットだけが GAME になる
-shotpilot render still                          # → そのカットだけを撮り直す（ほかは使い回し）
+# ゲームのほうを直す: 水やりをする農夫の服を変える
+#   game/objects/farmer.json の "dress" を "cloth_red" に変える
+shotpilot status                                # 農夫が写っていた3カットだけが GAME になる
+shotpilot render still                          # → still: 3 rendered, 7 reused
 shotpilot render preview && shotpilot cut       # 全コマを撮り、文字と音を載せた Cut にする（ffmpeg）
 ```
 
-画は、質感をノイズから焼いた PBR の材質を HDR で描き、AO・レンズの絞りどおりの被写界深度・ブルーム・床に溜まる霧・グレインを重ねる（still は10カットで約10秒、preview の約1000コマで約45秒）。ゲームは `game/` の JSON で、物ごとに1ファイル（`objects/<名前>.json`）になっている。物を直すと、それが写っていたカットだけが古くなる（写っていたかは、視野と、ほかの壁に遮られていないかで決める）。`shotpilot scout` で各アンカーを4方向から撮れる（壁の向こうに出たカメラは壁の手前へ寄せる）。アプリでは、ホームの「Three.js のサンプルゲームで試す」から開ける。描くブラウザは `SHOTPILOT_BROWSER` で指定できる。デモ動画は UE で撮っている。three は試すための体験版で、自分の Three.js のゲームを撮る機能ではない。
+画は、質感をノイズから焼いた PBR の材質（芝・瓦・漆喰・木・布）を HDR で描き、太陽の影・AO・レンズの絞りどおりの被写界深度・ブルーム・遠くの霞を重ねる（still は10カットで約5秒、preview の約1200コマで約30秒）。ゲームは `game/` の JSON で、物ごとに1ファイル（`objects/<名前>.json`）になっている。物を直すと、それが写っていたカットだけが古くなる（写っていたかは、視野と、ほかの壁に遮られていないかで決める。村を見渡す全景のカットには、遠くの物も写っている）。`shotpilot scout` で各アンカーを4方向から撮れる（壁の向こうに出たカメラは壁の手前へ寄せる）。アプリでは、ホームの「Three.js のサンプルゲームで試す」から開ける。描くブラウザは `SHOTPILOT_BROWSER` で指定できる。デモ動画は UE で撮っている。three は試すための体験版で、自分の Three.js のゲームを撮る機能ではない。
 
 ## ゲームを Claude Code で直しているなら（D-66）
 
@@ -92,6 +92,7 @@ shotpilot --file Teaser/shots.yaml claude install   # Skill とフックを入�
 | 11/07 夜 | 工程バーを「道」に替え、人が確かめる「あなたの番」の画面（D-80）。上から見た配置図でカメラを手で動かす（D-81）。シンプルとプロ（D-82）。場所ごとの環境音（D-83） |
 | 11/08 未明 | 任せる場所を左下の1か所に（D-84）。既存のレベルを書き換えずに読むロケハン（D-85）と、配置図への見取り図（D-86）。カット検査の指摘をまとめて直す（D-91）。仮撮りを陰影のあるグレーボックスに（D-92） |
 | 11/08 | 仮撮りをゲームの灯りで照らす（D-93）。作業中も頼むことを列に積む（D-94）。指摘を右端の1列に集める（D-95）。仮撮りの印を画から外す（D-96）。3D の見方（D-97）。最初に進め方を選ぶ（D-98）。左の欄の入力の箱（D-99） |
+| 11/08 夕方 | Three.js のサンプルを、暗い病棟から晴れた午後の丘の上の村 KettleHill に替えた（D-101）。何が写ったかがひと目で分かるように |
 
 ## Claude の使い方
 
@@ -372,7 +373,7 @@ fingerprint は Python 版（〜0.1）と同じ正規化 JSON を hash するの
 - 書体は Google Fonts のもの（OFL。Kosugi・Kosugi Maru・Rock Salt は Apache 2.0）。使うときに取ってきてキャッシュし、リポジトリにもバイナリにも入れない。
 - サンプルのゲームは Epic の UE 5.8 Third Person テンプレートのアセット（マネキン、試作用の箱）で作る。アセットはリポジトリに入れず、組み立てのスクリプト（`tools/ue_sample/`）だけを置く。効果・形・動きもエンジンと Epic 同梱のプラグイン（Niagara、NiagaraToolsets、GeometryScripting）でコードから作り、外部の素材は使わない。
 - 効果音と曲は、作者が Splice で購入したサンプルを手元のライブラリ（リポジトリの外）から使う。リポジトリには入れず、再配布しない。`shotpilot init` の仮の音（`drone.wav` など）はコードで合成したもの。
-- Three.js（MIT License, Copyright © 2010-2024 three.js authors）の 0.170.0 を `crates/shotpilot/three/` に同梱し、バイナリに埋め込む（ライセンスは `three/LICENSE-three.txt`）。サンプルの病棟（`threegame.rs`）は箱・円柱・マネキンをコードで組んだもので、質感（タイル・漆喰・塗装・金属・布）も描画のページがノイズから焼く。外部の素材は使わない。
+- Three.js（MIT License, Copyright © 2010-2024 three.js authors）の 0.170.0 を `crates/shotpilot/three/` に同梱し、バイナリに埋め込む（ライセンスは `three/LICENSE-three.txt`）。サンプルの村（`threegame.rs`）は箱・円柱・球・マネキンをコードで組んだもので、質感（芝・瓦・漆喰・木・布）も描画のページがノイズから焼く。外部の素材は使わない。仮の音（オルゴール・風と小鳥・チャイム）もコードで合成している。
 - ムードボードと構成画は OpenAI の画像生成（参照のみ）。ティザーの画はすべてゲームから撮る。
 - 実測したティザー（`references/teasers/`）は、長さ・カット・明るさなどの測定値と分析だけを置く。動画とフレーム画像は入れていない。
 
