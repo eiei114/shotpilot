@@ -156,6 +156,34 @@ fn a_level_read_from_the_engine_is_drawn_on_the_map_and_writes_nothing_else() {
     assert_eq!(std::fs::read_to_string(s.f.path()).unwrap(), before);
 }
 
+/// The 3D view (D-97) reads one shot's scene and every frame's camera over HTTP, leaves out what
+/// the page already holds, serves the bundled Three.js, and writes nothing.
+#[test]
+fn the_3d_view_reads_a_shot_over_http_and_writes_nothing() {
+    let s = srv();
+    let before = std::fs::read_to_string(s.f.path()).unwrap();
+    let (code, d) = jcall(&s, "GET", "/api/scene3d?shot=s03_window&frame=4", None);
+    assert_eq!(code, 200, "{d}");
+    assert_eq!(d["shot"], "s03_window");
+    assert_eq!(d["frame"], 4);
+    assert_eq!(d["cameras"].as_array().unwrap().len() as i64, d["frames"].as_i64().unwrap());
+    // no level read: the anchors are the set, on the ground
+    assert_eq!(d["level"], json!(false));
+    assert!(d["anchors"].as_array().unwrap().iter().any(|a| a["name"] == "window" && a["size"].is_array()));
+    assert!(d["ground"].is_number());
+    let key = d["still"]["key"].as_str().unwrap().to_string();
+    let (_, again) = jcall(&s, "GET", &format!("/api/scene3d?shot=s01_gate&frame=0&have={key}"), None);
+    assert_eq!(again["still"]["key"], json!(key));
+    assert!(again["still"].get("p").is_none());
+    let (code, err) = jcall(&s, "GET", "/api/scene3d?shot=nope", None);
+    assert_eq!(code, 400, "{err}");
+    let r = call(&s, "GET", "/three.module.min.js", None, &[]);
+    assert!(r.code == 200 && r.header("content-type").starts_with("text/javascript"));
+    assert_eq!(r.body.len(), shotpilot::three::THREE_JS.len());
+    assert_eq!(std::fs::read_to_string(s.f.path()).unwrap(), before, "the 3D view wrote shots.yaml");
+    assert!(!s.f.path().parent().unwrap().join("render").exists(), "the 3D view drew a take");
+}
+
 #[test]
 fn the_blocking_map_reads_cameras_and_a_moved_camera_rerenders_only_its_shot() {
     let s = srv();

@@ -55,10 +55,60 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .mono { font-family: var(--mono); }
 
 /* ------------------------------------------------------------------ shell */
-#app { height: 100vh; display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 10px; padding: 10px; }
+#app { height: 100vh; display: grid; grid-template-columns: minmax(300px, 380px) 1fr auto; gap: 10px; padding: 10px; }
+/* no findings column before there is anything to check */
+#app.no-iss { grid-template-columns: minmax(300px, 380px) 1fr; }
 
 /* ------------------------------------------------------------------ chat column */
 #chat { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+/* ------------------------------------------------------------------ the findings (D-95): a column of their own on the right,
+   shaped like the conversation on the left (a heading, then cards); it folds to a rail with the counts */
+#issues { width: 292px; min-width: 0; min-height: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+#issues.rail { width: 44px; grid-template-rows: minmax(0, 1fr); }
+.iss-hd { display: flex; align-items: center; gap: 6px; padding: 10px 8px 10px 14px; border-bottom: 1px solid var(--line); font-size: 12px; min-width: 0; }
+.iss-hd b { font-size: 13px; }
+.iss-hd .n { font: 11px var(--mono); color: var(--muted); }
+.iss-hd .sp { flex: 1; }
+.iss-hd .keys { color: var(--muted); font-size: 10px; display: inline-flex; gap: 2px; }
+.iss-x { flex: none; border: 0; background: none; color: var(--muted); width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; font-size: 16px; line-height: 1; }
+.iss-x:hover { background: var(--soft); color: var(--ink); }
+.cnt { font-size: 10.5px; font-weight: 700; border-radius: 3px; padding: 0 5px; border: 1px solid var(--line); }
+.cnt.P0 { background: var(--err); border-color: var(--err); color: #fff; }
+.cnt.P1 { border-color: var(--err); color: var(--err-fg); }
+.iss-list { display: flex; flex-direction: column; gap: 6px; padding: 10px; overflow-y: auto; min-height: 0; }
+.iss-it { flex: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; display: grid; gap: 3px; cursor: pointer; background: var(--card); }
+.iss-it:hover { border-color: var(--muted); }
+.iss-it.on { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); padding: 9px; }
+.iss-it.off { opacity: .55; }
+.iss-it .ttl { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; min-width: 0; }
+.iss-it .ttl .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.iss-it.on .ttl .t { white-space: normal; }
+.iss-it .src { font-size: 10px; color: var(--muted); }
+.iss-it .why { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.iss-it:not(.on) .why { display: none; }
+.iss-acts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.iss-acts .btn { font-size: 11.5px; padding: 3px 8px; gap: 5px; }
+.iss-acts kbd, .iss-hd kbd { display: inline-grid; place-items: center; min-width: 15px; height: 15px; padding: 0 3px; border: 1px solid var(--line); border-radius: 3px; font: 10px var(--mono); color: var(--muted); }
+.iss-foot { display: flex; gap: 8px; padding: 8px 14px 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+.iss-foot:empty { display: none; }
+.iss-foot button { border: 0; background: none; color: var(--muted); text-decoration: underline; padding: 0; font-size: 11px; }
+.iss-empty { padding: 18px 14px; display: grid; gap: 4px; font-size: 12px; color: var(--muted); align-content: start; }
+.iss-empty b { color: var(--ink); }
+.iss-feed { display: grid; gap: 6px; padding: 10px 14px; font-size: 12px; overflow-y: auto; align-content: start; min-height: 0; }
+.iss-feed div { display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
+.iss-feed .cur { background: var(--soft); border-radius: 6px; padding: 5px 4px; }
+/* folded: the counts stacked on a rail, pressed anywhere to open */
+.iss-rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border: 0; background: none; width: 100%; height: 100%; color: var(--muted); }
+.iss-rail:hover { background: var(--soft); color: var(--ink); }
+.iss-rail .ic { font-size: 16px; line-height: 1; }
+.iss-rail .lbl { writing-mode: vertical-rl; font-size: 11.5px; font-weight: 600; letter-spacing: .12em; color: var(--ink); }
+.iss-rail .cnt { min-width: 22px; text-align: center; font-family: var(--mono); }
+.iss-rail .ok { color: var(--ok); font-weight: 700; }
+/* where a finding lives, lit for a moment when it is picked or stacked */
+.sp-focus { animation: sp-focus 1.4s ease-out; }
+@keyframes sp-focus { 0%, 35% { box-shadow: 0 0 0 3px var(--sel); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@media (prefers-reduced-motion: reduce) { .sp-focus { animation: none; outline: 3px solid var(--sel); } }
 .proj { display: flex; align-items: center; gap: 10px; padding: 6px 8px 12px; }
 .proj svg { flex: none; }
 .home-btn { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--ink); background: var(--card);
@@ -129,7 +179,14 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 .thinking .state::after { content: "…"; animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-.composer { background: var(--card); border-radius: 16px; padding: 10px 12px 10px; box-shadow: var(--shadow); display: grid; gap: 6px; border: 1px solid var(--line); }
+/* the dock (what to hand over) sits above; the box below is the only place to write, so it alone wears a frame */
+.composer { display: grid; gap: 8px; padding-top: 6px; }
+.inbox { display: grid; gap: 6px; background: var(--card); border: 1.5px solid color-mix(in srgb, var(--ink) 24%, var(--line)); border-radius: 14px;
+  padding: 8px 8px 8px 12px; box-shadow: var(--shadow); cursor: text; transition: border-color .15s, box-shadow .15s; min-width: 0; }
+.inbox:hover { border-color: color-mix(in srgb, var(--ink) 38%, var(--line)); }
+.inbox:focus-within { border-color: var(--sel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sel) 22%, transparent), var(--shadow); }
+.inbox .comp-row { cursor: default; }
+.composer > #chips:empty { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 8px; border-radius: 999px;
   background: var(--soft); border: 1px solid var(--line); color: var(--ink); }
@@ -148,8 +205,9 @@ input[type=range]:disabled { cursor: default; opacity: .45; }
 #chat, #log, .composer, .comp-row { min-width: 0; }
 .model-btn { overflow: hidden; }
 .changes, .msg-ai, .msg-user .bubble { overflow-wrap: anywhere; }
-#note { border: 0; outline: 0; resize: none; background: transparent; min-height: 64px; max-height: 200px; padding: 4px 2px; }
-#note::placeholder { color: var(--faint); }
+#note { border: 0; outline: 0; resize: none; background: transparent; min-height: 44px; max-height: 200px; padding: 2px; line-height: 1.5;
+  field-sizing: content; /* grows with the words (and the example) instead of hiding them */ }
+#note::placeholder { color: color-mix(in srgb, var(--muted) 80%, transparent); }
 .comp-row { display: flex; align-items: center; gap: 8px; }
 .comp-row .model { margin-left: auto; color: var(--muted); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
 .send { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--primary); display: grid; place-items: center; }
@@ -201,8 +259,9 @@ select.q { border: 0; background: none; font-size: 12.5px; padding: 4px 2px; fon
 #summary { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .btn { white-space: nowrap; }
 .btn .ulabel { max-width: 16em; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-@media (max-width: 1360px) { #summary { display: none; } }
-@media (max-width: 1360px) { .road-btn { padding: 4px 6px; gap: 5px; } .road-btn .who { display: none; } }
+/* the road and the summary give way by the width of the canvas, not of the window: the findings column takes some (D-95) */
+#canvas > .tabs { container-type: inline-size; }
+@container (max-width: 950px) { #summary { display: none; } .road-btn { padding: 4px 6px; gap: 5px; } .road-btn .who { display: none; } }
 #cut-nav { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
 #cut-nav .icon { width: 26px; height: 26px; font-size: 16px; }
 #cut-label { font-size: 12.5px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
@@ -241,6 +300,18 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 .dock-go.dock-said { background: var(--soft); color: var(--ink); border: 1px solid var(--line); cursor: default; font-weight: 600; }
 .dock-go.dock-said.done { color: var(--ok); }
 .dock-go.dock-said small { color: var(--muted); opacity: 1; }
+/* while the machine works, ▶ turns into what it is doing (not a dimmed button) */
+.dock-go.dock-run { background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--ink); border: 1px solid var(--accent); cursor: default; gap: 3px 8px; }
+.dock-run .hd { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-run .sec { grid-column: 2; grid-row: 1; font: 400 11px var(--mono); color: var(--muted); }
+.dock-run small { color: var(--muted); opacity: 1; grid-column: 1 / -1; }
+.dock-spin { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent); border-top-color: var(--accent); animation: dock-spin .8s linear infinite; }
+.dock-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--accent) 18%, transparent); overflow: hidden; }
+.dock-bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.dock-bar.wait i { width: 35%; animation: dock-wait 1.4s ease-in-out infinite; }
+@keyframes dock-spin { to { transform: rotate(360deg); } }
+@keyframes dock-wait { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+@media (prefers-reduced-motion: reduce) { .dock-spin, .dock-bar.wait i { animation: none; } }
 .dock-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
 .dock-row .need { color: var(--stale); }
 .dock-row button { border: 0; background: none; color: var(--muted); text-decoration: underline; padding: 0; font-size: 11px; }
@@ -249,6 +320,19 @@ body:not(.pro) .pro-only, body:not(.pro) .stk-row, body:not(.pro) .stk-foot, bod
 .dock-acts button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 10px; font-size: 11.5px; white-space: nowrap; }
 .dock-acts button:hover:not(:disabled) { border-color: var(--sel); }
 .dock-acts button:disabled { opacity: .45; }
+/* the line (D-94): what was asked while the machine worked, in the order it goes */
+.dock-line { display: grid; gap: 3px; max-height: 136px; overflow-y: auto; }
+.dock-line .ln { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 7px; padding: 3px 4px 3px 8px;
+  border: 1px dashed color-mix(in srgb, var(--ink) 25%, var(--line)); border-radius: 8px; background: var(--card); font-size: 11.5px; }
+.dock-line .ln > b { font: 600 10.5px var(--mono); color: var(--muted); }
+.dock-line .ln .w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-line .ln .w small { color: var(--muted); font-size: 11px; }
+.dock-line .ln .ops { display: flex; }
+.dock-line .ln .ops button { border: 0; background: none; color: var(--muted); padding: 0 4px; font-size: 11.5px; border-radius: 4px; }
+.dock-line .ln .ops button:hover { color: var(--ink); background: var(--soft); }
+.dock-line .ln.err { border-style: solid; border-color: var(--err); }
+.dock-line .ln .why { grid-column: 1 / -1; color: var(--err); font-size: 10.5px; }
+.dock-acts.later button { border-style: dashed; }
 /* the machine's work moved to the dock: the canvas header keeps only what the human looks at */
 #canvas .tabs #render, #canvas .tabs #cut, #next { display: none !important; }
 /* a stop on the road (📍): where a run waits for the human */
@@ -363,11 +447,7 @@ body.pro .simple-only { display: none !important; }
 #next .why { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 #next .btn { padding: 4px 12px; }
 
-/* findings (shot check) */
-#findings { border-bottom: 1px solid var(--line); padding: 6px 12px; display: grid; gap: 6px; max-height: 128px; overflow: auto; background: var(--card); }
-.find { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 8px; align-items: start; font-size: 12px; }
-.find .why { color: var(--muted); font-size: 11.5px; grid-column: 2; }
-.find .ops { display: flex; gap: 6px; grid-row: span 2; grid-column: 3; }
+/* severity badges (the findings themselves live on the left, D-95) */
 .sev { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; margin-top: 1px; grid-row: span 2; }
 .sev.P0 { background: var(--err); color: #fff; } .sev.P1 { background: var(--stale); color: #241900; } .sev.P2 { background: var(--soft); color: var(--muted); }
 .basis { font-size: 10px; color: var(--faint); margin-left: 6px; font-weight: 500; }
@@ -694,7 +774,12 @@ kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line)
 .ask-seg { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ask-seg .seg button { padding: 4px 9px; font-size: 12px; }
 .ask-seg .only { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: var(--soft); }
-.composer .stk-rail { min-height: 38px; }
+/* the composer's stack is not a second field: the chain of stacked chips sits just above the box, unframed,
+   and nothing shows while it is empty (the scope chip in the box already says where the note goes) */
+#cstack .stk-rail { min-height: 0; padding: 0 2px; border: 0; background: none; box-shadow: none; border-radius: 0; }
+#cstack .stk.empty .stk-rail { display: none; }
+#cstack .stk-row, #cstack .stk-foot { order: -1; }
+#cstack:empty, body:not(.pro) #cstack:has(> .stk.empty) { display: none; }
 .composer .pchip { font-size: 11.5px; }
 .mood-stack { max-width: 900px; }
 .other-open { border: 1px dashed var(--line); background: none; border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); justify-self: start; }
@@ -902,6 +987,44 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 #region { position: absolute; border: 2px solid var(--accent); background: rgb(59 224 43 / .12); border-radius: 3px; pointer-events: none; }
 #region::after { content: attr(data-label); position: absolute; top: -22px; left: -2px; background: var(--accent); color: var(--accent-ink);
   font: 600 11px/1 system-ui, sans-serif; padding: 4px 6px; border-radius: 4px; white-space: nowrap; }
+/* the guides laid over a take (D-96): the picture carries no marks, these stay thin at any size */
+#guides-layer { position: absolute; pointer-events: none; }
+#guides-layer svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#guides-layer .third { stroke: rgb(255 255 255 / .4); stroke-width: 1; vector-effect: non-scaling-stroke; fill: none; }
+.gd-place { position: absolute; display: flex; align-items: center; gap: 5px; transform: translate(-6px, -50%); font: 600 11px/1 system-ui, sans-serif;
+  color: #f2f4f5; background: rgb(8 10 14 / .7); padding: 3px 8px 3px 4px; border-radius: 999px; white-space: nowrap; }
+.gd-place.flip { flex-direction: row-reverse; transform: translate(calc(-100% + 6px), -50%); padding: 3px 4px 3px 8px; }
+.gd-place i, .gd-key .k-place { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #8fd3ff); box-shadow: 0 0 0 2px rgb(8 10 14 / .7); flex: none; }
+.gd-aim { position: absolute; width: 20px; height: 20px; transform: translate(-50%, -50%); }
+.gd-aim::before, .gd-aim::after { content: ""; position: absolute; background: #ff5a5a; box-shadow: 0 0 0 1px rgb(0 0 0 / .45); }
+.gd-aim::before { left: 9px; top: 0; width: 2px; height: 20px; }
+.gd-aim::after { top: 9px; left: 0; width: 20px; height: 2px; }
+.gd-marker { position: absolute; left: 0; right: 0; bottom: 0; background: rgb(190 30 30 / .85); color: #fff; font: 600 12px/1.3 system-ui, sans-serif; padding: 5px 10px; }
+.gd-key { position: absolute; right: 8px; top: 8px; display: flex; gap: 12px; align-items: center; font: 500 11px/1 system-ui, sans-serif; color: #dfe3e5;
+  background: rgb(0 0 0 / .55); padding: 6px 9px; border-radius: 6px; }
+.gd-key > span { display: inline-flex; align-items: center; gap: 5px; }
+.gd-key .k-third { width: 12px; height: 12px; border: 1px solid rgb(255 255 255 / .6); background:
+  linear-gradient(90deg, transparent 33%, rgb(255 255 255 / .6) 33% calc(33% + 1px), transparent 0 66%, rgb(255 255 255 / .6) 66% calc(66% + 1px), transparent 0),
+  linear-gradient(transparent 33%, rgb(255 255 255 / .6) 33% calc(33% + 1px), transparent 0 66%, rgb(255 255 255 / .6) 66% calc(66% + 1px), transparent 0); }
+.gd-key .k-aim { color: #ff5a5a; font-weight: 800; font-size: 13px; }
+/* the 3D view (D-97): the shapes previz draws, by Three.js at the screen's size */
+#v3d.on { background: var(--accent); color: var(--accent-ink); }
+.v3d { position: absolute; inset: 0; display: grid; place-items: center; }
+.v3-frame { position: relative; overflow: hidden; }
+.v3-frame canvas { display: block; width: 100%; height: 100%; }
+.v3d.orbit .v3-frame canvas { cursor: grab; }
+.v3d.orbit .v3-frame canvas:active { cursor: grabbing; }
+.v3-labels { position: absolute; inset: 0; pointer-events: none; }
+.v3-thirds { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.v3-thirds path { stroke: rgb(255 255 255 / .4); stroke-width: 1; vector-effect: non-scaling-stroke; fill: none; }
+.v3-seg { position: absolute; top: 10px; right: 12px; display: flex; gap: 2px; background: rgb(0 0 0 / .55); padding: 3px; border-radius: 8px; }
+.v3-seg button { border: 0; background: none; color: #c9cfd2; font: 600 11.5px/1 system-ui, sans-serif; padding: 6px 10px; border-radius: 6px; }
+.v3-seg button.on { background: #f2f4f5; color: #111; }
+.v3-hint { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: #aab1b5; background: rgb(0 0 0 / .5); padding: 5px 8px; border-radius: 6px; display: none; }
+.v3d.orbit .v3-hint { display: block; }
+.v3-wait { position: absolute; color: #8a9094; font-size: 12px; }
+.v3-camtag { position: absolute; transform: translate(-50%, -150%); font: 700 11px/1 system-ui, sans-serif; color: var(--accent-ink); background: var(--accent);
+  padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
 .placeholder { color: #8a9094; text-align: center; padding: 24px; }
 .placeholder b { color: #e6e9ea; display: block; font-size: 15px; margin-bottom: 4px; }
 .badge-q { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 600; color: #fff; background: rgb(0 0 0 / .55);
@@ -971,8 +1094,16 @@ details.more > summary { color: var(--muted); font-size: 12.5px; font-weight: 60
 .clip.rendering::after { content: "rendering"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 700;
   font-size: 11px; letter-spacing: .08em; background: rgb(0 0 0 / .5); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { background: rgb(0 0 0 / .25); } }
-.playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; border-radius: 2px; }
-.playhead::before { content: ""; position: absolute; top: 0; left: -4px; border: 5px solid transparent; border-top-color: var(--accent); }
+.playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; border-radius: 2px; z-index: 3; }
+.playhead::before { content: ""; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top: 8px solid var(--accent); }
+/* the playhead's head is the handle; the line itself lets clicks through to the cuts */
+.playhead .grip { position: absolute; top: -2px; left: -8px; width: 18px; height: 18px; pointer-events: auto; cursor: ew-resize; }
+.tl-body.scrubbable .ruler { cursor: ew-resize; border-radius: 4px; }
+.tl-body.scrubbable .ruler:hover { background: var(--soft); }
+.tl-body.scrubbing, .tl-body.scrubbing * { cursor: ew-resize !important; }
+.tl-tr { display: inline-flex; align-items: center; gap: 6px; }
+.tl-tr .play { width: 24px; height: 24px; font-size: 10px; }
+.tl-tr b { min-width: 44px; }
 .target { position: absolute; top: 14px; bottom: -2px; border-left: 1.5px dashed var(--muted); pointer-events: none; }
 .target span { position: absolute; top: -14px; left: 3px; font-size: 10px; color: var(--muted); white-space: nowrap; }
 /* ------------------------------------------------------------------ sound lanes */
@@ -1086,7 +1217,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .err-box { border: 1px solid var(--err); color: var(--err-fg); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
 
 /* ------------------------------------------------------------------ your turn (D-74, D-79): lanes, the decisions, the selected cut */
-#reviewpanel { display: grid; grid-template-columns: minmax(0, 1fr) 284px; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; background: var(--card); }
+#reviewpanel { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; background: var(--card); }
 .rv-over { grid-column: 1; grid-row: 1; padding: 12px 16px 8px; min-width: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
 .rv-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
 .rv-head h3 { margin: 0; font-size: 15px; }
@@ -1121,33 +1252,14 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-sound .blk { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: color-mix(in srgb, var(--establish) 35%, var(--card)); font-size: 10px; padding: 0 5px; overflow: hidden; white-space: nowrap; }
 .rv-sound .dot { position: absolute; top: 5px; width: 7px; height: 7px; margin-left: -3px; border-radius: 50%; background: var(--escalate); }
 .rv-fold { border: 0; background: none; padding: 6px 0 0; font-size: 11px; color: var(--muted); }
-.rv-q { grid-column: 2; grid-row: 1 / 3; border-left: 1px solid var(--line); padding: 12px 12px 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0; }
-.rv-qh { display: flex; align-items: center; gap: 8px; }
-.rv-qh h3 { margin: 0; font-size: 13px; }
-.rv-n { min-width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 4px; font: 11px var(--mono); background: var(--soft); }
-.rv-keys { margin-left: auto; font-size: 10px; color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
-.rv-keys span { margin-right: 4px; }
-.rv-q kbd, .rv-det kbd { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 3px; border: 1px solid var(--line); border-radius: 3px; font: 10px var(--mono); color: var(--muted); background: var(--card); }
-.rv-dq { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; text-align: left; background: var(--card); display: grid; gap: 3px; width: 100%; }
-.rv-dq.on { border-color: var(--muted); padding: 10px; }
-.rv-dq .ttl { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; min-width: 0; }
-.rv-dq .ttl span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rv-dq .why { font-size: 11px; color: var(--muted); line-height: 1.5; }
-.rv-dq:not(.on) .why { display: none; }
+.rv-det kbd, .iss-hd kbd { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 3px; border: 1px solid var(--line); border-radius: 3px; font: 10px var(--mono); color: var(--muted); background: var(--card); }
 .rv-tag { flex: none; font-size: 9.5px; font-weight: 700; border: 1px solid var(--line); background: var(--soft); border-radius: 3px; padding: 0 5px; }
 .rv-tag.P0 { background: var(--err); border-color: var(--err); color: #fff; }
 .rv-tag.P1 { border-color: var(--err); color: var(--err-fg); }
 .rv-tag.P2, .rv-tag.game, .rv-tag.old { border-color: var(--stale); color: color-mix(in srgb, var(--stale) 80%, var(--ink)); }
 .rv-tag.ask { background: var(--primary); border-color: var(--primary); color: var(--card); }
-.rv-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.rv-acts .btn { font-size: 11.5px; padding: 3px 8px; gap: 5px; }
 .rv-empty { display: grid; gap: 4px; padding: 16px 2px; font-size: 12px; color: var(--muted); }
 .rv-empty b { color: var(--ink); }
-.rv-foot { position: sticky; bottom: 0; margin-top: auto; padding: 8px 0 10px; background: var(--card); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.rv-foot i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
-.rv-feed { display: grid; gap: 6px; font-size: 12px; }
-.rv-feed div { display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
-.rv-feed .cur { background: var(--soft); border-radius: 6px; padding: 6px 4px; }
 .rv-det { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; padding: 12px 16px; min-height: 0; overflow: auto; }
 .rv-frame { position: relative; background: var(--stage); border: 1px solid #30393c; border-radius: 4px; overflow: hidden; aspect-ratio: 16 / 9; max-height: 100%; display: grid; }
 .rv-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -1176,7 +1288,8 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .rv-cost b { color: var(--ink); font-weight: 600; }
 .rv-approve { display: flex; gap: 8px; align-items: center; margin-top: auto; }
 .rv-approve .btn { flex: 1; justify-content: center; min-height: 32px; }
-@media (max-width: 1360px) { #reviewpanel { grid-template-columns: minmax(0, 1fr) 248px; } .rv-head .legend { display: none; } .rv-det { grid-template-columns: 1fr; } }
+#reviewpanel { container-type: inline-size; }
+@container (max-width: 950px) { .rv-head .legend { display: none; } .rv-det { grid-template-columns: 1fr; } }
 
 /* ------------------------------------------------------------------ blocking map (D-77): the cameras seen from above, moved by hand */
 #blockpanel { display: grid; grid-template-columns: minmax(0, 1fr) 292px; overflow: hidden; background: var(--card); }
@@ -1276,7 +1389,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
 #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--primary); color: var(--card); padding: 8px 14px;
   border-radius: 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgb(0 0 0 / .2); max-width: 80vw; }
 #toast.err { background: var(--err); color: #fff; }
-@media (max-width: 860px) { #app { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } }
+@media (max-width: 860px) { #app, #app.no-iss { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr auto; } #issues, #issues.rail { width: auto; max-height: 30vh; } }
 </style>
 </head>
 <body>
@@ -1308,14 +1421,17 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
         <div class="conn-row"><button class="btn dark" id="conn-save">保存</button><button class="btn" id="conn-close">閉じる</button><span class="st" id="conn-st"></span></div>
       </div>
       <div id="dock" aria-label="Claude に任せる"></div>
+      <div id="ai-warn" class="warn-ai" hidden><span id="ai-err">Claude に接続されていません。</span> <button id="ai-open">接続を設定する</button>（数値を直接直す「調整」はこのままでも使えます）</div>
       <div class="chips" id="chips"></div>
       <div id="cstack"></div>
-      <textarea id="note" rows="3" placeholder="どう直す？ 例: もう少し手すりに寄せて"></textarea>
-      <div id="ai-warn" class="warn-ai" hidden><span id="ai-err">Claude に接続されていません。</span> <button id="ai-open">接続を設定する</button>（数値を直接直す「調整」はこのままでも使えます）</div>
-      <div class="comp-row">
-        <button class="chip scope" id="scope" title="指示の範囲を切り替える"></button>
-        <button class="model-btn" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="model"></span></button>
-        <button class="send" id="send" title="送信 (Ctrl+Enter)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      <!-- the one box to write in: the words, then where they go and send (stacked chips ride above it, outside the frame) -->
+      <div class="inbox" id="inbox">
+        <textarea id="note" rows="2" placeholder="どう直す？ 例: もう少し手すりに寄せて"></textarea>
+        <div class="comp-row">
+          <button class="chip scope" id="scope" title="指示の範囲を切り替える"></button>
+          <button class="model-btn" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="model"></span></button>
+          <button class="send" id="send" title="送信 (Ctrl+Enter)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+        </div>
       </div>
     </div>
   </section>
@@ -1357,13 +1473,14 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
       <div class="right">
         <button class="btn" id="approve" hidden></button>
+        <button class="btn" id="v3d" title="3D で見る：仮撮りと同じ形を Three.js で描きます。外から回り込んで、カメラの位置と向きも見られます">3D</button>
+        <button class="icon" id="guides" title="ガイドを重ねる (G)：三分割の線・映っている場所・カメラが狙う点"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></button>
         <button class="btn pro-only" id="board" title="仮撮りの線画をもとに、画像生成でリアル寄りの絵コンテを描きます（確認用。ティザーには入りません）">絵コンテ</button>
         <button class="icon on" id="mark" title="範囲を囲んで指示する (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></button>
         <button class="icon" id="open-ext" title="ストーリーボードを開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></button>
       </div>
     </div>
     <div id="next" hidden></div>
-    <div id="findings" hidden></div>
     <div id="scoutpanel" class="panel main" hidden></div>
     <div id="briefpanel" class="panel main" hidden></div>
     <div id="designpanel" class="panel main" hidden></div>
@@ -1384,6 +1501,7 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
     <div id="timeline">
       <div class="tl-head">
         <button id="tl-fold" title="タイムラインを畳んで、カット表や画面を広く使う">▾ タイムライン</button>
+        <span class="tl-tr" id="tl-tr" hidden><button type="button" class="icon play" id="tl-play" title="再生・停止 (Space)">▶</button><b id="tl-now">0:00.0</b></span>
         <span><b id="tl-total">0s</b> / 目標 <span id="tl-target"></span></span>
         <span id="tl-stale"></span>
         <span class="legend">
@@ -1400,6 +1518,9 @@ details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
       </div>
     </div>
   </section>
+
+  <!-- right: the findings (D-95), folds to a rail -->
+  <aside id="issues" hidden aria-label="指摘"></aside>
 </div>
 <div id="toast" hidden></div>
 
@@ -1498,7 +1619,19 @@ const ui = {
   filter: "all",        // all | todo | flag
   rowBusy: null,        // the row Claude is working on
   popped: null,         // the row whose approval just changed (one bounce)
+  line: [],             // asked while the machine worked, in the order it goes (D-94): [{id, label, note, run, err}]
 };
+// work starts from many places, not all of which redraw: the dock follows `busy` wherever it is set,
+// and the line moves on whenever the work in hand ends
+{
+  let busy = null;
+  Object.defineProperty(ui, "busy", { enumerable: true, get: () => busy,
+    set: (v) => {
+      if (v === busy) return;
+      busy = v; queueMicrotask(() => drawDock());
+      if (v) clearTimeout(lineSoon.t); else lineSoon();
+    } });
+}
 
 // ------------------------------------------------------------------ data
 
@@ -1518,6 +1651,7 @@ function toast(text, isErr = false) {
 }
 
 async function refresh(poll = false) {
+  refresh.n = (refresh.n || 0) + 1; // the line waits for these: work that ended may still start its previz after one
   try {
     const [st, log] = await Promise.all([api("GET", "/api/status"), api("GET", "/api/log?n=80")]);
     // the timer's poll redraws only when something changed (an answer from cache is the same)
@@ -1539,7 +1673,7 @@ async function refresh(poll = false) {
     // the home switched away from (or never opened) a project
     if (/プロジェクトが開かれていません/.test(e.message)) { location.href = "/home"; return; }
     toast(e.message, true);
-  }
+  } finally { refresh.n--; }
 }
 
 /** A project made on the home with a prompt: run the first pass right away (D-28). */
@@ -1569,8 +1703,9 @@ async function fetchSound() {
   finally { ui.mixing = false; }
   if (ui.snd && !soundItem(ui.snd)) ui.snd = null;
   drawSoundBits();
-  // the air lane on your turn follows the sound
+  // the air lane on your turn follows the sound, and so does the sound check on the list
   if (ui.tab === "review") drawReview();
+  drawIssues();
 }
 
 /** Redraw what depends on the sound only (cheap; leaves the stage alone). */
@@ -1579,6 +1714,7 @@ function drawSoundBits() {
   $("summary").innerHTML = ui.mixing ? "ミックス中…" : ui.summary;
   drawLanes();
   if (ui.tab === "sound") drawSoundPanel();
+  placePlayhead(); playIcons(); // the mix arrived (or changed): the sound screen's playhead stands on it
   const v = ui.sound?.mix?.check;
   const dot = v && ({ "launch-grade": "", close: "", "needs work": " warn" }[v.verdict] ?? " bad");
   $("tab-sound-v").innerHTML = ui.mixing ? " …" : v && v.verdict !== "n.a." ? ` <span class="dot${dot}" title="${esc(v.verdict_ja)}"></span>` : "";
@@ -1629,8 +1765,11 @@ function draw() {
   $("toolbar").hidden = !!panel && ui.tab !== "design";
   for (const el of [$("quality"), $("mark"), $("mode-seg")]) el.hidden = finishing;
   $("finish-seg").hidden = !finishing;
-  $("mark").disabled = ui.tab !== "shot" || tweak || ui.board;
+  $("mark").disabled = ui.tab !== "shot" || tweak || ui.board || !!ui.view3d;
   $("board").hidden = finishing || ui.tab !== "shot" || tweak;
+  $("guides").hidden = $("v3d").hidden = finishing || ui.tab !== "shot" || tweak || ui.board;
+  $("guides").classList.toggle("on", !!ui.guides);
+  $("v3d").classList.toggle("on", !!ui.view3d);
   $("to-sheet").hidden = ui.tab !== "shot";
   $("cut-nav").hidden = ui.tab !== "shot";
   if (ui.tab === "shot") {
@@ -1646,9 +1785,11 @@ function draw() {
   $("timeline").classList.toggle("folded", !!ui.tlFold);
   $("tl-fold").textContent = ui.tlFold ? "▸ タイムライン" : "▾ タイムライン";
   $("board").classList.toggle("on", ui.board);
-  drawStages(); drawDock(); drawFindings(); drawApprove();
+  drawStages(); drawIssues(); drawDock(); drawApprove(); // the dock reads what the column has picked
   $("render").disabled = $("cut").disabled = !!ui.busy;
-  $("send").disabled = !!ui.busy || !st.ai?.ready;
+  // while the machine works a note waits in line (D-94); the plan and the mood board replace what it would act on
+  $("send").disabled = !st.ai?.ready || (!!ui.busy && !lineable());
+  $("send").title = ui.busy && lineable() ? "列に積む — いまの作業が終わると頼みます (Ctrl+Enter)" : "送信 (Ctrl+Enter)";
   $("ai-warn").hidden = !!st.ai?.ready;
   if (st.ai?.error) $("ai-err").textContent = st.ai.error;
   $("ai-dot").className = st.ai?.ready ? "dot" : "dot bad";
@@ -1674,17 +1815,6 @@ function drawStage() {
   }
   const n = tk.t.frames.length;
   ui.frame = Math.min(ui.frame, n - 1);
-  const url = tk.t.frames[ui.frame];
-  const img = view.querySelector("img");
-  const fresh = tk.t.fresh && tk.exact;
-  const label = `${tk.q}${tk.exact ? "" : `（${ui.quality} はまだ）`}${tk.t.fresh ? "" : " · 古い take"}`;
-  if (img && view.querySelector(".badge-q")) {
-    if (img.getAttribute("src") !== url) img.src = url;
-    const b = view.querySelector(".badge-q"); b.textContent = label; b.className = "badge-q" + (fresh ? "" : " stale");
-  } else {
-    view.innerHTML = `<img alt="" draggable="false" src="${esc(url)}"><span class="badge-q${fresh ? "" : " stale"}">${esc(label)}</span><div id="region" hidden></div>`;
-    view.querySelector("img").addEventListener("load", drawRegion);
-  }
   $("scrub").hidden = false;
   const fr = $("frame"); fr.max = n - 1; fr.value = ui.frame; fr.disabled = n < 2;
   $("play").disabled = n < 2;
@@ -1692,7 +1822,320 @@ function drawStage() {
   const total = Math.round(s.duration * (ui.status.fps || 30));
   $("f-label").textContent = `コマ ${num + 1} / ${total}`;
   $("f-time").textContent = `${(num / (ui.status.fps || 30)).toFixed(2)}s / ${s.duration}s`;
-  drawRegion();
+  // the same frame in 3D (D-97): the scrubber and playback drive it as they drive the take
+  if (ui.view3d) { view.classList.remove("mark"); draw3d(s, num); return; }
+  const url = tk.t.frames[ui.frame];
+  const img = view.querySelector("img");
+  const fresh = tk.t.fresh && tk.exact;
+  // the picture carries no header any more (D-96): the badge says what it is and through which lens
+  const lens = s.lens ? ` · ${Math.round(s.lens)}mm` : "";
+  const label = `${QUALITY_JA[tk.q] || tk.q}${lens}${tk.exact ? "" : `（${QUALITY_JA[ui.quality] || ui.quality} はまだ）`}${tk.t.fresh ? "" : " · 古い take"}`;
+  if (img && view.querySelector(".badge-q")) {
+    if (img.getAttribute("src") !== url) img.src = url;
+    const b = view.querySelector(".badge-q"); b.textContent = label; b.className = "badge-q" + (fresh ? "" : " stale");
+  } else {
+    view.innerHTML = `<img alt="" draggable="false" src="${esc(url)}"><span class="badge-q${fresh ? "" : " stale"}">${esc(label)}</span><div id="region" hidden></div>`;
+    view.querySelector("img").addEventListener("load", () => { drawRegion(); drawGuides(); });
+  }
+  drawRegion(); drawGuides();
+}
+
+// ---- the guides over a take (D-96): thirds, the places in frame, the aim point, the marker.
+// The picture itself carries none of them; previz writes where they go next to its frames.
+ui.guides = (() => { try { return localStorage.getItem("sp-guides") === "1"; } catch { return false; } })();
+const guideFrames = new Map(); // guides.json url -> its frames, or the pending fetch
+function guidesOf(url) {
+  if (!url) return null;
+  const got = guideFrames.get(url);
+  if (got !== undefined) return Array.isArray(got) ? got : null;
+  guideFrames.set(url, fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    .then((j) => { guideFrames.set(url, Array.isArray(j?.frames) ? j.frames : []); drawGuides(); }));
+  return null;
+}
+function setGuides(on) {
+  ui.guides = on;
+  try { localStorage.setItem("sp-guides", on ? "1" : "0"); } catch {}
+  $("guides").classList.toggle("on", on);
+  drawGuides();
+}
+function drawGuides() {
+  const view = $("view"); let el = $("guides-layer");
+  const s = ui.tab === "shot" && ui.mode !== "tweak" && !ui.board && !ui.view3d ? shot() : null;
+  const tk = s && shownTake(s), box = tk && imageBox();
+  if (!ui.guides || !box) { if (el) el.hidden = true; return; }
+  if (!el) { el = document.createElement("div"); el.id = "guides-layer"; view.appendChild(el); }
+  // an engine take has no guides file: the thirds alone
+  const f = guidesOf(tk.t.guides)?.[ui.frame] || {};
+  const at = (p) => `left:${(p[0] * 100).toFixed(2)}%;top:${(p[1] * 100).toFixed(2)}%`;
+  const places = (f.places || []).filter((p) => Array.isArray(p.at));
+  const html = `<svg viewBox="0 0 3 3" preserveAspectRatio="none"><path class="third" d="M1 0V3M2 0V3M0 1H3M0 2H3"/></svg>`
+    + places.map((p) => `<span class="gd-place${p.at[0] > 0.72 ? " flip" : ""}" style="${at(p.at)};--c:${esc(p.color || "")}"><i></i>${esc(p.name)}</span>`).join("")
+    + (Array.isArray(f.aim) ? `<span class="gd-aim" style="${at(f.aim)}"></span>` : "")
+    + (f.marker ? `<div class="gd-marker">${esc(f.marker)}</div>` : "")
+    + `<div class="gd-key"><span><b class="k-third"></b>三分割</span>${places.length ? `<span><b class="k-place"></b>映っている場所</span>` : ""}`
+    + `${Array.isArray(f.aim) ? `<span><b class="k-aim">＋</b>カメラが狙う点</span>` : ""}</div>`;
+  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+  Object.assign(el.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+  el.hidden = false;
+}
+
+// ---- the 3D view (D-97): the shapes previz draws, drawn by Three.js at the screen's size, through
+// the shot's camera ("cam") or from outside it ("orbit"). It only reads /api/scene3d; the take
+// stays the picture previz drew. What stands still is fetched once and kept across shots.
+ui.view3d = (() => { try { return localStorage.getItem("sp-3d") || ""; } catch { return ""; } })();
+const V3 = { T: null, loading: null, gl: null, scene: null, still: null, stillKey: "", moving: null, extra: null, rig: null,
+  meta: null, want: null, busy: false, orbit: null, size: "" };
+// UE (X forward, Y right, Z up, cm) -> three (X right, Y up, -Z forward, m), as the three engine's page
+const P3 = (T, v) => new T.Vector3(v[1] / 100, v[2] / 100, -v[0] / 100);
+function set3d(mode) {
+  ui.view3d = mode;
+  try { localStorage.setItem("sp-3d", mode); } catch {}
+  draw();
+}
+function three3() {
+  if (V3.T) return Promise.resolve(V3.T);
+  V3.loading ||= import("/three.module.min.js").then((m) => (V3.T = m));
+  return V3.loading;
+}
+function draw3d(s, num) {
+  const view = $("view");
+  let host = view.querySelector(".v3d");
+  if (!host) {
+    view.innerHTML = `<div class="v3d"><div class="v3-frame"><div class="v3-labels"></div>`
+      + `<svg class="v3-thirds" viewBox="0 0 3 3" preserveAspectRatio="none"><path d="M1 0V3M2 0V3M0 1H3M0 2H3"/></svg></div>`
+      + `<span class="badge-q"></span><div class="v3-seg"><button type="button" data-v3="cam">カメラから</button><button type="button" data-v3="orbit">外から</button></div>`
+      + `<div class="v3-hint">ドラッグで回す · 右ドラッグで動かす · ホイールで寄る · ダブルクリックで戻す</div><div class="v3-wait">3D を読み込んでいます…</div></div>`;
+    host = view.querySelector(".v3d");
+    if (V3.gl) host.querySelector(".v3-frame").prepend(V3.gl.domElement);
+    V3.size = "";
+  }
+  host.classList.toggle("orbit", ui.view3d === "orbit");
+  for (const b of host.querySelectorAll("[data-v3]")) b.classList.toggle("on", b.dataset.v3 === ui.view3d);
+  host.querySelector(".badge-q").textContent = `3D（仮撮りと同じ形）${s.lens ? ` · ${Math.round(s.lens)}mm` : ""}`;
+  host.querySelector(".v3-thirds").style.display = ui.guides && ui.view3d === "cam" ? "" : "none";
+  V3.want = { shot: s.id, frame: num };
+  v3sync();
+}
+async function v3sync() {
+  let T;
+  try { T = await three3(); } catch (e) { v3wait(`3D を読めませんでした: ${e.message}`); return; }
+  v3init(T);
+  const w = V3.want; if (!w) return;
+  if (V3.meta?.shot === w.shot) v3render(); // the camera moves at once: every frame's camera is already here
+  const stale = (m) => !m || m.shot !== V3.want.shot || (m.frame !== V3.want.frame && m.dynamic);
+  if (!stale(V3.meta) || V3.busy) return;
+  V3.busy = true;
+  try {
+    const r = await fetch(`/api/scene3d?shot=${encodeURIComponent(w.shot)}&frame=${w.frame}&have=${V3.stillKey}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    v3load(T, d);
+  } catch (e) { V3.busy = false; v3wait(`3D を読めませんでした: ${e.message}`); return; }
+  V3.busy = false;
+  // the frame moved on while this was loading
+  if (stale(V3.meta)) v3sync(); else v3render();
+}
+function v3wait(text) {
+  const el = $("view").querySelector(".v3-wait");
+  if (el) { el.textContent = text; el.hidden = false; }
+}
+function v3init(T) {
+  const frame = $("view").querySelector(".v3-frame");
+  if (V3.gl) { if (frame && !frame.contains(V3.gl.domElement)) frame.prepend(V3.gl.domElement); return; }
+  const gl = new T.WebGLRenderer({ antialias: true });
+  gl.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const sc = new T.Scene();
+  sc.background = new T.Color(0x16191c);
+  sc.add(new T.HemisphereLight(0xeef3f8, 0x3a332c, 2.2));
+  const sun = new T.DirectionalLight(0xffffff, 1.7);
+  sun.position.set(0.45, 1, 0.3);
+  sc.add(sun);
+  Object.assign(V3, {
+    gl, scene: sc,
+    cam: new T.PerspectiveCamera(40, 16 / 9, 0.05, 3000),
+    ocam: new T.PerspectiveCamera(50, 16 / 9, 0.05, 3000),
+    mats: {
+      lit: new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide }),
+      glow: new T.MeshBasicMaterial({ vertexColors: true, side: T.DoubleSide }),
+      ink: new T.LineBasicMaterial({ color: 0x0a0c0e, transparent: true, opacity: 0.55 }),
+    },
+  });
+  v3controls(gl.domElement);
+  if (frame) frame.prepend(gl.domElement);
+}
+// one glow-or-lit part of the triangles: UE millimetres -> three metres, a surface colour on each corner
+function v3geo(T, p, s, surfs, glow) {
+  const idx = [];
+  for (let i = 0; i < s.length; i++) if (!!surfs[s[i]]?.glow === glow) idx.push(i);
+  const pos = new Float32Array(idx.length * 9), col = new Float32Array(idx.length * 9), c = new T.Color();
+  idx.forEach((i, j) => {
+    c.set(surfs[s[i]]?.color || "#888888");
+    for (let k = 0; k < 3; k++) {
+      const q = i * 9 + k * 3, o = j * 9 + k * 3;
+      pos[o] = p[q + 1] / 1000; pos[o + 1] = p[q + 2] / 1000; pos[o + 2] = -p[q] / 1000;
+      col[o] = c.r; col[o + 1] = c.g; col[o + 2] = c.b;
+    }
+  });
+  const g = new T.BufferGeometry();
+  g.setAttribute("position", new T.BufferAttribute(pos, 3));
+  g.setAttribute("color", new T.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return g;
+}
+function v3part(T, p, s, surfs) {
+  const grp = new T.Group(), lit = v3geo(T, p, s, surfs, false);
+  grp.add(new T.Mesh(lit, V3.mats.lit), new T.Mesh(v3geo(T, p, s, surfs, true), V3.mats.glow));
+  // ink where faces meet at an angle, as previz outlines its pieces
+  grp.add(new T.LineSegments(new T.EdgesGeometry(lit, 30), V3.mats.ink));
+  return grp;
+}
+function v3drop(obj) {
+  if (!obj) return;
+  obj.parent?.remove(obj);
+  const shared = Object.values(V3.mats || {});
+  obj.traverse((o) => { o.geometry?.dispose(); if (o.material && !shared.includes(o.material)) o.material.dispose(); });
+}
+function v3load(T, d) {
+  if (d.still.p) { v3drop(V3.still); V3.still = v3part(T, d.still.p, d.still.s, d.surfs); V3.scene.add(V3.still); V3.stillKey = d.still.key; }
+  v3drop(V3.moving); V3.moving = v3part(T, d.moving.p, d.moving.s, d.surfs); V3.scene.add(V3.moving);
+  if (V3.meta?.shot !== d.shot) V3.orbit = null;
+  // the anchors (blocks when no level is read, outlines over one), the ground, the aim point
+  v3drop(V3.extra); V3.extra = new T.Group(); V3.scene.add(V3.extra);
+  for (const a of d.anchors) {
+    if (!a.size) continue;
+    const box = new T.BoxGeometry(a.size[1] / 100, a.size[2] / 100, a.size[0] / 100), at = P3(T, a.center);
+    const parts = d.level
+      ? [new T.LineSegments(new T.EdgesGeometry(box), new T.LineBasicMaterial({ color: a.color, transparent: true, opacity: 0.75 }))]
+      : [new T.Mesh(box, new T.MeshLambertMaterial({ color: new T.Color(a.color).lerp(new T.Color(0x9e9e9e), 0.45) })),
+        new T.LineSegments(new T.EdgesGeometry(box), V3.mats.ink)];
+    for (const o of parts) { o.position.copy(at); V3.extra.add(o); }
+  }
+  if (d.ground != null) {
+    const y = d.ground / 100;
+    const ground = new T.Mesh(new T.PlaneGeometry(600, 600), new T.MeshLambertMaterial({ color: 0x3a3e42 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = y;
+    const grid = new T.GridHelper(600, 600, 0x50565c, 0x454a50);
+    grid.position.y = y + 0.003;
+    V3.extra.add(ground, grid);
+  }
+  if (d.target) {
+    const dot = new T.Mesh(new T.SphereGeometry(0.06, 16, 12), new T.MeshBasicMaterial({ color: 0xff5a5a }));
+    dot.position.copy(P3(T, d.target)); V3.extra.add(dot);
+  }
+  // the shot's camera seen from outside: its path through the shot, and where it is now
+  v3drop(V3.rig); V3.rig = new T.Group(); V3.scene.add(V3.rig);
+  const path = d.cameras.map((c) => P3(T, c.eye));
+  V3.cutY = Math.max(...path.map((p) => p.y), d.target ? P3(T, d.target).y : -Infinity) + 0.8;
+  V3.rig.add(new T.Line(new T.BufferGeometry().setFromPoints(path), new T.LineBasicMaterial({ color: 0x3be02b })));
+  // the camera's frustum drawn about a third of the way to what it aims at
+  const c0 = d.cameras[0], reach = c0 ? P3(T, c0.eye).distanceTo(d.target ? P3(T, d.target) : P3(T, c0.ahead)) : 4;
+  V3.helpCam = new T.PerspectiveCamera(40, d.aspect, 0.05, Math.min(Math.max(reach * 0.3, 0.8), 6));
+  V3.help = new T.CameraHelper(V3.helpCam);
+  const g = new T.Color(0x3be02b), r = new T.Color(0xff5a5a);
+  V3.help.setColors(g, g, g, r, g);
+  V3.aimLine = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(), new T.Vector3()]), new T.LineBasicMaterial({ color: 0xff5a5a }));
+  V3.rig.add(V3.help, V3.aimLine);
+  V3.meta = { shot: d.shot, frame: d.frame, dynamic: !!d.dynamic, cameras: d.cameras, anchors: d.anchors, props: d.props, target: d.target, aspect: d.aspect };
+}
+function v3render() {
+  const T = V3.T, m = V3.meta, gl = V3.gl, view = $("view"), host = view.querySelector(".v3d");
+  if (!T || !m || !gl || !host || !m.cameras.length) return;
+  host.querySelector(".v3-wait").hidden = true;
+  const f = Math.min(Math.max(V3.want?.frame ?? m.frame, 0), m.cameras.length - 1), c = m.cameras[f];
+  const cam = V3.cam;
+  cam.fov = c.fov; cam.aspect = m.aspect;
+  cam.position.copy(P3(T, c.eye));
+  cam.up.set(c.up[1], c.up[2], -c.up[0]).normalize();
+  cam.lookAt(P3(T, c.ahead));
+  cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+  const outside = ui.view3d === "orbit";
+  // through the shot's camera the frame keeps the shot's shape; from outside it fills the view
+  const vw = view.clientWidth, vh = view.clientHeight;
+  let w = vw, h = vh;
+  if (!outside) { if (vw / vh > m.aspect) w = vh * m.aspect; else h = vw / m.aspect; }
+  w = Math.max(2, Math.round(w)); h = Math.max(2, Math.round(h));
+  const frame = host.querySelector(".v3-frame");
+  if (V3.size !== `${w}x${h}`) { V3.size = `${w}x${h}`; frame.style.width = `${w}px`; frame.style.height = `${h}px`; gl.setSize(w, h); }
+  V3.rig.visible = outside;
+  // from outside, what is above the shot's camera is cut away, so ceilings and roofs leave the room open
+  gl.clippingPlanes = outside ? [new T.Plane(new T.Vector3(0, -1, 0), V3.cutY)] : [];
+  let eye = cam;
+  if (outside) {
+    V3.helpCam.position.copy(cam.position); V3.helpCam.quaternion.copy(cam.quaternion);
+    V3.helpCam.fov = cam.fov; V3.helpCam.aspect = cam.aspect; V3.helpCam.updateProjectionMatrix(); V3.helpCam.updateMatrixWorld();
+    V3.help.update();
+    const ahead = m.target ? P3(T, m.target) : P3(T, c.ahead).sub(cam.position).normalize().multiplyScalar(3).add(cam.position);
+    V3.aimLine.geometry.setFromPoints([cam.position, ahead]);
+    v3orbit(T, m, f, w / h);
+    eye = V3.ocam;
+  }
+  gl.render(V3.scene, eye);
+  v3labels(T, m, f, eye, outside);
+}
+function v3orbit(T, m, f, aspect) {
+  if (!V3.orbit) {
+    // start behind, above and a little aside the shot's camera, with it and what it aims at both in view
+    const eye = P3(T, m.cameras[f].eye), dir = P3(T, m.cameras[f].ahead).sub(eye).normalize();
+    const aim = m.target ? P3(T, m.target) : eye.clone().addScaledVector(dir, 4);
+    const tgt = eye.clone().lerp(aim, 0.5), up = new T.Vector3(0, 1, 0);
+    const side = new T.Vector3().crossVectors(dir, up);
+    if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+    const r = Math.max(eye.distanceTo(aim) * 1.6, 5);
+    const off = dir.clone().negate().addScaledVector(up, 1.1).addScaledVector(side.normalize(), 0.45).normalize().multiplyScalar(r);
+    V3.orbit = { tgt, r, th: Math.atan2(off.x, off.z), ph: Math.acos(Math.min(Math.max(off.y / r, -1), 1)) };
+  }
+  const o = V3.orbit, c = V3.ocam;
+  c.position.set(o.tgt.x + o.r * Math.sin(o.ph) * Math.sin(o.th), o.tgt.y + o.r * Math.cos(o.ph), o.tgt.z + o.r * Math.sin(o.ph) * Math.cos(o.th));
+  c.up.set(0, 1, 0); c.lookAt(o.tgt);
+  c.aspect = aspect; c.updateProjectionMatrix(); c.updateMatrixWorld();
+}
+function v3labels(T, m, f, eye, outside) {
+  const box = $("view").querySelector(".v3-labels");
+  if (!box) return;
+  const out = [];
+  const put = (v, cls, html) => {
+    const p = v.project(eye);
+    if (p.z > 1 || p.z < -1 || Math.abs(p.x) > 1.02 || Math.abs(p.y) > 1.02) return;
+    out.push(`<span class="${cls}${cls === "gd-place" && p.x > 0.44 ? " flip" : ""}" style="left:${((p.x + 1) * 50).toFixed(2)}%;top:${((1 - p.y) * 50).toFixed(2)}%">${html}</span>`);
+  };
+  for (const a of m.anchors) put(P3(T, a.center), "gd-place", `<i style="--c:${esc(a.color)}"></i>${esc(a.name)}`);
+  for (const p of m.props) put(P3(T, p.center), "gd-place", `<i style="--c:#ff786e"></i>${esc(p.name)}`);
+  if (m.target) put(P3(T, m.target), "gd-aim", "");
+  if (outside) put(P3(T, m.cameras[f].eye), "v3-camtag", `${esc(m.shot)} のカメラ`);
+  const html = out.join("");
+  if (box._html !== html) { box.innerHTML = html; box._html = html; }
+}
+function v3controls(el) {
+  let drag = null;
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
+  el.addEventListener("pointerdown", (e) => {
+    if (ui.view3d !== "orbit" || !V3.orbit) return;
+    e.stopPropagation();
+    drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey };
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y, o = V3.orbit;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (drag.pan) {
+      const T = V3.T, k = o.r * 0.0016;
+      o.tgt.addScaledVector(new T.Vector3().setFromMatrixColumn(V3.ocam.matrixWorld, 0), -dx * k)
+        .addScaledVector(new T.Vector3().setFromMatrixColumn(V3.ocam.matrixWorld, 1), dy * k);
+    } else {
+      o.th -= dx * 0.006;
+      o.ph = Math.min(Math.max(o.ph - dy * 0.006, 0.05), Math.PI - 0.05);
+    }
+    v3render();
+  });
+  el.addEventListener("pointerup", () => { drag = null; });
+  el.addEventListener("wheel", (e) => {
+    if (ui.view3d !== "orbit" || !V3.orbit) return;
+    e.preventDefault();
+    V3.orbit.r = Math.min(Math.max(V3.orbit.r * Math.exp(e.deltaY * 0.0012), 0.3), 400);
+    v3render();
+  }, { passive: false });
+  el.addEventListener("dblclick", () => { if (ui.view3d === "orbit") { V3.orbit = null; v3render(); } });
 }
 
 /** The shot's storyboard frame: an image model's near-real painting of its previz layout. */
@@ -1764,6 +2207,13 @@ function drawTeaser() {
   if (cur && cur.dataset.src === cut.video_url + cut.stamp) return;
   view.innerHTML = `<video controls preload="metadata" data-src="${esc(cut.video_url + cut.stamp)}" src="${esc(cut.video_url)}?v=${encodeURIComponent(cut.stamp || "")}"></video>
     <span class="badge-q">${esc(cut.quality)} · cut.mp4</span>`;
+  // the timeline's playhead follows the video, and its ▶ shows whether it plays
+  const v = view.querySelector("video");
+  const follow = () => { placePlayhead(); if (!v.paused && v.isConnected) requestAnimationFrame(follow); };
+  v.addEventListener("play", () => { playIcons(); follow(); });
+  v.addEventListener("pause", playIcons);
+  v.addEventListener("seeked", placePlayhead);
+  v.addEventListener("loadedmetadata", placePlayhead);
 }
 
 // ------------------------------------------------------------------ playback: Space plays and stops what is on screen
@@ -1794,11 +2244,18 @@ function playTake(s) {
   return tk?.t.frames?.length ? tk.t : null;
 }
 
-const playGlyph = () => (playing ? "❚❚" : "▶");
+/** What this screen plays as a media element: the cut's video (teaser) or the mix (sound). */
+const tabMedia = () => (ui.tab === "teaser" ? $("view").querySelector("video") : ui.tab === "sound" ? $("mixplayer") : null);
+
+/** Whether this screen is playing: the frames, or its video or mix. */
+const nowPlaying = () => { const m = tabMedia(); return !!playing || (!!m && !m.paused); };
+
+const playGlyph = () => (nowPlaying() ? "❚❚" : "▶");
 
 /** The ▶ buttons follow the playback. */
 function playIcons() {
-  for (const b of document.querySelectorAll("#play, [data-play]")) { b.textContent = playGlyph(); b.classList.toggle("on", !!playing); }
+  const on = nowPlaying();
+  for (const b of document.querySelectorAll("#play, #tl-play, [data-play]")) { b.textContent = on ? "❚❚" : "▶"; b.classList.toggle("on", on); }
 }
 
 /** Space (or a ▶): play or stop what this screen shows. */
@@ -1809,7 +2266,7 @@ function playToggle() {
     if (libPlaying) { libPlaying = ""; drawLibList(); }
     return;
   }
-  const media = ui.tab === "teaser" ? $("view").querySelector("video") : ui.tab === "sound" ? $("mixplayer") : null;
+  const media = tabMedia();
   if (media) {
     if (media.paused) media.play().catch((err) => toast(err.message, true)); else media.pause();
     return;
@@ -1874,7 +2331,7 @@ function mapShow(p, t) {
 
 /** Puts the playing frame on screen without redrawing the page. */
 function playShow(p) {
-  if (p.tab === "shot") { ui.frame = p.i; drawStage(); placeFramePlayhead(); return; }
+  if (p.tab === "shot") { ui.frame = p.i; drawStage(); placePlayhead(); return; }
   ui.rvFrame = { id: p.id, i: p.i };
   const img = $("reviewpanel").querySelector(".rv-frame img");
   if (img && img.getAttribute("src") !== p.urls[p.i]) img.src = p.urls[p.i];
@@ -1985,47 +2442,251 @@ const RV_NUDGES = ["closer", "farther", "higher", "lower", "orbit_left", "orbit_
 const placeOf = (s) => { const c = s.node?.camera || {}; return c.anchor || (typeof c.look_at === "string" ? c.look_at : "") || s.framing?.subject || ""; };
 const worstSev = (fs) => fs.map((f) => f.severity).sort((a, b) => SEV_RANK[a] - SEV_RANK[b])[0] || "";
 
-/** What is left for the human to decide, in the order to decide it. Each has its actions: [key, label]. */
-function reviewDecisions() {
-  const st = ui.status, shots = st.shots, out = [];
+// ------------------------------------------------------------------ the findings (D-95)
+// One list on the left, the same on every step: what the code measured (the shot check, the sound check), what is
+// left to decide (the script, a changed game, stale previz) and what the last pass or Cut noted. Picking one brings
+// its place up on the right; "← 左に積む" stacks it in the left box, where words can be added before it is sent.
+// Every item is a fact the code found: nothing here asks Claude to look over its own work (D-22).
+
+/** Findings the viewer set aside ("このままでよい"): this browser's own, never in shots.yaml or state.json. */
+const issOffKey = () => `sp-iss-off:${ui.status?.path || ""}`;
+function issOff() {
+  if (!issOff.v || issOff.at !== issOffKey()) {
+    issOff.at = issOffKey();
+    try { issOff.v = new Set(JSON.parse(localStorage.getItem(issOff.at) || "[]")); } catch { issOff.v = new Set(); }
+  }
+  return issOff.v;
+}
+function issSetOff(key, off) {
+  if (!key) return;
+  const s = issOff();
+  if (off) s.add(key); else s.delete(key);
+  try { localStorage.setItem(issOffKey(), JSON.stringify([...s].slice(-200))); } catch { /* kept for this page only */ }
+}
+/** A finding is set aside by its words, which carry its numbers: once it changes, it comes back. A must-fix never is. */
+const findingOffKey = (f) => (f.severity === "P0" ? null : `f|${f.rule}|${f.shot || ""}|${f.message}`);
+const findingOff = (f) => { const k = findingOffKey(f); return !!k && issOff().has(k); };
+// the order to look at them in: must-fix, the script to approve, warnings, a changed game, stale previz, then the rest
+const ISS_RANK = { P0: 0, ask: 1, P1: 2, game: 3, old: 4, P2: 5, note: 6 };
+
+/** The notes of the latest first pass or Cut (both log what they had to say): [{text, src}]. */
+function lastNotes() {
+  const e = [...(ui.log || [])].reverse().find((x) => x.action === "produce" || x.action === "cut");
+  return e ? [...new Set(e.notes || [])].map((text) => ({ text, src: e.action })) : [];
+}
+
+/** Everything on the list, set-aside ones included (marked `off`). Each has its actions: [key, label]. */
+function issues() {
+  const st = ui.status; if (!st) return [];
+  const shots = st.shots || [], out = [], pro = uiPro();
   const lines = st.script || [];
   if (lines.length && st.script_approval !== "approved") {
     const cards = lines.filter((l) => !l.on).length;
-    out.push({ id: "script", tag: "ask", tagText: "承認", title: st.script_approval === "outdated" ? "変わった台本を承認し直す" : "台本を承認する",
-      why: `カード ${cards} · 重ね文字 ${lines.length - cards}。承認はカメラ・光・音では外れません`, acts: [["approve-script", "台本を承認"], ["open-script", "台本を開く"]] });
+    out.push({ id: "script", kind: "script", tag: "ask", tagText: "承認", src: "台本", title: st.script_approval === "outdated" ? "変わった台本を承認し直す" : "台本を承認する",
+      why: `カード ${cards} · 重ね文字 ${lines.length - cards}。承認はカメラ・光・音では外れません`, acts: [["approve-script", "台本を承認"]] });
   }
   // simple shows what must be fixed (P0, P1); pro adds the inferred drift (P2)
-  for (const f of [...findings()].filter((f) => uiPro() || f.severity !== "P2").sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity])) {
-    out.push({ id: `f:${f.rule}:${f.shot || ""}`, tag: f.severity, tagText: sevJa(f.severity), shot: f.shot, f,
-      title: `${f.shot ? `${f.shot} · ` : ""}${RULE_JA[f.rule] || f.rule}`, why: `${f.message} — ${f.fix}`,
-      acts: [["fix", "← 左に積む"],...(f.shot ? [["see", "このカットを見る"]] : [])] });
+  for (const f of findings()) {
+    if (!pro && f.severity === "P2") continue;
+    const offKey = findingOffKey(f);
+    out.push({ id: `f:${f.rule}:${f.shot || ""}`, kind: "check", tag: f.severity, tagText: sevJa(f.severity), src: "カット検査", shot: f.shot || null, f,
+      offKey, off: findingOff(f), title: `${f.shot ? `${f.shot} · ` : ""}${RULE_JA[f.rule] || f.rule}`, why: `${f.message} — ${f.fix}`, acts: [["stack", "← 左に積む"]] });
   }
   for (const s of shots) {
     const g = gameChanged(s);
-    if (g) out.push({ id: `g:${s.id}`, tag: "game", tagText: "ゲーム", shot: s.id, q: [...st.qualities].reverse().find((q) => g.qualities.includes(q)), title: `${s.id} · ゲームが変わった`, why: `${gameText(g)} が変わりました。写っていたこのカットだけが古くなっています`,
-      acts: [["rerender", "このカットだけ撮り直す"], ["see", "このカットを見る"]] });
+    if (g) out.push({ id: `g:${s.id}`, kind: "game", tag: "game", tagText: "ゲーム", src: "ゲームの変化", shot: s.id, q: [...st.qualities].reverse().find((q) => g.qualities.includes(q)),
+      // filming is the machine's: it is asked from the dock, which offers it while this one is picked (D-84)
+      title: `${s.id} · ゲームが変わった`, why: `${gameText(g)} が変わりました。写っていたこのカットだけが古くなっています。撮り直しは左のドックから`, acts: [] });
   }
   const old = shots.filter((s) => s.qualities.previz !== "fresh");
   if (old.length && st.qualities.includes("previz")) {
     const list = old.slice(0, 4).map((s) => s.id).join(", "), ids = old.length > 4 ? `${list} ほか ${old.length - 4} 件` : list;
-    out.push({ id: "previz", tag: "old", tagText: "古い", title: `仮撮りが古いカット ${old.length} 本`, why: `${ids}。エンジンを使わず数秒で描き直します`,
-      acts: [["previz", "仮撮りする"]] });
+    out.push({ id: "previz", kind: "old", tag: "old", tagText: "古い", src: "仮撮り", shot: old[0].id, n: old.length, title: `仮撮りが古いカット ${old.length} 本`,
+      why: `${ids}。左のドックから、エンジンを使わず数秒で描き直せます`, acts: [] });
   }
-  if (st.review?.stopped && st.script_approval === "approved") {
-    out.push({ id: "resume", tag: "ask", tagText: "次へ", title: "続ける（音 → 撮影 → Cut）", why: "承認した台本で音を設計し、撮ってつなぎます", acts: [["resume", "続ける"]] });
+  // the sound check speaks of the mix: critical and major are warnings (nothing about sound stops an approval), minor is drift
+  (ui.sound?.mix?.check?.actions || []).forEach((a, i) => {
+    const tag = a.weight === "minor" ? "P2" : "P1";
+    if (!pro && tag === "P2") return;
+    const offKey = `s|${a.metric}|${a.action}`;
+    out.push({ id: `s:${i}:${a.metric}`, kind: "sound", tag, tagText: sevJa(tag), src: "サウンドチェック", at: a.at, a, offKey, off: issOff().has(offKey),
+      title: `${a.at != null ? `${fmtT(a.at)} · ` : ""}${a.label || a.metric}`, why: `${a.weight_ja}: ${a.action}`, acts: [["stack", "← 左に積む"]] });
+  });
+  lastNotes().forEach((n, i) => {
+    const offKey = `n|${n.text}`;
+    out.push({ id: `n:${i}:${hashOf(n.text)}`, kind: "note", tag: "note", tagText: "注記", src: n.src === "cut" ? "Cut" : "一気に作る", note: n, offKey, off: issOff().has(offKey),
+      title: n.text, why: n.text, acts: [] });
+  });
+  for (const it of out) if (it.offKey) it.acts = [...it.acts, ["off", it.off ? "戻す" : it.kind === "note" ? "閉じる" : "このままでよい"]];
+  return out.sort((a, b) => ISS_RANK[a.tag] - ISS_RANK[b.tag]);
+}
+
+/** What the list shows now: set-aside ones only while the viewer asked to see them again. */
+const issuesShown = () => issues().filter((x) => !x.off || ui.issShowOff);
+/** Kept for the keys of your turn: they walk the same list. */
+const reviewDecisions = issuesShown;
+
+/** Whether the column is open: the viewer's choice in this browser, else open on a wide window (it takes ~300px from the canvas). */
+function issOpen() {
+  try { const v = localStorage.getItem("sp-iss-open"); if (v != null) return v === "1"; } catch { /* the window decides */ }
+  return window.innerWidth >= 1400;
+}
+function issSetOpen(open) {
+  try { localStorage.setItem("sp-iss-open", open ? "1" : "0"); } catch { /* for this page only */ }
+  drawIssues();
+}
+/** The finding shown open on the list, while the column is open (the dock offers the machine's work for it). */
+const issPicked = () => (issOpen() && !$("issues").hidden && !$("issues").classList.contains("rail") ? issuesShown()[ui.rvq || 0] : null);
+
+function drawIssues() {
+  const box = $("issues"), st = ui.status; if (!box || !st) return;
+  const all = issues(), shown = all.filter((x) => !x.off || ui.issShowOff), live = all.filter((x) => !x.off), offN = all.length - live.length;
+  ui.rvq = Math.min(Math.max(ui.rvq || 0, 0), Math.max(shown.length - 1, 0));
+  const producing = ui.busy === "produce" && !!ui.produce;
+  // nothing to check before the first cut: no column at all, and the canvas keeps the width
+  const hidden = !producing && !all.length && !st.shots.length;
+  // nothing found: a rail with a tick (no width taken for an empty list)
+  const rail = !hidden && (!issOpen() || (!producing && !all.length));
+  const p0 = live.filter((x) => x.tag === "P0").length, p1 = live.filter((x) => x.tag === "P1").length;
+  let html = "";
+  if (hidden) html = "";
+  else if (rail) {
+    const counts = producing ? `<i class="dock-spin" aria-hidden="true"></i>`
+      : !live.length ? `<span class="ok" title="指摘はありません">✓</span>`
+      : `${p0 ? `<span class="cnt P0" title="${esc(sevJa("P0"))}">${p0}</span>` : ""}${p1 ? `<span class="cnt P1" title="${esc(sevJa("P1"))}">${p1}</span>` : ""}<span class="cnt" title="すべて">${live.length}</span>`;
+    html = `<button type="button" class="iss-rail" data-iss-open title="${all.length || producing ? "指摘を開く" : "指摘はありません"}"><span class="ic">‹</span><span class="lbl">${producing ? "Claude の番" : "指摘"}</span>${counts}</button>`;
+  } else if (producing) {
+    // while a first pass runs, the column shows its steps (Claude's turn, D-80)
+    const rows = produceOrder().map((k) => {
+      const d = ui.produce.steps[k];
+      return `<div class="${d?.status === "start" ? "cur" : ""}"><span>${d ? STEP_ICON[d.status] : "·"}</span><span>${esc(PRODUCE_STEP_JA[k])}${d?.detail ? `<br><small class="mu">${esc(d.detail)}</small>` : ""}</span></div>`;
+    }).join("");
+    html = `<div class="iss-hd"><b>Claude の番</b><span class="sp"></span><button type="button" class="iss-x" data-iss-close title="閉じる">›</button></div>
+      <div class="iss-feed">${rows}</div><div class="iss-foot">止まったら、ここに指摘が並びます</div>`;
+  } else {
+    const items = shown.map((it, i) => {
+      const on = i === ui.rvq;
+      // looking and stacking stay pressable while the machine works (D-94); the machine's own work is asked from the dock
+      const acts = on && it.acts.length ? `<div class="iss-acts">${it.acts.map(([k, label], j) => `<button type="button" class="btn${j === 0 && k !== "off" ? " dark" : ""}" data-iss-act="${esc(k)}"${ui.busy && !["stack", "off"].includes(k) ? " disabled" : ""}>${ui.tab === "review" ? `<kbd>${j + 1}</kbd>` : ""}${esc(label)}</button>`).join("")}</div>` : "";
+      return `<div class="iss-it${on ? " on" : ""}${it.off ? " off" : ""}" data-iss="${i}" role="button" tabindex="0" title="${esc(on ? "" : it.why)}">
+        <div class="ttl"><span class="rv-tag ${esc(it.tag)}">${esc(it.tagText)}</span><span class="t">${esc(it.title)}</span></div>
+        <div class="src">${esc(it.src)}</div>${it.kind === "note" ? "" : `<div class="why">${esc(it.why)}</div>`}${acts}</div>`;
+    }).join("");
+    const foot = offN ? `<button type="button" data-iss-showoff>${ui.issShowOff ? "このままでよいにした指摘を隠す" : `このままでよいにした ${offN} 件を見る`}</button>` : "";
+    html = `<div class="iss-hd"><b>指摘</b><span class="n">${live.length}</span>
+        ${p0 ? `<span class="cnt P0">${sevJa("P0")} ${p0}</span>` : ""}${p1 ? `<span class="cnt P1">${sevJa("P1")} ${p1}</span>` : ""}<span class="sp"></span>
+        ${ui.tab === "review" ? `<span class="keys" title="J/K で移る · 1〜3 で押す"><kbd>J</kbd><kbd>K</kbd></span>` : ""}<button type="button" class="iss-x" data-iss-close title="閉じる">›</button></div>
+      <div class="iss-list">${items || `<div class="iss-empty"><b>指摘はありません</b>「このままでよい」にした指摘だけです</div>`}</div><div class="iss-foot">${foot}</div>`;
   }
-  return out;
+  box.hidden = hidden;
+  box.classList.toggle("rail", rail);
+  $("app").classList.toggle("no-iss", hidden);
+  // compare with what was drawn, not the DOM: the English mode rewrites the text on screen
+  if (box._html !== html) {
+    box._html = html; box.innerHTML = html;
+    box.querySelector(".iss-it.on")?.scrollIntoView({ block: "nearest" });
+  }
+}
+
+/** Light up where a finding lives for a moment (after the screen it is on was drawn). */
+function issFlash(sel) {
+  requestAnimationFrame(() => {
+    const el = sel && document.querySelector(sel); if (!el) return;
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    el.classList.remove("sp-focus"); void el.offsetWidth; el.classList.add("sp-focus");
+    setTimeout(() => el.classList.remove("sp-focus"), 1500);
+  });
+}
+
+/** Bring a finding's place up on the right: its cut (on a screen that shows cuts, else your turn), its moment in the mix,
+ *  the script, or the screen of the whole teaser. Only looks: nothing is written. */
+function issueFocus(it) {
+  if (!it) return;
+  const tab = ui.tab;
+  if (it.kind === "sound") {
+    if (tab !== "sound") { ui.tab = ui.fin = "sound"; ui.region = null; }
+    ui.snd = null; draw();
+    if (it.at != null) seek(it.at);
+    drawSoundBits(); drawChips();
+    issFlash("#sp-player");
+    return;
+  }
+  if (it.kind === "note") {
+    // a Cut's note is about the cut video; a pass's note stays where the viewer is
+    if (it.note.src === "cut" && tab !== "teaser") { ui.tab = ui.fin = "teaser"; ui.region = null; }
+    draw(); issFlash(it.note.src === "cut" ? "#view" : "");
+    return;
+  }
+  if (it.kind === "script") { goStage("structure"); issFlash("#structpanel .scr"); return; }
+  if (it.shot) {
+    const id = it.shot;
+    if (tab === "structure") { if (ui.row !== id) pickRow(id); else draw(); }
+    else if (tab === "shot") selectShot(id);
+    else { ui.sel = id; ui.scopeAll = false; if (tab !== "review" && tab !== "blocking") ui.tab = "review"; draw(); }
+    const q = CSS.escape(id);
+    if (ui.tab === "structure" && ui.cvView === "canvas") cvReveal(id);
+    issFlash({ structure: `#structpanel [data-row="${q}"]`, review: `#reviewpanel [data-rv-cut="${q}"]`, blocking: `#bk-strip [data-bk-tile="${q}"]`, shot: "#stage" }[ui.tab]);
+    return;
+  }
+  // the whole teaser: the cut sheet (or your turn) shows its length and its order
+  if (tab !== "structure" && tab !== "review") goStage("structure"); else draw();
+  issFlash(ui.tab === "review" ? "#reviewpanel .rv-head" : "#structpanel .sheet-head");
+}
+
+/** Stack a finding in the left box, pointed at its cut (or the whole, or the mix), after bringing its place up.
+ *  The human adds words if they like and sends it; while the machine works it then waits in line (D-94). */
+function issueStack(it, { type = false } = {}) {
+  if (!it || !(it.kind === "check" || it.kind === "sound")) return;
+  issueFocus(it);
+  if (it.kind === "sound") {
+    addChip(cmpTarget().key, chipOf(`サウンドチェック: ${it.a.action}`, { note: `サウンドチェックの指摘を直して: ${it.a.action}`, c: "var(--stale)" }));
+  } else if (it.shot) {
+    // the cut's own stack, the whole of the cut (not one part of it)
+    if (ui.aspect !== "shot") { ui.aspect = "shot"; draw(); }
+    addChip(rowKey(it.shot), fixChip(it.f));
+  } else {
+    ui.scopeAll = true; draw();
+    addChip(cmpTarget().key, fixChip(it.f));
+  }
+  stackedToast();
+  // words can follow straight away (pro keeps a row's stack on its row, typed there)
+  if (type && !(uiPro() && ui.tab === "structure" && it.shot)) $("note").focus();
+}
+
+function runIssueAct(it, k, o = {}) {
+  if (!it) return;
+  if (k === "stack") { issueStack(it, o); return; }
+  if (k === "off") { issSetOff(it.offKey, !it.off); draw(); return; }
+  // the human's OK; filming is not here but in the dock (D-84)
+  if (k === "approve-script" && !ui.busy) approveScript(true);
+}
+
+/** The finding of the shot check on the list, for a marker pressed on the right (a row's or a card's chip). */
+const issueOfFinding = (f) => issues().find((x) => x.kind === "check" && x.f.rule === f.rule && (x.f.shot ?? null) === (f.shot ?? null));
+/** A marker pressed on the right (a row's or a card's chip): the same as "← 左に積む" on its line of the list. */
+function stackFinding(f) {
+  const it = issueOfFinding(f);
+  if (it) { issuePick(it); issueStack(it); return; }
+  // a drift the simple list leaves out (P2): stacked on its cut all the same
+  if (f.shot) { ui.aspect = "shot"; addChip(rowKey(f.shot), fixChip(f)); draw(); }
+  else { ui.scopeAll = true; draw(); addChip(cmpTarget().key, fixChip(f)); }
+  stackedToast();
+}
+/** Select a finding on the list (opening it), so the left shows what was pressed on the right. */
+function issuePick(it) {
+  const i = issuesShown().findIndex((x) => x.id === it?.id);
+  if (i < 0) return;
+  ui.rvq = i;
+  drawIssues();
 }
 
 function drawReview() {
   const box = $("reviewpanel"), st = ui.status;
   if (!st.shots.length) {
-    box.innerHTML = `<div class="rv-over"><div class="rv-empty"><b>まだカットがありません</b>左の欄で企画すると、Claude が台本とカットを組んで仮撮りまで済ませ、ここで止まります。</div></div>${reviewQueueHtml([])}`;
+    box.innerHTML = `<div class="rv-over"><div class="rv-empty"><b>まだカットがありません</b>左の欄で企画すると、Claude が台本とカットを組んで仮撮りまで済ませ、ここで止まります。決めることは右の「指摘」に並びます。</div></div>`;
     return;
   }
-  const ds = reviewDecisions();
-  ui.rvq = Math.min(Math.max(ui.rvq || 0, 0), Math.max(ds.length - 1, 0));
-  box.innerHTML = `${reviewLanesHtml()}${reviewQueueHtml(ds)}${reviewCutHtml()}`;
+  box.innerHTML = `${reviewLanesHtml()}${reviewCutHtml()}`;
 }
 
 function reviewLanesHtml() {
@@ -2117,30 +2778,6 @@ function reviewLanesHtml() {
   </div>`;
 }
 
-function reviewQueueHtml(ds) {
-  if (ui.busy === "produce" && ui.produce) {
-    const rows = produceOrder().map((k) => {
-      const d = ui.produce.steps[k];
-      return `<div class="${d?.status === "start" ? "cur" : ""}"><span>${d ? STEP_ICON[d.status] : "·"}</span><span>${esc(PRODUCE_STEP_JA[k])}${d?.detail ? `<br><small class="mu">${esc(d.detail)}</small>` : ""}</span></div>`;
-    }).join("");
-    return `<aside class="rv-q"><div class="rv-qh"><h3>Claude の番</h3></div><div class="rv-feed">${rows}</div>
-      <div class="rv-foot">止まったら、ここに決めることが並びます</div></aside>`;
-  }
-  const st = ui.status, n = st.shots.length, approved = st.shots.filter((s) => s.approval === "approved").length;
-  const items = ds.map((d, i) => {
-    const on = i === ui.rvq;
-    const acts = on ? `<div class="rv-acts">${d.acts.map(([k, label], j) => `<button class="btn${j === 0 ? " dark" : ""}" data-rv-act="${esc(k)}"${ui.busy ? " disabled" : ""}><kbd>${j + 1}</kbd>${esc(label)}</button>`).join("")}</div>` : "";
-    return `<div class="rv-dq${on ? " on" : ""}" data-rv-dq="${i}" role="button" tabindex="0">
-      <div class="ttl"><span class="rv-tag ${esc(d.tag)}">${esc(d.tagText)}</span><span>${esc(d.title)}</span></div>
-      <div class="why">${esc(d.why)}</div>${acts}</div>`;
-  }).join("");
-  const empty = n ? `<div class="rv-empty"><b>決めることはありません</b>カット検査の指摘も、古いカットもありません。カットを選んで承認していきます。</div>` : "";
-  return `<aside class="rv-q"><div class="rv-qh"><h3>決めること</h3><span class="rv-n">${ds.length}</span>
-      <span class="rv-keys"><kbd>J</kbd><kbd>K</kbd><span>移動</span><kbd>1</kbd><span>決める</span></span></div>
-    ${items || empty}
-    <div class="rv-foot"><i></i>承認 ${approved}/${n} · ${st.script_approval === "approved" ? "台本は承認済み" : "台本は未承認"}</div></aside>`;
-}
-
 function reviewCutHtml() {
   const st = ui.status, s = shot(); if (!s) return "";
   const tk = bestTake(s), n = st.shots.length;
@@ -2171,23 +2808,6 @@ function reviewCutHtml() {
       <div class="rv-approve"><button class="btn ${a === "approved" ? "ok" : "dark"}" data-rv-approve${ui.busy || (p0 && a !== "approved") ? " disabled" : ""}
         title="${esc(p0 ? `要修正の指摘があるので承認できません: ${RULE_JA[p0.rule] || p0.rule}` : a === "approved" ? "押すと承認を取り消します" : "この画で撮影に進めます。画が変わる修正をすると自動で外れます")}">${a === "approved" ? "✓ 承認済み" : a === "outdated" ? "画が変わった · 再承認" : "このカットを承認"} <kbd>A</kbd></button></div>
     </div></div>`;
-}
-
-/** Run one action of a decision (from a click or a number key). */
-function runReviewAct(d, k) {
-  if (!d || ui.busy) return;
-  if (k === "approve-script") approveScript(true);
-  else if (k === "open-script") goStage("structure");
-  else if (k === "resume") resumeAll();
-  else if (k === "previz") render("previz", [], { keep: true });
-  else if (k === "rerender") render(d.q || ui.status.qualities[0], [d.shot]);
-  else if (k === "see") { ui.sel = d.shot; ui.scopeAll = false; draw(); }
-  else if (k === "fix") {
-    // the finding goes into the composer's stack, scoped to its cut (or the whole); the human sends it
-    if (d.shot) { ui.sel = d.shot; ui.scopeAll = false; } else ui.scopeAll = true;
-    draw(); addChip(cmpTarget().key, fixChip(d.f));
-    toast("左の欄に積みました。送ると Claude が直します");
-  }
 }
 
 // ------------------------------------------------------------------ the blocking map (D-77)
@@ -2758,9 +3378,15 @@ function moveToPlace(id, name) {
 /** Keys on your turn: J/K walk the decisions, 1-3 run an action, ←/→ pick a cut, A approves it. */
 function reviewKey(e) {
   const st = ui.status, ds = reviewDecisions(), key = e.key.toLowerCase();
-  if (key === "j" || key === "k") { ui.rvq = (ui.rvq || 0) + (key === "j" ? 1 : -1); draw(); return true; }
-  if (/^[1-3]$/.test(e.key) && ds[ui.rvq || 0]) { const d = ds[ui.rvq || 0], a = d.acts[Number(e.key) - 1]; if (a) runReviewAct(d, a[0]); return !!a; }
-  if (e.key === "Enter" && !e.target.closest("button") && ds[ui.rvq || 0]) { const d = ds[ui.rvq || 0]; runReviewAct(d, d.acts[0][0]); return true; }
+  // the keys walk the findings on the left (D-95); a cut's finding shows its cut here, without leaving this screen
+  if (key === "j" || key === "k") {
+    ui.rvq = Math.min(Math.max((ui.rvq || 0) + (key === "j" ? 1 : -1), 0), Math.max(ds.length - 1, 0));
+    const d = ds[ui.rvq];
+    if (d?.shot) { ui.sel = d.shot; ui.scopeAll = false; }
+    draw(); return true;
+  }
+  if (/^[1-3]$/.test(e.key) && ds[ui.rvq || 0]) { const d = ds[ui.rvq || 0], a = d.acts[Number(e.key) - 1]; if (a) runIssueAct(d, a[0]); return !!a; }
+  if (e.key === "Enter" && !e.target.closest("button") && ds[ui.rvq || 0]?.acts.length) { const d = ds[ui.rvq || 0]; runIssueAct(d, d.acts[0][0]); return true; }
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     const i = st.shots.findIndex((s) => s.id === ui.sel), t = st.shots[i + (e.key === "ArrowRight" ? 1 : -1)];
     if (t) { ui.sel = t.id; ui.scopeAll = false; draw(); }
@@ -2772,23 +3398,6 @@ function reviewKey(e) {
     return true;
   }
   return false;
-}
-
-function findingHtml(f, { open = false } = {}) {
-  const fix = `<button class="mini" data-fix="${esc(JSON.stringify([f.rule, f.shot]))}" title="この指摘を左の欄に積みます（送ると Claude が直します）">← 左に積む</button>`;
-  const go = open && f.shot ? `<button class="mini" data-open="${esc(f.shot)}">${esc(f.shot)} を開く</button>` : "";
-  return `<div class="find"><span class="sev ${esc(f.severity)}" title="${esc(SEV_TIP[f.severity] || "")}">${esc(sevJa(f.severity))}</span>
-    <span><b>${esc(RULE_JA[f.rule] || f.rule)}</b>${f.shot && open ? ` · <span class="mono">${esc(f.shot)}</span>` : ""}<span class="basis">${esc(BASIS_JA[f.basis] || "")}</span></span>
-    <span class="ops">${go}${fix}</span>
-    <span class="why">${esc(f.message)} — ${esc(f.fix)}</span></div>`;
-}
-
-/** The selected shot's findings, above the preview (framing only). */
-function drawFindings() {
-  const el = $("findings");
-  const fs = ui.tab === "shot" && ui.sel ? findingsFor(ui.sel) : [];
-  el.hidden = !fs.length;
-  el.innerHTML = fs.map((f) => findingHtml(f)).join("");
 }
 
 function drawApprove() {
@@ -3115,7 +3724,7 @@ function dockActions() {
   const fixes = ui.tab === "structure" || ui.tab === "review" ? shotFixes() : [];
   if (fixes.length) {
     add("fix-all", `🧹 指摘をまとめて直す（${fixes.length} カット）`,
-      `カット検査の要修正と注意を、指摘のあるカット（${fixes.map(([id]) => id).join(", ")}）だけに絞って Claude に1回で直させます。ほかのカットは変わりません。画が変わったカットだけが撮り直しになり、↶ でまとめて戻せます。参考の指摘と全体の指摘（尺など）は入りません`, !ai.ready);
+      `カット検査の要修正と注意を、指摘のあるカット（${fixes.map(([id]) => id).join(", ")}）だけに絞って Claude に1回で直させます。ほかのカットは変わりません。画が変わったカットだけが撮り直しになり、↶ でまとめて戻せます。参考の指摘、全体の指摘（尺など）、「このままでよい」にした指摘は入りません`, !ai.ready);
   }
   if (ui.tab === "structure") {
     if ((st.shots || []).length) {
@@ -3129,6 +3738,10 @@ function dockActions() {
       add(`cap-${q}`, `● 承認済み ${ok} 本を ${q} で撮る`, ok ? "撮るのは定義が変わったカットだけで、ほかは前の take を使い回します。未承認のカットは撮りません" : "まだ承認したカットがありません", !ok);
     }
   }
+  // the finding picked in the column on the right: its filming is asked here (the column only looks and stacks, D-84)
+  const pk = issPicked();
+  if (pk?.kind === "game") add("iss-rerender", `● ${pk.shot} だけ撮り直す（${pk.q}）`, "ゲームが変わって古くなったこのカットだけを撮ります。ほかのカットは前の take を使います");
+  if (pk?.kind === "old") add("iss-previz", `● 仮撮りする（${pk.n} 本）`, "古くなったカットの仮撮りを、エンジンを使わず数秒で描き直します");
   // filming and cutting are the machine's work too: once there are cuts they are always here
   if ((st.shots || []).length) {
     add("render", `● 撮り直す（${ui.quality || st.qualities[0]}）`, "古くなったカットだけを撮ります。ほかは前の take を使います");
@@ -3139,15 +3752,86 @@ function dockActions() {
 
 function dockScope() {
   if (ui.tab === "scout" && subOf("scout", "places") === "places" && ui.scoutPlace && ui.scoutPlace !== "*") return `右で選んでいる場所（${ui.scoutPlace}）とこの画面で頼めること`;
+  const pk = issPicked();
+  if (pk?.kind === "game" || pk?.kind === "old") return "右で選んでいる指摘とこの画面で頼めること";
   return "この画面で頼めること";
+}
+
+// what each kind of work is called while it runs (a quick write, "save" or "approve", shows nothing)
+const DOCK_RUN = {
+  cut: ["✂ Cut でつないでいます", "撮った take をつなぎ、仕上げと音を焼き込んでいます"],
+  discover: ["🧭 Claude が企画しています", ""],
+  plan: ["📐 Claude が台本と構成を組んでいます", ""],
+  revise: ["✎ Claude が直しています", ""],
+  scout: ["📷 ロケハン写真を撮っています", ""],
+  stage: ["✎ Claude がステージを読んでいます", "ロケハン写真から、空間・光・カメラを置ける向きを書いています"],
+  assets: ["📦 アセットを棚卸ししています", ""],
+  level: ["🗺 レベルの形を読んでいます", "UE を裏で起動しています（1〜2分。レベルは書き換えません）"],
+  mood: ["🎨 ムードボードを作っています", ""],
+  concept: ["🖼 構成画を作っています", ""],
+  match: ["🔎 構成画に合う場所を探しています", ""],
+  sound: ["♪ 音を混ぜています", ""],
+  board: ["🖼 絵コンテを描いています", ""],
+  reference: ["📏 参照のティザーを測っています", ""],
+  promo: ["📤 書き出しています", ""],
+};
+
+/** What the machine is doing now, for the dock: {what, detail, part (0..1, or null when unknown)}, or null. */
+function dockRun() {
+  const b = ui.busy, st = ui.status;
+  if (!b || b === "save" || b === "approve") return null;
+  if (b === "render") {
+    const what = ui.renderQ === "previz" ? "● 仮撮りを描いています" : `● ${ui.renderQ || ""} で撮っています`;
+    const ids = ui.renderIds;
+    if (!ids) return { what, detail: "撮り直すカットを確かめています", part: null };
+    const done = ids.filter((id) => ui.outcome[id] && ui.outcome[id].action !== "rendering").length;
+    if (!ids.length) return { what, detail: "撮り直すカットはありません", part: 1 };
+    const cur = ids.find((id) => ui.outcome[id]?.action === "rendering");
+    const ue = st?.engine === "ue5" && ui.renderQ !== "previz" && "UE は1本ごとに数分";
+    // parts joined by " · ": the English mode translates each part on its own
+    const detail = [`${done} / ${ids.length} カット`, cur && `いま ${cur}`, ue].filter(Boolean).join(" · ");
+    return { what, detail, part: done / ids.length };
+  }
+  if (b === "produce" && ui.produce) {
+    const order = produceOrder(), steps = ui.produce.steps;
+    const cur = order.find((k) => steps[k]?.status === "start");
+    const done = order.filter((k) => steps[k] && steps[k].status !== "start").length;
+    const detail = [cur ? PRODUCE_STEP_JA[cur] : "準備", `${Math.min(done + 1, order.length)} / ${order.length} 段`].join(" · ");
+    return { what: "⚡ 一気に作っています", detail, part: done / order.length };
+  }
+  const [what, detail] = DOCK_RUN[b] || ["実行しています", ""];
+  const ue = b === "scout" || b === "assets" ? (st?.engine === "ue5" ? "UE を裏で起動しています（数分）" : "") : "";
+  return { what, detail: detail || ui.pending?.ctx || ue, part: null };
+}
+
+function dockClock() {
+  const t = $("dock-run-t");
+  if (t) t.textContent = `${Math.round((Date.now() - drawDock.since) / 1000)}s`;
 }
 
 function drawDock() {
   const el = $("dock"), st = ui.status; if (!el || !st) return;
+  // the clock counts from when this piece of work started, whatever started it
+  if (ui.busy !== drawDock.kind) { drawDock.kind = ui.busy; drawDock.since = Date.now(); }
+  const run = dockRun();
+  if (run && !drawDock.timer) drawDock.timer = setInterval(dockClock, 1000);
+  if (!run && drawDock.timer) { clearInterval(drawDock.timer); drawDock.timer = null; }
   const n = nextStep(), acts = dockActions(), here = nextIsHere(n);
-  const key = JSON.stringify([n && [n.what, n.act, n.need, n.why, n.skip], here, acts.map((a) => [a.k, a.label, a.off, a.tip]), !!ui.busy, [...pinsOf()].sort(), dockScope()]);
+  const key = JSON.stringify([n && [n.what, n.act, n.need, n.why, n.skip], here, acts.map((a) => [a.k, a.label, a.off, a.tip]), !!ui.busy, run, [...pinsOf()].sort(), dockScope(),
+    ui.line.map((x) => [x.id, x.err]), !!st.ai?.ready]);
   if (drawDock.key === key && el.childElementCount) return;
   drawDock.key = key;
+  if (run) {
+    // ▶ becomes what is running; what is asked meanwhile waits in line under it (D-94), and the canvas can still be looked around
+    const bar = run.part == null ? `<span class="dock-bar wait"><i></i></span>` : `<span class="dock-bar"><i style="width:${Math.round(run.part * 100)}%"></i></span>`;
+    const later = acts.filter((a) => !a.off && lineAct(a.k));
+    el.innerHTML = `<div class="dock-go dock-run" role="status" aria-live="polite"><span class="hd"><i class="dock-spin" aria-hidden="true"></i>${esc(run.what)}</span>
+      <span class="sec" id="dock-run-t">${Math.round((Date.now() - drawDock.since) / 1000)}s</span>${run.detail ? `<small>${esc(run.detail)}</small>` : ""}${bar}</div>
+      ${lineHtml()}
+      ${later.length ? `<div class="dock-acts later">${later.map((a) => `<button type="button" data-dock-act="${esc(a.k)}" title="${esc(`列に積む。いまの作業のあとに頼みます。${a.tip || ""}`)}">＋ ${esc(lineAct(a.k)[0])}</button>`).join("")}</div>` : ""}
+      <div class="dock-row">${st.ai?.ready ? "左の欄で送ると、この作業のあとに順に頼みます。右の画面は見て回れます" : "終わると、ここから次を頼めます。右の画面は見て回れます"}</div>`;
+    return;
+  }
   const busy = !!ui.busy;
   // nothing to press when the step is done, or is the human's on this very screen: say so instead of a ▶ that goes nowhere
   const go = !n ? "" : n.act === "done" || here
@@ -3156,11 +3840,73 @@ function drawDock() {
     ${n.need || n.skip ? `<div class="dock-row">${n.need ? `<span class="need">${esc(n.need)}</span>` : ""}${n.skip ? `<button type="button" data-dock-skip="${esc(n.skip)}">飛ばす</button>` : ""}</div>` : ""}`;
   const list = acts.length ? `<div class="dock-hd">${esc(dockScope())}</div>
     <div class="dock-acts">${acts.map((a) => `<button type="button" data-dock-act="${esc(a.k)}"${busy || a.off ? " disabled" : ""} title="${esc(a.tip || "")}">${esc(a.label)}</button>`).join("")}</div>` : "";
-  el.innerHTML = go + list;
+  // what still waits (about to go, or stopped at one that failed) stays above ▶
+  el.innerHTML = lineHtml() + go + list;
 }
 
 /** Kept for the callers of the old bar: the next step now lives in the dock. */
 function drawNext() { drawDock(); }
+
+// ------------------------------------------------------------------ the line (D-94)
+// While Claude or the engine works, what is asked from the left waits in line instead of being refused. A note keeps
+// the scope it was sent with (the cut, its part, the frame) and goes out when the work in hand ends, one at a time,
+// through the same /api/revise as a note sent at once, so the server still holds its scope. Nothing is written
+// before its turn, and each is its own edit (↶ takes back one at a time). The line is this page's own, in memory only.
+
+/** A note can wait in line; the plan and the mood board cannot (they replace what the notes before them act on). */
+function lineable() { return !moodLeft() && !planning(); }
+
+/** The dock's work that can wait in line, decided when its turn comes (the findings and the stale cuts then): [label, run]. */
+function lineAct(k) {
+  if (k === "fix-all") return ["🧹 指摘をまとめて直す", () => fixAllFindings()];
+  if (k === "cut") return ["✂ Cut でつなぐ", () => cut()];
+  if (k === "render") { const q = ui.quality || ui.status.qualities[0]; return [`● 撮り直す（${q}）`, () => render(q)]; }
+  return null;
+}
+
+/** Puts an ask at the end of the line. `run` sends it when its turn comes; words back mean it failed and the line stops there. */
+function lineAdd(label, note, run) {
+  lineAdd.n = (lineAdd.n || 0) + 1;
+  ui.line.push({ id: lineAdd.n, label, note, run, err: "" });
+  drawDock();
+  toast(`列に積みました（${ui.line.length} 件目）。いまの作業が終わると順に頼みます`);
+  if (!ui.busy) lineSoon();
+}
+
+/** The next in line goes once the work in hand has been quiet for a moment (an edit starts its previz after its refresh, in that gap). */
+function lineSoon() {
+  clearTimeout(lineSoon.t);
+  if (ui.line.length) lineSoon.t = setTimeout(lineNext, 700);
+}
+
+async function lineNext() {
+  const job = ui.line[0];
+  if (lineNext.on || !job || job.err || ui.busy) return;
+  if (refresh.n) { lineSoon(); return; } // a refresh in flight may still be followed by its previz
+  ui.line.shift(); lineNext.on = true; drawDock();
+  let r;
+  try { r = await job.run(); } catch (e) { r = e.message; }
+  lineNext.on = false;
+  if (typeof r === "string") { job.err = r; ui.line.unshift(job); }
+  drawDock(); lineSoon();
+}
+
+function lineDrop(id) { ui.line = ui.line.filter((x) => x.id !== id); drawDock(); }
+function lineRetry(id) { const x = ui.line.find((y) => y.id === id); if (x) { x.err = ""; drawDock(); lineSoon(); } }
+
+/** The line in the dock: what waits, in order, each with ✕ (and ↻ on the one where it stopped). */
+function lineHtml() {
+  if (!ui.line.length) return "";
+  return `<div class="dock-hd">このあと頼むこと（${ui.line.length}）</div><div class="dock-line">${ui.line.map((x, i) => `<div class="ln${x.err ? " err" : ""}"><b>${i + 1}</b>
+    <span class="w" title="${esc(x.note ? `${x.label} — ${x.note}` : x.label)}">${esc(x.label)}${x.note ? ` <small>${esc(x.note)}</small>` : ""}</span>
+    <span class="ops">${x.err ? `<button type="button" data-line-retry="${x.id}" title="もう一度送る">↻</button>` : ""}<button type="button" data-line-rm="${x.id}" title="列から外す（まだ何も変わっていません）">✕</button></span>
+    ${x.err ? `<span class="why">止まりました: ${esc(x.err)}</span>` : ""}</div>`).join("")}</div>`;
+}
+
+/** After a chip is stacked from a finding: what sending it will do now. */
+function stackedToast() {
+  toast(ui.busy ? "左の欄に積みました。送ると、いまの作業のあとに Claude が直します" : "左の欄に積みました。送ると Claude が直します");
+}
 
 async function runNext() {
   const n = nextStep(); if (!n || ui.busy || n.need || n.act === "done") return;
@@ -3180,7 +3926,8 @@ async function runNext() {
 }
 
 function runDockAct(k) {
-  if (ui.busy) return;
+  // while the machine works, the dock's ＋ puts its work in line (D-94)
+  if (ui.busy) { const a = lineAct(k); if (a) lineAdd(a[0], "", a[1]); return; }
   const place = ui.scoutPlace && ui.scoutPlace !== "*" ? ui.scoutPlace : "";
   if (k === "concept-gen") generateConcept();
   else if (k === "concept-match") matchConcept();
@@ -3195,6 +3942,8 @@ function runDockAct(k) {
     if (ui.tab === "blocking") drawBlocking();
   });
   else if (k === "render") render();
+  else if (k === "iss-rerender") { const pk = issPicked(); if (pk?.kind === "game") render(pk.q || ui.status.qualities[0], [pk.shot]); }
+  else if (k === "iss-previz") render("previz", [], { keep: true });
   else if (k === "cut") cut();
   else if (k === "cams") rebuildCameras();
   else if (k === "fix-all") fixAllFindings();
@@ -3763,8 +4512,9 @@ function stackHtml(key, opts = {}) {
   const nodes = s.map((x, i) => `${i ? '<i class="stk-link"></i>' : ""}<span class="stk-node${x.ai ? " ai" : ""}${ui.stackNew === `${key}#${i}` ? " new" : ""}"${x.c ? ` style="--c:${x.c}"` : ""} title="${esc(x.note)}"><span class="t">${esc(x.label)}</span><button type="button" data-stk-rm="${esc(key)}" data-i="${i}" title="外す">✕</button></span>`).join("");
   const box = typing ? `${s.length ? '<i class="stk-link"></i>' : ""}<input class="stk-in" data-stk-in="${esc(key)}" autocomplete="off" spellcheck="false" placeholder="書いて Enter で積む（空で Enter なら送る）" value="${esc(ui.typed[key] || "")}">` : "";
   const empty = !s.length && !typing && !head ? `<span class="stk-hint"${tip ? ` title="${esc(tip)}"` : ""}>${esc(hint || "＋ 積む")}</span>` : "";
-  const canSend = (s.length || typedOf(key).trim() || sendAlways) && ai && !busy;
-  const btn = (c, first) => `<button type="button" class="pchip${c.ai ? " ai" : ""}${first ? " first" : ""}" data-stk-add="${esc(key)}" data-i="${c.i}"${c.c ? ` style="--c:${c.c}"` : ""}${busy ? " disabled" : ""} title="${esc(c.ai ? `Claude の予測。押すと積む: ${c.note}` : `押すと積む: ${c.note}`)}"><span class="plus">${c.ai ? "✦" : "+"}</span>${esc(c.label)}</button>`;
+  // stacking goes on while the machine works; a row's note sent then waits in line (D-94)
+  const canSend = (s.length || typedOf(key).trim() || sendAlways) && ai && (!busy || stackLineable(key));
+  const btn = (c, first) => `<button type="button" class="pchip${c.ai ? " ai" : ""}${first ? " first" : ""}" data-stk-add="${esc(key)}" data-i="${c.i}"${c.c ? ` style="--c:${c.c}"` : ""} title="${esc(c.ai ? `Claude の予測。押すと積む: ${c.note}` : `押すと積む: ${c.note}`)}"><span class="plus">${c.ai ? "✦" : "+"}</span>${esc(c.label)}</button>`;
   const first = list[0];
   const rows = [];
   const aiChips = list.filter((c) => c.ai);
@@ -3789,9 +4539,12 @@ function stackHtml(key, opts = {}) {
     ${rows.join("")}${foot}</div>`;
 }
 
+/** A stack whose own send can wait in line while the machine works (D-94): a row's (the mood board's cannot). */
+function stackLineable(key) { return key.startsWith("row:"); }
+
 /** Stack the chip drawn at `i`. A chip with an empty 「」 needs its words: it opens the box with the caret inside. */
 function pickChip(key, i) {
-  const c = ui.chipSets[key]?.[i]; if (!c || ui.busy) return;
+  const c = ui.chipSets[key]?.[i]; if (!c) return; // stacking writes nothing, so it goes on while the machine works
   const tr = window.tr || ((x) => x); // in English the note goes out in English, like the words on screen
   if (c.slot ?? /「」/.test(c.note)) { openTyping(key, tr(c.note)); return; } // decided before translating
   addChip(key, c);
@@ -3860,7 +4613,7 @@ document.addEventListener("input", (e) => {
   ui.typed[el.dataset.stkIn] = el.value;
   // the send arrow follows the words typed (no redraw: the box keeps its focus)
   const root = el.closest("[data-stk]"), b = root?.querySelector("[data-stk-send]"), key = el.dataset.stkIn;
-  if (b && b.dataset.stkSend === key) b.disabled = !((stackOf(key).length || el.value.trim() || STK_OPTS[key]?.sendAlways) && ui.status?.ai?.ready && !ui.busy);
+  if (b && b.dataset.stkSend === key) b.disabled = !((stackOf(key).length || el.value.trim() || STK_OPTS[key]?.sendAlways) && ui.status?.ai?.ready && (!ui.busy || stackLineable(key)));
 });
 document.addEventListener("keydown", (e) => {
   const el = e.target.closest?.(".stk-in"); if (!el) return;
@@ -4009,7 +4762,7 @@ const fixNote = (x) => `カット検査の指摘を直して: ${RULE_JA[x.rule] 
 const fixChip = (x) => chipOf(`指摘を直す: ${RULE_JA[x.rule] || x.rule}`, { note: fixNote(x), c: "var(--stale)", g: "カット検査" });
 /** The cuts with a P0 or P1 finding, in cut order: [[id, findings]]. P2 (an inferred threshold) and the
  *  findings on the whole teaser are left out: those stay one chip at a time. */
-const shotFixes = () => (ui.status?.shots || []).map((s) => [s.id, findingsFor(s.id).filter((x) => x.severity !== "P2")]).filter(([, fs]) => fs.length);
+const shotFixes = () => (ui.status?.shots || []).map((s) => [s.id, findingsFor(s.id).filter((x) => x.severity !== "P2" && !findingOff(x))]).filter(([, fs]) => fs.length);
 
 /** Put an example in a note box, the caret where it is worth typing (inside an empty 「」). */
 function fillNote(el, text) {
@@ -4692,7 +5445,7 @@ async function sendRowNote() {
   const left = isCmp(key); // simple: what is typed is in the left box, not in the row
   const typed = left ? $("note").value : typedOf(key);
   const note = stackNote(key, typed).trim();
-  if (!note || ui.busy || !ui.status?.ai?.ready) return;
+  if (!note || !ui.status?.ai?.ready) return;
   // a template whose quotes are still empty has nothing to say: the caret goes back inside them
   if (EMPTY_PAIR.test(note)) {
     const m = left && EMPTY_PAIR.exec($("note").value);
@@ -4707,9 +5460,18 @@ async function sendRowNote() {
   if (s && ui.aspect === "sound") body.sound = true;
   else if (s && ui.aspect !== "shot") body.aspect = ui.aspect;
   const owner = s ? s.id : l.id;
+  const ctx = s ? `${s.index + 1}. ${s.id} · ${ASPECT_JA[ui.aspect]}` : `${KIND_JA[l.kind] || l.kind} ${l.id} · 文字・長さだけ`;
+  if (ui.busy) {
+    // the work in hand goes on: this note waits in line with the row and part it has now (D-94)
+    const chips = sentChips.map((x) => normChip(x.note));
+    lineAdd(ctx, note, () => reviseInLine({ body, ctx, note, owner, row: owner, cut: owner, chips }));
+    ui.stacks[key] = stackOf(key).filter((x) => !sentChips.includes(x));
+    ui.typed[key] = ""; if (ui.typing === key) ui.typing = null; ui.stackNew = ""; stackChanged(key, false);
+    return;
+  }
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
   ui.busy = "revise"; ui.rowBusy = owner; ui.typing = null;
-  ui.pending = { note, ctx: s ? `${s.index + 1}. ${s.id} · ${ASPECT_JA[ui.aspect]}` : `${KIND_JA[l.kind] || l.kind} ${l.id} · 文字・長さだけ` };
+  ui.pending = { note, ctx };
   ui.started = Date.now();
   draw(); drawChat();
   const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
@@ -4734,8 +5496,11 @@ async function sendRowNote() {
 /** Every P0/P1 finding on a cut, in one note scoped to exactly the cuts that have one (the server
  *  holds the scope, as for a mood wired to several cuts). The human presses it; nothing runs by itself (D-22). */
 async function fixAllFindings() {
+  if (!ui.status?.ai?.ready) return;
+  // while the machine works it waits in line and takes the findings there are when its turn comes (D-94)
+  if (ui.busy) { lineAdd(lineAct("fix-all")[0], "", () => fixAllFindings()); return; }
   const fixes = shotFixes(), shots = fixes.map(([id]) => id);
-  if (!shots.length || ui.busy || !ui.status?.ai?.ready) return;
+  if (!shots.length) { toast("直す指摘は残っていません"); return; }
   const note = ["カット検査の指摘を、カットごとに直して。", ...fixes.map(([id, fs]) =>
     `${id}: ${fs.map((x) => `${RULE_JA[x.rule] || x.rule}。${x.message}（${x.fix}）`).join(" / ")}`)].join("\n");
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
@@ -4743,14 +5508,37 @@ async function fixAllFindings() {
   ui.pending = { note, ctx: `🧹 指摘を直す → ${shots.join(", ")}` }; ui.started = Date.now();
   draw(); drawChat();
   const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
-  let out = null;
+  let out = null, err;
   try {
     out = await api("POST", "/api/revise", { note, shots, label: ui.pending.ctx });
     if (!out.edited?.length && !Object.keys(out.changes || {}).length) { ui.flash = null; toast("Claude は何も変えませんでした（理由は左の会話に）"); }
     else afterEdit(out.edited?.[0] || shots[0], out, out.summary || `${shots.length} カットの指摘を直しました`);
-  } catch (e) { toast(e.message, true); }
+  } catch (e) { err = e.message; toast(e.message, true); }
   finally { clearInterval(tick); ui.busy = null; ui.cvBusy = null; ui.pending = null; ui.logKey = ""; ui.cvRev++; await refresh(); }
   if (out) refreshPreviz(out.stale);
+  return err; // words when it failed: a line that sent it stops there
+}
+
+/** Sends a note that waited in line, with the scope it was given when asked: {body, ctx, note, owner, row, cut, chips}.
+ *  The same feedback as a note sent at once; gives back the error's words when it failed (the line stops there). */
+async function reviseInLine(j) {
+  await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
+  if (ui.busy) return "ほかの作業と重なりました";
+  ui.busy = "revise"; ui.rowBusy = j.row || null;
+  ui.pending = { note: j.note, ctx: j.ctx }; ui.started = Date.now();
+  draw(); drawChat();
+  const tick = setInterval(() => { const el = $("think-state"); if (el) el.textContent = `直しています ${Math.round((Date.now() - ui.started) / 1000)}s`; }, 1000);
+  let out = null, err;
+  try {
+    out = await api("POST", "/api/revise", { ...j.body, label: j.ctx });
+    // nothing changed: no ✓ on the row; Claude's reason is in the chat
+    if (!out.edited?.length && !out.audio && !Object.keys(out.changes || {}).length) { ui.flash = null; toast("Claude は何も変えませんでした（理由は左の会話に）"); }
+    else { const owner = j.owner || out.edited?.[0] || out.stale?.[0]; if (owner && !out.audio) afterEdit(owner, out, out.summary || "Claude が直しました"); }
+    if (j.cut) cvApplied(j.cut, j.chips || []);
+  } catch (e) { err = e.message; toast(e.message, true); }
+  finally { clearInterval(tick); ui.busy = null; ui.rowBusy = null; ui.pending = null; ui.logKey = ""; await refresh(); }
+  if (out) refreshPreviz(out.stale);
+  return err;
 }
 
 function startEdit(kind, id) {
@@ -5482,9 +6270,9 @@ $("structpanel").addEventListener("click", (e) => {
   const fl = t.closest("[data-filter]"); if (fl) { ui.filter = fl.dataset.filter; draw(); return; }
   const fa = t.closest("[data-fix-all]");
   if (fa) {
-    if (ui.busy) return;
+    // stacking goes on while the machine works: what is sent then waits in line (D-94)
     const x = findings().find((f) => !f.shot && f.rule === fa.dataset.fixAll);
-    if (x) addChip(cmpTarget().key, fixChip(x));
+    if (x) stackFinding(x);
     return;
   }
   const item = t.closest("[data-row]"); if (!item) return;
@@ -5511,9 +6299,8 @@ $("structpanel").addEventListener("click", (e) => {
   if (t.closest("[data-open-big]") || (t.closest(".thumb .box") && shotById(id))) { selectShot(id); return; }
   const fx = t.closest("[data-fix-row]");
   if (fx) {
-    if (ui.busy) return;
     const x = findingsFor(id).find((f) => f.rule === fx.dataset.fixRow);
-    if (x) { ui.aspect = "shot"; addChip(rowKey(id), fixChip(x)); draw(); }
+    if (x) stackFinding(x);
     return;
   }
   const ed = t.closest("[data-edit]"); if (ed) startEdit(ed.dataset.edit, ed.dataset.id || id);
@@ -5837,15 +6624,6 @@ async function saveBrief(extra = {}) {
   finally { ui.busy = null; await refresh(); }
 }
 
-/** Put a finding into the note box, scoped to its shot (or the whole list). The human sends it. */
-function askFix(rule, shotId) {
-  const f = findings().find((x) => x.rule === rule && (x.shot ?? null) === (shotId ?? null));
-  if (!f) return;
-  if (shotId) { ui.sel = shotId; ui.scopeAll = false; if (ui.tab !== "shot") ui.tab = "shot"; } else ui.scopeAll = true;
-  draw(); addChip(cmpTarget().key, fixChip(f));
-  toast("左の欄に積みました。送ると Claude が直します");
-}
-
 function goStage(stage) {
   ui.tab = stage === "framing" ? "shot" : stage === "finish" ? ui.fin : stage;
   if (ui.tab !== "shot") ui.region = null; // a marked region belongs to the frame on screen
@@ -5942,33 +6720,121 @@ function drawTimeline() {
     m.innerHTML = `<span>目標</span>`;
     body.appendChild(m);
   }
-  placeFramePlayhead();
   drawLanes();
-  if (ui.tab === "sound") placePlayhead();
+  placePlayhead(); playIcons();
 }
 
-/** The cut's playhead at the frame on screen, moved without redrawing the timeline. */
-function placeFramePlayhead() {
-  const body = $("tl-body"), s = shot(), tk = s && ui.tab === "shot" && shownTake(s);
-  let ph = body.querySelector(".playhead.frm");
-  // clips are flex boxes with gaps; place by the clip's own box
-  const track = $("track"), clip = s && track.querySelector(`.clip[data-id="${CSS.escape(s.id)}"]`);
-  if (!tk || !clip) { ph?.remove(); return; }
-  const sec = frameTimes(s, tk.t)[ui.frame] ?? 0;
-  const frac = s.duration ? Math.min(sec, s.duration) / s.duration : 0;
-  if (!ph) { ph = document.createElement("div"); ph.className = "playhead frm"; body.appendChild(ph); }
-  ph.style.left = `${clip.offsetLeft + frac * clip.offsetWidth - 1}px`;
-  ph.style.top = `${track.offsetTop - 4}px`; ph.style.bottom = "0";
+/** The cuts and cards in Cut order with their start (s): the sound's layout, else the status'. */
+const tlItems = () => ui.sound?.timeline || ui.sound?.shots || ui.status?.timeline || [];
+
+/** Where the playhead stands on this screen, in teaser seconds, or null where it has none:
+ *  the frame on screen of the cut (cut screen), the mix (sound) or the cut's video (teaser). */
+function tlNow() {
+  if (tlScrub?.t != null) return tlScrub.t;
+  if (ui.tab === "sound") return ui.sound ? ui.playT ?? 0 : null;
+  if (ui.tab === "teaser") { const v = tabMedia(); return v ? v.currentTime || 0 : null; }
+  if (ui.tab !== "shot") return null;
+  const s = shot(), tk = s && shownTake(s), at = s && tlItems().find((it) => it.id === s.id);
+  if (!tk || !at) return null;
+  return at.start + Math.min(frameTimes(s, tk.t)[ui.frame] ?? 0, s.duration);
 }
 
-/** The sound player's playhead, moved without redrawing the timeline. */
+/** x of the playhead in the timeline body, or null. */
+function playheadX() {
+  if (tlScrub?.x != null) return tlScrub.x;
+  const track = $("track");
+  if (ui.tab === "shot") {
+    // clips are flex boxes with gaps; place by the clip's own box
+    const s = shot(), tk = s && shownTake(s), clip = s && track.querySelector(`.clip[data-id="${CSS.escape(s.id)}"]`);
+    if (!tk || !clip) return null;
+    const sec = frameTimes(s, tk.t)[ui.frame] ?? 0;
+    return clip.offsetLeft + (s.duration ? Math.min(sec, s.duration) / s.duration : 0) * clip.offsetWidth;
+  }
+  const t = tlNow();
+  // a cut's video made before the last edit may run past the cuts on screen
+  return t == null ? null : Math.min(xOf(t), track.offsetLeft + track.offsetWidth);
+}
+
+/** The playhead and the time beside ▶, moved without redrawing the timeline. */
 function placePlayhead() {
-  const body = $("tl-body");
-  let ph = body.querySelector(".playhead.snd");
-  if (ui.tab !== "sound" || !ui.sound) { ph?.remove(); return; }
-  if (!ph) { ph = document.createElement("div"); ph.className = "playhead snd"; body.appendChild(ph); }
-  ph.style.left = `${xOf(ui.playT ?? 0) - 1}px`;
-  ph.style.top = `${$("track").offsetTop - 4}px`; ph.style.bottom = "0";
+  const body = $("tl-body"), x = playheadX();
+  let ph = body.querySelector(".playhead");
+  body.classList.toggle("scrubbable", x != null);
+  $("ruler").title = x != null ? "ドラッグで再生位置を動かす" : "";
+  $("tl-tr").hidden = x == null;
+  if (x == null) { ph?.remove(); return; }
+  if (!ph) {
+    ph = document.createElement("div"); ph.className = "playhead";
+    ph.innerHTML = `<i class="grip" title="ドラッグで再生位置を動かす"></i>`;
+    body.appendChild(ph);
+  }
+  ph.style.left = `${x - 1}px`;
+  $("tl-now").textContent = fmtTC(Math.max(0, tlNow() ?? 0));
+}
+
+// ------------------------------------------------------------------ timeline: a hand on the playhead
+
+/** The playhead in hand: {id (pointer), x0, moved, was (playing before), x, t}, or null. The ruler and the
+ *  playhead's head take it at once; the cuts only once dragged (a click on a cut still picks it). */
+let tlScrub = null;
+
+$("tl-body").addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || playheadX() == null) return;
+  const head = e.target.closest(".playhead .grip, #ruler");
+  if (!head && !e.target.closest("#track .clip")) return;
+  tlScrub = { id: e.pointerId, x0: e.clientX, moved: false, was: false, x: null, t: null };
+  if (head) { scrubBegin(); scrubTo(e.clientX); e.preventDefault(); }
+});
+$("tl-body").addEventListener("pointermove", (e) => {
+  const d = tlScrub; if (!d || e.pointerId !== d.id) return;
+  if (!d.moved) { if (Math.abs(e.clientX - d.x0) < 4) return; scrubBegin(); }
+  scrubTo(e.clientX);
+});
+function scrubEnd(e) {
+  const d = tlScrub; if (!d || e.pointerId !== d.id) return;
+  tlScrub = null;
+  if (!d.moved) return;
+  scrubEnd.at = performance.now();
+  $("tl-body").classList.remove("scrubbing");
+  placePlayhead();
+  // what was playing goes on from where the hand left it
+  if (d.was) { const m = tabMedia(); if (m) m.play().catch((err) => toast(err.message, true)); else playToggle(); }
+}
+$("tl-body").addEventListener("pointerup", scrubEnd);
+$("tl-body").addEventListener("pointercancel", scrubEnd);
+
+function scrubBegin() {
+  const d = tlScrub; d.moved = true;
+  $("tl-body").setPointerCapture(d.id);
+  $("tl-body").classList.add("scrubbing");
+  // playback holds still under the hand
+  d.was = nowPlaying();
+  if (playing) playStop();
+  const m = tabMedia(); if (m && !m.paused) m.pause();
+}
+
+/** Moves the playhead to the pointer and what the screen shows with it. */
+function scrubTo(clientX) {
+  const d = tlScrub, track = $("track"), items = tlItems();
+  const end = items.length ? items[items.length - 1].start + items[items.length - 1].duration : 0;
+  const x = Math.min(Math.max(clientX - $("tl-body").getBoundingClientRect().left, track.offsetLeft), track.offsetLeft + track.offsetWidth);
+  d.x = x; d.t = Math.min(Math.max(tOf(x), 0), Math.max(end - 0.001, 0));
+  if (ui.tab === "sound") seek(d.t);
+  else if (ui.tab === "teaser") { const v = tabMedia(); if (v) v.currentTime = d.t; }
+  else if (ui.tab === "shot") scrubCut(d.t);
+  placePlayhead();
+}
+
+/** The cut screen under a hand on the playhead: the cut there and its frame at that moment
+ *  (over a card between cuts, the cut before stays on screen). */
+function scrubCut(t) {
+  const it = tlItems().find((x) => t < x.start + x.duration);
+  const s = it && ui.status.shots.find((x) => x.id === it.id);
+  if (!s) return;
+  const tk = shownTake(s);
+  const f = tk?.t.frames?.length ? frameAt(frameTimes(s, tk.t), t - it.start) : 0;
+  if (s.id !== ui.sel) selectShot(s.id, f);
+  else if (f !== ui.frame) { ui.frame = f; drawStage(); }
 }
 
 // ------------------------------------------------------------------ sound: timeline lanes
@@ -5977,7 +6843,7 @@ const SND_ROW = 24;
 
 /** Teaser seconds -> x in the timeline body, through the clip boxes (they have gaps). */
 function xOf(t) {
-  const sh = ui.sound?.timeline || ui.sound?.shots || [];
+  const sh = tlItems();
   if (!sh.length) return 0;
   let k = sh.findIndex((s) => t < s.start + s.duration);
   if (k < 0) k = sh.length - 1;
@@ -5989,7 +6855,7 @@ function xOf(t) {
 
 /** x in the timeline body -> teaser seconds (the inverse of xOf). */
 function tOf(x) {
-  const sh = ui.sound?.timeline || ui.sound?.shots || [];
+  const sh = tlItems();
   for (let k = 0; k < sh.length; k++) {
     const clip = $("track").querySelector(`.clip[data-id="${CSS.escape(sh[k].id)}"]`);
     if (!clip) continue;
@@ -6194,6 +7060,9 @@ function drawPlayer() {
   };
   a.addEventListener("play", follow);
   a.addEventListener("seeked", follow);
+  // the timeline's ▶ shows whether the mix plays
+  a.addEventListener("play", playIcons);
+  a.addEventListener("pause", playIcons);
   if (ui.playT) a.currentTime = ui.playT;
 }
 
@@ -6336,12 +7205,11 @@ function drawInspectorForm() {
   box.dataset.kind = "sfx";
 }
 
-const WEIGHT_CLS = { critical: "critical", major: "major", minor: "minor" };
 
 function drawCheck() {
   const box = $("sp-check"), snd = ui.sound;
   const c = snd?.mix?.check;
-  const key = JSON.stringify([snd?.mix?.key, snd?.error, !!snd]);
+  const key = JSON.stringify([snd?.mix?.key, snd?.error, !!snd, uiPro()]);
   if (box.dataset.key === key && box.childElementCount) return;
   box.dataset.key = key;
   if (!snd) { box.innerHTML = ""; return; }
@@ -6352,9 +7220,9 @@ function drawCheck() {
   }
   const pct = c.score == null ? "—" : `${Math.round(c.score * 100)}%`;
   const vcls = String(c.verdict).replace(/[ .]/g, "-");
-  const acts = (c.actions || []).map((a, i) => `<div class="act"><span class="wpill ${WEIGHT_CLS[a.weight] || "minor"}">${esc(a.weight_ja)}</span>
-      <div>${esc(a.action)}</div>
-      <div class="ops">${a.at != null ? `<button data-seek="${a.at}" title="その位置へ">${esc(fmtT(a.at))}</button>` : ""}<button data-ask="${i}" title="この指摘を左の欄に積みます（送ると Claude が直します）">← 左に積む</button></div></div>`).join("");
+  // what to fix is on the left, with the other findings (D-95): here only how many, by weight
+  // as many as the list shows: simple leaves the minor ones to pro, as it does with the shot check's drift
+  const nActs = (c.actions || []).filter((a) => uiPro() || a.weight !== "minor").length;
   const tips = (c.tips || []).map((t) => `<div class="tip">${esc(t)}</div>`).join("");
   const groups = new Map();
   for (const m of c.metrics || []) { if (!groups.has(m.group_ja)) groups.set(m.group_ja, []); groups.get(m.group_ja).push(m); }
@@ -6367,7 +7235,7 @@ function drawCheck() {
       <div class="verdict"><span class="vbadge ${esc(vcls)}">${esc(c.verdict_ja)}</span><span class="score">${pct}<small>${c.in_range} / ${c.scored} 指標が範囲内 · 重大 ${c.critical_issues} · 要対応 ${c.major_issues}</small></span></div>
       <div class="src">earshot critique の検証部分（モデル不要）を移植 · 基準: プロのローンチ映像 7 本 · ${esc(c.duration)}s を計測</div>
     </div>
-    ${acts ? `<div class="sp-box"><h3>まず直す <small>重要な順</small></h3><div class="acts">${acts}</div>${tips}</div>` : `<div class="sp-box"><h3>直すところはありません</h3>${tips}</div>`}
+    ${nActs ? `<div class="sp-box"><h3>直すところ ${nActs} 件 <small>右の「指摘」に並んでいます →</small></h3>${tips}</div>` : `<div class="sp-box"><h3>直すところはありません</h3>${tips}</div>`}
     <div class="sp-box curve"><h3>ラウドネスの流れ <small>平均との差（LU）</small></h3>${curveSvg(c)}
       <div class="legend2"><span><i style="background:var(--ink)"></i>このミックス（3秒窓）</span><span><i style="background:color-mix(in srgb, var(--establish) 40%, transparent)"></i>基準7本の幅（p10–p90）</span><span><i style="background:var(--establish)"></i>基準の中央値</span><span><i style="background:var(--stale)"></i>音の立ち上がりがないカット</span></div></div>
     <div class="sp-box pro-only"><details><summary>採点表（${(c.metrics || []).length} 指標）</summary><table class="metrics"><tr><th>指標</th><th>値</th><th>基準</th><th></th></tr>${table}</table>
@@ -6906,7 +7774,12 @@ function takeComposer() {
   const key = cmpTarget().key, typed = $("note").value, saved = [...stackOf(key)];
   return { key, note: stackNote(key, typed).trim(),
     clear: () => { $("note").value = ""; stackClear(key); },
-    restore: () => { ui.stacks[key] = saved; $("note").value = typed; ui.stackRev++; drawCStack(); } };
+    // what was stacked or typed while it was out (D-94) stays, after what comes back
+    restore: () => {
+      ui.stacks[key] = [...saved, ...stackOf(key).filter((x) => !saved.some((y) => normChip(y.note) === normChip(x.note)))];
+      $("note").value = [typed.trim(), $("note").value.trim()].filter(Boolean).join("\n");
+      ui.stackRev++; drawCStack();
+    } };
 }
 
 async function planShots() {
@@ -7019,6 +7892,7 @@ async function produceAll({ review = true, resume = false, stop = [] } = {}) {
         const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
         if (ev === "step") {
           ui.produce.steps[d.key] = d;
+          drawDock(); drawIssues(); // the dock names the step now running; the list shows them all
           followStep(d.key);
           // what a finished step made (photos, the brief, the cuts) shows on its stage right away
           if (d.status !== "start") refresh(true);
@@ -7074,12 +7948,13 @@ async function rebuildCameras() {
 }
 
 async function sendNote() {
+  if (ui.busy && !lineable()) { toast("構成とムードボードは、いまの作業が終わってから頼めます"); return; }
   if (moodLeft()) return generateMood(); // simple: what is written is the mood board's direction
   if (planning()) return planShots();
   if (sheetRowLeft()) return sendRowNote(); // simple: the left box speaks for the selected row, with the row's scope
   const c = takeComposer(), note = c.note;
   const s = shot();
-  if (!note || ui.busy || !ui.status?.ai?.ready) return;
+  if (!note || !ui.status?.ai?.ready) return;
   // a template whose quotes are still empty has nothing to say: the caret goes back inside them
   const em = EMPTY_PAIR.exec($("note").value);
   if (em) { const at = $("note").value.indexOf(em[0]) + 1; $("note").focus(); $("note").setSelectionRange(at, at); return; }
@@ -7112,6 +7987,13 @@ async function sendNote() {
     }
     if (ui.region) { body.region = ui.region; ctx.push("範囲あり"); }
   } else ctx.push("全体");
+  if (ui.busy) {
+    // the work in hand goes on: this note waits in line with the scope it has now (the cut, its part, the frame; D-94)
+    const label = ctx.join(" · ");
+    lineAdd(label, note, () => reviseInLine({ body, ctx: label, note, owner: body.shot, cut: body.shot, chips: sent }));
+    c.clear(); ui.region = null; draw();
+    return;
+  }
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
   ui.busy = "revise"; ui.pending = { note, ctx: ctx.join(" · ") }; ui.started = Date.now();
   c.clear(); draw(); drawChat();
@@ -7139,7 +8021,7 @@ async function sendNote() {
 async function render(quality = ui.quality, shots = [], opts = {}) {
   if (ui.busy) return;
   await precFlushAll(); // steps still waiting are written first, so this reads the definition they belong to
-  ui.busy = "render"; ui.renderQ = quality; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
+  ui.busy = "render"; ui.renderQ = quality; ui.renderIds = null; ui.outcome = {}; ui.summary = `${esc(quality)} を確認中…`;
   if (quality !== ui.quality && !opts.keep) ui.quality = quality;
   draw();
   try {
@@ -7155,6 +8037,7 @@ async function render(quality = ui.quality, shots = [], opts = {}) {
         const ev = /^event: (.*)$/m.exec(block)?.[1];
         const d = JSON.parse(/^data: (.*)$/m.exec(block)?.[1] || "{}");
         if (ev === "plan") {
+          ui.renderIds = d.render; // the dock counts these down
           for (const id of d.render) ui.outcome[id] = { action: "rendering" };
           const game = Object.keys(d.game_changed || {}).length;
           ui.summary = d.render.length ? `<b>${d.render.length}</b> カットを撮影中…${game ? `（ゲームが変わった ${game} 本を含む）` : ""}` : "全部いまの take。撮り直しなし";
@@ -7178,7 +8061,8 @@ async function cut() {
   try {
     const info = await api("POST", "/api/cut", { quality: "best" });
     ui.summary = `${info.shots} shots / ${info.seconds}s をつないだ（レンダなし）${info.sound ? ` · 音: ${esc(info.sound.verdict_ja)}` : ""}`;
-    for (const n of info.notes || []) toast(n, true);
+    // the notes stay on the left with the findings (D-95); a toast only says they are there
+    if ((info.notes || []).length) toast(`Cut の注記 ${info.notes.length} 件（右の「指摘」に残しています）`);
     ui.tab = ui.fin = "teaser";
   } catch (e) { toast(e.message, true); }
   finally { ui.busy = null; await refresh(); }
@@ -7220,6 +8104,7 @@ function selectShot(id, frame = 0) {
 
 $("track").addEventListener("click", (e) => {
   const clip = e.target.closest(".clip"); if (!clip) return;
+  if (performance.now() - (scrubEnd.at || 0) < 300) return; // the end of a drag of the playhead, not a click on a cut
   if (ui.tab === "structure") { pickRow(clip.dataset.id); return; }
   if (clip.classList.contains("slot")) { ui.tab = ui.fin = "design"; draw(); return; } // script cards are edited in design
   const s = ui.status.shots.find((x) => x.id === clip.dataset.id);
@@ -7239,6 +8124,7 @@ $("track").addEventListener("click", (e) => {
 
 $("frame").addEventListener("input", (e) => { ui.frame = Number(e.target.value); draw(); });
 $("play").addEventListener("click", () => playToggle());
+$("tl-play").addEventListener("click", () => playToggle());
 $("quality").addEventListener("change", (e) => { ui.quality = e.target.value; ui.outcome = {}; ui.summary = ""; draw(); });
 $("render").addEventListener("click", () => render());
 $("cut").addEventListener("click", cut);
@@ -7398,15 +8284,7 @@ $("sp-lib").addEventListener("click", (e) => {
 });
 $("sp-check").addEventListener("click", (e) => {
   const s = e.target.closest("[data-seek]");
-  if (s) { seek(Number(s.dataset.seek)); drawChips(); return; }
-  const a = e.target.closest("[data-ask]");
-  if (a) {
-    const act = ui.sound?.mix?.check?.actions?.[Number(a.dataset.ask)]; if (!act) return;
-    if (act.at != null) seek(act.at);
-    ui.snd = null; drawSoundBits(); drawChips();
-    addChip(cmpTarget().key, chipOf(`サウンドチェック: ${act.action}`, { note: `サウンドチェックの指摘を直して: ${act.action}`, c: "var(--stale)" }));
-    toast("左の欄に積みました。送ると Claude が直します");
-  }
+  if (s) { seek(Number(s.dataset.seek)); drawChips(); }
 });
 // simple: "ask on the left" outside the sheet (the sheet's own also points the box back at its row)
 document.addEventListener("click", (e) => {
@@ -7499,6 +8377,9 @@ $("conn-save").addEventListener("click", saveConn);
 $("conn").addEventListener("change", markConn);
 $("conn-keyinput").addEventListener("focus", () => { document.querySelector("input[name=prov][value=api-key]").checked = true; markConn(); });
 $("board").addEventListener("click", () => { ui.board = !ui.board; ui.region = null; $("view").dataset.board = ""; draw(); });
+$("guides").addEventListener("click", () => { setGuides(!ui.guides); if (ui.view3d) draw(); });
+$("v3d").addEventListener("click", () => set3d(ui.view3d ? "" : "cam"));
+$("view").addEventListener("click", (e) => { const b = e.target.closest("[data-v3]"); if (b) set3d(b.dataset.v3); });
 $("mark").addEventListener("click", () => toast("プレビューの上をドラッグして、直したいところを囲んでください"));
 $("open-ext").addEventListener("click", async () => {
   const cut = ui.status?.cut;
@@ -7565,6 +8446,23 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest("#rv-pop, [data-rv-tr], [data-rv-air], [data-sp-air]")) closeTrPop();
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTrPop(); });
+// the findings on the left (D-95): pick one to bring its place up, press its action, fold the list
+$("issues").addEventListener("click", (e) => {
+  // opening or closing changes the canvas's width: everything on it is drawn again
+  if (e.target.closest("[data-iss-open]")) { issSetOpen(true); draw(); return; }
+  if (e.target.closest("[data-iss-close]")) { issSetOpen(false); draw(); return; }
+  if (e.target.closest("[data-iss-showoff]")) { ui.issShowOff = !ui.issShowOff; drawIssues(); return; }
+  const list = issuesShown();
+  const act = e.target.closest("[data-iss-act]");
+  if (act) { runIssueAct(list[ui.rvq || 0], act.dataset.issAct, { type: true }); return; }
+  const it = e.target.closest("[data-iss]");
+  // the dock follows the pick: a changed game or stale previz offers its filming there (D-84)
+  if (it) { ui.rvq = Number(it.dataset.iss); drawIssues(); issueFocus(list[ui.rvq]); drawDock(); }
+});
+$("issues").addEventListener("keydown", (e) => {
+  const it = e.target.closest?.("[data-iss]");
+  if (it && (e.key === "Enter" || e.key === " ") && e.target === it) { e.preventDefault(); e.stopPropagation(); it.click(); }
+});
 $("reviewpanel").addEventListener("click", (e) => {
   if (e.target.closest("[data-play]")) { playToggle(); return; }
   const trc = e.target.closest("[data-rv-tr]");
@@ -7573,10 +8471,6 @@ $("reviewpanel").addEventListener("click", (e) => {
   if (air) { openAirPop(air.dataset.rvAir, air); return; }
   const cut = e.target.closest("[data-rv-cut]");
   if (cut) { ui.sel = cut.dataset.rvCut; ui.scopeAll = false; draw(); return; }
-  const act = e.target.closest("[data-rv-act]");
-  if (act) { runReviewAct(reviewDecisions()[ui.rvq || 0], act.dataset.rvAct); return; }
-  const dq = e.target.closest("[data-rv-dq]");
-  if (dq) { ui.rvq = Number(dq.dataset.rvDq); draw(); return; }
   const s = shot();
   const nd = e.target.closest("[data-rv-nudge]");
   if (nd && s) { nudge(s.id, nd.dataset.rvNudge); return; }
@@ -7608,8 +8502,15 @@ $("designpanel").addEventListener("click", (e) => {
     sg.blur();
   }
 });
+// the whole box is the place to write: a press on its frame or its empty corners puts the caret in the words
+$("inbox").addEventListener("mousedown", (e) => {
+  if (e.target !== e.currentTarget && !e.target.matches?.(".comp-row")) return;
+  e.preventDefault(); $("note").focus();
+});
 $("dock").addEventListener("click", (e) => {
   if (e.target.closest("[data-dock-go]")) { runNext(); return; }
+  const lr = e.target.closest("[data-line-rm]"); if (lr) { lineDrop(Number(lr.dataset.lineRm)); return; }
+  const lt = e.target.closest("[data-line-retry]"); if (lt) { lineRetry(Number(lt.dataset.lineRetry)); return; }
   const sk = e.target.closest("[data-dock-skip]");
   if (sk) { try { localStorage.setItem(skipKey(sk.dataset.dockSkip), "1"); } catch { /* no storage: shown again */ } draw(); return; }
   const act = e.target.closest("[data-dock-act]");
@@ -7634,9 +8535,9 @@ $("scoutpanel").addEventListener("click", (e) => {
   } else if (t.dataset.propRm) scoutAction("prop", { name: t.dataset.propRm }, "/api/props/remove", "save");
 });
 $("scoutpanel").addEventListener("input", (e) => { if (e.target.id === "asset-filter") { ui.assetFilter = e.target.value; filterAssets(); } });
-for (const id of ["briefpanel", "capturepanel", "findings"]) $(id).addEventListener("click", (e) => {
+for (const id of ["briefpanel", "capturepanel"]) $(id).addEventListener("click", (e) => {
   const sb = e.target.closest("[data-sub]"); if (sb) { setSub(sb.dataset.subtab, sb.dataset.sub); return; }
-  const t = e.target.closest("[data-open],[data-fix],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label,[data-genre],[data-style],[data-design],[data-skill],[data-ms],[data-ms-add]");
+  const t = e.target.closest("[data-open],[data-goto],[data-cap],[data-plan],[data-mood-gen],[data-mood-rm],[data-mood-key],#brief-save,.kinds label,[data-genre],[data-style],[data-design],[data-skill],[data-ms],[data-ms-add]");
   if (!t) return;
   if (t.dataset.ms !== undefined) { t.classList.toggle("on"); syncMust($("briefpanel")); return; }
   if (t.matches("[data-ms-add]")) { addMustFree(t); return; }
@@ -7670,7 +8571,6 @@ for (const id of ["briefpanel", "capturepanel", "findings"]) $(id).addEventListe
   else if (t.matches("[data-mood-key]")) openConn();
   else if (t.matches("[data-plan]")) planShots();
   else if (t.dataset.open) selectShot(t.dataset.open);
-  else if (t.dataset.fix) { const [r, sid] = JSON.parse(t.dataset.fix); askFix(r, sid); }
   else if (t.dataset.goto) goStage(t.dataset.goto);
   else if (t.dataset.cap) {
     const ids = ui.status.shots.filter((s) => s.approval === "approved").map((s) => s.id);
@@ -7766,6 +8666,7 @@ document.addEventListener("keydown", (e) => {
     if (ui.region || ui.tab !== "shot") { ui.region = null; draw(); } else goStage("structure");
   }
   else if (e.key === "/" ) { openTyping(cmpTarget().key); e.preventDefault(); }
+  else if (e.key.toLowerCase() === "g" && !e.ctrlKey && !e.metaKey && !e.altKey && !$("guides").hidden) { setGuides(!ui.guides); e.preventDefault(); }
   else if (e.key === "Tab" && !e.shiftKey && tabFree() && ui.status?.ai?.ready && ui.chipSets[cmpTarget().key]?.length) { pickChip(cmpTarget().key, 0); e.preventDefault(); }
   else if (e.key === "Enter" && !e.target.closest("button") && ui.tab === "shot" && ui.mode !== "tweak") {
     // Enter approves the shot on screen and moves on; it never un-approves
@@ -7773,7 +8674,7 @@ document.addEventListener("keydown", (e) => {
     if (s && s.approval !== "approved" && !b.hidden && !b.disabled) { approve(s.id, true); e.preventDefault(); }
   }
 });
-window.addEventListener("resize", () => { drawRegion(); if (ui.status) drawTimeline(); });
+window.addEventListener("resize", () => { drawRegion(); drawGuides(); if (ui.view3d) v3render(); if (ui.status) drawTimeline(); });
 window.addEventListener("focus", () => { if (!ui.busy) refresh(); });
 // shots.yaml is the source of truth: pick up edits made from the CLI or a text editor
 setInterval(() => { if (!ui.busy && document.visibilityState === "visible") refresh(true); }, 3000);

@@ -115,6 +115,9 @@ fn a_missing_file_does_not_block_the_cut() {
     let info = f.ws.cut("previz", false).unwrap();
     assert!(info.audio.is_none());
     assert!(info.notes.iter().any(|n| n.contains("audio/hit.wav")), "{:?}", info.notes);
+    // the notes stay with the cut in the history: the app's list of findings reads them from there (D-95)
+    let logged = f.ws.state.history().into_iter().rev().find(|e| e["action"] == "cut").unwrap();
+    assert_eq!(logged["notes"], json!(info.notes));
 }
 
 #[test]

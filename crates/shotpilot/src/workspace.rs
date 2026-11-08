@@ -881,6 +881,8 @@ impl Workspace {
         self.state.log("cut", json!({
             "quality": quality, "order": picks.iter().map(|p| &p.shot.id).collect::<Vec<_>>(), "takes": takes,
             "sound": mixed.as_ref().map(|m| m.check["verdict"].clone()),
+            // what the cut had to say stays with it: the findings list reads the latest cut's notes
+            "notes": info.notes,
         }));
         self.state.save()?;
         Ok(info)

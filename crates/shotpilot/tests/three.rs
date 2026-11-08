@@ -280,6 +280,94 @@ fn previz_draws_the_game_and_redraws_only_the_shots_that_showed_a_changed_thing(
 }
 
 #[test]
+fn previz_is_lit_by_the_games_lamps_and_follows_the_ones_that_light_it() {
+    let (d, mut ws) = ward();
+    ws.render(&[], "previz", false, None).unwrap();
+    let packages = |ws: &Workspace| -> BTreeMap<String, BTreeSet<String>> {
+        let mut out = BTreeMap::new();
+        for s in ws.resolved().unwrap() {
+            let rfp = shotpilot::fingerprint::render_fingerprint(&ws.defn, &s, "previz").unwrap();
+            let names = ws
+                .state
+                .takes_for(&s.id, "previz", &rfp)
+                .iter()
+                .flat_map(|t| t.info.get("deps").and_then(Value::as_array).cloned().unwrap_or_default())
+                .filter_map(|d| d["package"].as_str().map(String::from))
+                .collect();
+            out.insert(s.id.clone(), names);
+        }
+        out
+    };
+    // the scene file sets every frame's light and haze; the moonlight has no body to be seen,
+    // so a take holds it only because its light reached the frame
+    let deps = packages(&ws);
+    assert!(deps.values().all(|p| p.contains("game/scene.json")), "{deps:?}");
+    let moonlit: BTreeSet<String> = deps.iter().filter(|(_, p)| p.contains("game/objects/moonlight")).map(|(k, _)| k.clone()).collect();
+    assert!(!moonlit.is_empty() && moonlit.len() < deps.len(), "{deps:?}");
+
+    // dim the moon: its light changes the frames it reached, and only those go stale
+    let shot = ws.select_one(moonlit.iter().next().unwrap()).unwrap();
+    let frame = |ws: &Workspace| shotpilot::previz::render_frame(&shot, 0, &shotpilot::previz::World::load(&ws.defn), 160, 90, None).png();
+    let before = frame(&ws);
+    let file = d.path().join("game").join("objects").join("moonlight.json");
+    let original = std::fs::read_to_string(&file).unwrap();
+    let mut v: Value = serde_json::from_str(&original).unwrap();
+    for p in v["parts"].as_array_mut().unwrap() {
+        p["intensity"] = json!(p["intensity"].as_f64().unwrap() / 4.0);
+    }
+    std::fs::write(&file, serde_json::to_string_pretty(&v).unwrap()).unwrap();
+    assert_ne!(frame(&ws), before, "the moonlight lights the shot");
+    for (id, (st, changed)) in status_of(&ws, "previz") {
+        if moonlit.contains(&id) {
+            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/moonlight".to_string()]), "{id}");
+        } else {
+            assert_eq!((st.as_str(), changed.len()), ("fresh", 0), "{id}");
+        }
+    }
+    std::fs::write(&file, original).unwrap();
+    assert!(status_of(&ws, "previz").values().all(|(st, _)| st == "fresh"));
+    assert_eq!(frame(&ws), before);
+}
+
+/// The app's 3D view (D-97) and the guides over a take (D-96) only read what previz draws: the
+/// same triangles, what stands still sent once, the figures again for another frame, the shot's
+/// camera at every frame. A previz take's guides lie beside its frames, one entry per frame.
+#[test]
+fn the_3d_view_and_the_guides_read_what_previz_draws() {
+    let (_d, mut ws) = ward();
+    let s = ws.resolved().unwrap().into_iter().find(|s| s.id == "s07_figure_mid").unwrap();
+    let world = shotpilot::previz::World::load(&ws.defn);
+    let a = shotpilot::previz::view_scene(&s, 0, &world, 1920, 1080, None);
+    let still = a["still"]["s"].as_array().unwrap().len();
+    assert!(still > 100, "the ward's rooms: {still} triangles");
+    assert_eq!(a["still"]["p"].as_array().unwrap().len(), still * 9);
+    assert_eq!(a["cameras"].as_array().unwrap().len() as i64, s.frames);
+    assert_eq!(a["dynamic"], json!(true), "the ward's figures move");
+    let key = a["still"]["key"].as_str().unwrap();
+    let b = shotpilot::previz::view_scene(&s, s.frames - 1, &world, 1920, 1080, Some(key));
+    assert_eq!(b["still"]["key"], json!(key), "what stands still is the same at every frame");
+    assert!(b["still"].get("p").is_none(), "the page already holds what stands still");
+    assert_ne!(a["moving"]["p"], b["moving"]["p"], "the figures moved between the frames");
+    assert_eq!(a["cameras"], b["cameras"]);
+    let cam = shotpilot::three::frame_camera(&s.camera_at(5), s.focal_length(), s.sensor_width(), 1920, 1080);
+    assert_eq!(a["cameras"][5], cam, "the view looks through the camera the take is drawn from");
+
+    // the take's guides: one entry per frame file, naming the places in frame
+    let out = ws.render(std::slice::from_ref(&s.id), "previz", false, None).unwrap();
+    let dir = ws.state.take_dir(&s.id, "previz", &out[0].fingerprint);
+    let g: Value = serde_json::from_str(&std::fs::read_to_string(dir.join(shotpilot::previz::GUIDES)).unwrap()).unwrap();
+    let pngs = std::fs::read_dir(&dir).unwrap().filter(|e| e.as_ref().unwrap().path().extension().is_some_and(|x| x == "png")).count();
+    assert_eq!(g["frames"].as_array().unwrap().len(), pngs);
+    assert!(g["frames"][0]["places"].as_array().unwrap().iter().any(|p| p["name"] == "figure"), "{}", g["frames"][0]);
+    for f in g["frames"].as_array().unwrap() {
+        for p in f["places"].as_array().unwrap() {
+            let at = p["at"].as_array().unwrap();
+            assert!(at.iter().all(|v| (0.0..=1.0).contains(&v.as_f64().unwrap())), "{p}");
+        }
+    }
+}
+
+#[test]
 fn a_three_project_without_its_game_says_so_and_previz_still_works() {
     let (d, mut ws) = ward();
     std::fs::remove_dir_all(d.path().join("game")).unwrap();

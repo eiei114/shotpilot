@@ -36,7 +36,7 @@ shotpilot status                                # 各カットの状態（fresh 
 
 ## UE なしで本物の画を撮る（Three.js のサンプルゲーム、D-72）
 
-mock の previz は線画なので、光や人影まで見たいときは `engine: three` を使う。同梱の病棟（UE のサンプル `Lanternless` と同じ間取りとアンカーに、手すり・扉・ベッド・カーテン・自販機・砂嵐のテレビ・ガウンの患者を置いたもの）を、Windows に入っている Edge（無ければ Chrome）を画面に出さずに起動して撮る。UE も API キーも要らない。
+mock の previz は灰色の立体なので、光や人影まで見たいときは `engine: three` を使う（previz もゲームの灯りと人形で描かれる）。同梱の病棟（UE のサンプル `Lanternless` と同じ間取りとアンカーに、手すり・扉・ベッド・カーテン・自販機・砂嵐のテレビ・ガウンの患者を置いたもの）を、Windows に入っている Edge（無ければ Chrome）を画面に出さずに起動して撮る。UE も API キーも要らない。
 
 ```bash
 mkdir ward && cd ward
@@ -151,7 +151,7 @@ shots.yaml ──build──▶ UE: /Game/Shotpilot/Shots/SEQ_<shot>   (ショ�
 | ショット単位で再レンダ | ショットごとに Level Sequence と MRQ ジョブを分ける。fingerprint が変わったショットだけを撮る |
 | 定義と出力の分離 | 正本は `shots.yaml` だけ。シーケンスアセットも `render/` も、すべてそこから導出する |
 | 状態の保持 | `.shotpilot/state.json` に、push した内容・最新の take・履歴を残す。take は fingerprint ごとのフォルダに置き、上書きしない。定義を元に戻すと、古い take をそのまま再利用する |
-| 安いプレビュー | `previz`（エンジン不要のグレーボックス。読んだレベルや three のゲームを灰色の立体で描く。6ショットで数秒）→ `still`（1ショット3フレーム）→ `preview`（半解像度）→ `final` |
+| 安いプレビュー | `previz`（エンジン不要。読んだレベルや three のゲームを、ゲームの灯りと影・霧・露出・材質の色で描く。灯りを知らないレベルは灰色の立体。6ショットで数秒）→ `still`（1ショット3フレーム）→ `preview`（半解像度）→ `final` |
 
 並び順、`purpose`、`notes`、`beat`、音（`audio`、`sfx`）は fingerprint に入れていない。だから並べ替えやメモの修正、BGM や SE の直しでは何も再レンダされない。`cut` は既存の take をつなぐだけなので、すぐ終わる。
 

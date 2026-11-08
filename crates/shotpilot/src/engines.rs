@@ -63,8 +63,10 @@ pub trait Engine {
     /// Meshes the project has: {"assets": [{asset, kind: static|skeletal, size: [w, d, h] | null}]}.
     fn assets(&self) -> Result<Value>;
     /// The level's plan for the blocking map (D-86): {"outline": {shapes: [{label, kind, center,
-    /// half, yaw}], points: [{kind, label, at}], floors: [z]}}. Null where the map has its own
-    /// source (three draws its game) or none (mock).
+    /// half, yaw, mesh?, xf?}], points: [{kind, label, at, light?}], floors: [z], meshes?, env?}}.
+    /// `meshes` (triangles per mesh), `xf` (where a shape's mesh stands), `light` (how a lamp
+    /// throws its light) and `env` (haze, sky light, sun, exposure) are for previz (D-93) and
+    /// optional. Null where the map has its own source (three draws its game) or none (mock).
     fn outline(&self) -> Result<Value> {
         Ok(Value::Null)
     }

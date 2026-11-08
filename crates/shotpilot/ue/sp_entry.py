@@ -738,7 +738,10 @@ def _candidates(limit):
 # What the blocking map draws for a UE level: every visible mesh as an oriented box (from the
 # mesh's own bounds and its component's world transform, so a rotated wall stays a thin wall),
 # what it is to a scout (the building, a door, a prop, a character), lamps and player starts
-# as points, and the storeys' floor heights. Read only; nothing in the level changes.
+# as points, and the storeys' floor heights. For previz (D-93) the plan also carries each mesh's
+# triangles (a light LOD, once per mesh, placed by the component's transform), how each lamp
+# throws its light, and the level's haze, fill and exposure. Read only; nothing in the level
+# changes. Whatever cannot be read leaves the piece a box.
 
 _NOT_DRAWN = ("Sky", "Atmosphere", "Cloud", "Fog", "PostProcess", "Volume", "Landscape", "Brush", "Info",
               "Camera", "LevelSequence", "Reflection", "Decal", "Note", "Navigation", "HLOD")
@@ -768,10 +771,151 @@ def _comp_box(comp):
     return [c.x, c.y, c.z], half, r.yaw
 
 
+_MESH_TRIS = 3000  # the finest LOD previz takes of one mesh
+_MESH_BUDGET = 300000  # triangles over the whole plan; past it, pieces stay boxes
+
+
+def _mesh_geometry(sm):
+    """(flat vertices in cm, flat triangle indices) of the first LOD with at most _MESH_TRIS
+    triangles (else the lightest one), or None when the editor will not give them."""
+    try:
+        lods = int(sm.get_num_lods())
+    except Exception:
+        lods = 1
+    best = None
+    for lod in range(max(lods, 1)):
+        verts, tris = [], []
+        try:
+            for sec in range(int(sm.get_num_sections(lod))):
+                out = unreal.ProceduralMeshLibrary.get_section_from_static_mesh(sm, lod, sec)
+                base = len(verts) // 3
+                for p in out[0]:
+                    verts.extend((round(p.x, 1), round(p.y, 1), round(p.z, 1)))
+                tris.extend(base + int(i) for i in out[1])
+        except Exception as e:
+            if best is None:
+                warn("level plan: no triangles for %s (%s)" % (sm.get_path_name(), e))
+            break
+        if tris:
+            best = (verts, tris)
+            if len(tris) // 3 <= _MESH_TRIS:
+                break
+    return best
+
+
+def _kelvin(t):
+    """A colour temperature as sRGB 0..1 (Tanner Helland's fit to the blackbody)."""
+    t = max(1000.0, min(40000.0, float(t))) / 100.0
+    if t <= 66:
+        r, g = 255.0, 99.4708025861 * math.log(t) - 161.1195681661
+        b = 255.0 if t >= 66 else (0.0 if t <= 19 else 138.5177312231 * math.log(t - 10) - 305.0447927307)
+    else:
+        r, g, b = 329.698727446 * (t - 60) ** -0.1332047592, 288.1221695283 * (t - 60) ** -0.0755148492, 255.0
+    return [max(0.0, min(255.0, x)) / 255.0 for x in (r, g, b)]
+
+
+def _hex(c):
+    return "#%02x%02x%02x" % tuple(int(round(max(0.0, min(1.0, x)) * 255)) for x in c)
+
+
+def _light_detail(a):
+    """How a lamp throws its light: type, direction, colour, candela (lux for a sun), reach,
+    cone and shadows. None when it has no light component."""
+    comp = a.get_component_by_class(unreal.LightComponent)
+    if comp is None:
+        return None
+    ccls = comp.get_class().get_name()
+    kind = "spot" if "Spot" in ccls else "rect" if "Rect" in ccls else "directional" if "Directional" in ccls else "point"
+    c = comp.get_editor_property("light_color")
+    col = [c.r / 255.0, c.g / 255.0, c.b / 255.0]
+    try:
+        if comp.get_editor_property("use_temperature"):
+            k = _kelvin(comp.get_editor_property("temperature"))
+            col = [col[i] * k[i] for i in range(3)]
+    except Exception:
+        pass
+    f = comp.get_forward_vector()
+    d = {"type": kind, "dir": [round(f.x, 4), round(f.y, 4), round(f.z, 4)], "color": _hex(col),
+         "shadows": bool(comp.get_editor_property("cast_shadows"))}
+    i = float(comp.get_editor_property("intensity"))
+    if kind == "directional":
+        d["lux"] = round(i, 4)
+        return d
+    outer = 180.0
+    if kind == "spot":
+        outer = float(comp.get_editor_property("outer_cone_angle"))
+        d["inner"] = round(float(comp.get_editor_property("inner_cone_angle")), 2)
+        d["outer"] = round(outer, 2)
+    d["radius"] = round(float(comp.get_editor_property("attenuation_radius")), 1)
+    units = str(comp.get_editor_property("intensity_units")).upper()
+    if "CANDELA" in units:
+        cd = i
+    elif "LUMEN" in units:
+        cd = i / (2.0 * math.pi * (1.0 - math.cos(math.radians(min(outer, 180.0)))))
+    elif "EV" in units:
+        cd = 2.0 ** (i - 3.0)
+    else:  # unitless: 625 to the candela, as the editor converts it
+        cd = i / 625.0
+    d["cd"] = round(cd, 4)
+    return d
+
+
+def _level_env(actors):
+    """The level's haze, sky light, sun and exposure (the first unbound post process volume)."""
+    env = {}
+    for a in actors:
+        cls = a.get_class().get_name()
+        try:
+            if a.is_hidden_ed():
+                continue
+        except Exception:
+            pass
+        try:
+            if "fog" not in env and (cls == "ExponentialHeightFog" or _has(a, "ExponentialHeightFogComponent")):
+                c = a.get_component_by_class(unreal.ExponentialHeightFogComponent)
+                col = None
+                for name in ("fog_inscattering_luminance", "fog_inscattering_color"):
+                    try:
+                        v = c.get_editor_property(name)
+                        col = [v.r, v.g, v.b]
+                        break
+                    except Exception:
+                        pass
+                env["fog"] = {"density": c.get_editor_property("fog_density"), "falloff": c.get_editor_property("fog_height_falloff"),
+                              "z": round(a.get_actor_location().z, 1), "start": c.get_editor_property("start_distance"),
+                              "max": c.get_editor_property("fog_max_opacity"), "color": col or [0.1, 0.12, 0.15]}
+            elif "sky_light" not in env and (cls == "SkyLight" or _has(a, "SkyLightComponent")):
+                c = a.get_component_by_class(unreal.SkyLightComponent)
+                lc = c.get_editor_property("light_color")
+                env["sky_light"] = {"intensity": c.get_editor_property("intensity"), "color": _hex([lc.r / 255.0, lc.g / 255.0, lc.b / 255.0])}
+            elif "sun" not in env and (cls == "DirectionalLight" or _has(a, "DirectionalLightComponent")):
+                d = _light_detail(a)
+                if d is not None:
+                    env["sun"] = d
+            elif "exposure" not in env and cls == "PostProcessVolume" and a.get_editor_property("unbound") and a.get_editor_property("enabled"):
+                st = a.get_editor_property("settings")
+                ex = {}
+                if st.get_editor_property("override_auto_exposure_method"):
+                    m = str(st.get_editor_property("auto_exposure_method")).upper()
+                    ex["method"] = "manual" if "MANUAL" in m else "auto"
+                if st.get_editor_property("override_auto_exposure_bias"):
+                    ex["bias"] = st.get_editor_property("auto_exposure_bias")
+                if st.get_editor_property("override_auto_exposure_min_brightness"):
+                    ex["min"] = st.get_editor_property("auto_exposure_min_brightness")
+                if st.get_editor_property("override_auto_exposure_max_brightness"):
+                    ex["max"] = st.get_editor_property("auto_exposure_max_brightness")
+                env["exposure"] = ex
+        except Exception as e:
+            warn("level plan: could not read %s (%s)" % (a.get_actor_label(), e))
+    return env
+
+
 def _outline(limit=6000):
     shapes, points, slabs = [], [], []
+    meshes, budget, failed = {}, _MESH_BUDGET, set()
     r1 = lambda v: [round(x, 1) for x in v]
-    for a in all_actors():
+    actors = list(all_actors())
+    for a in actors:
         cls = a.get_class().get_name()
         try:
             if a.is_hidden_ed() or a.is_editor_only():
@@ -785,7 +929,15 @@ def _outline(limit=6000):
         kind = _kind(a, cls, label, box)
         if kind in ("light", "start") or (kind == "effect" and not _has(a, "StaticMeshComponent")):
             loc = a.get_actor_location()
-            points.append({"kind": kind, "label": label, "at": r1([loc.x, loc.y, loc.z])})
+            pt = {"kind": kind, "label": label, "at": r1([loc.x, loc.y, loc.z])}
+            if kind == "light":
+                try:
+                    detail = _light_detail(a)
+                    if detail is not None:
+                        pt["light"] = detail
+                except Exception as e:
+                    warn("level plan: could not read the lamp %s (%s)" % (label, e))
+            points.append(pt)
             if kind == "light" and not _has(a, "StaticMeshComponent"):
                 continue
         kind = kind if kind in ("structure", "door", "item", "prop", "character", "light") else "prop"
@@ -806,7 +958,28 @@ def _outline(limit=6000):
             c, half, yaw = b
             if max(half) > 25000 or max(half) < 1:
                 continue
-            shapes.append({"label": label, "kind": kind, "center": r1(c), "half": r1(half), "yaw": round(yaw, 1)})
+            shape = {"label": label, "kind": kind, "center": r1(c), "half": r1(half), "yaw": round(yaw, 1)}
+            try:
+                sm = comp.get_editor_property("static_mesh")
+                key = sm.get_path_name()
+                if key not in meshes and key not in failed and budget > 0:
+                    geo = _mesh_geometry(sm)
+                    if geo is None:
+                        failed.add(key)
+                    else:
+                        meshes[key] = {"v": geo[0], "i": geo[1]}
+                        budget -= len(geo[1]) // 3
+                if key in meshes:
+                    t = comp.get_world_transform()
+                    rot = t.rotation.rotator()
+                    sc = t.scale3d
+                    shape["mesh"] = key
+                    shape["xf"] = {"at": r1([t.translation.x, t.translation.y, t.translation.z]),
+                                   "rot": [round(rot.pitch, 3), round(rot.yaw, 3), round(rot.roll, 3)],
+                                   "scale": [round(sc.x, 4), round(sc.y, 4), round(sc.z, 4)]}
+            except Exception as e:
+                warn("level plan: %s stays a box (%s)" % (label, e))
+            shapes.append(shape)
             if kind == "structure" and half[2] * 2 <= min(150.0, max(60.0, 0.4 * min(half[0], half[1]))) and min(half[0], half[1]) >= 100 \
                     and abs(yaw % 90) < 1:
                 slabs.append(([c[0] - half[0], c[1] - half[1], c[2] - half[2]], [c[0] + half[0], c[1] + half[1], c[2] + half[2]]))
@@ -822,8 +995,11 @@ def _outline(limit=6000):
     for f in sorted(r["floor"] for r in _rooms(slabs, None)):
         if not floors or f - floors[-1] > 60:
             floors.append(round(f, 1))
-    log("level plan: %d shapes, %d points, floors at %s" % (len(shapes), len(points), floors))
-    return {"shapes": shapes, "points": points, "floors": floors}
+    env = _level_env(actors)
+    lamps = sum(1 for p in points if "light" in p)
+    log("level plan: %d shapes (%d meshes, %d triangles), %d points (%d lamps), floors at %s, env %s" % (
+        len(shapes), len(meshes), _MESH_BUDGET - budget, len(points), lamps, floors, sorted(env)))
+    return {"shapes": shapes, "points": points, "floors": floors, "meshes": meshes, "env": env}
 
 
 def run_outline(job):

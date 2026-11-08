@@ -20,13 +20,13 @@ use crate::model::{num, Definition, ResolvedShot};
 pub const RENDERER_VERSION: i64 = 1;
 /// Bump when the local previz drawing changes. Kept separate so a previz change
 /// never invalidates expensive engine takes.
-pub const PREVIZ_VERSION: i64 = 3;
+pub const PREVIZ_VERSION: i64 = 5;
 
 pub const BUILTIN_ORDER: &[&str] = &["previz", "still", "preview", "final"];
 
 fn builtin(name: &str) -> Option<Value> {
     Some(match name {
-        // Local graybox previz. No engine launch at all: seconds per shot.
+        // Local previz: the level drawn and lit by the game, no engine launch: seconds per shot.
         "previz" => json!({"runner": "previz", "scale": 1.0 / 6.0, "frame_step": 3, "format": "png"}),
         // Engine, three frames per shot (first/mid/last) to check framing and light.
         "still" => json!({"runner": "engine", "scale": 0.5, "frames": "keys", "spatial_samples": 1,

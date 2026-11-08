@@ -549,6 +549,21 @@ fn file_url(root: &Path, path: &Path) -> Option<String> {
     Some(format!("/files/{}", parts.join("/")))
 }
 
+/// One shot's scene for the studio's 3D view (D-97): `?shot=<id>&frame=<n>&have=<key>`. The
+/// shapes previz draws and the shot's camera at every frame (previz::view_scene). Read-only.
+pub fn scene3d_payload(ws: &Workspace, query: &str) -> Result<Value> {
+    let arg = |k: &str| {
+        query.split('&').find_map(|kv| kv.split_once('=').filter(|(a, _)| *a == k).map(|(_, v)| percent_decode(v)))
+    };
+    let id = arg("shot").unwrap_or_default();
+    let shots = ws.resolved()?;
+    let Some(shot) = shots.iter().find(|s| s.id == id) else { crate::bail!("no shot named {id:?}") };
+    let frame = arg("frame").and_then(|v| v.parse().ok()).unwrap_or(0);
+    let (w, h) = ws.defn.teaser.resolution;
+    let world = crate::previz::World::load(&ws.defn);
+    Ok(crate::previz::view_scene(shot, frame, &world, w.max(2) as u32, h.max(2) as u32, arg("have").as_deref()))
+}
+
 /// What the blocking map draws (D-77), seen from above: the anchors, the game's shapes (three
 /// only: its objects' boxes at t = 0), and every shot's camera resolved to where it stands, where
 /// it ends, where it looks and how wide it sees. Read-only; the page writes through /api/shots/.
@@ -625,8 +640,15 @@ pub fn status_payload(ws: &Workspace) -> Result<Value> {
                 .map(|t| t.files().iter().filter_map(|f| file_url(&ws.root, &t.dir.join(f))).collect())
                 .unwrap_or_default();
             let numbers = take.as_ref().map(|t| t.frames()).unwrap_or_default();
+            // what the app lays over a previz frame when its guides are on (D-96)
+            let guides = take
+                .as_ref()
+                .map(|t| t.dir.join(crate::previz::GUIDES))
+                .filter(|p| p.is_file())
+                .and_then(|p| file_url(&ws.root, &p));
             thumbs.insert(q, json!({
                 "url": url, "fresh": is_fresh, "fingerprint": &rfp[..12], "frames": frames, "frame_numbers": numbers,
+                "guides": guides,
             }));
         }
         let mut v = row.to_json();
@@ -951,6 +973,9 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
                                            &[("Cache-Control", "no-store".into())]).map_err(io),
         ("GET" | "HEAD", "/i18n.js") => send(stream, head, 200, "text/javascript; charset=utf-8", i18n_js().as_bytes(),
                                               &[("Cache-Control", "no-store".into())]).map_err(io),
+        // the three engine's bundled Three.js (MIT), for the studio's 3D view (D-97)
+        ("GET" | "HEAD", "/three.module.min.js") => send(stream, head, 200, "text/javascript; charset=utf-8", crate::three::THREE_JS,
+                                                         &[("Cache-Control", "no-cache".into())]).map_err(io),
         ("GET" | "HEAD", "/api/home") => send_json(stream, head, 200, &home_payload(app)).map_err(io),
         ("GET" | "HEAD", "/home/cover") => {
             let p = req.query.split('&').find_map(|kv| kv.strip_prefix("p=")).unwrap_or("");
@@ -1128,6 +1153,7 @@ fn route(stream: &mut TcpStream, app: &App, req: &Request) -> Result<()> {
         ("POST", "/api/produce") => produce_stream(stream, app, req),
         ("GET" | "HEAD", "/api/sound") => send_json(stream, head, 200, &sound_payload(&app.ws()?)?).map_err(io),
         ("GET" | "HEAD", "/api/blocking") => send_json(stream, head, 200, &blocking_payload(&app.ws()?)?).map_err(io),
+        ("GET" | "HEAD", "/api/scene3d") => send_json(stream, head, 200, &scene3d_payload(&app.ws()?, &req.query)?).map_err(io),
         ("POST", "/api/sound") => {
             let body = req.json()?;
             let _guard = app.mutate()?;

@@ -414,26 +414,51 @@ fn previz_digest() -> (usize, String) {
     (frames, h.finalize().iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// Guards D-RENDERER_VERSION / PREVIZ_VERSION: the previz drawing is pinned together with
-/// its version, so changing the drawing without bumping PREVIZ_VERSION fails here.
+/// The three sample's ward drawn and lit as the game is (its lamps and their shadows, haze,
+/// materials and posed figures): the first and middle frame of every shot, as one hash.
+fn lit_previz_digest() -> String {
+    use sha2::{Digest, Sha256};
+    let dir = tempfile::tempdir().unwrap();
+    assert!(shotpilot::threegame::write(&dir.path().join("game")).unwrap());
+    let p = dir.path().join("shots.yaml");
+    std::fs::write(&p, shotpilot::templates::render(shotpilot::templates::THREE_WARD, "ward", "three", "null", "null")).unwrap();
+    let ws = shotpilot::Workspace::open(&p).unwrap();
+    let world = shotpilot::previz::World::load(&ws.defn);
+    assert!(world.is_lit());
+    let mut h = Sha256::new();
+    for s in ws.resolved().unwrap() {
+        for f in [0, (s.frames - 1) / 2] {
+            h.update(shotpilot::previz::render_frame(&s, f, &world, 160, 90, None).png());
+        }
+    }
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// Guards D-RENDERER_VERSION / PREVIZ_VERSION: the previz drawing (the graybox, and the frame
+/// lit as the game is) is pinned together with its version, so changing the drawing without
+/// bumping PREVIZ_VERSION fails here.
 #[test]
 fn previz_drawing_is_pinned_to_its_version() {
-    const PINNED_PREVIZ_VERSION: i64 = 3;
+    const PINNED_PREVIZ_VERSION: i64 = 5;
     const PINNED_RENDERER_VERSION: i64 = 1;
     const PINNED_FRAMES: usize = 281;
-    const PINNED_DIGEST: &str = "b88cf101fc43721e72881fa89ec3f85ee11b5d4a7633cb337c514db54f75d7cf";
+    const PINNED_DIGEST: &str = "81e7b9fb52244d47a82179b667d448f03411d85d8cdf74053d0ff784ecf390a8";
+    const PINNED_LIT_DIGEST: &str = "0be469285d64c51c7a180a9870790aec0dec77e855d59b96849f8cf35a39cee5";
 
     let a = previz_digest();
     assert_eq!(a, previz_digest(), "previz output must be deterministic across runs");
     assert!(a.0 > 0, "previz wrote no PNG frames");
+    let lit = lit_previz_digest();
+    assert_eq!(lit, lit_previz_digest(), "the lit previz must be deterministic across runs");
     let msg = format!(
-        "the previz drawing changed (frames={}, sha256={}); if that was intended, bump \
-         fingerprint::PREVIZ_VERSION and update both constants in this test",
+        "the previz drawing changed (frames={}, sha256={}, lit sha256={lit}); if that was intended, bump \
+         fingerprint::PREVIZ_VERSION and update the constants in this test",
         a.0, a.1
     );
     assert_eq!(fp::PREVIZ_VERSION, PINNED_PREVIZ_VERSION, "{msg}");
     assert_eq!(fp::RENDERER_VERSION, PINNED_RENDERER_VERSION, "RENDERER_VERSION changed; update the pin if intended");
     assert_eq!((a.0, a.1.as_str()), (PINNED_FRAMES, PINNED_DIGEST), "{msg}");
+    assert_eq!(lit, PINNED_LIT_DIGEST, "{msg}");
 }
 
 /// Guards "build never silently overwrites editor edits": a plain build reports the shot as
