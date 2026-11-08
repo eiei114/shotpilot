@@ -24,9 +24,11 @@ fn parts(o: &Object) -> impl Iterator<Item = &Value> {
     o.raw.get("parts").and_then(Value::as_array).into_iter().flatten()
 }
 
-/// Whether an object walks or moves over a shot: its triangles are built for each frame.
+/// Whether an object walks or moves over a shot (a path, a figure, turning sails): its triangles
+/// are built for each frame.
 pub(crate) fn moves(o: &Object) -> bool {
-    o.raw.get("path").and_then(Value::as_array).is_some_and(|a| !a.is_empty()) || parts(o).any(|p| p.get("figure").is_some())
+    o.raw.get("path").and_then(Value::as_array).is_some_and(|a| !a.is_empty())
+        || parts(o).any(|p| p.get("figure").is_some() || p.get("shape").and_then(Value::as_str) == Some("sails"))
 }
 
 fn scaled(c: Col, k: f64) -> Col {
@@ -41,8 +43,9 @@ fn surface(globals: &Value, part: &Value) -> Option<Surf> {
     if m.get("glass").and_then(Value::as_bool) == Some(true) || m.get("opacity").and_then(num).is_some_and(|o| o < 0.5) {
         return None;
     }
-    let color = part.get("color").or_else(|| m.get("color")).and_then(Value::as_str).and_then(hex).unwrap_or([0.216; 3]);
-    let glow = part.get("glow").or_else(|| m.get("glow")).and_then(num);
+    // the part's own colour or glow when it gives one (a null is none), else the material's
+    let color = part.get("color").and_then(Value::as_str).or_else(|| m.get("color").and_then(Value::as_str)).and_then(hex).unwrap_or([0.216; 3]);
+    let glow = part.get("glow").and_then(num).or_else(|| m.get("glow").and_then(num));
     let tex = m.get("tex").and_then(Value::as_str);
     let metal = m.get("metal").and_then(num).unwrap_or(if tex == Some("metal") { 0.85 } else { 0.0 });
     // a baked texture averages a little darker than its colour (grime, wear)
@@ -162,6 +165,17 @@ pub(crate) fn object(b: &mut Builder, globals: &Value, o: &Object, at: Vec3, yaw
             let facing = p.get("facing").and_then(num).unwrap_or(0.0);
             let root = base.then(&Xf::three(p3(pa), deg3([0.0, -facing, 0.0]), Order::Xyz, [1.0; 3]));
             let seed = p.get("seed").and_then(Value::as_str).unwrap_or(name);
+            // what it carries, in the page's material for it
+            let holds = p.get("holds").and_then(Value::as_str).map(|what| {
+                let mat = p.get("holds_mat").and_then(Value::as_str).unwrap_or(match what {
+                    "can" => "tin",
+                    "teapot" => "teapot",
+                    "basket" => "basket",
+                    "broom" => "plank",
+                    _ => "accent",
+                });
+                (what, b.surf(surface(globals, &json!({"mat": mat})).unwrap_or(Surf::plain([0.3; 3]))))
+            });
             let spec = figure::Spec {
                 mv: mv.as_str().unwrap_or("idle"),
                 height: p.get("height").and_then(num).unwrap_or(175.0),
@@ -172,6 +186,7 @@ pub(crate) fn object(b: &mut Builder, globals: &Value, o: &Object, at: Vec3, yaw
                     let len = p.get("dress_len").and_then(num).unwrap_or(if dress == Some("uniform") { 0.86 } else { 0.98 });
                     (b.surf(c), len)
                 }),
+                holds,
             };
             let piece = b.piece(src);
             figure::add(b, &root, &spec, t, piece);

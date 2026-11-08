@@ -1268,14 +1268,15 @@ fn midi_hz(m: f64) -> f64 {
     440.0 * 2f64.powf((m - 69.0) / 12.0)
 }
 
-/// A soft music-box tune over C, Am, F, G (84 bpm), a bass note and a pad under it: the three
-/// sample's placeholder music (D-100).
+/// A soft music-box tune over C, Am, F, G (120 bpm, so cuts on the half second land on a beat), a
+/// bass note and a pad under it, 48 seconds and a last chord: the three sample's placeholder
+/// music (D-101).
 fn village_tune() -> Pcm {
     let tau = std::f64::consts::TAU;
-    let eighth = 60.0 / 84.0 / 2.0;
+    let eighth = 60.0 / 120.0 / 2.0;
     let bar = eighth * 8.0;
     let chords: [[f64; 4]; 4] = [[60.0, 64.0, 67.0, 72.0], [57.0, 60.0, 64.0, 69.0], [53.0, 57.0, 60.0, 65.0], [55.0, 59.0, 62.0, 67.0]];
-    let bars = 12;
+    let bars = 24;
     let secs = bar * bars as f64 + 3.0;
     let n = (secs * SR as f64) as usize;
     let mut p = Pcm::silent(n);
@@ -1297,10 +1298,11 @@ fn village_tune() -> Pcm {
     for b in 0..bars {
         let chord = chords[b % 4];
         let t0 = b as f64 * bar;
-        pluck(t0, midi_hz(chord[0] - 12.0), 0.22, 1.6, 0.0);
+        pluck(t0, midi_hz(chord[0] - 24.0), 0.26, 1.4, 0.0);
+        pluck(t0 + bar / 2.0, midi_hz(chord[0] - 12.0), 0.16, 0.9, 0.0);
         for (k, &idx) in pattern.iter().enumerate() {
             let pan = if k % 2 == 0 { -0.25 } else { 0.25 };
-            pluck(t0 + k as f64 * eighth, midi_hz(chord[idx] + 12.0), 0.11, 0.7, pan);
+            pluck(t0 + k as f64 * eighth, midi_hz(chord[idx] + 12.0), if k % 2 == 0 { 0.13 } else { 0.1 }, 0.45, pan);
         }
         // a short tune on top every other bar
         if b % 2 == 1 {
@@ -1397,13 +1399,16 @@ fn village_chime() -> Pcm {
     p
 }
 
-/// Placeholder sounds for the three sample (D-100), written under audio/ only where missing:
+/// Placeholder sounds for the three sample (D-101), written under audio/ only where missing:
 /// music, the air of the hill and a small bell, all synthesized.
 pub fn write_village_audio(root: &Path) -> Result<Vec<String>> {
     write_synth(root, &[("audio/tune.wav", village_tune), ("audio/breeze.wav", village_breeze), ("audio/chime.wav", village_chime)])
 }
 
-fn write_synth(root: &Path, items: &[(&str, fn() -> Pcm)]) -> Result<Vec<String>> {
+/// A placeholder sound: where it goes under the project, and how it is made.
+type Synth<'a> = (&'a str, fn() -> Pcm);
+
+fn write_synth(root: &Path, items: &[Synth]) -> Result<Vec<String>> {
     let mut written = Vec::new();
     for (rel, make) in items {
         let p = root.join(rel);

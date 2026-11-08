@@ -1,4 +1,4 @@
-# KettleHill: the three engine's sample (D-72, D-100). A cozy teaser filmed in the village in
+# KettleHill: the three engine's sample (D-72, D-101). A cozy teaser filmed in the village in
 # game/ (one file per thing; the five places to film are tagged as anchors). Draws in Edge or Chrome:
 #   shotpilot render still && shotpilot cut
 # Then change one shot (shotpilot set s04_market camera.lens.focal_length=50) or one thing in the
@@ -112,12 +112,12 @@ shots:
     purpose: 赤とクリームの日よけの屋台で、野菜を売る村の暮らしを見せる。
     duration: 4.0
     camera:
-      location: [520.0, -120.0, 135.0]
+      location: [400.0, -60.0, 150.0]
       look_at: market_stall
       aim: center
-      lens: {focal_length: 35.0}
+      lens: {focal_length: 28.0}
       end:
-        location: [540.0, -440.0, 135.0]
+        location: [430.0, -480.0, 150.0]
         curve: ease_in_out
     environment: {time_of_day: afternoon}
     notes: 屋台を正面寄りから目線の高さで。手を振る店主と、カボチャ・リンゴ・キャベツの箱。かごを持った客が横切る。
@@ -157,12 +157,12 @@ shots:
     purpose: 赤い提灯の下がる茶屋にたどり着く。
     duration: 3.5
     camera:
-      location: [-60.0, 380.0, 170.0]
+      location: [60.0, 170.0, 185.0]
       look_at: teahouse
       aim: center
       lens: {focal_length: 28.0}
       end:
-        location: [-260.0, 300.0, 165.0]
+        location: [-170.0, 80.0, 180.0]
         curve: ease_in_out
     environment: {time_of_day: afternoon}
     notes: 広場の側から、のれんと提灯、縁側に座る客を収める。ゆっくり横に流す。
@@ -172,11 +172,11 @@ shots:
     purpose: 縁側に一杯の支度が整っていることを見せる。
     duration: 3.0
     camera:
-      location: [-830.0, 560.0, 120.0]
-      look_at: [-610.0, 740.0, 85.0]
+      location: [-400.0, 590.0, 125.0]
+      look_at: [-600.0, 740.0, 95.0]
       lens: {focal_length: 50.0}
       end:
-        location: [-780.0, 520.0, 115.0]
+        location: [-440.0, 560.0, 112.0]
         curve: ease_in_out
     environment: {time_of_day: afternoon}
     notes: 縁側に腰かけた客と、盆の上の湯呑みを横から。前のカットから大きく角度を変える。
@@ -186,11 +186,11 @@ shots:
     purpose: 茶屋の主人がお茶を注ぐ、一番あたたかい瞬間を見せる。
     duration: 3.5
     camera:
-      location: [-560.0, 610.0, 160.0]
-      look_at: [-505.0, 772.0, 140.0]
-      lens: {focal_length: 50.0}
+      location: [-410.0, 600.0, 172.0]
+      look_at: [-530.0, 755.0, 135.0]
+      lens: {focal_length: 40.0}
       end:
-        location: [-545.0, 650.0, 158.0]
+        location: [-428.0, 628.0, 168.0]
         curve: ease_in_out
     environment: {time_of_day: afternoon}
     notes: 急須を傾ける主人の手元に寄る。のれんの藍と提灯の赤を背景に入れる。
@@ -206,7 +206,7 @@ shots:
     duration: 5.5
     camera:
       location: [-2400.0, 2700.0, 400.0]
-      look_at: [400.0, -400.0, 150.0]
+      look_at: [600.0, -600.0, 420.0]
       lens: {focal_length: 24.0}
       end:
         location: [-2700.0, 3000.0, 1100.0]
@@ -236,7 +236,7 @@ script:
     sfx:
       - file: audio/chime.wav
         at: 0.0
-        gain: -6.0
+        gain: -12.0
         label: 題字にやわらかいチャイムをひとつ（仮の音）
 
   - id: endcard
@@ -286,4 +286,4 @@ audio:
     market_stall: {file: audio/breeze.wav, gain: -15.0, label: 丘の風と小鳥（仮の音）}
     old_oak: {file: audio/breeze.wav, gain: -14.0, label: 丘の風と小鳥（仮の音）}
     teahouse: {file: audio/breeze.wav, gain: -16.0, label: 丘の風と小鳥（仮の音）}
-  loudness: -16.0
+  loudness: -14.0

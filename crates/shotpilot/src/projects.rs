@@ -353,7 +353,7 @@ pub fn create(p: &NewProject) -> Result<PathBuf> {
         }
     }
     if p.engine == "three" {
-        // the game it films (D-72, D-100): the sample village, which people then edit as their own
+        // the game it films (D-72, D-101): the sample village, which people then edit as their own
         crate::threegame::write(&dir.join("game"))?;
     }
     let gi = dir.join(".gitignore");

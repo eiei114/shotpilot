@@ -1,4 +1,4 @@
-//! The three engine's sample game (D-72, D-100): KettleHill, a village on a green hill on a
+//! The three engine's sample game (D-72, D-101): KettleHill, a village on a green hill on a
 //! clear afternoon. Five places to film, each with its own colour and outline so a camera that
 //! points at one is plain to see: the white windmill with its turning sails, the market stall
 //! under a red and cream awning, the teahouse with its dark roof and red lanterns, the old oak
@@ -184,6 +184,7 @@ fn materials() -> Value {
         "cloth_red": {"tex": "fabric", "color": "#e0574a", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
         "cloth_teal": {"tex": "fabric", "color": "#3fa7a0", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
         "cloth_brown": {"tex": "fabric", "color": "#9a6b45", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
+        "cloth_plum": {"tex": "fabric", "color": "#8d64a8", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true},
         "apron_green": {"tex": "fabric", "color": "#4f9a6a", "n": 80, "scale": [0.8, 0.8], "wear": 0.1, "double": true}
     });
     if let (Some(o), Value::Object(more)) = (m.as_object_mut(), json!({
@@ -308,9 +309,10 @@ fn objects() -> Vec<(&'static str, Value)> {
 
     // far hills all round, in the haze
     let mut hills = Vec::new();
-    for (x, y, r, sx, sz) in [(7200.0, -2200.0, 4200.0, 1.3, 0.24), (-1800.0, 7600.0, 4600.0, 1.0, 0.2), (-7600.0, -1200.0, 3900.0, 1.0, 0.26),
-                              (1600.0, -7600.0, 4300.0, 1.2, 0.22), (6400.0, 5600.0, 3600.0, 1.0, 0.27), (-6200.0, 5200.0, 3400.0, 1.1, 0.23),
-                              (-5200.0, -6000.0, 3800.0, 1.0, 0.21)] {
+    // each stands clear of the village: its near foot more than 45 m from the well
+    for (x, y, r, sx, sz) in [(10500.0, -3000.0, 5200.0, 1.2, 0.2), (-2000.0, 10800.0, 5600.0, 1.0, 0.18), (-10600.0, -1500.0, 5000.0, 1.0, 0.22),
+                              (2000.0, -10600.0, 5200.0, 1.1, 0.2), (8600.0, 7800.0, 4800.0, 1.0, 0.24), (-8200.0, 7600.0, 4600.0, 1.1, 0.2),
+                              (-7400.0, -8200.0, 5000.0, 1.0, 0.19)] {
         hills.push(json!({"sphere": r, "scale": [sx, 1.0, sz], "at": [x, y, 0.0], "mat": "meadow", "solid": false}));
     }
     o.push(("hills", structure("Hills far off", hills)));
@@ -458,9 +460,9 @@ fn objects() -> Vec<(&'static str, Value)> {
         rb([116.0, 72.0, 6.0], [-500.0, 1260.0, FH + 30.0], "timber"),
         rb([48.0, 48.0, 8.0], [-595.0, 1260.0, FH + 4.0], "cushion_red"),
         rb([48.0, 48.0, 8.0], [-405.0, 1260.0, FH + 4.0], "cushion_red"),
-        rb([52.0, 34.0, 3.0], [-548.0, 748.0, FH + 1.5], "timber"),
-        thin(post([-560.0, 742.0, FH + 3.0], 8.0, 7.0, "cup")),
-        thin(post([-536.0, 754.0, FH + 3.0], 8.0, 7.0, "cup")),
+        rb([56.0, 40.0, 4.0], [-548.0, 748.0, FH + 68.0], "timber"),
+        thin(post([-560.0, 742.0, FH + 70.0], 8.0, 7.0, "cup")),
+        thin(post([-536.0, 754.0, FH + 70.0], 8.0, 7.0, "cup")),
         roof((-500.0, 1125.0), EAVE, 495.0, 50.0, 250.0, "kawara"),
         rb([86.0, 86.0, 22.0], [-500.0, 1125.0, EAVE + 250.0 + 11.0], "kawara"),
     ];
@@ -470,20 +472,27 @@ fn objects() -> Vec<(&'static str, Value)> {
     for (dx, dy) in [(-50.0, -30.0), (50.0, -30.0), (-50.0, 30.0), (50.0, 30.0)] {
         tea.push(thin(bx([4.0, 4.0, 26.0], [-500.0 + dx, 1260.0 + dy, FH + 14.0], "timber")));
     }
+    // the little stand the cups wait on, by the guest
+    for (dx, dy) in [(-24.0, -16.0), (24.0, -16.0), (-24.0, 16.0), (24.0, 16.0)] {
+        tea.push(thin(bx([4.0, 4.0, 66.0], [-548.0 + dx, 748.0 + dy, FH + 33.0], "timber")));
+    }
     o.push(("teahouse", anchored("SP_teahouse",
         json!({"at": [-500.0, 1125.0, 0.0], "size": [760.0, 900.0, 540.0], "center": [-500.0, 1125.0, 270.0]}), tea)));
-    // red lanterns at the front corners of the eaves, an andon inside
+    // red lanterns at the front corners of the eaves, an andon inside; their light is a thing of
+    // its own, as a lamp and its light are two actors in UE
     let mut lanterns = Vec::new();
+    let mut light = Vec::new();
     for x in [-805.0, -195.0] {
         lanterns.push(thin(post([x, 712.0, 262.0], 1.0, 18.0, "timber")));
         lanterns.push(thin(post([x, 712.0, 256.0], 14.0, 5.0, "timber")));
         lanterns.push(json!({"sphere": 17.0, "scale": [1.0, 1.0, 1.35], "at": [x, 712.0, 234.0], "mat": "lantern_red"}));
         lanterns.push(thin(post([x, 712.0, 209.0], 14.0, 4.0, "timber")));
-        lanterns.push(with(point([x, 712.0, 234.0], "#ffb070", 2.6, 420.0), json!({"halo": 40, "halo_opacity": 0.1})));
+        light.push(with(point([x, 712.0, 234.0], "#ffb070", 2.6, 420.0), json!({"halo": 40, "halo_opacity": 0.1})));
     }
     lanterns.push(rb([26.0, 26.0, 48.0], [-760.0, 1460.0, FH + 24.0], "lantern_paper"));
-    lanterns.push(point([-760.0, 1460.0, FH + 34.0], "#ffd29a", 3.0, 520.0));
+    light.push(with(point([-760.0, 1460.0, FH + 34.0], "#ffd29a", 3.0, 520.0), json!({"shadow": true})));
     o.push(("lanterns", thing("Lanterns of the teahouse", lanterns)));
+    o.push(("lamplight", thing("Lamplight of the teahouse", light)));
     o.push(("stone_lantern", thing("Stone lantern by the steps", vec![
         rb([40.0, 40.0, 12.0], [-690.0, 630.0, 6.0], "stone"),
         post([-690.0, 630.0, 12.0], 18.0, 70.0, "stone"),
@@ -536,7 +545,7 @@ fn objects() -> Vec<(&'static str, Value)> {
         bench.push(thin(bx([6.0, 6.0, 90.0], [x, -826.0, 45.0], "timber")));
     }
     o.push(("oak_bench", thing("The bench facing the oak", bench)));
-    o.push(("elder", thing("An old man on the bench", vec![villager("sit", [ox + 20.0, -838.0, 0.0], 270.0, "cloth_brown", 0.62, 166.0)])));
+    o.push(("elder", thing("An old man on the bench", vec![villager("sit", [ox + 20.0, -838.0, 0.0], 270.0, "cloth_plum", 0.62, 166.0)])));
 
     // ------------------------------------------------------------------ the fields
     let (fx, fy) = (-2300.0, 580.0);

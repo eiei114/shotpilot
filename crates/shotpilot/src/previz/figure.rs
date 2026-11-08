@@ -183,7 +183,7 @@ fn pose(mv: &str, t: f64, k: f64) -> HashMap<&'static str, Ang> {
                 set("uaR", a(0.25 + 0.15 * s));
             }
         }
-        // the village's (D-100)
+        // the village's (D-101)
         "walk" | "run" => {
             let run = mv == "run";
             let ph = t * 2.0 * PI / if run { 0.62 } else { 1.1 };
@@ -255,10 +255,10 @@ fn pose(mv: &str, t: f64, k: f64) -> HashMap<&'static str, Ang> {
             set("spine", a(0.05));
             set("chest", a(0.02 * sin(t * 1.5)));
             set("head", Ang { x: Some(0.05), y: Some(0.25 * sin(t * 0.35)), ..Ang::default() });
-            set("uaL", xz(0.35, -0.05));
-            set("faL", a(0.9));
-            set("uaR", xz(0.35, 0.05));
-            set("faR", a(0.9));
+            set("uaL", xz(0.1, -0.06));
+            set("faL", a(1.0));
+            set("uaR", xz(0.1, 0.06));
+            set("faR", a(1.0));
         }
         _ => {
             // idle
@@ -294,6 +294,8 @@ pub(crate) struct Spec<'a> {
     pub skin: u32,
     /// Its clothes: their surface and how long the skirt or tunic is (in the figure's height).
     pub cloth: Option<(u32, f64)>,
+    /// What it carries (the page's `holds`) and that thing's surface.
+    pub holds: Option<(&'a str, u32)>,
 }
 
 /// Adds the mannequin at time `t`. `root` places its feet: three's frame (the page's figure
@@ -348,12 +350,39 @@ pub(crate) fn add(b: &mut Builder, root: &Xf, spec: &Spec, t: f64, piece: u32) {
         }
         let fa = joint(&ua, fa_n, [0.0, -0.29 * al * k, 0.0]);
         seg(b, &put, &fa, 0.27 * al, 0.04, 0.03);
+        if let Some((what, surf)) = spec.holds {
+            if (what == "clipboard" || what == "basket") == (side < 0.0) {
+                carried(b, &put, &fa, what, surf, k, al);
+            }
+        }
         put(b, &Geo::cube([0.07 * k * tk, 0.16 * k * al, 0.032 * k]), &fa.then(&Xf::translate([0.0, -(0.27 * al + 0.08 * al) * k, 0.0])), skin);
         let th = joint(&hips, th_n, [side * 0.095 * k * if thin { 0.8 } else { 1.0 }, -0.04 * k, 0.0]);
         seg(b, &put, &th, 0.46, 0.076, 0.055);
         let sh = joint(&th, sh_n, [0.0, -0.46 * k, 0.0]);
         seg(b, &put, &sh, 0.44, 0.054, 0.038);
         put(b, &Geo::cube([0.085 * k * tk, 0.06 * k, 0.24 * k]), &sh.then(&Xf::translate([0.0, -0.44 * k + 0.02 * k, -0.06 * k])), skin);
+    }
+}
+
+/// What a figure carries, in its forearm's frame, as the page's `holds` builds it (the main
+/// shapes only: previz leaves out handles and spouts).
+fn carried(b: &mut Builder, put: &dyn Fn(&mut Builder, &Geo, &Xf, u32), fa: &Xf, what: &str, surf: u32, k: f64, al: f64) {
+    let at = |x: f64, y: f64, z: f64, rx: f64| fa.then(&Xf::three([x * k, y * k, z * k], [rx, 0.0, 0.0], Order::Xyz, [1.0; 3]));
+    if what == "clipboard" {
+        put(b, &Geo::cube([0.22 * k, 0.3 * k, 0.012 * k]), &at(0.02, -0.3, -0.06, 0.9), surf);
+        return;
+    }
+    let hand = fa.then(&Xf::translate([0.0, -(0.27 * al + 0.1 * al) * k, 0.0]));
+    let at = |x: f64, y: f64, z: f64, rx: f64| hand.then(&Xf::three([x * k, y * k, z * k], [rx, 0.0, 0.0], Order::Xyz, [1.0; 3]));
+    match what {
+        "can" => put(b, &Geo::cylinder(0.075, 0.085, 0.17, 12, true), &at(0.0, -0.1, -0.03, 0.0), surf),
+        "teapot" => put(b, &Geo::sphere(0.075, 12, 8), &at(0.0, -0.07, -0.05, 0.0).then(&Xf::scale([1.0, 0.82, 1.0])), surf),
+        "basket" => put(b, &Geo::cylinder(0.15, 0.12, 0.13, 12, true), &at(0.0, -0.2, 0.0, 0.0), surf),
+        "broom" => {
+            put(b, &Geo::cylinder(0.012, 0.012, 1.3, 6, true), &at(0.0, -0.25, -0.12, 0.5), surf);
+            put(b, &Geo::cylinder(0.03, 0.09, 0.3, 8, true), &at(0.0, -0.85, -0.42, 0.5), surf);
+        }
+        _ => {}
     }
 }
 
@@ -373,7 +402,7 @@ mod tests {
     fn a_standing_figure_is_as_tall_as_asked_and_one_lying_face_down_is_low() {
         let tall = |mv: &str| {
             let mut b = Builder::default();
-            let spec = Spec { mv, height: 175.0, thin: false, seed: "x", skin: 0, cloth: None };
+            let spec = Spec { mv, height: 175.0, thin: false, seed: "x", skin: 0, cloth: None, holds: None };
             add(&mut b, &Xf::THREE_TO_UE, &spec, 0.0, 0);
             let z: Vec<f64> = b.tris.iter().flat_map(|t| t.p.iter().map(|p| p[2])).collect();
             (z.iter().cloned().fold(f64::INFINITY, f64::min), z.iter().cloned().fold(f64::NEG_INFINITY, f64::max))

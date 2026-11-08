@@ -414,14 +414,14 @@ fn previz_digest() -> (usize, String) {
     (frames, h.finalize().iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// The three sample's ward drawn and lit as the game is (its lamps and their shadows, haze,
+/// The three sample's village drawn and lit as the game is (its sun and lamps and their shadows, haze,
 /// materials and posed figures): the first and middle frame of every shot, as one hash.
 fn lit_previz_digest() -> String {
     use sha2::{Digest, Sha256};
     let dir = tempfile::tempdir().unwrap();
     assert!(shotpilot::threegame::write(&dir.path().join("game")).unwrap());
     let p = dir.path().join("shots.yaml");
-    std::fs::write(&p, shotpilot::templates::render(shotpilot::templates::THREE_WARD, "ward", "three", "null", "null")).unwrap();
+    std::fs::write(&p, shotpilot::templates::render(shotpilot::templates::THREE_VILLAGE, "village", "three", "null", "null")).unwrap();
     let ws = shotpilot::Workspace::open(&p).unwrap();
     let world = shotpilot::previz::World::load(&ws.defn);
     assert!(world.is_lit());
@@ -439,11 +439,11 @@ fn lit_previz_digest() -> String {
 /// bumping PREVIZ_VERSION fails here.
 #[test]
 fn previz_drawing_is_pinned_to_its_version() {
-    const PINNED_PREVIZ_VERSION: i64 = 5;
+    const PINNED_PREVIZ_VERSION: i64 = 6;
     const PINNED_RENDERER_VERSION: i64 = 1;
     const PINNED_FRAMES: usize = 281;
     const PINNED_DIGEST: &str = "81e7b9fb52244d47a82179b667d448f03411d85d8cdf74053d0ff784ecf390a8";
-    const PINNED_LIT_DIGEST: &str = "0be469285d64c51c7a180a9870790aec0dec77e855d59b96849f8cf35a39cee5";
+    const PINNED_LIT_DIGEST: &str = "85b26cf43561302997f9c200ccdeb41701468ef3c1638f61e760ea1913704432";
 
     let a = previz_digest();
     assert_eq!(a, previz_digest(), "previz output must be deterministic across runs");

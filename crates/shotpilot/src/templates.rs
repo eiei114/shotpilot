@@ -134,7 +134,7 @@ shots:
       - {file: audio/hit.wav, at: 0, gain: 0, label: title}
 "#;
 
-/// The three engine's sample (D-72, D-100): the KettleHill teaser, filmed in the village of
+/// The three engine's sample (D-72, D-101): the KettleHill teaser, filmed in the village of
 /// threegame.rs.
 pub const THREE_VILLAGE: &str = include_str!("../three/village.yaml");
 

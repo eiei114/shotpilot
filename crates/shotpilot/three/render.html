@@ -834,7 +834,7 @@ const MOVES = {
              hips: { h: 0.95 * k - 0.015 * k * Math.abs(cos(ph)), y: 0.05 * s }, spine: { x: -0.08 }, chest: { z: 0.04 * s },
              head: { x: 0.12, z: 0.42 + 0.05 * sin(t * 0.7) }, uaL: { x: 0.08 - 0.06 * s, z: -0.04 }, uaR: { x: 0.08 + 0.06 * s, z: 0.04 }, faL: { x: 0.15 }, faR: { x: 0.2 } };
   },
-  // the village's (D-100): walking, running, watering, pouring, sweeping, waving, sitting
+  // the village's (D-101): walking, running, watering, pouring, sweeping, waving, sitting
   walk: (t, k) => {
     const ph = t * 2 * PI / 1.1, s = sin(ph);
     return { thL: { x: 0.42 * s }, thR: { x: -0.42 * s }, shL: { x: -0.1 - 0.55 * Math.max(0, -cos(ph)) }, shR: { x: -0.1 - 0.55 * Math.max(0, cos(ph)) },
@@ -858,7 +858,7 @@ const MOVES = {
   },
   wave: t => ({ chest: { x: 0.02 * sin(t * 1.7) }, head: { z: 0.1 * sin(t * 0.9) }, uaR: { x: 0.3, z: 2.5 }, faR: { z: 0.45 * sin(t * 6) }, uaL: { z: -0.08 } }),
   sit: (t, k) => ({ hips: { h: 0.6 * k }, thL: { x: 1.5, z: -0.05 }, thR: { x: 1.5, z: 0.05 }, shL: { x: -1.45 }, shR: { x: -1.45 }, spine: { x: 0.05 },
-                    chest: { x: 0.02 * sin(t * 1.5) }, head: { x: 0.05, y: 0.25 * sin(t * 0.35) }, uaL: { x: 0.35, z: -0.05 }, faL: { x: 0.9 }, uaR: { x: 0.35, z: 0.05 }, faR: { x: 0.9 } }),
+                    chest: { x: 0.02 * sin(t * 1.5) }, head: { x: 0.05, y: 0.25 * sin(t * 0.35) }, uaL: { x: 0.1, z: -0.06 }, faL: { x: 1.0 }, uaR: { x: 0.1, z: 0.06 }, faR: { x: 1.0 } }),
 };
 
 // ------------------------------------------------------------------ objects

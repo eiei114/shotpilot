@@ -21,11 +21,11 @@ fn open(dir: &Path, text: &str) -> Workspace {
     Workspace::open(&p).unwrap()
 }
 
-/// The sample: the Lanternless teaser and the ward it films.
-fn ward() -> (tempfile::TempDir, Workspace) {
+/// The sample: the KettleHill teaser and the village it films.
+fn village() -> (tempfile::TempDir, Workspace) {
     let dir = tempfile::tempdir().unwrap();
     assert!(threegame::write(&dir.path().join("game")).unwrap());
-    let ws = open(dir.path(), &templates::render(templates::THREE_WARD, "ward", "three", "null", "null"));
+    let ws = open(dir.path(), &templates::render(templates::THREE_VILLAGE, "village", "three", "null", "null"));
     (dir, ws)
 }
 
@@ -66,7 +66,7 @@ fn status_of(ws: &Workspace, q: &str) -> BTreeMap<String, (String, Vec<String>)>
 
 #[test]
 fn the_three_sample_films_without_ue_and_redraws_only_the_shot_that_changed() {
-    let (_d, mut ws) = ward();
+    let (_d, mut ws) = village();
     assert_eq!(ws.defn.project.engine, "three");
     let out = ws.render(&[], "still", false, None).unwrap();
     assert_eq!(out.len(), 10);
@@ -79,17 +79,17 @@ fn the_three_sample_films_without_ue_and_redraws_only_the_shot_that_changed() {
     }
 
     // one lens changes: that shot alone is drawn again
-    ws.set_fields("s03_stretcher_empty", &set(&[("camera.lens.focal_length", json!(50))])).unwrap();
+    ws.set_fields("s04_market", &set(&[("camera.lens.focal_length", json!(50))])).unwrap();
     let acts = actions(&ws.render(&[], "still", false, None).unwrap());
     for (id, a) in &acts {
-        assert_eq!(a, if id == "s03_stretcher_empty" { "rendered" } else { "reused" }, "{id}");
+        assert_eq!(a, if id == "s04_market" { "rendered" } else { "reused" }, "{id}");
     }
     let last = launches(&ws).into_iter().rfind(|l| l["kind"] == "render").unwrap();
-    assert_eq!(last["shots"], json!(["s03_stretcher_empty:still"]));
+    assert_eq!(last["shots"], json!(["s04_market:still"]));
 
     // editorial edits never launch the browser
     let before = launches(&ws).len();
-    ws.set_fields("s03_stretcher_empty", &set(&[("purpose", json!("寝台だけを見せる"))])).unwrap();
+    ws.set_fields("s04_market", &set(&[("purpose", json!("屋台の野菜だけを見せる"))])).unwrap();
     let acts = actions(&ws.render(&[], "still", false, None).unwrap());
     assert!(acts.values().all(|a| a == "reused"), "{acts:?}");
     assert_eq!(launches(&ws).len(), before);
@@ -97,23 +97,24 @@ fn the_three_sample_films_without_ue_and_redraws_only_the_shot_that_changed() {
 
 #[test]
 fn editing_one_thing_in_the_three_game_redraws_only_the_shots_that_showed_it() {
-    let (d, mut ws) = ward();
+    let (d, mut ws) = village();
     ws.render(&[], "still", false, None).unwrap();
     let seen = seen(&ws, "still");
-    let with: BTreeSet<String> = seen.iter().filter(|(_, n)| n.contains("stretcher")).map(|(k, _)| k.clone()).collect();
-    // the stretcher is the subject of s03 and lies far from the chair the hook looks at
-    assert!(with.contains("s03_stretcher_empty"), "{seen:?}");
-    assert!(!with.contains("s01_chair_hook"), "{seen:?}");
+    let with: BTreeSet<String> = seen.iter().filter(|(_, n)| n.contains("market_stall")).map(|(k, _)| k.clone()).collect();
+    // the stall is the subject of s04 and stands behind the camera that looks up at the windmill
+    assert!(with.contains("s04_market"), "{seen:?}");
+    assert!(!with.contains("s01_windmill"), "{seen:?}");
     assert!(with.len() < seen.len());
 
-    let file = d.path().join("game").join("objects").join("stretcher.json");
+    // repaint the awning's first stripe
+    let file = d.path().join("game").join("objects").join("market_stall.json");
     let original = std::fs::read_to_string(&file).unwrap();
     let mut v: Value = serde_json::from_str(&original).unwrap();
     v["parts"][0]["color"] = json!("#2f5f8f");
     std::fs::write(&file, serde_json::to_string_pretty(&v).unwrap()).unwrap();
     for (id, (st, changed)) in status_of(&ws, "still") {
         if with.contains(&id) {
-            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/stretcher".to_string()]), "{id}");
+            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/market_stall".to_string()]), "{id}");
         } else {
             assert_eq!((st.as_str(), changed.len()), ("fresh", 0), "{id}");
         }
@@ -123,7 +124,7 @@ fn editing_one_thing_in_the_three_game_redraws_only_the_shots_that_showed_it() {
         assert_eq!(a, if with.contains(id) { "rendered" } else { "reused" }, "{id}");
     }
 
-    // put the stretcher back: the first takes are used again, nothing is drawn
+    // put the awning back: the first takes are used again, nothing is drawn
     std::fs::write(&file, original).unwrap();
     assert!(status_of(&ws, "still").values().all(|(st, _)| st == "fresh"));
     let before = launches(&ws).len();
@@ -175,7 +176,7 @@ fn a_scout_camera_behind_a_three_wall_stands_in_front_of_it() {
 
     // in the sample, the scout photographs every anchor from four sides with the engine; a camera
     // planned through a wall is recorded where it really stood, and no scout camera becomes a shot
-    let (_d, mut ws) = ward();
+    let (_d, mut ws) = village();
     let planned = shotpilot::scout::cameras(&ws.defn, &[]);
     let shots = ws.defn.shot_ids();
     ws.scout(&[], None).unwrap();
@@ -187,7 +188,7 @@ fn a_scout_camera_behind_a_three_wall_stands_in_front_of_it() {
         let v = anchors[&c.anchor].as_array().unwrap().iter().find(|v| v["side"] == c.side.as_str()).unwrap();
         v["location"] != json!(c.location)
     });
-    assert!(moved.count() > 0, "the ward's walls stand between some anchors and their scout cameras");
+    assert!(moved.count() > 0, "the teahouse's walls stand between its middle and some scout cameras");
     ws.reload().unwrap();
     assert_eq!(ws.defn.shot_ids(), shots);
     assert!(launches(&ws).iter().any(|l| l["kind"] == "render"));
@@ -195,17 +196,17 @@ fn a_scout_camera_behind_a_three_wall_stands_in_front_of_it() {
 
 #[test]
 fn the_three_game_offers_its_anchors_places_and_props() {
-    let (_d, ws) = ward();
+    let (_d, ws) = village();
     let engine = shotpilot::engines::make_engine(&ws.defn).unwrap();
     let found = engine.survey("shotpilot", "SP_", true, true).unwrap();
     let anchors: BTreeSet<&str> = found["anchors"].as_object().unwrap().keys().map(String::as_str).collect();
-    assert_eq!(anchors, ["empty_chair", "fallen_patient", "figure", "reception_desk", "stretcher"].into_iter().collect());
-    // the anchors are where the UE sample has them, so the same shots film both
-    assert_eq!(found["anchors"]["stretcher"]["center"], ws.defn.known_box("stretcher").map(|b| json!(b.center)).unwrap());
+    assert_eq!(anchors, ["crop_row", "market_stall", "old_oak", "teahouse", "windmill"].into_iter().collect());
+    // the sample's anchors are the game's tagged places, as written
+    assert_eq!(found["anchors"]["market_stall"]["center"], ws.defn.known_box("market_stall").map(|b| json!(b.center)).unwrap());
     let places: BTreeSet<&str> = found["candidates"].as_array().unwrap().iter().filter_map(|c| c["name"].as_str()).collect();
-    assert!(places.contains("cabinet") && places.contains("night_nurse"), "{places:?}");
-    assert!(!places.contains("lobby") && !places.contains("stretcher"), "walls and anchors are not offered: {places:?}");
-    assert_eq!(found["assets"], json!([{"asset": "props/stranger", "kind": "skeletal", "size": [45.0, 55.0, 175.0]}]));
+    assert!(places.contains("well") && places.contains("tea_master"), "{places:?}");
+    assert!(!places.contains("paths") && !places.contains("market_stall"), "the ground, paths and anchors are not offered: {places:?}");
+    assert_eq!(found["assets"], json!([{"asset": "props/traveler", "kind": "skeletal", "size": [45.0, 55.0, 175.0]}]));
 
     // a new project on the game with no anchors yet takes the tagged ones in one scout
     let dir = tempfile::tempdir().unwrap();
@@ -220,7 +221,7 @@ fn the_three_game_offers_its_anchors_places_and_props() {
 
 #[test]
 fn three_takes_carry_their_own_renderer_version() {
-    let (d, ws) = ward();
+    let (d, ws) = village();
     let text = std::fs::read_to_string(&ws.path).unwrap();
     let dir = tempfile::tempdir().unwrap();
     threegame::write(&dir.path().join("game")).unwrap();
@@ -237,8 +238,8 @@ fn three_takes_carry_their_own_renderer_version() {
 
 #[test]
 fn previz_draws_the_game_and_redraws_only_the_shots_that_showed_a_changed_thing() {
-    let (d, mut ws) = ward();
-    // the ward's rooms are drawn around the anchors, without a browser
+    let (d, mut ws) = village();
+    // the village is drawn around the anchors, without a browser
     let s1 = ws.resolved().unwrap()[0].clone();
     let world = shotpilot::previz::World::load(&ws.defn);
     assert!(world.has_level());
@@ -251,18 +252,18 @@ fn previz_draws_the_game_and_redraws_only_the_shots_that_showed_a_changed_thing(
 
     // each previz take keeps the objects it drew, as the engine takes do (D-37)
     let seen = seen(&ws, "previz");
-    let with: BTreeSet<String> = seen.iter().filter(|(_, n)| n.contains("stretcher")).map(|(k, _)| k.clone()).collect();
-    assert!(with.contains("s03_stretcher_empty"), "{seen:?}");
-    assert!(!with.contains("s01_chair_hook"), "{seen:?}");
+    let with: BTreeSet<String> = seen.iter().filter(|(_, n)| n.contains("market_stall")).map(|(k, _)| k.clone()).collect();
+    assert!(with.contains("s04_market"), "{seen:?}");
+    assert!(!with.contains("s01_windmill"), "{seen:?}");
 
-    let file = d.path().join("game").join("objects").join("stretcher.json");
+    let file = d.path().join("game").join("objects").join("market_stall.json");
     let original = std::fs::read_to_string(&file).unwrap();
     let mut v: Value = serde_json::from_str(&original).unwrap();
     v["parts"][0]["at"][2] = json!(v["parts"][0]["at"][2].as_f64().unwrap_or(0.0) + 30.0);
     std::fs::write(&file, serde_json::to_string_pretty(&v).unwrap()).unwrap();
     for (id, (st, changed)) in status_of(&ws, "previz") {
         if with.contains(&id) {
-            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/stretcher".to_string()]), "{id}");
+            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/market_stall".to_string()]), "{id}");
         } else {
             assert_eq!((st.as_str(), changed.len()), ("fresh", 0), "{id}");
         }
@@ -272,7 +273,7 @@ fn previz_draws_the_game_and_redraws_only_the_shots_that_showed_a_changed_thing(
         assert_eq!(a, if with.contains(id) { "rendered" } else { "reused" }, "{id}");
     }
 
-    // put the stretcher back: the first previz takes are used again
+    // put the awning back: the first previz takes are used again
     std::fs::write(&file, original).unwrap();
     assert!(status_of(&ws, "previz").values().all(|(st, _)| st == "fresh"));
     let acts = actions(&ws.render(&[], "previz", false, None).unwrap());
@@ -281,7 +282,7 @@ fn previz_draws_the_game_and_redraws_only_the_shots_that_showed_a_changed_thing(
 
 #[test]
 fn previz_is_lit_by_the_games_lamps_and_follows_the_ones_that_light_it() {
-    let (d, mut ws) = ward();
+    let (d, mut ws) = village();
     ws.render(&[], "previz", false, None).unwrap();
     let packages = |ws: &Workspace| -> BTreeMap<String, BTreeSet<String>> {
         let mut out = BTreeMap::new();
@@ -298,28 +299,28 @@ fn previz_is_lit_by_the_games_lamps_and_follows_the_ones_that_light_it() {
         }
         out
     };
-    // the scene file sets every frame's light and haze; the moonlight has no body to be seen,
-    // so a take holds it only because its light reached the frame
+    // the scene file sets every frame's light and haze; the teahouse's lamplight has no body to be
+    // seen, so a take holds it only because its light reached the frame
     let deps = packages(&ws);
     assert!(deps.values().all(|p| p.contains("game/scene.json")), "{deps:?}");
-    let moonlit: BTreeSet<String> = deps.iter().filter(|(_, p)| p.contains("game/objects/moonlight")).map(|(k, _)| k.clone()).collect();
-    assert!(!moonlit.is_empty() && moonlit.len() < deps.len(), "{deps:?}");
+    let lit: BTreeSet<String> = deps.iter().filter(|(_, p)| p.contains("game/objects/lamplight")).map(|(k, _)| k.clone()).collect();
+    assert!(!lit.is_empty() && lit.len() < deps.len(), "{deps:?}");
 
-    // dim the moon: its light changes the frames it reached, and only those go stale
-    let shot = ws.select_one(moonlit.iter().next().unwrap()).unwrap();
+    // dim the lamps: their light changes the frames it reached, and only those go stale
+    let shot = ws.select_one(lit.iter().next().unwrap()).unwrap();
     let frame = |ws: &Workspace| shotpilot::previz::render_frame(&shot, 0, &shotpilot::previz::World::load(&ws.defn), 160, 90, None).png();
     let before = frame(&ws);
-    let file = d.path().join("game").join("objects").join("moonlight.json");
+    let file = d.path().join("game").join("objects").join("lamplight.json");
     let original = std::fs::read_to_string(&file).unwrap();
     let mut v: Value = serde_json::from_str(&original).unwrap();
     for p in v["parts"].as_array_mut().unwrap() {
         p["intensity"] = json!(p["intensity"].as_f64().unwrap() / 4.0);
     }
     std::fs::write(&file, serde_json::to_string_pretty(&v).unwrap()).unwrap();
-    assert_ne!(frame(&ws), before, "the moonlight lights the shot");
+    assert_ne!(frame(&ws), before, "the lamplight lights the shot");
     for (id, (st, changed)) in status_of(&ws, "previz") {
-        if moonlit.contains(&id) {
-            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/moonlight".to_string()]), "{id}");
+        if lit.contains(&id) {
+            assert_eq!((st.as_str(), changed), ("stale", vec!["game/objects/lamplight".to_string()]), "{id}");
         } else {
             assert_eq!((st.as_str(), changed.len()), ("fresh", 0), "{id}");
         }
@@ -334,15 +335,15 @@ fn previz_is_lit_by_the_games_lamps_and_follows_the_ones_that_light_it() {
 /// camera at every frame. A previz take's guides lie beside its frames, one entry per frame.
 #[test]
 fn the_3d_view_and_the_guides_read_what_previz_draws() {
-    let (_d, mut ws) = ward();
-    let s = ws.resolved().unwrap().into_iter().find(|s| s.id == "s07_figure_mid").unwrap();
+    let (_d, mut ws) = village();
+    let s = ws.resolved().unwrap().into_iter().find(|s| s.id == "s05_oak_kids").unwrap();
     let world = shotpilot::previz::World::load(&ws.defn);
     let a = shotpilot::previz::view_scene(&s, 0, &world, 1920, 1080, None);
     let still = a["still"]["s"].as_array().unwrap().len();
-    assert!(still > 100, "the ward's rooms: {still} triangles");
+    assert!(still > 100, "the village: {still} triangles");
     assert_eq!(a["still"]["p"].as_array().unwrap().len(), still * 9);
     assert_eq!(a["cameras"].as_array().unwrap().len() as i64, s.frames);
-    assert_eq!(a["dynamic"], json!(true), "the ward's figures move");
+    assert_eq!(a["dynamic"], json!(true), "the children run");
     let key = a["still"]["key"].as_str().unwrap();
     let b = shotpilot::previz::view_scene(&s, s.frames - 1, &world, 1920, 1080, Some(key));
     assert_eq!(b["still"]["key"], json!(key), "what stands still is the same at every frame");
@@ -358,7 +359,7 @@ fn the_3d_view_and_the_guides_read_what_previz_draws() {
     let g: Value = serde_json::from_str(&std::fs::read_to_string(dir.join(shotpilot::previz::GUIDES)).unwrap()).unwrap();
     let pngs = std::fs::read_dir(&dir).unwrap().filter(|e| e.as_ref().unwrap().path().extension().is_some_and(|x| x == "png")).count();
     assert_eq!(g["frames"].as_array().unwrap().len(), pngs);
-    assert!(g["frames"][0]["places"].as_array().unwrap().iter().any(|p| p["name"] == "figure"), "{}", g["frames"][0]);
+    assert!(g["frames"][0]["places"].as_array().unwrap().iter().any(|p| p["name"] == "old_oak"), "{}", g["frames"][0]);
     for f in g["frames"].as_array().unwrap() {
         for p in f["places"].as_array().unwrap() {
             let at = p["at"].as_array().unwrap();
@@ -369,7 +370,7 @@ fn the_3d_view_and_the_guides_read_what_previz_draws() {
 
 #[test]
 fn a_three_project_without_its_game_says_so_and_previz_still_works() {
-    let (d, mut ws) = ward();
+    let (d, mut ws) = village();
     std::fs::remove_dir_all(d.path().join("game")).unwrap();
     let err = ws.render(&[], "still", false, None).unwrap_err();
     assert!(err.msg.contains("scene.json") && err.msg.contains("init --engine three"), "{}", err.msg);
@@ -378,18 +379,18 @@ fn a_three_project_without_its_game_says_so_and_previz_still_works() {
 }
 
 #[test]
-fn the_home_makes_a_three_project_with_the_ward_to_film() {
+fn the_home_makes_a_three_project_with_the_village_to_film() {
     three::use_stand_in_browser(true);
     let dir = tempfile::tempdir().unwrap();
     let new = |name: &str, sample: bool| shotpilot::projects::NewProject {
         location: dir.path().to_path_buf(),
         name: name.into(),
         engine: "three".into(),
-        pitch: if sample { String::new() } else { "夜の病棟で、廊下の奥から何かが近づくホラー。30秒。".into() },
+        pitch: if sample { String::new() } else { "丘の上の村で、午後のお茶を楽しむコージーゲーム。30秒。".into() },
         sample,
         ..Default::default()
     };
-    // the sample: the Lanternless teaser and its game, ready to film
+    // the sample: the KettleHill teaser and its game, ready to film
     let shots = shotpilot::projects::create(&new("サンプル", true)).unwrap();
     let mut ws = Workspace::open(&shots).unwrap();
     assert_eq!((ws.defn.project.engine.as_str(), ws.defn.shots.len()), ("three", 10));
@@ -397,8 +398,8 @@ fn the_home_makes_a_three_project_with_the_ward_to_film() {
     let out = ws.render(&[], "still", false, None).unwrap();
     assert!(out.iter().all(|o| o.action == "rendered"), "{out:?}");
     // from a prompt: an empty plan on the same game, which the first scout reads anchors from
-    let shots = shotpilot::projects::create(&new("病棟", false)).unwrap();
+    let shots = shotpilot::projects::create(&new("村", false)).unwrap();
     let ws = Workspace::open(&shots).unwrap();
     assert_eq!((ws.defn.project.engine.as_str(), ws.defn.shots.len()), ("three", 0));
-    assert!(ws.root.join("game").join("objects").join("stretcher.json").is_file());
+    assert!(ws.root.join("game").join("objects").join("market_stall.json").is_file());
 }
