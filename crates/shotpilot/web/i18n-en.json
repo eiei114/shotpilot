@@ -2113,5 +2113,10 @@
  "3D を読み込んでいます…": "Loading 3D…",
  "3D（仮撮りと同じ形）{0}": "3D (same shapes as the previz){0}",
  "3D を読めませんでした: {0}": "Could not load 3D: {0}",
- "{0} のカメラ": "{0} camera"
+ "{0} のカメラ": "{0} camera",
+ "送ったあとの進め方": "What happens after you send",
+ "企画 → ロケハン → 台本と構成 → 仮撮りまで続けて進め、仮撮りで止まる": "Goes straight through plan → location scout → script and structure → previz, and stops at previz",
+ "ステップで進める": "Step by step",
+ "企画・ロケハン・仮撮りのそれぞれで止まる。右で確かめてから、左の ▶ で次へ進む": "Stops after the plan, the location scout and previz. Check each on the right, then press ▶ on the left to go on",
+ "作る：プロジェクトを作り、企画して止まる。ロケハン・仮撮りでも止まり、左の ▶ で次へ進む (Ctrl+Enter)": "Make: create the project, plan it and stop. It also stops at the location scout and previz; press ▶ on the left to go on (Ctrl+Enter)"
 }

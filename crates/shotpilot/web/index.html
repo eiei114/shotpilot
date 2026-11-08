@@ -31,6 +31,8 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--app); color: var(--ink); overflow: hidden;
   font: 13.5px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
 button, input, textarea, select { font: inherit; color: inherit; }
+/* a select's open list is drawn by the OS on white unless its rows say otherwise: give them the page's colours (dark mode stays readable) */
+select option, select optgroup { background-color: var(--card); color: var(--ink); }
 button { cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
 /* Scrollbars and sliders drawn in the app's own colours (no OS arrows or white tracks).
@@ -1681,10 +1683,12 @@ function startFromHome() {
   const raw = sessionStorage.getItem("shotpilot.produce");
   if (!raw) return;
   sessionStorage.removeItem("shotpilot.produce");
-  if (ui.busy || !ui.status?.ai?.ready) return;
-  let note = "";
-  try { note = JSON.parse(raw).note || ""; } catch { return; }
-  // plan first (it may ask), then the first pass up to the review (D-45, D-38)
+  let note = "", flow = "go";
+  try { const p = JSON.parse(raw); note = p.note || ""; flow = p.flow === "step" ? "step" : "go"; } catch { return; }
+  // the way chosen on the home sets the stops on the road (D-98): step by step stops at each of them
+  setPins(flow === "step" ? ["plan", "scout", "review"] : ["review"]);
+  if (ui.busy || !ui.status?.ai?.ready) { drawStages(); drawDock(); return; }
+  // plan first (it may ask), then the first pass up to the next 📍 (D-45, D-38, D-84)
   runDiscover(note, null, { thenProduce: true });
 }
 
@@ -3670,10 +3674,13 @@ function pinsOf() {
   try { const v = localStorage.getItem(pinKey()); return new Set(v ? JSON.parse(v) : ["review"]); }
   catch { return new Set(["review"]); }
 }
+function setPins(list) {
+  try { localStorage.setItem(pinKey(), JSON.stringify([...list])); } catch { /* private window: this session only */ }
+}
 function togglePin(k) {
   const p = pinsOf(), on = !p.has(k);
   if (on) p.add(k); else p.delete(k);
-  try { localStorage.setItem(pinKey(), JSON.stringify([...p])); } catch { /* private window: this session only */ }
+  setPins(p);
   const name = { plan: "企画", scout: "ロケハン", review: "仮撮り" }[k] || k;
   toast(on ? `📍 ${name}で止まります` : `${name}では止まらずに進みます`);
   drawStages(); drawDock();

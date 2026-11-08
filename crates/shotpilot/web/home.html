@@ -32,6 +32,8 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--app); color: var(--ink); overflow: hidden;
   font: 13.5px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
 button, input, textarea, select { font: inherit; color: inherit; }
+/* a select's open list is drawn by the OS on white unless its rows say otherwise: give them the page's colours (dark mode stays readable) */
+select option, select optgroup { background-color: var(--card); color: var(--ink); }
 button { cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
 /* Scrollbars and sliders drawn in the app's own colours (no OS arrows or white tracks).
@@ -132,6 +134,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 @media (prefers-color-scheme: dark) { .menu .ck { color: var(--accent); } }
 .menu .t { font-weight: 600; font-size: 13px; }
 .menu .d { grid-column: 2; color: var(--muted); font-size: 12px; white-space: normal; }
+.menu.right { left: auto; right: 0; }
 
 .examples { width: min(780px, 100%); margin-top: 34px; display: grid; gap: 4px; }
 .examples h2 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 6px 6px; }
@@ -299,6 +302,7 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
             <span class="pill-wrap" style="position:relative"><button class="pill" id="genre-btn" title="ジャンル。選ぶと、そのジャンルで実測したティザーの型（速さ・色調・台本の手法）で組みます"></button><div class="menu" id="genre-menu" hidden></div></span>
             <span class="pill-wrap" style="position:relative"><button class="pill" id="engine-btn"></button><div class="menu" id="engine-menu" hidden></div></span>
             <span class="sp"></span>
+            <span class="pill-wrap" style="position:relative"><button class="pill" id="flow-btn" title="送ったあとの進め方"></button><div class="menu right" id="flow-menu" hidden></div></span>
             <button class="model" id="model-btn" title="Claude への接続"><span class="dot" id="ai-dot"></span><span id="ai-name">Claude</span></button>
             <button class="round" id="send" title="作る (Ctrl+Enter)"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
           </div>
@@ -380,6 +384,11 @@ const ENGINES = {
   ue5: { label: "Unreal Engine 5", d: "UE プロジェクトのレベルから撮る。Sequencer と Movie Render Queue を使う" },
   three: { label: "Three.js のサンプルゲーム", d: "同梱の病棟（Lanternless）を Edge か Chrome で撮る。UE は要らない" },
 };
+// What a send runs once the project is made (D-98): the stops it sets on the road (D-84)
+const FLOWS = {
+  go: { label: "一気に作る", d: "企画 → ロケハン → 台本と構成 → 仮撮りまで続けて進め、仮撮りで止まる" },
+  step: { label: "ステップで進める", d: "企画・ロケハン・仮撮りのそれぞれで止まる。右で確かめてから、左の ▶ で次へ進む" },
+};
 const EXAMPLES = [
   { kind: "teaser", genre: "ホラー", title: "一人称ホラーのティザー", tag: "30秒", beats: [3, 4, 5, 2],
     prompt: "シェアハウスの中庭で、住人が一人ずつ消えていく一人称ホラー。静かな夜の中庭から始め、違和感を3回重ねて、最後に閉まる扉とタイトル。30秒。" },
@@ -403,6 +412,7 @@ const ui = {
   genre: "",             // a genre package's name, or "" (decide later in the brief)
   genres: null,          // /api/genres
   engine: "mock",
+  flow: "go",            // a key of FLOWS: how far a send runs before it stops
   location: "",          // where new projects go (mock)
   name: "",
   uproject: null,        // {path, name, maps, projects}
@@ -440,6 +450,7 @@ function loadPrefs() {
     const p = JSON.parse(localStorage.getItem(STORE) || "{}");
     if (KINDS[p.kind]) ui.kind = p.kind;
     if (ENGINES[p.engine]) ui.engine = p.engine;
+    if (FLOWS[p.flow]) ui.flow = p.flow;
     if (typeof p.genre === "string") ui.genre = p.genre;
     if (p.location) ui.location = p.location;
     if (p.uproject) ui.uproject = { path: p.uproject, name: baseName(p.uproject).replace(/\.uproject$/i, ""), maps: [], projects: [] };
@@ -448,7 +459,7 @@ function loadPrefs() {
   } catch { /* first run */ }
 }
 function savePrefs() {
-  localStorage.setItem(STORE, JSON.stringify({ kind: ui.kind, genre: ui.genre, engine: ui.engine, location: ui.location,
+  localStorage.setItem(STORE, JSON.stringify({ kind: ui.kind, genre: ui.genre, engine: ui.engine, flow: ui.flow, location: ui.location,
     uproject: ui.uproject?.path || "", map: ui.map, railOpen: ui.railOpen }));
 }
 
@@ -502,6 +513,8 @@ const ICON = {
   film: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
   cube: '<svg class="i" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>',
   wire: '<svg class="i" viewBox="0 0 24 24"><path d="M4 18 12 4l8 14z"/><path d="M8 11h8"/></svg>',
+  go: '<svg class="i" viewBox="0 0 24 24"><path d="m4 6 7 6-7 6zM13 6l7 6-7 6z"/></svg>',
+  step: '<svg class="i" viewBox="0 0 24 24"><path d="M4 19h5v-5h5V9h5V4"/></svg>',
   folder: '<svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   map: '<svg class="i" viewBox="0 0 24 24"><path d="m9 4-6 3v13l6-3 6 3 6-3V4l-6 3z"/><path d="M9 4v13M15 7v13"/></svg>',
   tag: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/></svg>',
@@ -617,8 +630,14 @@ function drawHome() {
   $("ai-dot").className = "dot" + (ai.ready ? "" : " bad");
   $("ai-name").textContent = ai.ready ? `${ai.active === "api-key" ? "API" : "Claude Code"} · ${ai.model || ""}` : "未接続";
   $("ai-warn").hidden = !ui.home || !!ai.ready;
+  // without Claude a send only makes the project, so there is no way to choose
+  $("flow-btn").parentElement.hidden = !ai.ready;
+  $("flow-btn").innerHTML = `${ICON[ui.flow]}${esc(FLOWS[ui.flow].label)}${ICON.chev}`;
+  $("flow-menu").innerHTML = Object.entries(FLOWS).map(([key, v]) => `<button data-flow="${key}"><span class="ck">${key === ui.flow ? "✓" : ""}</span><span class="t">${esc(v.label)}</span><span class="d">${esc(v.d)}</span></button>`).join("");
   if (!ai.ready && ai.error) $("ai-err").textContent = `Claude に接続されていません（${ai.error}）。プロジェクトは作れますが、企画と一気に作るには接続が要ります。`;
-  $("send").title = ai.ready ? "作る：プロジェクトを作り、企画してから、ロケハン・台本と構成・仮撮りまで進める (Ctrl+Enter)" : "プロジェクトを作る (Ctrl+Enter)";
+  $("send").title = !ai.ready ? "プロジェクトを作る (Ctrl+Enter)"
+    : ui.flow === "step" ? "作る：プロジェクトを作り、企画して止まる。ロケハン・仮撮りでも止まり、左の ▶ で次へ進む (Ctrl+Enter)"
+    : "作る：プロジェクトを作り、企画してから、ロケハン・台本と構成・仮撮りまで進める (Ctrl+Enter)";
   drawTray();
   drawVibes();
   if (!$("examples").childElementCount) {
@@ -817,8 +836,8 @@ async function create(sample = false, sampleEngine = "mock") {
   ui.busy = true; $("send").disabled = true;
   try {
     await api("POST", "/api/projects/create", body);
-    // the studio picks this up and runs the first pass in one go (D-28)
-    if (!sample && ui.home?.ai?.ready) sessionStorage.setItem("shotpilot.produce", JSON.stringify({ note: pitch }));
+    // the studio picks this up and runs the first pass (D-28), stopping where the chosen way says (D-98)
+    if (!sample && ui.home?.ai?.ready) sessionStorage.setItem("shotpilot.produce", JSON.stringify({ note: pitch, flow: ui.flow }));
     location.href = "/";
   } catch (e) { toast(e.message, true); ui.busy = false; $("send").disabled = false; }
 }
@@ -848,6 +867,9 @@ document.addEventListener("click", (e) => {
   const gn = t.closest("[data-genre]");
   if (gn) { ui.genre = gn.dataset.genre; savePrefs(); closeMenus(); drawHome(); return; }
   if (t.closest("#genre-btn")) { const m = $("genre-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
+  const fl = t.closest("[data-flow]");
+  if (fl) { ui.flow = fl.dataset.flow; savePrefs(); closeMenus(); drawHome(); return; }
+  if (t.closest("#flow-btn")) { const m = $("flow-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
   const en = t.closest("[data-engine]");
   if (en) { ui.engine = en.dataset.engine; savePrefs(); closeMenus(); drawHome(); hydrateUproject(); return; }
   if (t.closest("#kind-btn")) { const m = $("kind-menu"); const was = m.hidden; closeMenus(); m.hidden = !was; return; }
