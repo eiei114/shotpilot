@@ -1,0 +1,17 @@
+{
+  "label": "A traveler",
+  "parts": [
+    {
+      "figure": "idle",
+      "at": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "facing": 0.0,
+      "height": 175.0,
+      "dress": "cloth_brown",
+      "dress_len": 0.9
+    }
+  ]
+}

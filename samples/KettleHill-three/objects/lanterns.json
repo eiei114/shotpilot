@@ -1,0 +1,125 @@
+{
+  "label": "Lanterns of the teahouse",
+  "parts": [
+    {
+      "cylinder": [
+        0.5,
+        18.0
+      ],
+      "at": [
+        -805.0,
+        712.0,
+        271.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        7.0,
+        5.0
+      ],
+      "at": [
+        -805.0,
+        712.0,
+        258.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "sphere": 17.0,
+      "scale": [
+        1.0,
+        1.0,
+        1.35
+      ],
+      "at": [
+        -805.0,
+        712.0,
+        234.0
+      ],
+      "mat": "lantern_red"
+    },
+    {
+      "cylinder": [
+        7.0,
+        4.0
+      ],
+      "at": [
+        -805.0,
+        712.0,
+        211.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        0.5,
+        18.0
+      ],
+      "at": [
+        -195.0,
+        712.0,
+        271.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        7.0,
+        5.0
+      ],
+      "at": [
+        -195.0,
+        712.0,
+        258.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "sphere": 17.0,
+      "scale": [
+        1.0,
+        1.0,
+        1.35
+      ],
+      "at": [
+        -195.0,
+        712.0,
+        234.0
+      ],
+      "mat": "lantern_red"
+    },
+    {
+      "cylinder": [
+        7.0,
+        4.0
+      ],
+      "at": [
+        -195.0,
+        712.0,
+        211.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "box": [
+        26.0,
+        26.0,
+        48.0
+      ],
+      "at": [
+        -760.0,
+        1460.0,
+        69.0
+      ],
+      "mat": "lantern_paper",
+      "shape": "round"
+    }
+  ]
+}

@@ -1,0 +1,495 @@
+{
+  "name": "KettleHill",
+  "background": "#cfe1ef",
+  "exposure": 1.0,
+  "fog": {
+    "color": "#c9dbea",
+    "density": 0.0045,
+    "ground": 0.0,
+    "height": 6.0
+  },
+  "sky": {
+    "top": "#4a8bd6",
+    "horizon": "#d4e5f2",
+    "sun": "#fff4d8",
+    "sun_size": 1.6,
+    "glow": 0.8,
+    "stars": 0
+  },
+  "post": {
+    "bloom": 0.2,
+    "threshold": 2.4,
+    "ao": 0.7,
+    "ao_radius": 0.6,
+    "vignette": 0.22,
+    "grain": 0.01,
+    "aberration": 0.0006,
+    "dof": 1.0
+  },
+  "ambient": {
+    "sky": "#b9d3ef",
+    "ground": "#7a8a4c",
+    "intensity": 1.0
+  },
+  "sun": {
+    "from": [
+      -0.56,
+      -0.5,
+      0.66
+    ],
+    "color": "#fff0d6",
+    "intensity": 3.0,
+    "shadow": true,
+    "center": [
+      0,
+      0,
+      0
+    ],
+    "reach": 3600
+  },
+  "materials": {
+    "grass": {
+      "tex": "grass",
+      "color": "#86b44c",
+      "color2": "#5f8f36",
+      "color3": "#b4c763",
+      "scale": [
+        3,
+        3
+      ]
+    },
+    "meadow": {
+      "tex": "grass",
+      "color": "#8fbb58",
+      "color2": "#6c9b42",
+      "color3": "#b9c975",
+      "scale": [
+        9,
+        9
+      ],
+      "wear": 0.2
+    },
+    "path": {
+      "tex": "concrete",
+      "color": "#c2a77e",
+      "color2": "#9a7c55",
+      "scale": [
+        2.5,
+        2.5
+      ],
+      "wear": 0.5
+    },
+    "stone": {
+      "tex": "concrete",
+      "color": "#cfc8b8",
+      "color2": "#93a06e",
+      "scale": [
+        1.6,
+        1.6
+      ],
+      "wear": 0.35
+    },
+    "soil": {
+      "tex": "concrete",
+      "color": "#7a5636",
+      "color2": "#5c3f27",
+      "scale": [
+        1.5,
+        1.5
+      ],
+      "wear": 0.6
+    },
+    "plaster_white": {
+      "tex": "plaster",
+      "color": "#f1ece0",
+      "color2": "#a3ad8e",
+      "scale": [
+        4,
+        3
+      ],
+      "wear": 0.2
+    },
+    "plaster_cream": {
+      "tex": "plaster",
+      "color": "#ecdcbb",
+      "color2": "#a3ad8e",
+      "scale": [
+        4,
+        3
+      ],
+      "wear": 0.2
+    },
+    "plaster_pink": {
+      "tex": "plaster",
+      "color": "#efd2c4",
+      "color2": "#a3ad8e",
+      "scale": [
+        4,
+        3
+      ],
+      "wear": 0.2
+    },
+    "timber": {
+      "tex": "wood",
+      "color": "#6e4a2c",
+      "color2": "#8c6340",
+      "scale": [
+        1.2,
+        1.2
+      ],
+      "wear": 0.4
+    },
+    "plank": {
+      "tex": "wood",
+      "color": "#a87d50",
+      "color2": "#c79a68",
+      "scale": [
+        1.2,
+        1.2
+      ],
+      "wear": 0.5
+    },
+    "crate": {
+      "tex": "wood",
+      "color": "#b98f5c",
+      "color2": "#d2a874",
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.6
+    },
+    "bark": {
+      "tex": "wood",
+      "color": "#5b4330",
+      "color2": "#715640",
+      "scale": [
+        1.5,
+        0.6
+      ],
+      "wear": 0.8
+    },
+    "roof_orange": {
+      "tex": "shingle",
+      "color": "#d86b3c",
+      "color2": "#b24f2c",
+      "n": 10,
+      "scale": [
+        1,
+        1.4
+      ]
+    },
+    "roof_red": {
+      "tex": "shingle",
+      "color": "#c4493b",
+      "color2": "#9c3a30",
+      "n": 10,
+      "scale": [
+        1,
+        1.4
+      ]
+    },
+    "roof_blue": {
+      "tex": "shingle",
+      "color": "#4f73a3",
+      "color2": "#3b5a84",
+      "n": 10,
+      "scale": [
+        1,
+        1.4
+      ]
+    },
+    "roof_green": {
+      "tex": "shingle",
+      "color": "#5f8f5e",
+      "color2": "#466f48",
+      "n": 10,
+      "scale": [
+        1,
+        1.4
+      ]
+    },
+    "kawara": {
+      "tex": "shingle",
+      "color": "#55606c",
+      "color2": "#3d4651",
+      "n": 12,
+      "scale": [
+        1,
+        1.4
+      ]
+    },
+    "awning_red": {
+      "tex": "fabric",
+      "color": "#d9433b",
+      "n": 60,
+      "scale": [
+        1,
+        1
+      ],
+      "wear": 0.2,
+      "double": true
+    },
+    "awning_cream": {
+      "tex": "fabric",
+      "color": "#f3ebd8",
+      "n": 60,
+      "scale": [
+        1,
+        1
+      ],
+      "wear": 0.2,
+      "double": true
+    },
+    "sail": {
+      "tex": "fabric",
+      "color": "#f2e9d4",
+      "n": 50,
+      "scale": [
+        1,
+        1
+      ],
+      "wear": 0.3,
+      "double": true
+    },
+    "noren": {
+      "tex": "fabric",
+      "color": "#2f5486",
+      "n": 60,
+      "scale": [
+        1,
+        1
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "tatami": {
+      "tex": "fabric",
+      "color": "#c9c08a",
+      "n": 140,
+      "scale": [
+        1,
+        1
+      ],
+      "wear": 0.2
+    },
+    "figure": {
+      "tex": "plastic",
+      "color": "#efdcc2",
+      "scale": [
+        0.5,
+        0.5
+      ],
+      "wear": 0.2
+    },
+    "cloth_indigo": {
+      "tex": "fabric",
+      "color": "#34508a",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_rose": {
+      "tex": "fabric",
+      "color": "#df8e93",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_yellow": {
+      "tex": "fabric",
+      "color": "#ecc04e",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_blue": {
+      "tex": "fabric",
+      "color": "#5d8dd0",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_green": {
+      "tex": "fabric",
+      "color": "#69a85b",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_red": {
+      "tex": "fabric",
+      "color": "#e0574a",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_teal": {
+      "tex": "fabric",
+      "color": "#3fa7a0",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_brown": {
+      "tex": "fabric",
+      "color": "#9a6b45",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "cloth_plum": {
+      "tex": "fabric",
+      "color": "#8d64a8",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "apron_green": {
+      "tex": "fabric",
+      "color": "#4f9a6a",
+      "n": 80,
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "wear": 0.1,
+      "double": true
+    },
+    "leaves": {
+      "color": "#5d9a3a",
+      "rough": 0.85
+    },
+    "pine": {
+      "color": "#3d6d3c",
+      "rough": 0.9
+    },
+    "bush": {
+      "color": "#4f8f3a",
+      "rough": 0.9
+    },
+    "stem": {
+      "color": "#5e8f34",
+      "rough": 0.8
+    },
+    "pumpkin": {
+      "color": "#ec8a2c",
+      "rough": 0.55
+    },
+    "apple": {
+      "color": "#cf3a2e",
+      "rough": 0.35
+    },
+    "cabbage": {
+      "color": "#9ccb5c",
+      "rough": 0.6
+    },
+    "petal": {
+      "color": "#f6c824",
+      "rough": 0.7
+    },
+    "seed": {
+      "color": "#5a3b20",
+      "rough": 0.9
+    },
+    "sack": {
+      "color": "#d8c28f",
+      "rough": 0.95
+    },
+    "straw": {
+      "color": "#e3c66e",
+      "rough": 0.9
+    },
+    "window": {
+      "color": "#33475a",
+      "rough": 0.15,
+      "metal": 0.1
+    },
+    "door_wood": {
+      "color": "#7a4b2b",
+      "rough": 0.6
+    },
+    "water": {
+      "color": "#2c5466",
+      "rough": 0.05,
+      "metal": 0.2
+    },
+    "tin": {
+      "color": "#9aa6ad",
+      "rough": 0.35,
+      "metal": 0.8
+    },
+    "teapot": {
+      "color": "#3c5c4c",
+      "rough": 0.3
+    },
+    "cup": {
+      "color": "#f1eadc",
+      "rough": 0.3
+    },
+    "basket": {
+      "color": "#b8894f",
+      "rough": 0.85
+    },
+    "cushion_red": {
+      "color": "#b8433c",
+      "rough": 0.9
+    },
+    "lantern_red": {
+      "color": "#e8523e",
+      "glow": 1.4
+    },
+    "lantern_paper": {
+      "color": "#f6dfae",
+      "glow": 1.6
+    },
+    "flower_pink": {
+      "color": "#f08ab0",
+      "rough": 0.7
+    },
+    "flower_white": {
+      "color": "#f6f2ea",
+      "rough": 0.7
+    },
+    "flower_violet": {
+      "color": "#9a78d0",
+      "rough": 0.7
+    }
+  }
+}

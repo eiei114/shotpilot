@@ -1,0 +1,18 @@
+{
+  "label": "The tea master pouring",
+  "parts": [
+    {
+      "figure": "pour",
+      "at": [
+        -470.0,
+        792.0,
+        45.0
+      ],
+      "facing": 210.0,
+      "height": 170.0,
+      "dress": "cloth_indigo",
+      "dress_len": 0.86,
+      "holds": "teapot"
+    }
+  ]
+}

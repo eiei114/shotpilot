@@ -124,6 +124,7 @@ crates/shotpilot/            コア（ライブラリ + CLI）
   ue/sp_entry.py      Unreal の中で動くスクリプト。唯一の Python（別ルールあり。バイナリに埋め込む）
   tests/              mock エンジンでループ全体を検証する
 crates/shotpilot-app/        Tauri のデスクトップアプリ。コアを組み込み、ウィンドウ1枚で開く
+samples/KettleHill-three/    ホームの「ゲーム」で選ぶ Three.js のゲームのフォルダ（村、D-104）。threegame.rs の書き出しと同じ中身で、テストが守る（直したら SHOTPILOT_BLESS=1 で書き直す）
 ```
 
 ## 守ること（不変条件）

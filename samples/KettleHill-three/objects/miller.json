@@ -1,0 +1,18 @@
+{
+  "label": "The miller sweeping by the door",
+  "parts": [
+    {
+      "figure": "sweep",
+      "at": [
+        2073.946466053637,
+        -1749.1168691894075,
+        0.0
+      ],
+      "facing": 343.13010235415595,
+      "height": 172.0,
+      "dress": "cloth_green",
+      "dress_len": 0.86,
+      "holds": "broom"
+    }
+  ]
+}

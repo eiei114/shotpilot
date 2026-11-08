@@ -1,0 +1,5 @@
+# The demo's three game (D-104): pick this folder as the game on the home.
+# Teasers made from it go into folders in here; keep them out of the repository.
+/*/
+!/objects/
+!/props/

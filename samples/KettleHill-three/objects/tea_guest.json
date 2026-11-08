@@ -1,0 +1,17 @@
+{
+  "label": "A guest on the veranda",
+  "parts": [
+    {
+      "figure": "sit",
+      "at": [
+        -640.0,
+        724.0,
+        0.0
+      ],
+      "facing": 270.0,
+      "height": 162.0,
+      "dress": "cloth_rose",
+      "dress_len": 0.75
+    }
+  ]
+}

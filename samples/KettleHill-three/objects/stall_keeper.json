@@ -1,0 +1,17 @@
+{
+  "label": "The stall keeper waving",
+  "parts": [
+    {
+      "figure": "wave",
+      "at": [
+        985.0,
+        -300.0,
+        0.0
+      ],
+      "facing": 180.0,
+      "height": 168.0,
+      "dress": "apron_green",
+      "dress_len": 0.86
+    }
+  ]
+}

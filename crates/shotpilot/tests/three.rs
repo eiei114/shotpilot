@@ -425,3 +425,53 @@ fn the_home_makes_a_three_project_with_the_village_to_film() {
     let err = shotpilot::projects::create(&shotpilot::projects::NewProject { game: Some(not_a_game), ..new("x", false) }).unwrap_err();
     assert!(err.msg.contains("scene.json"), "{}", err.msg);
 }
+
+/// The game files of a three game folder (scene.json, objects/, props/), line endings made LF so
+/// a checkout that turned them into CRLF still compares equal.
+fn game_files(root: &Path) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    let mut add = |rel: String, p: &Path| {
+        if let Ok(t) = std::fs::read_to_string(p) {
+            out.insert(rel, t.replace("\r\n", "\n"));
+        }
+    };
+    add(three::SCENE_FILE.to_string(), &root.join(three::SCENE_FILE));
+    for sub in [three::OBJECTS_DIR, three::PROPS_DIR] {
+        for e in std::fs::read_dir(root.join(sub)).into_iter().flatten().flatten() {
+            add(format!("{sub}/{}", e.file_name().to_string_lossy()), &e.path());
+        }
+    }
+    out
+}
+
+/// The demo's game folder in the repository (samples/KettleHill-three, D-104), to pick on the
+/// home, is exactly what the code writes. After changing threegame.rs, rewrite it with
+/// `SHOTPILOT_BLESS=1 cargo test --test three the_samples_game_folder_is_what_the_code_writes`.
+#[test]
+fn the_samples_game_folder_is_what_the_code_writes() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../samples/KettleHill-three");
+    let dir = tempfile::tempdir().unwrap();
+    let fresh = dir.path().join("game");
+    assert!(threegame::write(&fresh).unwrap());
+    let want = game_files(&fresh);
+    if std::env::var("SHOTPILOT_BLESS").is_ok_and(|v| v == "1") {
+        // the game's files only: the folder's .gitignore and any teaser made in it stay
+        let _ = std::fs::remove_file(repo.join(three::SCENE_FILE));
+        for sub in [three::OBJECTS_DIR, three::PROPS_DIR] {
+            let _ = std::fs::remove_dir_all(repo.join(sub));
+        }
+        for (rel, text) in &want {
+            let p = repo.join(rel);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, text).unwrap();
+        }
+    }
+    let have = game_files(&repo);
+    let differ: Vec<&String> = want.keys().chain(have.keys()).collect::<BTreeSet<_>>().into_iter().filter(|k| want.get(*k) != have.get(*k)).collect();
+    assert!(differ.is_empty(),
+            "samples/KettleHill-three differs from what threegame.rs writes: {differ:?}. Rewrite it with \
+             SHOTPILOT_BLESS=1 cargo test --test three the_samples_game_folder_is_what_the_code_writes");
+    // it is a game the home can pick, named as the scene says
+    assert_eq!(shotpilot::projects::find_game(&repo).as_deref(), Some(repo.as_path()));
+    assert_eq!(shotpilot::projects::game_name(&repo), "KettleHill");
+}

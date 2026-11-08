@@ -1,0 +1,43 @@
+{
+  "label": "Lamplight of the teahouse",
+  "parts": [
+    {
+      "light": "point",
+      "at": [
+        -805.0,
+        712.0,
+        234.0
+      ],
+      "color": "#ffb070",
+      "intensity": 2.6,
+      "range": 420.0,
+      "halo": 40,
+      "halo_opacity": 0.1
+    },
+    {
+      "light": "point",
+      "at": [
+        -195.0,
+        712.0,
+        234.0
+      ],
+      "color": "#ffb070",
+      "intensity": 2.6,
+      "range": 420.0,
+      "halo": 40,
+      "halo_opacity": 0.1
+    },
+    {
+      "light": "point",
+      "at": [
+        -760.0,
+        1460.0,
+        79.0
+      ],
+      "color": "#ffd29a",
+      "intensity": 3.0,
+      "range": 520.0,
+      "shadow": true
+    }
+  ]
+}

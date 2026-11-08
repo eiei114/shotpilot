@@ -1,0 +1,125 @@
+{
+  "label": "The well in the square",
+  "parts": [
+    {
+      "cylinder": [
+        75.0,
+        70.0
+      ],
+      "at": [
+        0.0,
+        0.0,
+        35.0
+      ],
+      "mat": "stone"
+    },
+    {
+      "cylinder": [
+        81.0,
+        8.0
+      ],
+      "at": [
+        0.0,
+        0.0,
+        74.0
+      ],
+      "mat": "stone",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        64.0,
+        2.0
+      ],
+      "at": [
+        0.0,
+        0.0,
+        70.0
+      ],
+      "mat": "water",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        4.5,
+        170.0
+      ],
+      "axis": "y",
+      "at": [
+        0.0,
+        0.0,
+        212.0
+      ],
+      "mat": "timber"
+    },
+    {
+      "cylinder": [
+        0.5,
+        90.0
+      ],
+      "at": [
+        22.0,
+        0.0,
+        165.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        13.0,
+        20.0
+      ],
+      "top": 15.0,
+      "at": [
+        22.0,
+        0.0,
+        112.0
+      ],
+      "mat": "crate",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        152.73506473629428,
+        58.0
+      ],
+      "top": 11.313708498984761,
+      "sides": 4,
+      "yaw": 45.0,
+      "at": [
+        0.0,
+        0.0,
+        257.0
+      ],
+      "mat": "roof_blue",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.5,
+        160.0
+      ],
+      "at": [
+        0.0,
+        -76.0,
+        150.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.5,
+        160.0
+      ],
+      "at": [
+        0.0,
+        76.0,
+        150.0
+      ],
+      "mat": "timber",
+      "solid": false
+    }
+  ]
+}

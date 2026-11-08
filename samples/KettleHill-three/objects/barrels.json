@@ -1,0 +1,41 @@
+{
+  "label": "Barrels by the stall",
+  "parts": [
+    {
+      "cylinder": [
+        28.0,
+        72.0
+      ],
+      "top": 25.0,
+      "at": [
+        790.0,
+        -40.0,
+        36.0
+      ],
+      "mat": "crate"
+    },
+    {
+      "cylinder": [
+        28.0,
+        72.0
+      ],
+      "top": 25.0,
+      "at": [
+        845.0,
+        -8.0,
+        36.0
+      ],
+      "mat": "crate"
+    },
+    {
+      "sphere": 6.0,
+      "at": [
+        790.0,
+        -40.0,
+        76.0
+      ],
+      "mat": "apple",
+      "solid": false
+    }
+  ]
+}

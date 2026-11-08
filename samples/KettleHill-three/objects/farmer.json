@@ -1,0 +1,18 @@
+{
+  "label": "The farmer watering the rows",
+  "parts": [
+    {
+      "figure": "water",
+      "at": [
+        -2380.0,
+        580.0,
+        2.0
+      ],
+      "facing": 270.0,
+      "height": 170.0,
+      "dress": "cloth_blue",
+      "dress_len": 0.6,
+      "holds": "can"
+    }
+  ]
+}

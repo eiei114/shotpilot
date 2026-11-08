@@ -1,0 +1,17 @@
+{
+  "label": "An old man on the bench",
+  "parts": [
+    {
+      "figure": "sit",
+      "at": [
+        -1480.0,
+        -838.0,
+        0.0
+      ],
+      "facing": 270.0,
+      "height": 166.0,
+      "dress": "cloth_plum",
+      "dress_len": 0.62
+    }
+  ]
+}

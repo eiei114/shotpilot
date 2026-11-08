@@ -1,0 +1,419 @@
+{
+  "label": "The fence round the fields",
+  "structure": true,
+  "parts": [
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2850.0,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2850.0,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2692.8571428571427,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2692.8571428571427,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2535.714285714286,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2535.714285714286,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2378.5714285714284,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2378.5714285714284,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2221.4285714285716,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2221.4285714285716,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2064.285714285714,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2064.285714285714,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -1907.142857142857,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -1907.142857142857,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -1750.0,
+        300.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -1750.0,
+        900.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2850.0,
+        450.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -1750.0,
+        450.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2850.0,
+        600.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -2850.0,
+        750.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        5.0,
+        105.0
+      ],
+      "at": [
+        -1750.0,
+        750.0,
+        52.5
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        1100.0
+      ],
+      "axis": "x",
+      "at": [
+        -2300.0,
+        300.0,
+        52.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        1100.0
+      ],
+      "axis": "x",
+      "at": [
+        -2300.0,
+        900.0,
+        52.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        600.0
+      ],
+      "axis": "y",
+      "at": [
+        -2850.0,
+        600.0,
+        52.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        240.0
+      ],
+      "axis": "y",
+      "at": [
+        -1750.0,
+        420.0,
+        52.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        200.0
+      ],
+      "axis": "y",
+      "at": [
+        -1750.0,
+        800.0,
+        52.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        1100.0
+      ],
+      "axis": "x",
+      "at": [
+        -2300.0,
+        300.0,
+        92.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        1100.0
+      ],
+      "axis": "x",
+      "at": [
+        -2300.0,
+        900.0,
+        92.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        600.0
+      ],
+      "axis": "y",
+      "at": [
+        -2850.0,
+        600.0,
+        92.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        240.0
+      ],
+      "axis": "y",
+      "at": [
+        -1750.0,
+        420.0,
+        92.0
+      ],
+      "mat": "timber",
+      "solid": false
+    },
+    {
+      "cylinder": [
+        3.0,
+        200.0
+      ],
+      "axis": "y",
+      "at": [
+        -1750.0,
+        800.0,
+        92.0
+      ],
+      "mat": "timber",
+      "solid": false
+    }
+  ]
+}

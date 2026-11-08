@@ -1,0 +1,111 @@
+{
+  "label": "Hills far off",
+  "structure": true,
+  "parts": [
+    {
+      "sphere": 5200.0,
+      "scale": [
+        1.2,
+        1.0,
+        0.2
+      ],
+      "at": [
+        10500.0,
+        -3000.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    },
+    {
+      "sphere": 5600.0,
+      "scale": [
+        1.0,
+        1.0,
+        0.18
+      ],
+      "at": [
+        -2000.0,
+        10800.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    },
+    {
+      "sphere": 5000.0,
+      "scale": [
+        1.0,
+        1.0,
+        0.22
+      ],
+      "at": [
+        -10600.0,
+        -1500.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    },
+    {
+      "sphere": 5200.0,
+      "scale": [
+        1.1,
+        1.0,
+        0.2
+      ],
+      "at": [
+        2000.0,
+        -10600.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    },
+    {
+      "sphere": 4800.0,
+      "scale": [
+        1.0,
+        1.0,
+        0.24
+      ],
+      "at": [
+        8600.0,
+        7800.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    },
+    {
+      "sphere": 4600.0,
+      "scale": [
+        1.1,
+        1.0,
+        0.2
+      ],
+      "at": [
+        -8200.0,
+        7600.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    },
+    {
+      "sphere": 5000.0,
+      "scale": [
+        1.0,
+        1.0,
+        0.19
+      ],
+      "at": [
+        -7400.0,
+        -8200.0,
+        0.0
+      ],
+      "mat": "meadow",
+      "solid": false
+    }
+  ]
+}
